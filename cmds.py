@@ -38,10 +38,14 @@ def docs(cmd):
 				break
 
 	title = settings.docs_assoc[res].get('syntax', '')
+	desc = settings.docs_assoc[res].get('desc', '')
+	url = settings.docs_assoc[res].get('dir', '')
 	if not len(title):
 		title = res
-
-	return {"embed": discord.Embed(title=title, description=settings.docs_assoc[res]['desc'], url="https://autohotkey.com/docs/{}".format(settings.docs_assoc[res]['dir']))}
+	em = {"title": title, "description": desc}
+	if len(url):
+		em['url'] = "https://autohotkey.com/docs/{}".format(url)
+	return {"embed": discord.Embed(**em)}
 
 def studio(message, param):
 	import discord

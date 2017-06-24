@@ -52,7 +52,7 @@ async def on_message(message):
 		printtime()
 		print("{} in {}: {}".format(message.author, message.channel, message.content.split("\n")[0]))
 		if type(msg) is dict:
-			print("Embed returned")
+			print(msg['embed'].to_dict()['title'])
 			await client.send_message(message.channel, **msg)
 		else:
 			print("Result: {}".format(msg.split('\n')[0]))
@@ -62,7 +62,9 @@ async def on_message(message):
 
 @client.event
 async def on_ready():
-	print("Connected to AutoHotkey")
+	print(client.user.name)
+	print(client.user.id)
+	print(discord.__version__)
 	await client.change_presence(game=discord.Game(name='autohotkey.com'))
 
 
