@@ -1,7 +1,7 @@
 import json
 
 ignore_chan = ['music', 'irc', 'reddit']
-ignore_cmd = ['help']
+ignore_cmd = ['clear', 'mute']
 
 del_cmd = ['highlight', 'hl', 'mae']
 
@@ -28,7 +28,6 @@ embeds = {
 	, "documentation":  {"title": "AutoHotkey documentation", "description": "https://autohotkey.com/docs/AutoHotkey.htm"}
 	, "forum":          {"title": "AutoHotkey forums", "description": "https://autohotkey.com/boards/"}
 	, "forums":         {"title": "AutoHotkey forums", "description": "https://autohotkey.com/boards/"}
-	, "test":           {"title": "BoundFunc := ObjBindMethod(Obj, Method, Params)", "description": "Creates a BoundFunc object which calls a method of a given object.", "url": "http://autohotkey.com/"}
 }
 
 file = open("Docs.json", "r")

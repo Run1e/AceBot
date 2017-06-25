@@ -1,15 +1,24 @@
 import settings
+import discord
 from funcs import *
 import re
 import json
 from fuzzywuzzy import fuzz
 from fuzzywuzzy import process
 
+def help(message, param):
+	out = ['Avaliable commands:']
+	for x in settings.commands:
+		out.append(x)
+	for x in settings.embeds:
+		out.append(x)
+	out.append('(search query) - fuzzy search AHK documentation')
+	return "**{}**".format('\n\t!'.join(out))
+
 def highlight(message, param):
 	return "```AutoHotkey\n{}\n```*Paste by {}*".format(" ".join(param), message.author.mention)
 
 def update(message, param):
-	import discord
 	site = httpget('https://api.github.com/repos/Lexikos/AutoHotkey_L/releases/latest')
 
 	version = json.loads(site)['tag_name']
@@ -18,7 +27,6 @@ def update(message, param):
 	return {"embed": discord.Embed(title="<:ahk:317997636856709130> AutoHotkey_L", description="Latest version: {}".format(version), url=down)}
 
 def docs(cmd):
-	import discord
 	res = ''
 
 	for x in settings.docs:
@@ -48,7 +56,6 @@ def docs(cmd):
 	return {"embed": discord.Embed(**em)}
 
 def studio(message, param):
-	import discord
 	site = Request('https://raw.githubusercontent.com/maestrith/AHK-Studio/master/AHK-Studio.text')
 	site = urlopen(site).read().decode('utf8')
 	version = site.split('\r\n')[0]
@@ -58,7 +65,6 @@ def commands(message, cmd):
 	return settings.commands[cmd].format(message)
 
 def embeds(message, cmd):
-		import discord
 		em = {}
 		for x in ['title', 'description', 'url']:
 			if x in settings.embeds[cmd]:
