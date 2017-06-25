@@ -511,13 +511,17 @@
 		"desc": "A function is similar to a subroutine (Gosub) except that it can accept parameters (inputs) from its caller. In addition, a function may optionally return a value to its caller.",
 		"dir": "HotkeyFeatures.htm"
 	},
-	"Alphabetical Command and Function Index": {
+	"Command Index": {
 		"desc": "Click on a command or function name for details. Entries in large font are the most commonly used.",
 		"dir": "commands/index.htm"
 	},
+	"Associative Arrays": {
+		"desc": "Associative arrays are objects containing key/value pairs.",
+		"dir": "Objects.htm#Usage_Associative_Arrays"
+	},
 	"Arrays": {
-		"desc": "Self-contained associative arrays can be created by calling Object(). For example:",
-		"dir": "misc/Arrays.htm"
+		"desc": "Arrays are objects with numbered key values.",
+		"dir": "Objects.htm#Usage_Simple_Arrays"
 	},
 	"Asc()": {
 		"desc": "Returns the numeric value of the first byte or UTF-16 code unit in the specified string.",
@@ -1290,12 +1294,12 @@
 		"dir": "commands/ObjBindMethod.htm",
 		"syntax": "BoundFunc := ObjBindMethod(Obj, Method, Params)"
 	},
-	"Object": {
-		"desc": "AutoHotkey's basic object datatype is an associative array with features which allow its behaviour to be customized.  By default, all objects created by {}, [], Object() and Array() support the following methods:",
+	"Object methods": {
+		"desc": "A list of methods supported by objects created via [], {}, Array() or Object().",
 		"dir": "objects/Object.htm"
 	},
 	"Objects": {
-		"desc": "An object in AutoHotkey is an abstract datatype which provides three basic functions:\nGET a value.\nSET a value.\nCALL a method (that is, a function which does something with the target object).",
+		"desc": "An object in AutoHotkey is an abstract datatype which can GET or SET a value, and CALL a method (that is, a function which does something with the target object.)",
 		"dir": "Objects.htm"
 	},
 	"OnClipboardChange": {

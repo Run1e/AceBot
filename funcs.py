@@ -8,13 +8,6 @@ def httpget(url):
 	site = Request(url, headers={'User-Agent': 'Mozilla/5.0'})
 	return urlopen(site).read().decode('utf8')
 
-def printmsg(message):
-	printtime()
-	print("{} in {}: {}".format(message.author, message.channel, message.content))
-
-def printtime():
-	print('\n{:%Y-%m-%d %H:%M:%S}'.format(datetime.datetime.now()))
-
 def findnth(haystack, needle, n):
 	parts= haystack.split(needle, n+1)
 	if len(parts)<=n+1:

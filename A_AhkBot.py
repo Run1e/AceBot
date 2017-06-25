@@ -55,12 +55,19 @@ async def on_message(message):
 			msg = forumsnippet(link)
 
 	if msg != '':
-		printtime()
-		print("{} in {}: {}".format(message.author, message.channel, message.content.split("\n")[0]))
+		print("-" * 50)
+		print('{:%Y-%m-%d %H:%M:%S}'.format(datetime.datetime.now()))
+		print("\n{} in {}:".format(message.author.name, message.channel))
+		print(message.content.split('\n')[0])
+		print("\nResponse:")
+
 		if type(msg) is dict:
+			print(msg['embed'].to_dict()['title'])
 			await client.send_message(message.channel, **msg)
 		else:
+			print(msg.split('\n')[0])
 			await client.send_message(message.channel, msg)
+		print("\n")
 
 	return
 
