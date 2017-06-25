@@ -29,13 +29,10 @@ def limit_text(text, max_char, max_lines):
 	if len(text) > max_char:
 		text = text[:max_char]
 		type = 2
-
-	# add '...'
 	if type == 1:
 		text = text + '\n...'
 	elif type == 2:
 		text = text + '...'
-
 	return text
 
 def forumsnippet(link):
@@ -63,6 +60,10 @@ def pastesnippet(link):
 	link = link.replace("?e=", "?r=")
 
 	site = httpget(link)
+	flen = len(site)
 	site = limit_text(site, settings.ahk_char, settings.ahk_line)
 
-	return "```AutoHotkey\n{}```".format(site)
+	if len(site) == flen:
+		return "```AutoHotkey\n{}```".format(site)
+	else:
+		return ''

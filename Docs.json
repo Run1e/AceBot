@@ -52,7 +52,7 @@
 	"#IfWinActive / #IfWinExist": {
 		"desc": "Creates context-sensitive hotkeys and hotstrings. Such hotkeys perform a different action (or none at all) depending on the type of window that is active or exists.",
 		"dir": "commands/_IfWinActive.htm",
-		"syntax": "#IfWinActive [, WinTitle, WinText]\n#IfWinExist [, WinTitle, WinText]\n#IfWinNotActive [, WinTitle, WinText]\n#IfWinNotExist [, WinTitle, WinText]\n#If [, Expression]"
+		"syntax": "#IfWinActive [, WinTitle, WinText]\n#IfWinExist [, WinTitle, WinText]"
 	},
 	"#Include": {
 		"desc": "Causes the script to behave as though the specified file's contents are present at this exact position.",
@@ -1031,7 +1031,7 @@
 	"Hotkey": {
 		"desc": "Creates, modifies, enables, or disables a hotkey while the script is running.",
 		"dir": "commands/Hotkey.htm",
-		"syntax": "Hotkey, KeyName [, Label, Options]\nHotkey, IfWinActive/Exist [, WinTitle, WinText]\nHotkey, If [, Expression]\nHotkey, If, % FunctionObject"
+		"syntax": "Hotkey, KeyName [, Label, Options]"
 	},
 	"Hotkeys": {
 		"desc": "Mouse, Joystick and Keyboard Shortcuts",

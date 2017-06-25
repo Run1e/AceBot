@@ -1,33 +1,44 @@
 import settings
+import commands
 import discord
 from funcs import *
 import re
 import json
-from fuzzywuzzy import fuzz
-from fuzzywuzzy import process
+from urllib import parse
+from fuzzywuzzy import fuzz, process
 
-def help(message, param):
-	out = ['Avaliable commands:']
-	for x in settings.commands:
-		out.append(x)
-	for x in settings.embeds:
-		out.append(x)
-	out.append('(search query) - fuzzy search AHK documentation')
-	return "**{}**".format('\n\t!'.join(out))
+def help(message):
+	file = open("help.txt", "r")
+	help = file.read()
+	file.close()
+	return help
 
-def highlight(message, param):
-	return "```AutoHotkey\n{}\n```*Paste by {}*".format(" ".join(param), message.author.mention)
+def highlight(message):
+	return "```AutoHotkey\n{}\n```*Paste by {}*".format(message.content[message.content.find(' ') + 1:], message.author.mention)
 
-def update(message, param):
+def update(message):
 	site = httpget('https://api.github.com/repos/Lexikos/AutoHotkey_L/releases/latest')
-
 	version = json.loads(site)['tag_name']
 	down = "https://github.com/Lexikos/AutoHotkey_L/releases/download/{}/AutoHotkey_{}_setup.exe".format(version, version[1:])
-
 	return {"embed": discord.Embed(title="<:ahk:317997636856709130> AutoHotkey_L", description="Latest version: {}".format(version), url=down)}
 
-def docs(cmd):
+def vibrancer(message):
+	site = httpget('https://api.github.com/repos/Run1e/Vibrancer/releases/latest')
+	version = json.loads(site)['tag_name']
+	return {"embed": discord.Embed(title="Vibrancer for NVIDIA", description="Latest version: {}".format(version), url="http://vibrancer.com/")}
+
+def forumasd(message):
+	return 'Not yet.'
+	search = message.content[7:]
+	site = httpget("https://duckduckgo.com/html/?q={}".format(search))
+	print(site)
+	return
+
+def docs(message, cmd=''):
 	res = ''
+
+	if cmd == '':
+		cmd = message.content[message.content.find(' ') + 1:]
 
 	for x in settings.docs:
 		if cmd.lower() == x.lower():
@@ -62,26 +73,8 @@ def docs(cmd):
 
 	return {"embed": discord.Embed(**em)}
 
-def studio(message, param):
+def studio(message):
 	site = Request('https://raw.githubusercontent.com/maestrith/AHK-Studio/master/AHK-Studio.text')
 	site = urlopen(site).read().decode('utf8')
 	version = site.split('\r\n')[0]
 	return {"embed": discord.Embed(title='<:studio:317999706087227393> AHK Studio', description='Latest version: ' + version, url='https://autohotkey.com/boards/viewtopic.php?f=62&t=300')}
-
-def commands(message, cmd):
-	return settings.commands[cmd].format(message)
-
-def embeds(message, cmd):
-		em = {}
-		for x in ['title', 'description', 'url']:
-			if x in settings.embeds[cmd]:
-				em[x] = settings.embeds[cmd][x].format(message)
-		return {"embed": discord.Embed(**em)}
-
-
-def ahk(message, param):
-	return update(message, param)
-def version(message, param):
-	return update(message, param)
-def hl(message, param):
-	return highlight(message, param)

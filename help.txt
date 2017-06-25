@@ -1,0 +1,16 @@
+**How to search through AHK documentation:
+
+`!docs [search query]` **or simply** `![search query]`
+
+To highlight some code:
+
+`!hl [paste code here]`
+
+Other commands:
+    !p or !paste - link to AHK pastebin
+    !c or !code - remind people of the `!hl [code]` feature
+    !tut or !tutorial - gives link to basic AHK tutorial
+    !documentation - gives link to the AHK documentation main page
+    !forum - link to the AHK forums
+    !version or !update - AHK version and download link
+**
