@@ -33,6 +33,9 @@ def docs(cmd):
 		if cmd.lower() == x.lower():
 			res = x
 			break
+		elif x.startswith(cmd + ' '):
+			res = x
+			break
 
 	if not len(res):
 		for x in process.extract(cmd, settings.docs, scorer=fuzz.partial_ratio, limit=999999):
@@ -48,11 +51,15 @@ def docs(cmd):
 	title = settings.docs_assoc[res].get('syntax', '')
 	desc = settings.docs_assoc[res].get('desc', '')
 	url = settings.docs_assoc[res].get('dir', '')
+
 	if not len(title):
 		title = res
+
 	em = {"title": title, "description": desc}
+
 	if len(url):
 		em['url'] = "https://autohotkey.com/docs/{}".format(url)
+
 	return {"embed": discord.Embed(**em)}
 
 def studio(message, param):

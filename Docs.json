@@ -144,12 +144,6 @@
 		"dir": "commands/_WinActivateForce.htm",
 		"syntax": "#WinActivateForce"
 	},
-	"1, 2, 3, etc.": {
-		"desc": "These variables are automatically created whenever a script is launched with command line parameters. They can be changed and referenced just like normal variable names (for example: %1%). The variable %0% contains the number of parameters passed (0 if none). For details, see the command line parameters."
-	},
-	"A_ScreenWidth": {
-		"desc": "A_ScreenHeight"
-	},
 	"A_AhkPath": {
 		"desc": "For non-compiled scripts: The full path and name of the EXE file that is actually running the current script. For example: C:\\Program Files\\AutoHotkey\\AutoHotkey.exe"
 	},
@@ -157,10 +151,10 @@
 		"desc": "In versions prior to 1.0.22, this variable is blank. Otherwise, it contains the version of AutoHotkey that is running the script, such as 1.0.22. In the case of a compiled script, the version that was originally used to compile it is reported. The formatting of the version number allows a script to check whether A_AhkVersion is greater than some minimum version number with  or = as in this example: if A_AhkVersion = 1.0.25.07."
 	},
 	"A_AppData": {
-		"desc": "[v1.0.43.09+]"
+		"desc": "The path to the AppData folder. [v1.0.43.09+]"
 	},
 	"A_AppDataCommon": {
-		"desc": "[v1.0.43.09+]"
+		"desc": "The path to the common AppData folder. [v1.0.43.09+]"
 	},
 	"A_AutoTrim": {
 		"desc": "The current mode (On or Off) set by AutoTrim."
@@ -1021,7 +1015,7 @@
 		"syntax": "MyFunction(CtrlHwnd, GuiEvent, LinkIndex, HrefOrID)"
 	},
 	"GUI Styles": {
-		"desc": "",
+		"desc": "Comprehensive list of GUI and control styles.",
 		"dir": "misc/Styles.htm"
 	},
 	"GuiControl": {

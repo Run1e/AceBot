@@ -3,7 +3,7 @@ import re
 
 from funcs import *
 import settings
-import cmds
+import commands
 
 client = discord.Client()
 
@@ -24,19 +24,19 @@ async def on_message(message):
 
 		if cmd in settings.ignore_cmd:
 			return
+
 		if cmd in settings.commands:
-			msg = cmds.commands(message, cmd)
+			msg = commands.commands(message, cmd)
 		elif cmd in settings.embeds:
-			msg = cmds.embeds(message, cmd)
-		elif hasattr(cmds, cmd):
-			msg = getattr(cmds, cmd)(message, param)
+			msg = commands.embeds(message, cmd)
+		elif hasattr(commands, cmd):
+			msg = getattr(commands, cmd)(message, param)
 		else:
-			msg = cmds.docs(cmd)
+			msg = commands.docs(cmd)
 
 		if cmd in settings.del_cmd:
 			await client.delete_message(message)
 
-	# not command
 	else:
 		try:
 			link = re.findall('http[s]?://(?:[a-zA-Z]|[0-9]|[$-_@.&+]|[!*\(\),]|(?:%[0-9a-fA-F][0-9a-fA-F]))+', message.content)[0]
@@ -52,10 +52,12 @@ async def on_message(message):
 		printtime()
 		print("{} in {}: {}".format(message.author, message.channel, message.content.split("\n")[0]))
 		if type(msg) is dict:
-			print(msg['embed'].to_dict()['title'])
+			to_dict = msg['embed'].to_dict()
+			print(to_dict['title'])
+			print(to_dict['description'])
 			await client.send_message(message.channel, **msg)
 		else:
-			print("Result: {}".format(msg.split('\n')[0]))
+			print(msg.split('\n')[0])
 			await client.send_message(message.channel, msg)
 
 	return
