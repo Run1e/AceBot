@@ -10,7 +10,7 @@ Other commands:
     !p or !paste - link to AHK pastebin
     !c or !code - remind people of the `!hl [code]` feature
     !tut or !tutorial - gives link to basic AHK tutorial
-    !documentation - gives link to the AHK documentation main page
+    !documentation or !doc - gives link to the AHK documentation main page
     !forum - link to the AHK forums
     !version or !update - AHK version and download link
 **

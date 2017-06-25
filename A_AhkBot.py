@@ -71,7 +71,7 @@ async def on_ready():
 	print(discord.__version__)
 	await client.change_presence(game=discord.Game(name='autohotkey.com'))
 
-file = open("token.txt", "r")
-token = file.read()
-file.close()
+with open("token.txt", "r") as f:
+	token = f.read()
+
 client.run(token)

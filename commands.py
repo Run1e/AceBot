@@ -16,6 +16,9 @@ def help(message):
 def highlight(message):
 	return "```AutoHotkey\n{}\n```*Paste by {}*".format(message.content[message.content.find(' ') + 1:], message.author.mention)
 
+def highlightpython(message):
+	return "```python\n{}\n```*Paste by {}*".format(message.content[message.content.find(' ') + 1:], message.author.mention)
+
 def update(message):
 	site = httpget('https://api.github.com/repos/Lexikos/AutoHotkey_L/releases/latest')
 	version = json.loads(site)['tag_name']

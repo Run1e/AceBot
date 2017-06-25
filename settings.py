@@ -17,9 +17,11 @@ alias_assoc = {
 	, "p": "paste"
 	, "tut": "tutorial"
 	, "forums": "forum"
+	, "doc": "documentation"
 	, "ahk": "update"
 	, "version": "update"
 	, "hl": "highlight"
+	, "hlp": "highlightpython"
 }
 
 ignore_chan = [
@@ -46,6 +48,7 @@ ignore_cmd = [
 
 del_cmd = [
 	  'highlight'
+	, 'highlightpython'
 	, 'mae'
 ]
 
