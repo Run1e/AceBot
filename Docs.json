@@ -511,14 +511,6 @@
 		"desc": "A function is similar to a subroutine (Gosub) except that it can accept parameters (inputs) from its caller. In addition, a function may optionally return a value to its caller.",
 		"dir": "HotkeyFeatures.htm"
 	},
-	"Command Index": {
-		"desc": "Click on a command or function name for details. Entries in large font are the most commonly used.",
-		"dir": "commands/index.htm"
-	},
-	"Associative Arrays": {
-		"desc": "Associative arrays are objects containing key/value pairs.",
-		"dir": "Objects.htm#Usage_Associative_Arrays"
-	},
 	"Arrays": {
 		"desc": "Arrays are objects with numbered key values.",
 		"dir": "Objects.htm#Usage_Simple_Arrays"
@@ -527,6 +519,10 @@
 		"desc": "Returns the numeric value of the first byte or UTF-16 code unit in the specified string.",
 		"dir": "commands/Asc.htm",
 		"syntax": "Number := Asc(String)"
+	},
+	"Associative Arrays": {
+		"desc": "Associative arrays are objects containing key/value pairs.",
+		"dir": "Objects.htm#Usage_Associative_Arrays"
 	},
 	"AutoTrim": {
 		"desc": "Determines whether Var1 = %Var2% statements omit spaces and tabs from the beginning and end of Var2.",
@@ -573,6 +569,10 @@
 	"CLSID List (Windows Class Identifiers)": {
 		"desc": "Certain special folders within the operating system are identified by unique strings.  Some of these strings can be used with FileSelectFile, FileSelectFolder, and Run. For example:",
 		"dir": "misc/CLSID-List.htm"
+	},
+	"Command Index": {
+		"desc": "Click on a command or function name for details. Entries in large font are the most commonly used.",
+		"dir": "commands/index.htm"
 	},
 	"ComObjActive()": {
 		"desc": "Retrieves a running object that has been registered with OLE.",
@@ -1408,7 +1408,7 @@
 		"dir": "misc/RegExCallout.htm"
 	},
 	"Regular Expressions (RegEx) - Quick Reference": {
-		"desc": "Quick reference for Regular Expressions",
+		"desc": "Quick reference for Regular Expressions.",
 		"dir": "misc/RegEx-QuickRef.htm"
 	},
 	"RegWrite": {

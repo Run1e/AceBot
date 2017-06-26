@@ -5,11 +5,12 @@ alias = {
 	, "paste":      	"Paste your code at http://p.ahkscript.org/"
 	, "hello":      	"Hello {0.author.mention}!"
 	, "mae":        	"*{0.author.mention} bows*"
-	, "code":      		"To paste code type: `!hl [paste code here]`"
+	, "code":      		"Use the highlight command to paste code: `!hl [paste code here]`"
 	, "shrug":			"¯\_(ツ)_/¯"
   	, "tutorial":       {"title": "Tutorial by tidbit", "description": "https://autohotkey.com/docs/Tutorial.htm"}
 	, "documentation":  {"title": "AutoHotkey documentation", "description": "https://autohotkey.com/docs/AutoHotkey.htm"}
 	, "forum":          {"title": "AutoHotkey forums", "description": "https://autohotkey.com/boards/"}
+	, "source":			"https://github.com/Run1e/A_AhkBot"
 }
 
 alias_assoc = {
@@ -22,6 +23,7 @@ alias_assoc = {
 	, "version": "update"
 	, "hl": "highlight"
 	, "hlp": "highlightpython"
+	, "github": "source"
 }
 
 ignore_chan = [

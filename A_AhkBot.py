@@ -55,7 +55,9 @@ async def on_message(message):
 			msg = forumsnippet(link)
 
 	if msg != '':
+		print()
 		print("-" * 50)
+		print()
 		print('{:%Y-%m-%d %H:%M:%S}'.format(datetime.datetime.now()))
 		print("\n{} in {}:".format(message.author.name, message.channel))
 		print(message.content.split('\n')[0])
@@ -67,7 +69,6 @@ async def on_message(message):
 		else:
 			print(msg.split('\n')[0])
 			await client.send_message(message.channel, msg)
-		print("\n")
 
 	return
 
