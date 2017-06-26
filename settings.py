@@ -7,17 +7,20 @@ alias = {
 	, "mae":        	"*{0.author.mention} bows*"
 	, "code":      		"Use the highlight command to paste code: `!hl [paste code here]`"
 	, "shrug":			"¯\_(ツ)_/¯"
+	, "source": 		"https://github.com/Run1e/A_AhkBot"
+
   	, "tutorial":       {"title": "Tutorial by tidbit", "description": "https://autohotkey.com/docs/Tutorial.htm"}
 	, "documentation":  {"title": "AutoHotkey documentation", "description": "https://autohotkey.com/docs/AutoHotkey.htm"}
-	, "forum":          {"title": "AutoHotkey forums", "description": "https://autohotkey.com/boards/"}
-	, "source":			"https://github.com/Run1e/A_AhkBot"
+	, "forums":         {"title": "AutoHotkey forums", "description": "https://autohotkey.com/boards/"}
 }
 
 alias_assoc = {
 	  "c": "code"
 	, "p": "paste"
+	, "f": "forum"
+	, "g": "search"
+	, "s": "search"
 	, "tut": "tutorial"
-	, "forums": "forum"
 	, "doc": "documentation"
 	, "ahk": "update"
 	, "version": "update"

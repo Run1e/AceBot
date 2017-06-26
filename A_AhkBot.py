@@ -1,5 +1,5 @@
 import discord
-import re
+import datetime
 
 from funcs import *
 import settings
@@ -20,23 +20,24 @@ async def on_message(message):
 
 	if message.content.startswith('!'):
 		cmd = message.content[1:].split(' ')[0].lower()
-
-		if cmd in settings.ignore_cmd:
-			return
+		cont = message.content[2+len(cmd):]
 
 		if cmd in settings.alias_assoc:
 			cmd = settings.alias_assoc[cmd]
+
+		if cmd in settings.ignore_cmd:
+			return
 
 		if cmd in settings.alias:
 			if type(settings.alias[cmd]) is dict:
 				em = {}
 				for key, val in settings.alias[cmd].items():
 					em[key] = val.format(message)
-				msg = {"embed": discord.Embed(**em)}
+				msg = em
 			else:
 				msg = settings.alias[cmd].format(message)
 		elif hasattr(commands, cmd):
-			msg = getattr(commands, cmd)(message)
+			msg = getattr(commands, cmd)(message, cont)
 		elif len(cmd):
 			msg = commands.docs(message, cmd)
 
@@ -61,12 +62,13 @@ async def on_message(message):
 		print('{:%Y-%m-%d %H:%M:%S}'.format(datetime.datetime.now()))
 		print("\n{} in {}:".format(message.author.name, message.channel))
 		print(message.content.split('\n')[0])
-		print("\nResponse:")
 
 		if type(msg) is dict:
-			print(msg['embed'].to_dict()['title'])
-			await client.send_message(message.channel, **msg)
+			print('Returning embed:')
+			print(msg['title'])
+			await client.send_message(message.channel, embed=discord.Embed(**msg))
 		else:
+			print('Returning text:')
 			print(msg.split('\n')[0])
 			await client.send_message(message.channel, msg)
 
