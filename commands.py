@@ -9,7 +9,7 @@ import re
 import json
 from fuzzywuzzy import fuzz, process
 
-def help(message):
+def help(message, cont):
 	with open("help.txt", "r") as f:
 		return f.read()
 
@@ -85,4 +85,4 @@ def studio(message, cont):
 def vibrancer(message, cont):
 	req = requests.get('https://api.github.com/repos/Run1e/Vibrancer/releases/latest')
 	version = json.loads(req.text)['tag_name']
-	return {"title:": "Vibrancer for NVIDIA", "description": "Latest version: {}".format(version), "url": "http://vibrancer.com/"}
+	return {"title": "Vibrancer for NVIDIA", "description": "Latest version: {}".format(version), "url": "http://vibrancer.com/"}

@@ -1,5 +1,6 @@
 import discord
 import datetime
+import re
 
 from funcs import *
 import settings
@@ -19,8 +20,9 @@ async def on_message(message):
 	msg = ''
 
 	if message.content.startswith('!'):
-		cmd = message.content[1:].split(' ')[0].lower()
-		cont = message.content[2+len(cmd):]
+		reg = re.match('!(.*?)(?:\s|\n|$)(.*)', message.content)
+		cmd = reg.group(1).lower()
+		cont = reg.group(2)
 
 		if cmd in settings.alias_assoc:
 			cmd = settings.alias_assoc[cmd]
