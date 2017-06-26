@@ -20,7 +20,7 @@ async def on_message(message):
 	msg = ''
 
 	if message.content.startswith('!'):
-		reg = re.match('!(.*?)(?:\s|\n|$)(.*)', message.content)
+		reg = re.match('!(.*?)(?:\s|\n|$)(.*)', message.content, re.DOTALL)
 		cmd = reg.group(1).lower()
 		cont = reg.group(2)
 
@@ -57,21 +57,35 @@ async def on_message(message):
 		elif link.startswith("https://autohotkey.com/boards/viewtopic.php?"):
 			msg = forumsnippet(link)
 
-	if msg != '':
+	if msg:
 		print()
-		print("-" * 50)
+		print("-" * 100)
 		print()
 		print('{:%Y-%m-%d %H:%M:%S}'.format(datetime.datetime.now()))
 		print("\n{} in {}:".format(message.author.name, message.channel))
-		print(message.content.split('\n')[0])
+		print(message.content.split('\n')[0] + '\n')
 
 		if type(msg) is dict:
 			print('Returning embed:')
 			print(msg['title'])
-			await client.send_message(message.channel, embed=discord.Embed(**msg))
+			if not 'color' in msg:
+				msg['color'] = 0x78A064
+
+			embed = discord.Embed(**msg)
+
+			if 'image' in msg:
+				embed.set_image(url=msg.pop('image'))
+			if 'thumbnail' in msg:
+				embed.set_thumbnail(url=msg.pop('thumbnail'))
+
+			if 'footer' in msg:
+				embed.set_footer(**msg.pop('footer'))
+
+			await client.send_message(message.channel, embed=embed)
 		else:
 			print('Returning text:')
 			print(msg.split('\n')[0])
+
 			await client.send_message(message.channel, msg)
 
 	return

@@ -61,6 +61,24 @@ def docs(message, cont):
 
 	return em
 
+def weather(message, cont):
+	req = requests.get("http://api.wunderground.com/api/{}/conditions/q/{}.json".format(settings.weatherapi, cont))
+	we = json.loads(req.text)
+	desc = ['***Weather***']
+	try:
+		desc.append(we['current_observation']['weather'])
+	except:
+		return "'{}' not found.".format(cont)
+	desc.append('***Temperature***')
+	desc.append("{} C ({} freedoms)".format(we['current_observation']['temp_c'], we['current_observation']['temp_f']))
+	desc.append('***Wind***')
+	desc.append(we['current_observation']['wind_string'])
+	return {"title": "Weather for {}".format(we['current_observation']['display_location']['full'])
+		, "description": "\n".join(desc)
+		, "url": we['current_observation']['forecast_url']
+		, "thumbnail": we['current_observation']['icon_url']
+		, "footer": {"text": "Data provided by wunderground", "icon_url": "http://icons.wxug.com/graphics/wu2/logo_130x80.png"}}
+
 def forum(message, query):
 	return search(message, "site:autohotkey.com/boards/ {}".format(query))
 

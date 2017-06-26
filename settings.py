@@ -20,6 +20,7 @@ alias_assoc = {
 	, "f": "forum"
 	, "g": "search"
 	, "s": "search"
+	, "w": "weather"
 	, "tut": "tutorial"
 	, "doc": "documentation"
 	, "ahk": "update"
@@ -63,9 +64,11 @@ ahk_line = 28
 forum_char = 250
 forum_line = 8
 
-file = open("Docs.json", "r")
-docs_assoc = json.loads(file.read())
-file.close()
+with open("Docs.json", "r") as f:
+	docs_assoc = json.loads(f.read())
 docs = []
 for x in docs_assoc:
 	docs.append(x)
+
+with open("weather.txt", "r") as f:
+	weatherapi = f.read()
