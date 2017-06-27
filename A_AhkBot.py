@@ -19,7 +19,10 @@ async def on_message(message):
 
 	msg = ''
 
-	if message.content.startswith('!'):
+	if message.content in settings.plain:
+		msg = settings.plain[message.content]
+
+	elif message.content.startswith('!'):
 		reg = re.match('!(.*?)(?:\s|\n|$)(.*)', message.content, re.DOTALL)
 		cmd = reg.group(1).lower()
 		cont = reg.group(2)

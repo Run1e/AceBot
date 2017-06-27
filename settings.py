@@ -30,6 +30,10 @@ alias_assoc = {
 	, "github": "source"
 }
 
+plain = {
+	"\o": "o/"
+}
+
 ignore_chan = [
 	  'music'
 	, 'irc'

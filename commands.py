@@ -85,22 +85,45 @@ def forum(message, query):
 def search(message, query):
 	req = requests.get('http://google.com/search?safe=off&q={}'.format(query))
 	soup = BeautifulSoup(req.text, 'html.parser')
-	url = soup.find_all('h3')
+	url = soup.find_all('div')
+	url = [x for x in url if x.find('h3')]
 	urls = []
 	for index, item in enumerate(url):
-		href = item.a.get('href')
+		link = item.find('h3').find('a')
+		href = link.get('href')
+
 		item_url = href.split('=', 1)[1].split('&')[0]
 		if not item_url.startswith('http'):
 			continue
-		urls.append(urllib.parse.unquote(item_url))
-	return urls[0]
+
+		snippets = [x.text for x in item.find_all('span') if x.text]
+		if len(snippets) != 0:
+			snippet = urllib.parse.unquote(snippets[0])
+		else:
+			snippet = ''
+
+		name = urllib.parse.unquote(link.text)
+		urls.append((urllib.parse.unquote(item_url), name, snippet))
+		break
+	if not urls:
+		return 'No results.'
+	else:
+		domain = urllib.parse.urlparse(urls[0][0]).netloc
+		return {"title": urls[0][1]
+			, "description": urls[0][2]
+			, "url": urls[0][0]
+			, "footer": {"text": domain}}
 
 def studio(message, cont):
 	req = requests.get('https://raw.githubusercontent.com/maestrith/AHK-Studio/master/AHK-Studio.text')
 	version = req.text.split('\r\n')[0]
-	return {"title": "<:studio:317999706087227393> AHK Studio", "description": "Latest version: " + version, "url": "https://autohotkey.com/boards/viewtopic.php?f=62&t=300"}
+	return {"title": "<:studio:317999706087227393> AHK Studio"
+		, "description": "Latest version: " + version
+		, "url": "https://autohotkey.com/boards/viewtopic.php?f=62&t=300"}
 
 def vibrancer(message, cont):
 	req = requests.get('https://api.github.com/repos/Run1e/Vibrancer/releases/latest')
 	version = json.loads(req.text)['tag_name']
-	return {"title": "Vibrancer for NVIDIA", "description": "Latest version: {}".format(version), "url": "http://vibrancer.com/"}
+	return {"title": "Vibrancer for NVIDIA"
+		, "description": "Latest version: {}".format(version)
+		, "url": "http://vibrancer.com/"}
