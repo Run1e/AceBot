@@ -10,10 +10,11 @@ client = discord.Client()
 
 @client.event
 async def on_message(message):
-	if message.author == client.user:
+	# ignore user
+	if message.author.id in settings.ignore_user:
 		return
 
-	# ignore from chan
+	# ignore chan
 	if message.channel.name in settings.ignore_chan:
 		return
 
