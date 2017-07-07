@@ -1,6 +1,5 @@
 import settings
 import requests
-import re
 from bs4 import BeautifulSoup
 import urllib.parse
 
@@ -25,21 +24,6 @@ def update(message, cont):
 	version = json.loads(req.text)['tag_name']
 	down = "https://github.com/Lexikos/AutoHotkey_L/releases/download/{}/AutoHotkey_{}_setup.exe".format(version, version[1:])
 	return {"title": "<:ahk:317997636856709130> AutoHotkey_L", "description": "Latest version: {}".format(version), "url": down}
-
-def rep(message, cont):
-	return ""
-	reg = re.match('^(<@(\d*)>)$', cont)
-
-	if reg:
-		id = reg.group(2)
-		if message.author.id != id:
-			if not id in settings.kudos:
-				settings.kudos[id] = 1
-			else:
-				settings.kudos[id] = settings.kudos[id] + 1
-			open("kudos.json", "w").write(json.dumps(settings.kudos))
-			return "{} now has a reputation of {}!".format(cont, settings.kudos[id])
-	return
 
 def docs(message, cont):
 	res = ''
@@ -69,9 +53,6 @@ def docs(message, cont):
 
 	if not len(title):
 		title = res
-
-	if title.find('\n'):
-		title = title.split('\n')[0]
 
 	em = {"title": title, "description": desc}
 

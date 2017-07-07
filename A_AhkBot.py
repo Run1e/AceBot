@@ -1,6 +1,6 @@
 import discord
 import datetime
-import json
+import re
 
 from funcs import *
 import settings
@@ -42,7 +42,7 @@ async def on_message(message):
 				msg = em
 			else:
 				msg = settings.alias[cmd].format(message)
-		elif hasattr(commands, cmd) and callable(getattr(commands, cmd)):
+		elif hasattr(commands, cmd):
 			msg = getattr(commands, cmd)(message, cont)
 		elif len(cmd):
 			msg = commands.docs(message, cmd)
