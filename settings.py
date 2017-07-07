@@ -5,9 +5,10 @@ alias = {
 	, "paste":      	"Paste your code at http://p.ahkscript.org/"
 	, "hello":      	"Hello {0.author.mention}!"
 	, "mae":        	"*{0.author.mention} bows*"
-	, "code":      		"Use the highlight command to paste code: `!hl [paste code here]`"
+	, "code":      		"Use the highlight command to paste code: **!hl [paste code here]**"
 	, "shrug":			"¯\_(ツ)_/¯"
 	, "source": 		"https://github.com/Run1e/A_AhkBot"
+	, "geekdude":		'"Everyone does a stupid sometimes"'
 
   	, "tutorial":       {"title": "Tutorial by tidbit", "description": "https://autohotkey.com/docs/Tutorial.htm"}
 	, "documentation":  {"title": "AutoHotkey documentation", "description": "https://autohotkey.com/docs/AutoHotkey.htm"}
@@ -26,6 +27,7 @@ alias_assoc = {
 	, "ahk": "update"
 	, "version": "update"
 	, "hl": "highlight"
+	, "h1": "highlight"
 	, "hlp": "highlightpython"
 	, "github": "source"
 }
@@ -82,3 +84,6 @@ for x in docs_assoc:
 
 with open("weather.txt", "r") as f:
 	weatherapi = f.read()
+
+with open("kudos.json", "r") as f:
+	kudos = json.loads(f.read())
