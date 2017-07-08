@@ -25,41 +25,68 @@ def update(message, cont):
 	down = "https://github.com/Lexikos/AutoHotkey_L/releases/download/{}/AutoHotkey_{}_setup.exe".format(version, version[1:])
 	return {"title": "<:ahk:317997636856709130> AutoHotkey_L", "description": "Latest version: {}".format(version), "url": down}
 
-def docs(message, cont):
-	res = ''
+def docs(message, search_terms):
+	md_trans = str.maketrans({c: '\\'+c for c in '\\*#/()[]<>'})
+	search_terms = search_terms.splitlines()
 
-	for x in settings.docs:
-		if cont.lower() == x.lower():
-			res = x
-			break
-		elif x.startswith(cont + ' '):
-			res = x
-			break
+	# Finds a documentation page with fuzzy search
+	def find_page(search_term):
+		# Simple check
+		for page_name in settings.docs:
+			if (page_name.lower().startswith(search_term.lower() + ' ')
+						or search_term.lower() == page_name.lower()):
+				return page_name
 
-	if not len(res):
-		for x in process.extract(cont, settings.docs, scorer=fuzz.partial_ratio, limit=999999):
-			if not len(res):
-				res = x[0]
-			if x[0].lower().startswith(cont):
-				res = x[0]
-				break
-			if cont.upper() == ''.join([c for c in x[0] if c.isupper()]):
-				res = x[0]
-				break
+		# String matching check
+		matches = process.extract(
+			search_term,
+			settings.docs,
+			scorer=fuzz.partial_ratio,
+			limit=999999
+		)
 
-	title = settings.docs_assoc[res].get('syntax', '')
-	desc = settings.docs_assoc[res].get('desc', '')
-	url = settings.docs_assoc[res].get('dir', '')
+		for match, score in matches:
+			if (search_term.upper() == ''.join(filter(str.isupper, match))
+						or match.lower().startswith(search_term.lower())):
+				return match
 
-	if not len(title):
-		title = res
+		return matches[0][0]
 
-	em = {"title": title, "description": desc}
+	# Find one page and put it in a normal embed
+	if len(search_terms) == 1:
+		page_name = find_page(search_terms[0])
+		page = settings.docs_assoc[page_name]
 
-	if len(url):
-		em['url'] = "https://autohotkey.com/docs/{}".format(url)
+		return {
+			'title': page.get('syntax', page_name),
+			'description': page.get('desc', ''),
+			'url': 'https://autohotkey.com/docs/' + page['dir']
+				if 'dir' in page else None
+		}
 
-	return em
+	# Find multiple pages and put them in embed fields
+	seen_pages = set()
+	fields = []
+	for search_term in search_terms:
+		page_name = find_page(search_term)
+
+		# Filter for unique pages
+		if page_name in seen_pages:
+			continue
+		seen_pages.add(page_name)
+
+		# Add the page as a field in the embed
+		page = settings.docs_assoc[page_name]
+		fields.append({
+			'name': page.get('syntax', page_name),
+			'value': page.get('desc', 'Link').translate(md_trans)
+				if 'dir' not in page else
+				'[{}](https://autohotkey.com/docs/{})'.format(
+					page.get('desc', 'Link').translate(md_trans),
+					page['dir'].translate(md_trans)
+				)
+		})
+	return {'title': 'Docs Search Results', 'fields': fields}
 
 def weather(message, cont):
 	req = requests.get("http://api.wunderground.com/api/{}/conditions/q/{}.json".format(settings.weatherapi, cont))
