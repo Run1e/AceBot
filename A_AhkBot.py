@@ -85,6 +85,10 @@ async def on_message(message):
 			if 'footer' in msg:
 				embed.set_footer(**msg.pop('footer'))
 
+			if 'fields' in msg:
+				for field in msg['fields']:
+					embed.add_field(**field)
+
 			await client.send_message(message.channel, embed=embed)
 		else:
 			print('Returning text:')
