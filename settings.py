@@ -5,10 +5,10 @@ alias = {
 	, "paste":      	"Paste your code at http://p.ahkscript.org/"
 	, "hello":      	"Hello {0.author.mention}!"
 	, "mae":        	"*{0.author.mention} bows*"
-	, "code":      		"Use the highlight command to paste code: `!hl [paste code here]`"
+	, "code":      		"Use the highlight command to paste code: !hl [paste code here]"
 	, "shrug":			"¯\_(ツ)_/¯"
 	, "source": 		"https://github.com/Run1e/A_AhkBot"
-
+	, "ask":			"Just ask your question, don't ask if you can ask!"
   	, "tutorial":       {"title": "Tutorial by tidbit", "description": "https://autohotkey.com/docs/Tutorial.htm"}
 	, "documentation":  {"title": "AutoHotkey documentation", "description": "https://autohotkey.com/docs/AutoHotkey.htm"}
 	, "forums":         {"title": "AutoHotkey forums", "description": "https://autohotkey.com/boards/"}
@@ -21,11 +21,13 @@ alias_assoc = {
 	, "g": "search"
 	, "s": "search"
 	, "w": "weather"
+	, "a": "ask"
 	, "tut": "tutorial"
 	, "doc": "documentation"
 	, "ahk": "update"
 	, "version": "update"
 	, "hl": "highlight"
+	, "h1": "highlight"
 	, "hlp": "highlightpython"
 	, "github": "source"
 }

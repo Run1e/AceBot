@@ -57,6 +57,10 @@ def docs(message, search_terms):
 		page_name = find_page(search_terms[0])
 		page = settings.docs_assoc[page_name]
 
+		if 'syntax' in page:
+			if page['syntax'].find('\n'):
+				page['syntax'] = page['syntax'].split('\n')[0]
+
 		return {
 			'title': page.get('syntax', page_name),
 			'description': page.get('desc', ''),
@@ -77,16 +81,21 @@ def docs(message, search_terms):
 
 		# Add the page as a field in the embed
 		page = settings.docs_assoc[page_name]
+
+		if 'syntax' in page:
+			if page['syntax'].find('\n'):
+				page['syntax'] = page['syntax'].split('\n')[0]
+
 		fields.append({
 			'name': page.get('syntax', page_name),
 			'value': page.get('desc', 'Link').translate(md_trans)
 				if 'dir' not in page else
-				'[{}](https://autohotkey.com/docs/{})'.format(
+				'{0}\n[{1}](https://autohotkey.com/docs/{1})'.format(
 					page.get('desc', 'Link').translate(md_trans),
 					page['dir'].translate(md_trans)
 				)
 		})
-	return {'title': 'Docs Search Results', 'fields': fields}
+	return {'title': None, 'fields': fields}
 
 def weather(message, cont):
 	req = requests.get("http://api.wunderground.com/api/{}/conditions/q/{}.json".format(settings.weatherapi, cont))
@@ -110,7 +119,7 @@ def forum(message, query):
 	return search(message, "site:autohotkey.com/boards/ {}".format(query))
 
 def search(message, query):
-	req = requests.get('http://google.com/search?safe=off&q={}'.format(query))
+	req = requests.get('http://google.com/search?hl=en&safe=off&q={}'.format(query))
 	soup = BeautifulSoup(req.text, 'html.parser')
 	url = soup.find_all('div')
 	url = [x for x in url if x.find('h3')]
