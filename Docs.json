@@ -507,6 +507,16 @@
 	"A_YYYY": {
 		"desc": "Current 4-digit year (e.g. 2004). Synonymous with A_Year. Note: To retrieve a formatted time or date appropriate for your locale and language, use FormatTime, OutputVar (time and long date) or FormatTime, OutputVar,, LongDate (retrieves long-format date)."
 	},
+	"Abs()": {
+		"desc": "Returns the absolute value of Number.",
+		"dir": "commands/Math.htm#Abs_Absolute_value",
+		"syntax": "Value := Abs(Number)"
+	},
+	"ACos()": {
+		"desc": "Returns the arccosine (the number whose cosine is Number) in radians.",
+		"dir": "commands/Math.htm#ACos_Arccosine",
+		"syntax": "Value := ACos(Number)"
+	},
 	"Advanced Hotkey Features": {
 		"desc": "A function is similar to a subroutine (Gosub) except that it can accept parameters (inputs) from its caller. In addition, a function may optionally return a value to its caller.",
 		"dir": "HotkeyFeatures.htm"
@@ -520,9 +530,19 @@
 		"dir": "commands/Asc.htm",
 		"syntax": "Number := Asc(String)"
 	},
+	"ASin()": {
+		"desc": "Returns the arcsine (the number whose sine is Number) in radians.",
+		"dir": "commands/Math.htm#ASin_Arcsine",
+		"syntax": "Value := ASin(Number)"
+	},
 	"Associative Arrays": {
 		"desc": "Associative arrays are objects containing key/value pairs.",
 		"dir": "Objects.htm#Usage_Associative_Arrays"
+	},
+	"ATan()": {
+		"desc": "Returns the arctangent (the number whose tangent is Number) in radians.",
+		"dir": "commands/Math.htm#ATan_Arctangent",
+		"syntax": "Value := ATan(Number)"
 	},
 	"AutoTrim": {
 		"desc": "Determines whether Var1 = %Var2% statements omit spaces and tabs from the beginning and end of Var2.",
@@ -547,6 +567,11 @@
 	"Catch": {
 		"desc": "Specifies the code to execute if an exception is raised during execution of a try statement.",
 		"dir": "commands/Catch.htm"
+	},
+	"Ceil()": {
+		"desc": "Returns Number rounded up to the nearest integer (without any .00 suffix).",
+		"dir": "commands/Math.htm#Ceil_Rounding_up",
+		"syntax": "Value := Ceil(Number)"
 	},
 	"Chr()": {
 		"desc": "Returns the string (usually a single character) corresponding to the character code indicated by the specified number.",
@@ -687,6 +712,11 @@
 		"dir": "commands/CoordMode.htm",
 		"syntax": "CoordMode, ToolTip|Pixel|Mouse|Caret|Menu [, Screen|Window|Client]"
 	},
+	"Cos()": {
+		"desc": "Returns the trigonometric cosine of Number.",
+		"dir": "commands/Math.htm#Cos_Cosine",
+		"syntax": "Value := Cos(Number)"
+	},
 	"Creating a Keyboard Macro or Mouse Macro": {
 		"desc": "A macro is a series of scripted actions that is played upon demand. The most common activity of a macro is to send simulated keystrokes and mouse clicks to one or more windows. Such windows respond to each keystroke and mouse click as though you had performed it manually, which allows repetitive tasks to be automated with high speed and reliability.",
 		"dir": "misc/Macros.htm"
@@ -788,6 +818,11 @@
 		"desc": "Terminates the script unconditionally.",
 		"dir": "commands/ExitApp.htm",
 		"syntax": "ExitApp [, ExitCode]"
+	},
+	"Exp()": {
+		"desc": "Returns e (which is approximately 2.71828182845905) raised to the Nth power.",
+		"dir": "commands/Math.htm#Exp_Exponential",
+		"syntax": "Value := Exp(N)"
 	},
 	"Expressions": {
 		"desc": "Expressions are used to perform one or more operations upon a series of variables, literal strings, and/or literal numbers.",
@@ -935,6 +970,11 @@
 		"desc": "Ensures that one or more statements (commands or expressions) are always executed after the execution of a try statement.",
 		"dir": "commands/Finally.htm",
 		"syntax": "Finally Statement"
+	},
+	"Floor()": {
+		"desc": "Returns Number rounded down to the nearest integer (without any .00 suffix).",
+		"dir": "commands/Math.htm#Floor_Rounding_down",
+		"syntax": "Value := Floor(Number)"
 	},
 	"For-loop": {
 		"desc": "Repeats a series of commands once for each key-value pair in an object.",
@@ -1199,10 +1239,20 @@
 		"desc": "A List-View is one of the most elaborate controls provided by the operating system. In its most recognizable form, it displays a tabular view of rows and columns, the most common example of which is Explorer's list of files and folders (detail view).",
 		"dir": "commands/ListView.htm"
 	},
+	"Ln()": {
+		"desc": "Returns the natural logarithm (base e) of Number.",
+		"dir": "commands/Math.htm#Ln_Natural_logarithm",
+		"syntax": "Value := Ln(Number)"
+	},
 	"LoadPicture": {
 		"desc": "Loads a picture from file and returns a bitmap or icon handle.",
 		"dir": "commands/LoadPicture.htm",
 		"syntax": "Handle := LoadPicture(Filename [, Options, ByRef ImageType])"
+	},
+	"Log()": {
+		"desc": "Returns the logarithm (base 10) of Number.",
+		"dir": "commands/Math.htm#Log_Decimal_logarithm",
+		"syntax": "Value := Log(Number)"
 	},
 	"Loop": {
 		"desc": "Perform a series of commands repeatedly: either the specified number of times or until break is encountered.",
@@ -1248,6 +1298,11 @@
 		"desc": "Retrieves the name of a menu given a handle to its underlying Win32 menu.",
 		"dir": "commands/MenuGetName.htm",
 		"syntax": "MenuName := MenuGetName(Handle)"
+	},
+	"Mod()": {
+		"desc": "Returns the remainder when Dividend is divided by Divisor.",
+		"dir": "commands/Math.htm#Mod_Remainder_after_division_Modulo",
+		"syntax": ""
 	},
 	"MouseClick": {
 		"desc": "Clicks or holds down a mouse button, or turns the mouse wheel. NOTE: The Click command is generally more flexible and easier to use.",
@@ -1434,6 +1489,11 @@
 		"dir": "commands/Return.htm",
 		"syntax": "Return [, Expression]"
 	},
+	"Round()": {
+		"desc": "Returns Number rounded to N decimal places.",
+		"dir": "commands/Math.htm#Round_Rounding",
+		"syntax": "Value := Round(Number [, N])"
+	},
 	"Run / RunWait": {
 		"desc": "Runs an external program. Unlike Run, RunWait will wait until\nthe program finishes before continuing.",
 		"dir": "commands/Run.htm",
@@ -1444,10 +1504,14 @@
 		"dir": "commands/RunAs.htm",
 		"syntax": "RunAs [, User, Password, Domain]"
 	},
-	"Send/SendRaw/SendInput/SendPlay/SendEvent: Send keys  clicks": {
+	"Send keys/clicks": {
 		"desc": "Sends simulated keystrokes and mouse clicks to the active window.",
 		"dir": "commands/Send.htm",
 		"syntax": "Send Keys\nSendRaw Keys\nSendInput Keys\nSendPlay Keys\nSendEvent Keys"
+	},
+	"SendInput": {
+		"desc": "SendInput is generally the preferred method to send keystrokes and mouse clicks because of its superior speed and reliability.",
+		"dir": "commads/Send.htm#SendInputDetail"
 	},
 	"SendLevel": {
 		"desc": "Controls which artificial keyboard and mouse events are ignored by hotkeys and hotstrings.",
@@ -1458,6 +1522,10 @@
 		"desc": "Makes Send synonymous with SendInput or SendPlay rather than the default (SendEvent). Also makes Click and MouseMove/Click/Drag use the specified method.",
 		"dir": "commands/SendMode.htm",
 		"syntax": "SendMode Input|Play|Event|InputThenPlay"
+	},
+	"SendPlay": {
+		"desc": "SendPlay's biggest advantage is its ability to play back keystrokes and mouse clicks in a broader variety of games than the other modes.",
+		"dir": "commads/Send.htm#SendPlayDetail"
 	},
 	"SetBatchLines": {
 		"desc": "Determines how fast a script will run (affects CPU utilization).",
@@ -1534,6 +1602,11 @@
 		"dir": "commands/Shutdown.htm",
 		"syntax": "Shutdown, Code"
 	},
+	"Sin()": {
+		"desc": "Returns the trigonometric sine of Number.",
+		"dir": "commands/Math.htm#Sin_Sine",
+		"syntax": "Value := Sin(Number)"
+	},
 	"Sleep": {
 		"desc": "Waits the specified amount of time before continuing.",
 		"dir": "commands/Sleep.htm",
@@ -1583,6 +1656,11 @@
 		"desc": "Separates a file name or URL into its name, directory, extension, and drive.",
 		"dir": "commands/SplitPath.htm",
 		"syntax": "SplitPath, InputVar [, OutFileName, OutDir, OutExtension, OutNameNoExt, OutDrive]"
+	},
+	"Sqrt()": {
+		"desc": "Returns the square root of Number.",
+		"dir": "commands/Math.htm#Sqrt_Square_root",
+		"syntax": "Value := Sqrt(Number)"
 	},
 	"Standard Windows Fonts": {
 		"desc": "For use with the Progress, GUI, and SplashImage commands.",
@@ -1663,6 +1741,11 @@
 		"dir": "commands/SysGet.htm",
 		"syntax": "SysGet, OutputVar, Sub-command [, Param3]"
 	},
+	"Tan()": {
+		"desc": "Returns the trigonometric tangent of Number.",
+		"dir": "/commands/Math.htm#Tan_Tangent",
+		"syntax": "Value := Tan(Number)"
+	},
 	"Thread": {
 		"desc": "Sets the priority or interruptibility of threads. It can also temporarily disable all timers.",
 		"dir": "commands/Thread.htm",
@@ -1695,6 +1778,10 @@
 	"TreeView (GUI)": {
 		"desc": "A Tree-View displays a hierarchy of items by indenting child items beneath their parents. The most common example is Explorer's tree of drives and folders.",
 		"dir": "commands/TreeView.htm"
+	},
+	"Trigonometry": {
+		"desc": "Full list of trigonometry functions.",
+		"dir": "commands/Math.htm#Trigonometry"
 	},
 	"Trim": {
 		"desc": "Trims characters from the beginning and/or end of a string.",
