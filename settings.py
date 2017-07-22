@@ -22,6 +22,7 @@ alias_assoc = {
 	, "s": "search"
 	, "w": "weather"
 	, "a": "ask"
+	, "num": "number"
 	, "tut": "tutorial"
 	, "doc": "documentation"
 	, "ahk": "update"
@@ -84,3 +85,6 @@ for x in docs_assoc:
 
 with open("weather.txt", "r") as f:
 	weatherapi = f.read()
+
+with open("facts.txt", "r") as f:
+	facts = f.read()

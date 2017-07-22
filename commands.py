@@ -7,6 +7,7 @@ import discord
 from funcs import *
 import re
 import json
+import random
 from fuzzywuzzy import fuzz, process
 
 def help(message, cont):
@@ -24,6 +25,17 @@ def update(message, cont):
 	version = json.loads(req.text)['tag_name']
 	down = "https://github.com/Lexikos/AutoHotkey_L/releases/download/{}/AutoHotkey_{}_setup.exe".format(version, version[1:])
 	return {"title": "<:ahk:317997636856709130> AutoHotkey_L", "description": "Latest version: {}".format(version), "url": down}
+
+def fact(message, cont):
+	return random.choice(settings.facts.splitlines())
+
+def number(message, cont):
+	try:
+		cont = int(cont)
+	except ValueError:
+		return 'Please input a number.'
+	req = requests.get('http://numbersapi.com/{}?notfound=floor'.format(cont))
+	return req.text
 
 def docs(message, search_terms):
 	md_trans = str.maketrans({c: '\\'+c for c in '\\*#/()[]<>'})
