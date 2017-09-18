@@ -28,24 +28,30 @@ async def on_message(message):
 		cmd = reg.group(1).lower()
 		cont = reg.group(2)
 
+		# check if the command has an alias
 		if cmd in settings.alias_assoc:
 			cmd = settings.alias_assoc[cmd]
 
+		# check if we're ignoring that command
 		if cmd in settings.ignore_cmd:
 			return
 
-		if cmd in settings.alias:
-			if type(settings.alias[cmd]) is dict:
-				em = {}
-				for key, val in settings.alias[cmd].items():
-					em[key] = val.format(message)
-				msg = em
-			else:
-				msg = settings.alias[cmd].format(message)
-		elif hasattr(commands, cmd):
+		# try to check if it's a function in the commands module
+		try:
 			msg = getattr(commands, cmd)(message, cont)
-		elif len(cmd):
-			msg = commands.docs(message, cmd)
+		except (AttributeError, TypeError):
+			# if cmd is an alias, return the alias text
+			if cmd in settings.alias:
+				if type(settings.alias[cmd]) is dict:
+					em = {}
+					for key, val in settings.alias[cmd].items():
+						em[key] = val.format(message)
+					msg = em
+				else:
+					msg = settings.alias[cmd].format(message)
+			# else, treat at as a docs search
+			elif len(cmd):
+				msg = commands.docs(message, cmd)
 
 		if cmd in settings.del_cmd:
 			await client.delete_message(message)

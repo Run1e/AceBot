@@ -1,6 +1,7 @@
 import settings
 import requests
 from bs4 import BeautifulSoup
+import sympy
 import urllib.parse
 
 import discord
@@ -36,6 +37,9 @@ def number(message, cont):
 		return 'Please input a number.'
 	req = requests.get('http://numbersapi.com/{}?notfound=floor'.format(cont))
 	return req.text
+
+def eval(message, cont):
+	return str(sympy.sympify(cont))
 
 def docs(message, search_terms):
 	md_trans = str.maketrans({c: '\\'+c for c in '\\*#/()[]<>'})
@@ -89,6 +93,7 @@ def docs(message, search_terms):
 		# Filter for unique pages
 		if page_name in seen_pages:
 			continue
+
 		seen_pages.add(page_name)
 
 		# Add the page as a field in the embed
@@ -102,8 +107,9 @@ def docs(message, search_terms):
 			'name': page.get('syntax', page_name),
 			'value': page.get('desc', 'Link').translate(md_trans)
 				if 'dir' not in page else
-				'{0}\n[{1}](https://autohotkey.com/docs/{1})'.format(
+				'{0}\n[{1}](https://autohotkey.com/docs/{2})'.format(
 					page.get('desc', 'Link').translate(md_trans),
+					'Documentation',
 					page['dir'].translate(md_trans)
 				)
 		})
@@ -131,6 +137,8 @@ def forum(message, query):
 	return search(message, "site:autohotkey.com/boards/ {}".format(query))
 
 def search(message, query):
+	if (message.author.id != "265644569784221696"):
+		return "Feature only enabled for admins."
 	req = requests.get('http://google.com/search?hl=en&safe=off&q={}'.format(query))
 	soup = BeautifulSoup(req.text, 'html.parser')
 	url = soup.find_all('div')

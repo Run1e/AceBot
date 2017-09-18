@@ -2,6 +2,8 @@ import html
 import re
 import settings
 import requests
+import json
+from bs4 import BeautifulSoup
 
 def findnth(haystack, needle, n):
 	parts= haystack.split(needle, n+1)
@@ -24,23 +26,29 @@ def limit_text(text, max_char, max_lines):
 	return text
 
 def forumsnippet(link):
+	if link.find('#'):
+		print(link)
+		link = re.sub('\#p\d*', '', link)
+		print(link)
+	link = re.sub('&start=\d*', '', link)
+
 	req = requests.get(link)
 
-	title = str(req.text).split('<title>')[1].split('</title>')[0]
+	soup = BeautifulSoup(req.text, 'html.parser')
+
+	# .replace(" - AutoHotkey Community", '')
+
+	title = soup.find('title').text
 	title = title.replace(" - AutoHotkey Community", '')
-	author = str(req.text).split('class=\"username\">')[1].split('</a>')[0]
 
 	cont = str(req.text).split('<div class="content">')[1].split('</div>')[0]
 	cont = cont.replace("<br/>", "\n")
 	cleancont = re.sub(re.compile('<.*?>'), '', cont)
 	cleancont = re.sub("\n\n+", "\n\n", cleancont)
-
 	cleancont = limit_text(cleancont, settings.forum_char, settings.forum_line)
-
-	# escaping last since it was messing with len(). it might result in a cut-off html code but whatever it's good enough
 	cleancont = html.unescape(cleancont)
 
-	return {"title": "{} - thread by {}".format(title, author), "description": cleancont, "url": link}
+	return {"title": title, "description": cleancont, "url": link}
 
 def pastesnippet(link):
 	link = link.replace("?p=", "?r=")

@@ -1,7 +1,7 @@
 import json
 
 alias = {
-	  "bugz":       	"http://i.imgur.com/dWMFR68.jpg"
+	"geekdude":			"Everyone does a stupid sometimes."
 	, "paste":      	"Paste your code at http://p.ahkscript.org/"
 	, "hello":      	"Hello {0.author.mention}!"
 	, "mae":        	"*{0.author.mention} bows*"
@@ -9,6 +9,7 @@ alias = {
 	, "shrug":			"¯\_(ツ)_/¯"
 	, "source": 		"https://github.com/Run1e/A_AhkBot"
 	, "ask":			"Just ask your question, don't ask if you can ask!"
+	, "leaderboards":	"https://mee6.xyz/levels/115993023636176902"
   	, "tutorial":       {"title": "Tutorial by tidbit", "description": "https://autohotkey.com/docs/Tutorial.htm"}
 	, "documentation":  {"title": "AutoHotkey documentation", "description": "https://autohotkey.com/docs/AutoHotkey.htm"}
 	, "forums":         {"title": "AutoHotkey forums", "description": "https://autohotkey.com/boards/"}
@@ -22,6 +23,8 @@ alias_assoc = {
 	, "s": "search"
 	, "w": "weather"
 	, "a": "ask"
+	, "lb": "leaderboards"
+	, "leaderboard": "leaderboards"
 	, "num": "number"
 	, "tut": "tutorial"
 	, "doc": "documentation"
@@ -35,6 +38,7 @@ alias_assoc = {
 
 plain = {
 	"\o": "o/"
+	, "o/": "\o"
 }
 
 ignore_chan = [

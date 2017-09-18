@@ -4,7 +4,7 @@
 
 To highlight some code:
 
-`!hl [paste code here]`
+`!hl *paste code here*`
 
 Other commands:
     !p or !paste - link to AHK pastebin
