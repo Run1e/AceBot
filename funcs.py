@@ -5,6 +5,13 @@ import requests
 import json
 from bs4 import BeautifulSoup
 
+def forumrss():
+	req = requests.get('https://autohotkey.com/boards/feed.php')
+	soup = BeautifulSoup(req.text, 'html.parser')
+	url = soup.find_all('div')
+	return
+
+
 def findnth(haystack, needle, n):
 	parts= haystack.split(needle, n+1)
 	if len(parts)<=n+1:

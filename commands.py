@@ -16,7 +16,7 @@ def help(message, cont):
 		return f.read()
 
 def highlight(message, cont):
-	return "```AutoHotkey\n{}\n```*Paste by {}*".format(cont, message.author.mention)
+	return "```AutoIt\n{}\n```*Paste by {}*".format(cont, message.author.mention)
 
 def highlightpython(message, cont):
 	return "```python\n{}\n```*Paste by {}*".format(cont, message.author.mention)

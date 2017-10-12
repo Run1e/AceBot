@@ -20,6 +20,18 @@ async def on_message(message):
 
 	msg = ''
 
+	if message.content.startswith("!helper"):
+		role = discord.utils.get(message.server.roles, name="Helpers")
+		if message.content in ("!helper+", "!helpers+"):
+			print("Adding to helpers: " + message.author.name)
+			await client.add_roles(message.author, role)
+			await client.send_message(message.channel, "Added to Helpers!")
+		elif message.content in ("!helper-", "!helpers-"):
+			print("Removing from helpers: " + message.author.name)
+			await client.remove_roles(message.author, role)
+			await client.send_message(message.channel, "Removed from Helpers!")
+		return
+
 	if message.content in settings.plain:
 		msg = settings.plain[message.content]
 
