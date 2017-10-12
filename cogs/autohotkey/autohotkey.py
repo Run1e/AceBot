@@ -2,6 +2,7 @@ import discord
 from discord.ext import commands
 
 import requests
+import json
 
 from cogs.autohotkey.docs_search import docs_search
 from cogs.search import search
@@ -17,7 +18,6 @@ class AutoHotkeyCog:
 			"geekdude": "Everyone does a stupid sometimes."
 			, "paste": "Paste your code at http://p.ahkscript.org/"
 			, "hello": "Hello {0.author.mention}!"
-			, "mae": "*{0.author.mention} bows*"
 			, "code": "Use the highlight command to paste code: !hl [paste code here]"
 			, "shrug": "¯\_(ツ)_/¯"
 			, "source": "https://github.com/Run1e/A_AhkBot"
@@ -30,6 +30,7 @@ class AutoHotkeyCog:
 			'a': 'ask'
 			, 'lb': 'leaderboards'
 			, 'p': 'paste'
+			, 'c': 'code'
 		}
 
 		self.ignore_cmds = (

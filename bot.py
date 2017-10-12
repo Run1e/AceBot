@@ -1,9 +1,12 @@
 import discord
 from discord.ext import commands
 
-bot = commands.Bot(command_prefix='!', description="RUNIE's bot")
+bot = commands.Bot(command_prefix='!', description='Bot made by RUNIE')
 
-extensions = ('cogs.commands.commands', 'cogs.autohotkey.autohotkey')
+extensions = (
+	'cogs.commands.commands'
+	, 'cogs.autohotkey.autohotkey'
+)
 
 @bot.event
 async def on_ready():
