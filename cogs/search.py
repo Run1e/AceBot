@@ -26,7 +26,7 @@ def search(query):
 		urls.append((urllib.parse.unquote(item_url), name, snippet))
 		break
 	if not urls:
-		return 'No results.'
+		return
 	else:
 		domain = urllib.parse.urlparse(urls[0][0]).netloc
 		return {"title": urls[0][1]

@@ -7,17 +7,12 @@ import re
 from bs4 import BeautifulSoup
 
 from cogs.autohotkey.docs_search import docs_search
-from cogs.search import search
 
 class AutoHotkeyCog:
 	def __init__(self, bot):
 		self.bot = bot
 		self.id = 115993023636176902
 		self.embedcolor = 0x78A064
-
-		self.trusted = (
-			265644569784221696
-		)
 
 		self.pastes = {}
 
@@ -28,8 +23,7 @@ class AutoHotkeyCog:
 			"code": "Use the highlight command to paste code: !hl [paste code here]",
 			"shrug": "¯\_(ツ)_/¯",
 			"source": "https://github.com/Run1e/A_AhkBot",
-			"ask": "Just ask your question, don't ask if you can ask!",
-			"leaderboards": "https://mee6.xyz/levels/115993023636176902"
+			"ask": "Just ask your question, don't ask if you can ask!"
 		}
 
 		# for the lazy
@@ -72,52 +66,6 @@ class AutoHotkeyCog:
 			296187311467790339
 		)
 
-
-	async def on_message(self, message):
-		ctx = await self.bot.get_context(message)
-
-		if not await self.__local_check(ctx):
-			return
-
-		if message.content in self.replies:
-			return await ctx.send(self.replies[message.content])
-
-		try:
-			link = re.findall('http[s]?://(?:[a-zA-Z]|[0-9]|[$-_@.&+]|[!*\(\),]|(?:%[0-9a-fA-F][0-9a-fA-F]))+', message.content)[0]
-		except Exception:
-			link = ''
-
-		if link.startswith("http://p.ahkscript.org/?"):
-			return await self.pastelink(ctx, link)
-		if link.startswith("https://autohotkey.com/boards/viewtopic.php?"):
-			return await self.forumlink(ctx, link)
-
-	async def pastelink(self, ctx, link):
-		link = link.replace("?p=", "?r=")
-		link = link.replace("?e=", "?r=")
-
-		req = requests.get(link)
-		text = req.text
-
-		if len(text) > 1920:
-			return
-		if text.count('\n') > 32:
-			return
-
-		await ctx.send("```AutoIt\n{}\n```*Paste by {}, automated paste from link.*".format(text, ctx.message.author.mention))
-
-	async def forumlink(self, ctx, link):
-		if link.find('#'):
-			link = re.sub('\#p\d*', '', link)
-		link = re.sub('&start=\d*', '', link)
-
-		req = requests.get(link)
-		soup = BeautifulSoup(req.text, 'html.parser')
-
-		title = soup.find('title').text
-
-		await ctx.send(embed=discord.Embed(title=title, url=link, color=self.embedcolor))
-
 	async def __local_check(self, ctx):
 		# check if we're in the right server
 		if not ctx.guild.id == self.id:
@@ -135,8 +83,30 @@ class AutoHotkeyCog:
 		if ctx.message.channel.id in self.ignore_chan:
 			return False
 
-		# otherwise, check if we're in the right server
 		return True
+
+	async def on_message(self, message):
+		# stop if we're running a "command"
+		if message.content.startswith(tuple(await self.bot.get_prefix(message))):
+			return
+
+		ctx = await self.bot.get_context(message)
+
+		if not await self.__local_check(ctx):
+			return
+
+		if message.content in self.replies:
+			return await ctx.send(self.replies[message.content])
+
+		try:
+			link = re.findall('http[s]?://(?:[a-zA-Z]|[0-9]|[$-_@.&+]|[!*\(\),]|(?:%[0-9a-fA-F][0-9a-fA-F]))+', message.content)[0]
+		except:
+			return
+
+		if link.startswith("http://p.ahkscript.org/?"):
+			return await self.pastelink(ctx, link)
+		if link.startswith("https://autohotkey.com/boards/viewtopic.php?"):
+			return await self.forumlink(ctx, link)
 
 	async def on_command_error(self, ctx, error):
 		if not isinstance(error, commands.CommandNotFound):
@@ -164,6 +134,32 @@ class AutoHotkeyCog:
 		embed = docs_search(ctx.message.content[1:])
 		if embed:
 			await ctx.send(embed=embed)
+
+	async def pastelink(self, ctx, link):
+		link = link.replace("?p=", "?r=")
+		link = link.replace("?e=", "?r=")
+
+		req = requests.get(link)
+		text = req.text
+
+		if len(text) > 1920:
+			return
+		if text.count('\n') > 32:
+			return
+
+		await ctx.invoke(self.highlight, code=text)
+
+	async def forumlink(self, ctx, link):
+		if link.find('#'):
+			link = re.sub('\#p\d*', '', link)
+		link = re.sub('&start=\d*', '', link)
+
+		req = requests.get(link)
+		soup = BeautifulSoup(req.text, 'html.parser')
+
+		title = soup.find('title').text
+
+		await ctx.send(embed=discord.Embed(title=title, url=link, color=self.embedcolor))
 
 	async def helper(self, ctx, add):
 		role = discord.utils.get(ctx.guild.roles, name="Helpers")
@@ -201,12 +197,16 @@ class AutoHotkeyCog:
 	@commands.command(aliases=['hl'])
 	async def highlight(self, ctx, *, code):
 		"""Highlights some AutoHotkey code. Use !hl"""
-		await ctx.message.delete()
+
+		if ctx.invoked_with:
+			await ctx.message.delete()
+
 		try:
 			self.pastes[ctx.author.id]
 		except:
 			self.pastes[ctx.author.id] = []
-		self.pastes[ctx.author.id].append(await ctx.send("```AutoIt\n{}\n```*Paste by {}, type `!del` to delete*".format(code, ctx.message.author.mention)))
+
+		self.pastes[ctx.author.id].append(await ctx.send('```AutoIt\n{}\n```*{}, type `!del` to delete*'.format(code, ('Paste by {}' if ctx.invoked_with else "Paste from {}'s link").format(ctx.message.author.mention))))
 
 	@commands.command(aliases=['del'], hidden=True)
 	async def delete(self, ctx):
@@ -217,14 +217,6 @@ class AutoHotkeyCog:
 				return await ctx.send('No paste to delete.')
 			await message.delete()
 			await ctx.message.delete()
-
-	@commands.command(aliases=['f'], hidden=True)
-	async def forum(self, ctx, *, input):
-		if ctx.author.id not in self.trusted:
-			return
-		result = search('site:autohotkey.com ' + input)
-		if result:
-			await ctx.send(embed=discord.Embed(**result, color=self.embedcolor))
 
 	@commands.command(aliases=['ahk', 'update'])
 	async def version(self, ctx):

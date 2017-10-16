@@ -1,13 +1,11 @@
 import discord
 from discord.ext import commands
 
-from cogs.search import search
-
 import requests
 import random
 
 with open('cogs/commands/facts.txt', 'r') as f:
-	facts = f.read()
+	splitfacts = f.read().splitlines()
 
 with open('lib/wolfram.txt', 'r') as f:
 	wolfram = f.read()
@@ -15,9 +13,8 @@ with open('lib/wolfram.txt', 'r') as f:
 class CommandCog:
 	def __init__(self, bot):
 		self.bot = bot
-		self.trusted = (
-			265644569784221696
-		)
+		self.embedcolor = 0x78A064
+
 
 	@commands.command(aliases=['w'])
 	async def wolfram(self, ctx, *, query):
@@ -31,13 +28,10 @@ class CommandCog:
 		else:
 			await ctx.send(embed=embed)
 
-	@commands.command(aliases=['g'], hidden=True)
-	async def search(self, ctx, *, input):
-		if ctx.author.id not in self.trusted:
-			return
-		result = search(input)
-		if result:
-			await ctx.send(embed=discord.Embed(**result, color=0x78A064))
+	@commands.command()
+	async def flip(self, ctx):
+		"""Random number gen by Delta"""
+		await ctx.send(random.choice(['Heads', 'Tails']) + '!')
 
 	@commands.command(aliases=['num'])
 	async def number(self, ctx, *, num: int):
@@ -48,7 +42,7 @@ class CommandCog:
 	@commands.command()
 	async def fact(self, ctx):
 		"""Get a fun fact!"""
-		await ctx.send(random.choice(facts.splitlines()))
+		await ctx.send(random.choice(splitfacts))
 
 def setup(bot):
 	bot.add_cog(CommandCog(bot))

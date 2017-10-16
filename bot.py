@@ -6,6 +6,7 @@ bot = commands.Bot(command_prefix=('!', '.'), description='Bot made by RUNIE')
 extensions = (
 	'cogs.commands.commands',
 	'cogs.autohotkey.autohotkey',
+	'cogs.admin.admin'
 )
 
 @bot.event
