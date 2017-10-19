@@ -1,9 +1,13 @@
 import discord
 from discord.ext import commands
 
-from cogs.search import search
+import sympy
+
+from cogs.utils.search import search
 
 class AdminCog:
+	"""Admin commands"""
+
 	def __init__(self, bot):
 		self.bot = bot
 		self.embedcolor = 0x78A064
@@ -14,6 +18,10 @@ class AdminCog:
 		else:
 			await ctx.send('Command is only avaliable for bot owner.')
 			return False
+
+	@commands.command()
+	async def eval(self, ctx, *, input):
+		return str(sympy.sympify(input))
 
 	@commands.command(aliases=['f'], hidden=True)
 	async def forum(self, ctx, *, query):

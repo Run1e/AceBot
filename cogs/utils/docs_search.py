@@ -2,14 +2,13 @@ import discord
 import json
 from fuzzywuzzy import fuzz, process
 
-with open('cogs/autohotkey/Docs.json', 'r') as f:
+with open('cogs/data/Docs.json', 'r') as f:
 	docs_assoc = json.loads(f.read())
 	docs = []
 	for x in docs_assoc:
 		docs.append(x)
 
 def docs_search(search_terms):
-	embed = discord.Embed(color=0x78A064)
 	md_trans = str.maketrans({c: '\\'+c for c in '\\*#/()[]<>'})
 	search_terms = search_terms.splitlines()
 
@@ -45,17 +44,16 @@ def docs_search(search_terms):
 			if page['syntax'].find('\n'):
 				page['syntax'] = page['syntax'].split('\n')[0]
 
-		embed.title = page.get('syntax', page_name)
-		embed.description = page.get('desc', '')
-
-		if 'dir' in page:
-			embed.url = 'https://autohotkey.com/docs/' + page['dir']
-
-		return embed
+		return {
+			'title': page.get('syntax', page_name),
+			'description': page.get('desc', ''),
+			'url': 'https://autohotkey.com/docs/' + page['dir']
+				if 'dir' in page else None
+		}
 
 	# Find multiple pages and put them in embed fields
 	seen_pages = set()
-
+	fields = []
 	for search_term in search_terms:
 		page_name = find_page(search_term)
 
@@ -72,9 +70,14 @@ def docs_search(search_terms):
 			if page['syntax'].find('\n'):
 				page['syntax'] = page['syntax'].split('\n')[0]
 
-		value = page.get('desc', 'Link').translate(md_trans) if 'dir' not in page else '{0}\n[{1}](https://autohotkey.com/docs/{2})'.format(page.get('desc', 'Link').translate(md_trans), 'Documentation', page['dir'].translate(md_trans))
-
-		embed.add_field(name=page.get('syntax', page_name), value=value)
-
-	embed.title = None
-	return embed
+		fields.append({
+			'name': page.get('syntax', page_name),
+			'value': page.get('desc', 'Link').translate(md_trans)
+				if 'dir' not in page else
+				'{0}\n[{1}](https://autohotkey.com/docs/{2})'.format(
+					page.get('desc', 'Link').translate(md_trans),
+					'Documentation',
+					page['dir'].translate(md_trans)
+				)
+		})
+	return {'title': None, 'fields': fields}

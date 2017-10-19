@@ -6,61 +6,50 @@ import json
 import re
 from bs4 import BeautifulSoup
 
-from cogs.autohotkey.docs_search import docs_search
+from cogs.utils.docs_search import docs_search
 
 class AutoHotkeyCog:
+	"""Commands for the AutoHotkey server"""
+
 	def __init__(self, bot):
 		self.bot = bot
-		self.id = 115993023636176902
+		self.guild_id = 115993023636176902
 		self.embedcolor = 0x78A064
 
 		self.pastes = {}
 
+		# plain command responses
 		self.plains = {
-			"geekdude": "Everyone does a stupid sometimes.",
-			"paste": "Paste your code at http://p.ahkscript.org/",
-			"hello": "Hello {0.author.mention}!",
-			"code": "Use the highlight command to paste code: !hl [paste code here]",
-			"shrug": "¯\_(ツ)_/¯",
-			"source": "https://github.com/Run1e/A_AhkBot",
-			"ask": "Just ask your question, don't ask if you can ask!"
+			'geekdude': 'Everyone does a stupid sometimes.',
+			'hello': 'Hello {0.author.mention}!',
+			'shrug': '¯\_(ツ)_/¯',
+			'source': 'https://github.com/Run1e/A_AhkBot',
+			('paste', 'p'): 'Paste your code at http://p.ahkscript.org/',
+			('code', 'c'): 'Use the highlight command to paste code: !hl [paste code here]',
+			('ask', 'a'): "Just ask your question, don't ask if you can ask!"
 		}
 
-		# for the lazy
-		self.plain_assoc = {
-			'a': 'ask',
-			'lb': 'leaderboards',
-			'p': 'paste',
-			'c': 'code'
-		}
-
+		# simple reply
 		self.replies = {
 			'\o': 'o/',
 			'o/': '\o'
 		}
 
+		# list of commands to ignore
 		self.ignore_cmds = (
-			'clear',
-			'mute',
-			'levels',
-			'rank',
-			'mute',
-			'unmute',
-			'manga',
-			'pokemon',
-			'urban',
-			'imgur',
-			'anime',
-			'twitch',
-			'youtube'
+			'clear', 'mute', 'levels', 'rank', 'mute',
+			'unmute', 'manga', 'pokemon', 'urban', 'imgur',
+			'anime', 'twitch', 'youtube'
 		)
 
+		# list of users to ignore (like for example bots or people misusing the bot)
 		self.ignore_users = (
 			327874898284380161,
 			155149108183695360,
 			159985870458322944
 		)
 
+		# list of channels to ignore
 		self.ignore_chan = (
 			318691519223824384,
 			296187311467790339
@@ -68,12 +57,12 @@ class AutoHotkeyCog:
 
 	async def __local_check(self, ctx):
 		# check if we're in the right server
-		if not ctx.guild.id == self.id:
-			return
+		if not ctx.guild.id == self.guild_id:
+			return False
 
 		# check if message comes from bot
 		if ctx.message.author.id == self.bot.user.id:
-			return
+			return False
 
 		# check if message author is in list of ignored users
 		if ctx.message.author.id in self.ignore_users:
@@ -90,32 +79,40 @@ class AutoHotkeyCog:
 		if message.content.startswith(tuple(await self.bot.get_prefix(message))):
 			return
 
+		# get the message context
 		ctx = await self.bot.get_context(message)
 
+		# check if we're in the ahk server etc
 		if not await self.__local_check(ctx):
 			return
 
+		# see if the message has a reply
 		if message.content in self.replies:
 			return await ctx.send(self.replies[message.content])
 
+		# see if we can find any links
 		try:
 			link = re.findall('http[s]?://(?:[a-zA-Z]|[0-9]|[$-_@.&+]|[!*\(\),]|(?:%[0-9a-fA-F][0-9a-fA-F]))+', message.content)[0]
 		except:
 			return
 
+		# if so, post a preview of the forum or paste link
 		if link.startswith("http://p.ahkscript.org/?"):
 			return await self.pastelink(ctx, link)
 		if link.startswith("https://autohotkey.com/boards/viewtopic.php?"):
 			return await self.forumlink(ctx, link)
 
 	async def on_command_error(self, ctx, error):
+		# we're listening to CommandNotFound errors, so if the error is not one of those, print it
 		if not isinstance(error, commands.CommandNotFound):
 			print(error)
 			return
 
+		# check we're in the ahk sserver
 		if not await self.__local_check(ctx):
 			return
 
+		# if it's a mee6 command, ignore it (don't docs search it)
 		if ctx.invoked_with in self.ignore_cmds:
 			return
 
@@ -125,15 +122,13 @@ class AutoHotkeyCog:
 		elif ctx.invoked_with == 'helper-':
 			return await self.helper(ctx, False)
 
-		if ctx.invoked_with in self.plains:
-			return await ctx.send(self.plains[ctx.invoked_with])
+		# check if there's a simple text reply associated
+		for key in self.plains:
+			if ctx.invoked_with in key:
+				return await ctx.send(self.plains[key].format(ctx))
 
-		if ctx.invoked_with in self.plain_assoc:
-			return await ctx.send(self.plains[self.plain_assoc[ctx.invoked_with]])
-
-		embed = docs_search(ctx.message.content[1:])
-		if embed:
-			await ctx.send(embed=embed)
+		# if none of the above, search the documentation with the input
+		await ctx.invoke(self.docs, search=ctx.message.content[1:])
 
 	async def pastelink(self, ctx, link):
 		link = link.replace("?p=", "?r=")
@@ -173,7 +168,16 @@ class AutoHotkeyCog:
 	@commands.command()
 	async def docs(self, ctx, *, search):
 		"""Search the documentation."""
-		embed = docs_search(search)
+		result = docs_search(search)
+		embed = discord.Embed(color=self.embedcolor)
+		if 'fields' in result:
+			for field in result['fields']:
+				embed.add_field(**field)
+		else:
+			embed.title = result['title']
+			embed.description = result['description']
+			if 'url' in result:
+				embed.url = result['url']
 		if embed:
 			await ctx.send(embed=embed)
 
@@ -206,7 +210,9 @@ class AutoHotkeyCog:
 		except:
 			self.pastes[ctx.author.id] = []
 
-		self.pastes[ctx.author.id].append(await ctx.send('```AutoIt\n{}\n```*{}, type `!del` to delete*'.format(code, ('Paste by {}' if ctx.invoked_with else "Paste from {}'s link").format(ctx.message.author.mention))))
+		msg = await ctx.send('```AutoIt\n{}\n```*{}, type `!del` to delete*'.format(code, ('Paste by {}' if ctx.invoked_with else "Paste from {}'s link").format(ctx.message.author.mention)))
+
+		self.pastes[ctx.author.id].append(msg)
 
 	@commands.command(aliases=['del'], hidden=True)
 	async def delete(self, ctx):
@@ -218,7 +224,7 @@ class AutoHotkeyCog:
 			await message.delete()
 			await ctx.message.delete()
 
-	@commands.command(aliases=['ahk', 'update'])
+	@commands.command(aliases=['update'])
 	async def version(self, ctx):
 		"""Get a download link to the latest AutoHotkey_L version."""
 		req = requests.get('https://api.github.com/repos/Lexikos/AutoHotkey_L/releases/latest')
@@ -228,7 +234,7 @@ class AutoHotkeyCog:
 
 	@commands.command()
 	async def studio(self, ctx):
-		"""Returns a download link to AHK Studio"""
+		"""Returns a download link to AHK Studio."""
 		req = requests.get('https://raw.githubusercontent.com/maestrith/AHK-Studio/master/AHK-Studio.text')
 		version = req.text.split('\r\n')[0]
 		embed = discord.Embed(description='Feature rich IDE for AutoHotkey!\n[Direct download]({})'.format('https://raw.githubusercontent.com/maestrith/AHK-Studio/master/AHK-Studio.ahk'), color=self.embedcolor)

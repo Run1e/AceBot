@@ -4,9 +4,9 @@ from discord.ext import commands
 bot = commands.Bot(command_prefix=('!', '.'), description='Bot made by RUNIE')
 
 extensions = (
-	'cogs.commands.commands',
-	'cogs.autohotkey.autohotkey',
-	'cogs.admin.admin'
+	'cogs.commands',
+	'cogs.autohotkey',
+	'cogs.admin'
 )
 
 @bot.event
