@@ -16,16 +16,18 @@ class AdminCog:
 			return False
 
 	@commands.command(aliases=['f'], hidden=True)
-	async def forum(self, ctx, *, input):
-		await ctx.invoke(self.search, input='site:autohotkey.com ' + input)
+	async def forum(self, ctx, *, query):
+		await ctx.invoke(self.search, query='site:autohotkey.com ' + query)
 
 	@commands.command(aliases=['g'], hidden=True)
-	async def search(self, ctx, *, input):
-		result = search(input)
+	async def search(self, ctx, *, query):
+		result = search(query)
 		if not result:
 			await ctx.send('No results.')
 		else:
-			await ctx.send(embed=discord.Embed(**result, color=0x78A064))
+			embed = discord.Embed(title=result['title'], url=result['url'], description=result['description'], color=self.embedcolor)
+			embed.set_footer(text=result['domain'])
+			await ctx.send(embed=embed)
 
 def setup(bot):
 	bot.add_cog(AdminCog(bot))

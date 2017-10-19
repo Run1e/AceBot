@@ -21,7 +21,7 @@ async def on_ready():
 
 @bot.before_invoke
 async def before_any_command(ctx):
-	print('\n{} in {}:\n{}'.format(ctx.message.author.name, ctx.guild.name, ctx.message.content))
+	print('\n{} in {}:\n{}'.format(ctx.message.author.name, ctx.guild.name, ctx.message.content.split('\n')[0]))
 
 @bot.after_invoke
 async def after_any_command(ctx):

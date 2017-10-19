@@ -29,7 +29,7 @@ def search(query):
 		return
 	else:
 		domain = urllib.parse.urlparse(urls[0][0]).netloc
-		return {"title": urls[0][1]
-			, "description": urls[0][2]
-			, "url": urls[0][0]
-			, "footer": {"text": domain}}
+		return {'title': urls[0][1],
+			'description': urls[0][2],
+			'url': urls[0][0],
+			'domain': domain}

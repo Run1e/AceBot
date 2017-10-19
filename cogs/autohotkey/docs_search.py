@@ -47,6 +47,7 @@ def docs_search(search_terms):
 
 		embed.title = page.get('syntax', page_name)
 		embed.description = page.get('desc', '')
+
 		if 'dir' in page:
 			embed.url = 'https://autohotkey.com/docs/' + page['dir']
 
@@ -54,7 +55,7 @@ def docs_search(search_terms):
 
 	# Find multiple pages and put them in embed fields
 	seen_pages = set()
-	fields = []
+
 	for search_term in search_terms:
 		page_name = find_page(search_term)
 

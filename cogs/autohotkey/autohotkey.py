@@ -231,7 +231,9 @@ class AutoHotkeyCog:
 		"""Returns a download link to AHK Studio"""
 		req = requests.get('https://raw.githubusercontent.com/maestrith/AHK-Studio/master/AHK-Studio.text')
 		version = req.text.split('\r\n')[0]
-		embed = discord.Embed(title='<:studio:317999706087227393> AHK Studio', description='Latest version: ' + version, url='https://autohotkey.com/boards/viewtopic.php?f=62&t=300', color=self.embedcolor)
+		embed = discord.Embed(description='Feature rich IDE for AutoHotkey!\n[Direct download]({})'.format('https://raw.githubusercontent.com/maestrith/AHK-Studio/master/AHK-Studio.ahk'), color=self.embedcolor)
+		embed.set_author(name='AHK Studio', url='https://autohotkey.com/boards/viewtopic.php?f=62&t=300', icon_url='https://i.imgur.com/DXtmUwN.png')
+		embed.set_footer(text='Latest version: {}'.format(version))
 		await ctx.send(embed=embed)
 
 def setup(bot):

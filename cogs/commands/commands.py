@@ -15,7 +15,6 @@ class CommandCog:
 		self.bot = bot
 		self.embedcolor = 0x78A064
 
-
 	@commands.command(aliases=['w'])
 	async def wolfram(self, ctx, *, query):
 		"""Queries wolfram."""
@@ -30,7 +29,7 @@ class CommandCog:
 
 	@commands.command()
 	async def flip(self, ctx):
-		"""Random number gen by Delta"""
+		"""Flip a coin!"""
 		await ctx.send(random.choice(['Heads', 'Tails']) + '!')
 
 	@commands.command(aliases=['num'])
