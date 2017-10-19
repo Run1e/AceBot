@@ -18,7 +18,7 @@ class AdminCog:
 			await ctx.send('Command is only avaliable for bot owner.')
 			return False
 
-	@commands.command()
+	@commands.command(hidden=True)
 	async def eval(self, ctx, *, input):
 		await ctx.send(str(sympy.sympify(input)))
 
