@@ -22,6 +22,10 @@ class AdminCog:
 	async def eval(self, ctx, *, input):
 		await ctx.send(str(sympy.sympify(input)))
 
+	@commands.command(aliases=['gh'], hidden=True)
+	async def github(self, ctx, *, query):
+		await ctx.invoke(self.search, query='site:github.com ' + query)
+
 	@commands.command(aliases=['f'], hidden=True)
 	async def forum(self, ctx, *, query):
 		await ctx.invoke(self.search, query='site:autohotkey.com ' + query)
