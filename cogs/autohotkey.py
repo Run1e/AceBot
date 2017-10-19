@@ -14,7 +14,6 @@ class AutoHotkeyCog:
 	def __init__(self, bot):
 		self.bot = bot
 		self.guild_id = 115993023636176902
-		self.embedcolor = 0x78A064
 
 		self.pastes = {}
 
@@ -154,7 +153,7 @@ class AutoHotkeyCog:
 
 		title = soup.find('title').text
 
-		await ctx.send(embed=discord.Embed(title=title, url=link, color=self.embedcolor))
+		await ctx.send(embed=discord.Embed(title=title, url=link))
 
 	async def helper(self, ctx, add):
 		role = discord.utils.get(ctx.guild.roles, name="Helpers")
@@ -169,7 +168,7 @@ class AutoHotkeyCog:
 	async def docs(self, ctx, *, search):
 		"""Search the documentation."""
 		result = docs_search(search)
-		embed = discord.Embed(color=self.embedcolor)
+		embed = discord.Embed()
 		if 'fields' in result:
 			for field in result['fields']:
 				embed.add_field(**field)
@@ -188,15 +187,15 @@ class AutoHotkeyCog:
 
 	@commands.command(hidden=True)
 	async def documentation(self, ctx):
-		await ctx.send(embed=discord.Embed(title='AutoHotkey documentation', description='https://autohotkey.com/docs/AutoHotkey.htm', color=self.embedcolor))
+		await ctx.send(embed=discord.Embed(title='AutoHotkey documentation', description='https://autohotkey.com/docs/AutoHotkey.htm'))
 
 	@commands.command(hidden=True)
 	async def forums(self, ctx):
-		await ctx.send(embed=discord.Embed(title='AutoHotkey forums', description='https://autohotkey.com/boards/', color=self.embedcolor))
+		await ctx.send(embed=discord.Embed(title='AutoHotkey forums', description='https://autohotkey.com/boards/'))
 
 	@commands.command(aliases=['tut'], hidden=True)
 	async def tutorial(self, ctx):
-		await ctx.send(embed=discord.Embed(title='Tutorial by tidbit', description='https://autohotkey.com/docs/Tutorial.htm', color=self.embedcolor))
+		await ctx.send(embed=discord.Embed(title='Tutorial by tidbit', description='https://autohotkey.com/docs/Tutorial.htm'))
 
 	@commands.command(aliases=['hl'])
 	async def highlight(self, ctx, *, code):
@@ -230,14 +229,14 @@ class AutoHotkeyCog:
 		req = requests.get('https://api.github.com/repos/Lexikos/AutoHotkey_L/releases/latest')
 		version = json.loads(req.text)['tag_name']
 		down = "https://github.com/Lexikos/AutoHotkey_L/releases/download/{}/AutoHotkey_{}_setup.exe".format(version, version[1:])
-		await ctx.send(embed=discord.Embed(title="<:ahk:317997636856709130> AutoHotkey_L", description="Latest version: {}".format(version), url=down, color=self.embedcolor))
+		await ctx.send(embed=discord.Embed(title="<:ahk:317997636856709130> AutoHotkey_L", description="Latest version: {}".format(version), url=down))
 
 	@commands.command()
 	async def studio(self, ctx):
 		"""Returns a download link to AHK Studio."""
 		req = requests.get('https://raw.githubusercontent.com/maestrith/AHK-Studio/master/AHK-Studio.text')
 		version = req.text.split('\r\n')[0]
-		embed = discord.Embed(description='Feature rich IDE for AutoHotkey!\n[Direct download]({})'.format('https://raw.githubusercontent.com/maestrith/AHK-Studio/master/AHK-Studio.ahk'), color=self.embedcolor)
+		embed = discord.Embed(description='Feature rich IDE for AutoHotkey!\n[Direct download]({})'.format('https://raw.githubusercontent.com/maestrith/AHK-Studio/master/AHK-Studio.ahk'))
 		embed.set_author(name='AHK Studio', url='https://autohotkey.com/boards/viewtopic.php?f=62&t=300', icon_url='https://i.imgur.com/DXtmUwN.png')
 		embed.set_footer(text='Latest version: {}'.format(version))
 		await ctx.send(embed=embed)

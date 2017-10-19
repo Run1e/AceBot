@@ -1,6 +1,14 @@
 import discord
 from discord.ext import commands
 
+# overwrite discord.Embed with a monkey patched class that automatically sets the color attribute
+class Embed(discord.Embed):
+    def __init__(self, color=0x78A064, **attrs):
+        attrs['color'] = color
+        super().__init__(**attrs)
+
+discord.Embed = Embed
+
 bot = commands.Bot(command_prefix=('!', '.'), description='Bot made by RUNIE')
 
 extensions = (

@@ -17,7 +17,6 @@ class CommandCog:
 
 	def __init__(self, bot):
 		self.bot = bot
-		self.embedcolor = 0x78A064
 		self.time = time.time()
 
 	@commands.command()
@@ -30,14 +29,13 @@ class CommandCog:
 		days = math.floor(sec/60/60/24)
 		await ctx.send('{}d {:02d}:{:02d}:{:02d}'.format(days, hours, minutes, seconds))
 
-
 	@commands.command(aliases=['w'])
 	async def wolfram(self, ctx, *, query):
 		"""Queries wolfram."""
 		key = wolfram
 		req = requests.get('https://api.wolframalpha.com/v1/result?i={}&appid={}'.format(query, key))
 		text = '**Query:**\n{}\n\n**Result:**\n{}'.format(query.replace('*', '\*'), req.text.replace('*', '\*'))
-		embed = discord.Embed(description=text, color=0x78A064)
+		embed = discord.Embed(description=text)
 		embed.set_author(name='Wolfram Alpha', icon_url='https://i.imgur.com/KFppH69.png')
 		embed.set_footer(text='wolframalpha.com')
 		if len(text) > 2000:
