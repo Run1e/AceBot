@@ -37,6 +37,7 @@ async def after_any_command(ctx):
 		text = text + "..."
 	print('Result:\n' + text)
 
+
 # overwrite discord.Embed with a monkey patched class that automatically sets the color attribute
 class Embed(discord.Embed):
     def __init__(self, color=0x78A064, **attrs):
