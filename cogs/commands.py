@@ -30,10 +30,10 @@ class CommandCog:
 		try:
 			mention = ctx.message.mentions[0]
 		except:
-			return await ctx.send(f'{ctx.message.author.mention} has a reputation of {(self.reps[ctx.message.author.id] if ctx.message.author.id in self.reps else 0)}!')
+			return await ctx.send(f'{ctx.message.author.mention} has a reputation of {(self.reps[ctx.message.author.id] if str(ctx.message.author.id) in self.reps else 0)}!')
 
 		# get the id
-		id = mention.id
+		id = str(mention.id)
 
 		# make sure people can't rep themselves
 		if id == ctx.message.author.id:

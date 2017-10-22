@@ -7,6 +7,7 @@ import re
 from bs4 import BeautifulSoup
 
 from cogs.utils.docs_search import docs_search
+import cogs.utils.ahk_forum as Preview
 
 class AutoHotkeyCog:
 	"""Commands for the AutoHotkey server"""
@@ -143,17 +144,30 @@ class AutoHotkeyCog:
 
 		await ctx.invoke(self.highlight, code=text)
 
-	async def forumlink(self, ctx, link):
-		if link.find('#'):
-			link = re.sub('\#p\d*', '', link)
-		link = re.sub('&start=\d*', '', link)
+	# ty capn!
+	async def forumlink(self, ctx, url):
+		post = Preview.getThread(url)
 
-		req = requests.get(link)
-		soup = BeautifulSoup(req.text, 'html.parser')
+		embed = discord.Embed(title=post["title"], description=post["description"], color=0x00ff00, url=url)
 
-		title = soup.find('title').text
+		if (post["image"]):
+			embed.set_image(
+				url=post["image"] if post["image"][0] != "." else "https://autohotkey.com/boards" + post["image"][
+																									1:post[
+																										  "image"].find(
+																										"&") + 1])
 
-		await ctx.send(embed=discord.Embed(title=title, url=link))
+		embed.set_author(name=post["user"]["name"], url="https://autohotkey.com/boards" + post["user"]["url"][1:],
+						 icon_url="https://autohotkey.com/boards" + post["user"]["icon"][1:])
+
+		max = 997
+
+		for i in post["content"]:
+			if (len(i["head"]) > 1 and len(i["content"]) > 1):
+				value = i["content"] if max - len(i["content"]) > 0 else i["content"][0:max] + "..."
+				embed.add_field(name=i["head"], value=value, inline=False)
+
+		await ctx.send(embed=embed)
 
 	async def helper(self, ctx, add):
 		role = discord.utils.get(ctx.guild.roles, name="Helpers")
