@@ -1,20 +1,20 @@
 # ty capn! x2
 
-import requests, re, sys
-import html as HTML
+import requests, re
 
 from bs4 import BeautifulSoup, element
 
 
 def getThread(url):
 	s = requests.Session()
+	print(url)
 
 	tmpurl = re.sub("&start=\d+$", "", url)
 
 	response = s.get(tmpurl)
 
-	html = BeautifulSoup(response.text, "html.parser")
-	print(html)
+	html = BeautifulSoup(response.text, "lxml")
+
 	id = re.search("(?<=#)p\d*$", url)
 
 	if (id != None):
@@ -24,8 +24,7 @@ def getThread(url):
 
 	user = post.find("dl", class_="postprofile")
 
-	username = user.find("a", class_="username") if user.find("a", class_="username") else user.find("a",
-																									 class_="username-coloured")
+	username = user.find("a", class_="username") if user.find("a", class_="username") else user.find("a", class_="username-coloured")
 
 	icon = user.find("img", class_="avatar").get("src") if user.find("img", class_="avatar") else ""
 
@@ -35,14 +34,12 @@ def getThread(url):
 	body = post.find("div", class_="postbody").find("div")
 	title = body.find("a").text
 
-	content = BeautifulSoup(str(body.find("div", class_="content")), "html.parser")
+	content = BeautifulSoup(str(body.find("div", class_="content")), "lxml")
 
 	image = content.find("img", class_="postimage")
 
 	if (image):
 		image = image.get("src")
-
-	print(image)
 
 	for_all(content.find_all("div", class_="codebox"), lambda code: code.clear())
 
@@ -118,7 +115,7 @@ def getTitle(html):
 def getPreView(url):
 	s = requests.Session()
 	response = s.get(url)
-	html = BeautifulSoup(response.text, "html.parser")
+	html = BeautifulSoup(response.text, "lxml")
 
 	return {"title": getTitle(html), "icon": getIcon(url, html)}
 

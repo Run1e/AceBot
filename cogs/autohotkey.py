@@ -86,6 +86,8 @@ class AutoHotkeyCog:
 		if not await self.__local_check(ctx):
 			return
 
+		print(message.content)
+
 		# see if the message has a reply
 		if message.content in self.replies:
 			return await ctx.send(self.replies[message.content])
@@ -108,7 +110,7 @@ class AutoHotkeyCog:
 			print(error)
 			return
 
-		# check we're in the ahk sserver
+		# check we're in the ahk server
 		if not await self.__local_check(ctx):
 			return
 
@@ -124,10 +126,11 @@ class AutoHotkeyCog:
 
 		# check if there's a simple text reply associated
 		for key in self.plains:
-			if ctx.invoked_with in key:
-				return await ctx.send(self.plains[key].format(ctx))
+			if (ctx.invoked_with == key) or (type(key) is tuple and ctx.invoked_with in key):
+					return await ctx.send(self.plains[key].format(ctx))
 
 		# if none of the above, search the documentation with the input
+
 		await ctx.invoke(self.docs, search=ctx.message.content[1:])
 
 	async def pastelink(self, ctx, link):
@@ -151,14 +154,9 @@ class AutoHotkeyCog:
 		embed = discord.Embed(title=post["title"], description=post["description"], color=0x00ff00, url=url)
 
 		if (post["image"]):
-			embed.set_image(
-				url=post["image"] if post["image"][0] != "." else "https://autohotkey.com/boards" + post["image"][
-																									1:post[
-																										  "image"].find(
-																										"&") + 1])
+			embed.set_image(url=post["image"] if post["image"][0] != "." else "https://autohotkey.com/boards" + post["image"][1:post["image"].find("&") + 1])
 
-		embed.set_author(name=post["user"]["name"], url="https://autohotkey.com/boards" + post["user"]["url"][1:],
-						 icon_url="https://autohotkey.com/boards" + post["user"]["icon"][1:])
+		embed.set_author(name=post["user"]["name"], url="https://autohotkey.com/boards" + post["user"]["url"][1:], icon_url="https://autohotkey.com/boards" + post["user"]["icon"][1:])
 
 		max = 997
 

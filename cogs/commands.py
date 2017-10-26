@@ -18,7 +18,7 @@ class CommandCog:
 		with open('cogs/data/facts.txt', 'r') as f:
 			self.splitfacts = f.read().splitlines()
 		with open('lib/wolfram.txt', 'r') as f:
-			self.wolfram = f.read()
+			self.wolframkey = f.read()
 		with open('lib/oxford.txt', 'r') as f:
 			self.oxford = f.read().splitlines()
 		with open('cogs/data/rep.json', 'r') as f:
@@ -26,14 +26,16 @@ class CommandCog:
 
 	@commands.command()
 	async def rep(self, ctx):
+		"""Give someone some reputation!"""
+
 		# see if anyone was mentioned, if not just return how many points the author has
 		try:
 			mention = ctx.message.mentions[0]
 		except:
-			return await ctx.send(f'{ctx.message.author.mention} has a reputation of {(self.reps[ctx.message.author.id] if str(ctx.message.author.id) in self.reps else 0)}!')
+			return await ctx.send(f'{ctx.message.author.mention} has a reputation of {(self.reps[str(ctx.message.author.id)] if str(ctx.message.author.id) in self.reps else 0)}!')
 
 		# get the id
-		id = str(mention.id)
+		id = mention.id
 
 		# make sure people can't rep themselves
 		if id == ctx.message.author.id:
@@ -53,16 +55,16 @@ class CommandCog:
 				self.reptime[ctx.message.author.id][id] = time.time()
 
 		# make sure the repee has a key
-		if not id in self.reps:
-			self.reps[id] = 0
+		if not str(id) in self.reps:
+			self.reps[str(id)] = 0
 
 		# increment
-		self.reps[id] = self.reps[id] + 1
+		self.reps[str(id)] += 1
 
 		# save the new json
 		open('cogs/data/rep.json', 'w').write(json.dumps(self.reps))
 
-		await ctx.send(f'{mention.mention} now has {self.reps[id]} rep points!')
+		await ctx.send(f'{mention.mention} now has {self.reps[str(id)]} rep points!')
 
 	@commands.command()
 	async def uptime(self, ctx):
@@ -97,23 +99,23 @@ class CommandCog:
 
 		await ctx.send(embed=embed)
 
-	@commands.command(aliases=['w'])
-	async def wolfram(self, ctx, *, query):
-		"""Queries wolfram."""
-		req = requests.get('https://api.wolframalpha.com/v1/result?i={}&appid={}'.format(query, self.wolfram))
-		text = f'Query:\n```{query}``` \nResult\n```{req.text}``` '
-		embed = discord.Embed(description=text)
-		embed.set_author(name='Wolfram Alpha', icon_url='https://i.imgur.com/KFppH69.png')
-		embed.set_footer(text='wolframalpha')
-		if len(text) > 2000:
-			await ctx.send('Response too large.')
-		else:
-			await ctx.send(embed=embed)
-
 	@commands.command()
 	async def flip(self, ctx):
 		"""Flip a coin!"""
 		await ctx.send(random.choice(['Heads', 'Tails']) + '!')
+
+	@commands.command(aliases=['w'])
+	async def wolfram(self, ctx, *, query):
+		"""Queries wolfram."""
+		req = requests.get('https://api.wolframalpha.com/v1/result?i={}&appid={}'.format(query, self.wolframkey))
+		text = f'Query:\n```{query}``` \nResult\n```{req.text}``` '
+		embed = discord.Embed(description=text)
+		embed.set_author(name='Wolfram Alpha', icon_url='https://i.imgur.com/KFppH69.png')
+		embed.set_footer(text='wolframalpha.com')
+		if len(text) > 2000:
+			await ctx.send('Response too large.')
+		else:
+			await ctx.send(embed=embed)
 
 	@commands.command(aliases=['num'])
 	async def number(self, ctx, *, num: int):
