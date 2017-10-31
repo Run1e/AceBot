@@ -224,19 +224,19 @@ class AutoHotkeyCog:
 		embed.set_footer(text='Latest version: {}'.format(version))
 		await ctx.send(embed=embed)
 
-	@commands.command()
+	@commands.command(hidden=True)
 	async def geekdude(self, ctx):
 		return ctx.send('Everyone does a stupid sometimes.')
 
-	@commands.command(alias=['p'])
+	@commands.command(alias=['p'], hidden=True)
 	async def paste(self, ctx):
 		return ctx.send('Paste your code at http://p.ahkscript.org/')
 
-	@commands.command(alias=['c'])
+	@commands.command(alias=['c'], hidden=True)
 	async def code(self, ctx):
 		return ctx.send('Use the highlight command to paste code: !hl [paste code here]')
 
-	@commands.command(alias=['a'])
+	@commands.command(alias=['a'], hidden=True)
 	async def ask(self, ctx):
 		return ctx.send("Just ask your question, don't ask if you can ask!")
 
