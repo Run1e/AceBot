@@ -18,35 +18,11 @@ class AutoHotkeyCog:
 
 		self.pastes = {}
 
-		# plain command responses
-		self.plains = {
-			'geekdude': 'Everyone does a stupid sometimes.',
-			'hello': 'Hello {0.author.mention}!',
-			'shrug': '¯\_(ツ)_/¯',
-			'source': 'https://github.com/Run1e/A_AhkBot',
-			('paste', 'p'): 'Paste your code at http://p.ahkscript.org/',
-			('code', 'c'): 'Use the highlight command to paste code: !hl [paste code here]',
-			('ask', 'a'): "Just ask your question, don't ask if you can ask!"
-		}
-
-		# simple reply
-		self.replies = {
-			'\o': 'o/',
-			'o/': '\o'
-		}
-
 		# list of commands to ignore
 		self.ignore_cmds = (
 			'clear', 'mute', 'levels', 'rank', 'mute',
 			'unmute', 'manga', 'pokemon', 'urban', 'imgur',
 			'anime', 'twitch', 'youtube'
-		)
-
-		# list of users to ignore (like for example bots or people misusing the bot)
-		self.ignore_users = (
-			327874898284380161,
-			155149108183695360,
-			159985870458322944
 		)
 
 		# list of channels to ignore
@@ -59,16 +35,11 @@ class AutoHotkeyCog:
 		# check if we're in the right server
 		if not ctx.guild.id == self.guild_id:
 			return False
-
 		# check if message comes from bot
 		if ctx.message.author.id == self.bot.user.id:
 			return False
-
-		# check if message author is in list of ignored users
-		if ctx.message.author.id in self.ignore_users:
+		if ctx.message.author.id in self.bot.ignore_users:
 			return False
-
-		# check if message channel is in list of ignored channels
 		if ctx.message.channel.id in self.ignore_chan:
 			return False
 
@@ -86,11 +57,9 @@ class AutoHotkeyCog:
 		if not await self.__local_check(ctx):
 			return
 
-		print(message.content)
-
 		# see if the message has a reply
-		if message.content in self.replies:
-			return await ctx.send(self.replies[message.content])
+		# if message.content in self.replies:
+		# 	return await ctx.send(self.replies[message.content])
 
 		# see if we can find any links
 		try:
@@ -105,13 +74,13 @@ class AutoHotkeyCog:
 			return await self.forumlink(ctx, link)
 
 	async def on_command_error(self, ctx, error):
+		# check we're in the ahk server
+		if not await self.__local_check(ctx):
+			return
+
 		# we're listening to CommandNotFound errors, so if the error is not one of those, print it
 		if not isinstance(error, commands.CommandNotFound):
 			print(error)
-			return
-
-		# check we're in the ahk server
-		if not await self.__local_check(ctx):
 			return
 
 		# if it's a mee6 command, ignore it (don't docs search it)
@@ -124,13 +93,7 @@ class AutoHotkeyCog:
 		elif ctx.invoked_with == 'helper-':
 			return await self.helper(ctx, False)
 
-		# check if there's a simple text reply associated
-		for key in self.plains:
-			if (ctx.invoked_with == key) or (type(key) is tuple and ctx.invoked_with in key):
-					return await ctx.send(self.plains[key].format(ctx))
-
 		# if none of the above, search the documentation with the input
-
 		await ctx.invoke(self.docs, search=ctx.message.content[1:])
 
 	async def pastelink(self, ctx, link):
@@ -260,6 +223,23 @@ class AutoHotkeyCog:
 
 		embed.set_footer(text='Latest version: {}'.format(version))
 		await ctx.send(embed=embed)
+
+	@commands.command()
+	async def geekdude(self, ctx):
+		return ctx.send('Everyone does a stupid sometimes.')
+
+	@commands.command(alias=['p'])
+	async def paste(self, ctx):
+		return ctx.send('Paste your code at http://p.ahkscript.org/')
+
+	@commands.command(alias=['c'])
+	async def code(self, ctx):
+		return ctx.send('Use the highlight command to paste code: !hl [paste code here]')
+
+	@commands.command(alias=['a'])
+	async def ask(self, ctx):
+		return ctx.send("Just ask your question, don't ask if you can ask!")
+
 
 def setup(bot):
 	bot.add_cog(AutoHotkeyCog(bot))

@@ -15,6 +15,19 @@ class CommandCog:
 		self.time = time.time()
 		self.reptime = {}
 
+		# simple reply
+		self.replies = {
+			'\o': 'o/',
+			'o/': '\o'
+		}
+
+		# list of commands to ignore
+		self.ignore_cmds = (
+			'clear', 'mute', 'levels', 'rank', 'mute',
+			'unmute', 'manga', 'pokemon', 'urban', 'imgur',
+			'anime', 'twitch', 'youtube'
+		)
+
 		with open('cogs/data/facts.txt', 'r') as f:
 			self.splitfacts = f.read().splitlines()
 		with open('lib/wolfram.txt', 'r') as f:
@@ -23,6 +36,29 @@ class CommandCog:
 			self.oxford = f.read().splitlines()
 		with open('cogs/data/rep.json', 'r') as f:
 			self.reps = json.loads(f.read())
+
+	async def __local_check(self, ctx):
+		if ctx.message.author.id == self.bot.user.id:
+			return False
+		if ctx.message.author.id in self.bot.ignore_users:
+			return False
+
+		return True
+
+	async def on_message(self, message):
+		# stop if we're running a "command"
+		if message.content.startswith(tuple(await self.bot.get_prefix(message))):
+			return
+
+		# get the message context
+		ctx = await self.bot.get_context(message)
+
+		if not await self.__local_check(ctx):
+			return
+
+		# see if the message has a reply
+		if message.content in self.replies:
+			return await ctx.send(self.replies[message.content])
 
 	@commands.command()
 	async def rep(self, ctx):
@@ -108,7 +144,7 @@ class CommandCog:
 	async def wolfram(self, ctx, *, query):
 		"""Queries wolfram."""
 		req = requests.get('https://api.wolframalpha.com/v1/result?i={}&appid={}'.format(query, self.wolframkey))
-		text = f'Query:\n```{query}``` \nResult\n```{req.text}``` '
+		text = f'Query:\n```python\n{query}``` \nResult\n```python\n{req.text}``` '
 		embed = discord.Embed(description=text)
 		embed.set_author(name='Wolfram Alpha', icon_url='https://i.imgur.com/KFppH69.png')
 		embed.set_footer(text='wolframalpha.com')
@@ -127,6 +163,18 @@ class CommandCog:
 	async def fact(self, ctx):
 		"""Get a fun fact!"""
 		await ctx.send(random.choice(self.splitfacts))
+
+	@commands.command(hidden=True)
+	async def hello(self, ctx):
+		await ctx.send(f'Hello {ctx.message.author.mention}!')
+
+	@commands.command(hidden=True)
+	async def shrug(self, ctx):
+		await ctx.send('¯\_(ツ)_/¯')
+
+	@commands.command(hidden=True)
+	async def source(self, ctx):
+		await ctx.send('https://github.com/Run1e/A_AhkBot')
 
 def setup(bot):
 	bot.add_cog(CommandCog(bot))
