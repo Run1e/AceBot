@@ -1,3 +1,5 @@
 lib
 *\__pycache__
 .idea/workspace.xml
+*.iml
+.idea/misc.xml

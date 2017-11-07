@@ -2,6 +2,7 @@ import discord
 from discord.ext import commands
 
 import sympy
+import json
 
 from cogs.utils.search import search
 
@@ -12,26 +13,69 @@ class AdminCog:
 		self.bot = bot
 
 	async def __local_check(self, ctx):
-		if await self.bot.is_owner(ctx.author):
-			return True
-		else:
+		return await self.bot.is_owner(ctx.author)
+
+	async def on_command_error(self, ctx, error):
+		if not ctx.cog == self:
+			return
+
+		if isinstance(error, commands.CheckFailure):
 			await ctx.send('Command is only avaliable for bot owner.')
-			return False
 
-	@commands.command(hidden=True)
+	@commands.command()
+	async def notice(self, ctx):
+		"""Remove user for ignore list."""
+		try:
+			user = ctx.message.mentions[0].id
+		except:
+			return await ctx.send('No user specified.')
+
+		if user not in self.bot.info['ignore_users']:
+			return await ctx.send('User was never ignored.')
+
+			self.bot.info['ignore_users'].remove(user)
+
+		with open('cogs/data/ignore.json', 'w') as f:
+			f.write(json.dumps(self.bot.info['ignore_users'], sort_keys=True, indent=4, separators=(',', ': ')))
+
+		await ctx.send('User removed from ignore list.')
+
+	@commands.command()
+	async def ignore(self, ctx):
+		"""Add user to ignore list."""
+		try:
+			user = ctx.message.mentions[0].id
+		except:
+			return await ctx.send('No user specified.')
+
+		if user in self.bot.info['ignore_users']:
+			return await ctx.send('User already ignored.')
+
+		self.bot.info['ignore_users'].append(user)
+
+		with open('cogs/data/ignore.json', 'w') as f:
+			f.write(json.dumps(self.bot.info['ignore_users'], sort_keys=True, indent=4, separators=(',', ': ')))
+
+		await ctx.send('User ignored.')
+
+	@commands.command()
 	async def eval(self, ctx, *, input):
-		await ctx.send(str(sympy.sympify(input)))
+		"""Evaluate a string using sympy."""
+		await ctx.send(f'```python\n{str(sympy.sympify(input))}\n```')
 
-	@commands.command(aliases=['gh'], hidden=True)
+	@commands.command(aliases=['gh'])
 	async def github(self, ctx, *, query):
+		"""Search for a GitHub repo."""
 		await ctx.invoke(self.search, query='site:github.com ' + query)
 
-	@commands.command(aliases=['f'], hidden=True)
+	@commands.command(aliases=['f'])
 	async def forum(self, ctx, *, query):
+		"""Search for an AutoHotkey thread."""
 		await ctx.invoke(self.search, query='site:autohotkey.com ' + query)
 
-	@commands.command(aliases=['g'], hidden=True)
+	@commands.command(aliases=['g'])
 	async def search(self, ctx, *, query):
+		"""Search Google."""
 		result = search(query)
 		if not result:
 			await ctx.send('No results.')

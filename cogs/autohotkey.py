@@ -4,7 +4,6 @@ from discord.ext import commands
 import requests
 import json
 import re
-from bs4 import BeautifulSoup
 
 from cogs.utils.docs_search import docs_search
 import cogs.utils.ahk_forum as Preview
@@ -35,10 +34,7 @@ class AutoHotkeyCog:
 		# check if we're in the right server
 		if not ctx.guild.id == self.guild_id:
 			return False
-		# check if message comes from bot
-		if ctx.message.author.id == self.bot.user.id:
-			return False
-		if ctx.message.author.id in self.bot.ignore_users:
+		if ctx.message.author.id in self.bot.info['ignore_users']:
 			return False
 		if ctx.message.channel.id in self.ignore_chan:
 			return False
@@ -75,7 +71,7 @@ class AutoHotkeyCog:
 
 	async def on_command_error(self, ctx, error):
 		# check we're in the ahk server
-		if not await self.__local_check(ctx):
+		if not ctx.cog == self:
 			return
 
 		# we're listening to CommandNotFound errors, so if the error is not one of those, print it
@@ -86,12 +82,6 @@ class AutoHotkeyCog:
 		# if it's a mee6 command, ignore it (don't docs search it)
 		if ctx.invoked_with in self.ignore_cmds:
 			return
-
-		# special case, method names can't have + or - in them, which makes sense
-		if ctx.invoked_with == 'helper+':
-			return await self.helper(ctx, True)
-		elif ctx.invoked_with == 'helper-':
-			return await self.helper(ctx, False)
 
 		# if none of the above, search the documentation with the input
 		await ctx.invoke(self.docs, search=ctx.message.content[1:])
@@ -130,14 +120,17 @@ class AutoHotkeyCog:
 
 		await ctx.send(embed=embed)
 
-	async def helper(self, ctx, add):
+	@commands.command(name='helper+')
+	async def helperplus(self, ctx):
 		role = discord.utils.get(ctx.guild.roles, name="Helpers")
-		if add:
-			await ctx.author.add_roles(role)
-			await ctx.send('Added to Helpers!')
-		else:
-			await ctx.author.remove_roles(role)
-			await ctx.send('Removed from Helpers.')
+		await ctx.author.add_roles(role)
+		await ctx.send('Added to Helpers!')
+
+	@commands.command(name='helper-')
+	async def helperminus(self, ctx):
+		role = discord.utils.get(ctx.guild.roles, name="Helpers")
+		await ctx.author.remove_roles(role)
+		await ctx.send('Removed from Helpers.')
 
 	@commands.command()
 	async def docs(self, ctx, *, search):
@@ -155,26 +148,12 @@ class AutoHotkeyCog:
 		if embed:
 			await ctx.send(embed=embed)
 
-	@commands.command(aliases=['bow'], hidden=True)
-	async def mae(self, ctx):
-		await ctx.message.delete()
-		await ctx.send('*' + ctx.author.mention + " bows*")
-
-	@commands.command(hidden=True)
-	async def documentation(self, ctx):
-		await ctx.send(embed=discord.Embed(title='AutoHotkey documentation', description='https://autohotkey.com/docs/AutoHotkey.htm'))
-
-	@commands.command(hidden=True)
-	async def forums(self, ctx):
-		await ctx.send(embed=discord.Embed(title='AutoHotkey forums', description='https://autohotkey.com/boards/'))
-
-	@commands.command(aliases=['tut'], hidden=True)
-	async def tutorial(self, ctx):
-		await ctx.send(embed=discord.Embed(title='Tutorial by tidbit', description='https://autohotkey.com/docs/Tutorial.htm'))
-
-	@commands.command(aliases=['hl'])
+	@commands.command(aliases=['hl', 'h1'])
 	async def highlight(self, ctx, *, code):
 		"""Highlights some AutoHotkey code. Use !hl"""
+
+		if '```'  in code:
+			return
 
 		if ctx.invoked_with:
 			await ctx.message.delete()
@@ -184,7 +163,7 @@ class AutoHotkeyCog:
 		except:
 			self.pastes[ctx.author.id] = []
 
-		msg = await ctx.send('```AutoIt\n{}\n```*{}, type `!del` to delete*'.format(code, ('Paste by {}' if ctx.invoked_with else "Paste from {}'s link").format(ctx.message.author.mention)))
+		msg = await ctx.send('```AutoIt\n{}\n```*{}, type `!del` to delete this message.*'.format(code, ('Paste by {}' if ctx.invoked_with else "Paste from {}'s link").format(ctx.message.author.mention)))
 
 		self.pastes[ctx.author.id].append(msg)
 
@@ -226,19 +205,36 @@ class AutoHotkeyCog:
 
 	@commands.command(hidden=True)
 	async def geekdude(self, ctx):
-		return ctx.send('Everyone does a stupid sometimes.')
+		await ctx.send('Everyone does a stupid sometimes.')
 
 	@commands.command(alias=['p'], hidden=True)
 	async def paste(self, ctx):
-		return ctx.send('Paste your code at http://p.ahkscript.org/')
+		await ctx.send('Paste your code at http://p.ahkscript.org/')
 
 	@commands.command(alias=['c'], hidden=True)
 	async def code(self, ctx):
-		return ctx.send('Use the highlight command to paste code: !hl [paste code here]')
+		await ctx.send('Use the highlight command to paste code: !hl [paste code here]')
 
 	@commands.command(alias=['a'], hidden=True)
 	async def ask(self, ctx):
-		return ctx.send("Just ask your question, don't ask if you can ask!")
+		await ctx.send("Just ask your question, don't ask if you can ask!")
+
+	@commands.command(aliases=['bow'], hidden=True)
+	async def mae(self, ctx):
+		await ctx.message.delete()
+		await ctx.send('*' + ctx.author.mention + " bows*")
+
+	@commands.command(hidden=True)
+	async def documentation(self, ctx):
+		await ctx.send(embed=discord.Embed(title='AutoHotkey documentation', description='https://autohotkey.com/docs/AutoHotkey.htm'))
+
+	@commands.command(hidden=True)
+	async def forums(self, ctx):
+		await ctx.send(embed=discord.Embed(title='AutoHotkey forums', description='https://autohotkey.com/boards/'))
+
+	@commands.command(aliases=['tut'], hidden=True)
+	async def tutorial(self, ctx):
+		await ctx.send(embed=discord.Embed(title='Tutorial by tidbit', description='https://autohotkey.com/docs/Tutorial.htm'))
 
 
 def setup(bot):

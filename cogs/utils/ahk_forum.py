@@ -7,7 +7,6 @@ from bs4 import BeautifulSoup, element
 
 def getThread(url):
 	s = requests.Session()
-	print(url)
 
 	tmpurl = re.sub("&start=\d+$", "", url)
 
