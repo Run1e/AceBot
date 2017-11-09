@@ -13,8 +13,7 @@ with open('cogs/data/ignore.json', 'r') as f:
 extensions = (
 	'cogs.commands',
 	'cogs.autohotkey',
-	'cogs.admin',
-	'cogs.classone'
+	'cogs.admin'
 )
 
 @bot.event
