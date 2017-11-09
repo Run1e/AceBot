@@ -38,7 +38,6 @@ class AutoHotkeyCog:
 			return False
 		if ctx.message.channel.id in self.ignore_chan:
 			return False
-
 		return True
 
 	async def on_message(self, message):
@@ -71,7 +70,7 @@ class AutoHotkeyCog:
 
 	async def on_command_error(self, ctx, error):
 		# check we're in the ahk server
-		if not ctx.cog == self:
+		if not ctx.message.guild.id == self.guild_id:
 			return
 
 		# we're listening to CommandNotFound errors, so if the error is not one of those, print it
@@ -122,12 +121,14 @@ class AutoHotkeyCog:
 
 	@commands.command(name='helper+')
 	async def helperplus(self, ctx):
+		"""Add yourself to the Helper role."""
 		role = discord.utils.get(ctx.guild.roles, name="Helpers")
 		await ctx.author.add_roles(role)
 		await ctx.send('Added to Helpers!')
 
 	@commands.command(name='helper-')
 	async def helperminus(self, ctx):
+		"""Remove yourself from the Helper role."""
 		role = discord.utils.get(ctx.guild.roles, name="Helpers")
 		await ctx.author.remove_roles(role)
 		await ctx.send('Removed from Helpers.')
@@ -150,7 +151,7 @@ class AutoHotkeyCog:
 
 	@commands.command(aliases=['hl', 'h1'])
 	async def highlight(self, ctx, *, code):
-		"""Highlights some AutoHotkey code. Use !hl"""
+		"""Highlights some AutoHotkey code."""
 
 		if '```'  in code:
 			return
@@ -207,15 +208,15 @@ class AutoHotkeyCog:
 	async def geekdude(self, ctx):
 		await ctx.send('Everyone does a stupid sometimes.')
 
-	@commands.command(alias=['p'], hidden=True)
+	@commands.command(aliases=['p'], hidden=True)
 	async def paste(self, ctx):
 		await ctx.send('Paste your code at http://p.ahkscript.org/')
 
-	@commands.command(alias=['c'], hidden=True)
+	@commands.command(aliases=['c'], hidden=True)
 	async def code(self, ctx):
 		await ctx.send('Use the highlight command to paste code: !hl [paste code here]')
 
-	@commands.command(alias=['a'], hidden=True)
+	@commands.command(aliases=['a'], hidden=True)
 	async def ask(self, ctx):
 		await ctx.send("Just ask your question, don't ask if you can ask!")
 

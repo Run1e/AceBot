@@ -13,25 +13,32 @@ with open('cogs/data/ignore.json', 'r') as f:
 extensions = (
 	'cogs.commands',
 	'cogs.autohotkey',
-	'cogs.admin'
+	'cogs.admin',
+	'cogs.classone'
 )
 
 @bot.event
 async def on_ready():
 	# await bot.change_presence(game=discord.Game(name='autohotkey.com', type=1, url='http://autohotkey.com/'))
-
+	# bot.user.edit(username='')
 	if __name__ == '__main__':
 		print(f'\n\nLogged in as: {bot.user.name} - {bot.user.id}\nVersion: {discord.__version__}\n')
 		for extension in extensions:
 			print(f'Loading extension: {extension}')
 			bot.load_extension(extension)
-	print(f'Successfully connected!')
+	print(f'\nConnected to {len(bot.guilds)} servers:')
+	print('\n'.join(guild.name for guild in bot.guilds))
+	print('\nSuccessfully connected!')
 
+# blacklist check
+@bot.check_once
+async def blacklist(ctx):
+	return not ctx.message.author.id in bot.info['ignore_users']
+
+# print command usage
 @bot.before_invoke
 async def before_any_command(ctx):
 	print(f'----------------\nServer: {ctx.guild.name}\nUser: {ctx.message.author.name}\nCommand: {ctx.command.name}\n')
-	# for x in ctx.kwargs:
-	# 	print(x + ": " + ctx.kwargs[x].split('\n')[0])
 
 
 # overwrite discord.Embed with a monkey patched class that automatically sets the color attribute

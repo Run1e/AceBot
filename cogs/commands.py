@@ -35,26 +35,13 @@ class CommandCog:
 		with open('cogs/data/rep.json', 'r') as f:
 			self.reps = json.loads(f.read())
 
-	async def __local_check(self, ctx):
-		if ctx.message.author.id in self.bot.info['ignore_users']:
-			return False
-
-		return True
-
 	async def on_message(self, message):
-		# stop if we're running a "command"
-		if message.content.startswith(tuple(await self.bot.get_prefix(message))):
+		if message.author.id == self.bot.user.id:
 			return
 
-		# get the message context
-		ctx = await self.bot.get_context(message)
-
-		if not await self.__local_check(ctx):
-			return
-
-		# see if the message has a reply
 		if message.content in self.replies:
-			return await ctx.send(self.replies[message.content])
+			ctx = await self.bot.get_context(message)
+			await ctx.send(self.replies[message.content])
 
 	async def embedwiki(self, ctx, wiki):
 		embed = discord.Embed()
@@ -135,6 +122,10 @@ class CommandCog:
 		)
 		await ctx.send(random.choice(responses))
 
+	@commands.command()
+	async def choose(self, ctx, *choices):
+		"""Choose from a list."""
+		await ctx.send(random.choice(choices))
 
 	@commands.command(aliases=['wiki'])
 	async def wikipedia(self, ctx, *, query):
