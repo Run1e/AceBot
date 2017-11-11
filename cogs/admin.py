@@ -16,11 +16,19 @@ class AdminCog:
 		return await self.bot.is_owner(ctx.author)
 
 	async def on_command_error(self, ctx, error):
-		if not ctx.cog == self:
-			return
-
 		if isinstance(error, commands.CheckFailure):
 			await ctx.send('Command is only avaliable for bot owner.')
+
+	@commands.command()
+	async def say(self, ctx, *, text):
+		await ctx.message.delete()
+		await ctx.send(text)
+
+	@commands.command()
+	async def nick(self, ctx, *, nick):
+		"""Change the bot nickname."""
+		if len(nick):
+			await self.bot.user.edit(username=nick)
 
 	@commands.command()
 	async def notice(self, ctx):
@@ -33,7 +41,7 @@ class AdminCog:
 		if user not in self.bot.info['ignore_users']:
 			return await ctx.send('User was never ignored.')
 
-			self.bot.info['ignore_users'].remove(user)
+		self.bot.info['ignore_users'].remove(user)
 
 		with open('cogs/data/ignore.json', 'w') as f:
 			f.write(json.dumps(self.bot.info['ignore_users'], sort_keys=True, indent=4, separators=(',', ': ')))

@@ -3,3 +3,6 @@ lib
 .idea/workspace.xml
 *.iml
 .idea/misc.xml
+*.xml
+.idea/workspace.xml
+*.xml
