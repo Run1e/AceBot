@@ -4,19 +4,18 @@ import requests, re
 
 from bs4 import BeautifulSoup, element
 
-
 def getThread(url):
 	s = requests.Session()
-
+	
 	tmpurl = re.sub("&start=\d+$", "", url)
-
+	
 	response = s.get(tmpurl)
-
+	
 	html = BeautifulSoup(response.text, "lxml")
-
-	id = re.search("(?<=#)p\d*$", url)
-
-	if (id != None):
+	
+	id = re.search("(?<=#)p\d+$", url)
+	
+	if(id != None):
 		post = html.find("div", id=id.group(0))
 	else:
 		post = html.find("div", class_="post")
@@ -37,7 +36,7 @@ def getThread(url):
 
 	image = content.find("img", class_="postimage")
 
-	if (image):
+	if(image):
 		image = image.get("src")
 
 	for_all(content.find_all("div", class_="codebox"), lambda code: code.clear())
