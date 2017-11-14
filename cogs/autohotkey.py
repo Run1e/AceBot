@@ -109,13 +109,10 @@ class AutoHotkeyCog:
 			embed.set_image(url=post["image"] if post["image"][0] != "." else "https://autohotkey.com/boards" + post["image"][1:post["image"].find("&") + 1])
 
 		embed.set_author(name=post["user"]["name"], url="https://autohotkey.com/boards" + post["user"]["url"][1:], icon_url="https://autohotkey.com/boards" + post["user"]["icon"][1:])
-
-		max = 997
-
+		
 		for i in post["content"]:
-			if (len(i["head"]) > 1 and len(i["content"]) > 1):
-				value = i["content"] if max - len(i["content"]) > 0 else i["content"][0:max] + "..."
-				embed.add_field(name=i["head"], value=value, inline=False)
+			value = i["content"]
+			embed.add_field(name=i["head"], value=value, inline=False)
 
 		await ctx.send(embed=embed)
 

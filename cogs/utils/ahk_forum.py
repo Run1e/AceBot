@@ -43,6 +43,8 @@ def getThread(url):
 	for_all(content.find_all("div", class_="codebox"), lambda code: code.clear())
 
 	for_all(content.find_all("blockquote"), lambda code, post=content: code.insert_after(post.new_tag("br")))
+	
+	for_all(content.find_all("li"), lambda code, post=content: code.insert_before(post.new_tag("br")))
 
 	toMarkdown(content)
 
@@ -71,9 +73,38 @@ def getThread(url):
 				bool = False
 			lst[i]["content"] = re.sub("\n+", "\n", lst[i]["content"])
 			i += 1
+			
+	desc = re.sub("\n+", "\n", res)
+	
+	return {"title": title, "user": {"name": username, "url": userUrl, "icon": icon}, 
+		 "image": image, "description": desc, "content": QOS(lst, 2000 - len(desc))}
 
-	return {"title": title, "user": {"name": username, "url": userUrl, "icon": icon}, "image": image,
-			"description": re.sub("\n+", "\n", res), "content": lst}
+
+def QOS(content, maxChars = 5000):
+	for i in content:
+		l = len(i["content"])
+		if(l > 1000):
+			i["Q"] = 1000
+			i["content"] = i["content"][:1000-3] + "..."
+		else:
+			i["Q"] = l
+		
+		if(len(i["content"]) < 100 or not len(i["head"]) > 1):
+			i["Q"] = 0
+			
+		if(i["content"].count("\n") and len(i["content"]) / i["content"].count("\n") < 50):
+			i["Q"] = 0
+	
+	qContent = []
+	for i in content:
+		if(maxChars - i["Q"] > 0 and i["Q"]):
+			qContent.append(i)
+			maxChars -= i["Q"]
+		elif(maxChars > 0 and i["Q"]):
+			i["content"] = i["content"][:maxChars-3] + "..."
+			qContent.append(i)
+			maxChars -= i["Q"]
+	return qContent
 
 
 def is_Header(tag):
