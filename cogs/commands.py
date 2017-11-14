@@ -7,6 +7,7 @@ import time
 import math
 import json
 import datetime
+import asyncio
 
 import wikipedia
 
@@ -35,6 +36,13 @@ class CommandCog:
 		with open('cogs/data/rep.json', 'r') as f:
 			self.reps = json.loads(f.read())
 
+	async def on_command_error(self, ctx, error):
+		for check in [commands.CommandNotFound, commands.CheckFailure, commands.CommandError]:
+			if isinstance(error, check):
+				print(error)
+				return
+		await ctx.send(f'`{error}`')
+
 	async def on_message(self, message):
 		if message.author.id == self.bot.user.id:
 			return
@@ -60,7 +68,7 @@ class CommandCog:
 				break
 
 		if image:
-			embed.set_thumbnail(url=image)
+			embed.set_image(url=image)
 
 		embed.set_footer(text='wikipedia.com')
 		await ctx.send(embed=embed)
@@ -120,6 +128,8 @@ class CommandCog:
 			'Outlook not so good',
 			'Very doubtful'
 		)
+		await ctx.trigger_typing()
+		await asyncio.sleep(3)
 		await ctx.send(random.choice(responses))
 
 	@commands.command()
@@ -221,7 +231,7 @@ class CommandCog:
 
 	@commands.command(hidden=True)
 	async def hello(self, ctx):
-		await ctx.send(f'Hello {ctx.message.author.mention}!')
+		await ctx.send(f'Hello {ctx.author.mention}!')
 
 	@commands.command(hidden=True)
 	async def shrug(self, ctx):
@@ -239,27 +249,27 @@ class CommandCog:
 		try:
 			mention = ctx.message.mentions[0]
 		except:
-			return await ctx.send(f'{ctx.message.author.mention} has a reputation of {(self.reps[str(ctx.message.author.id)] if str(ctx.message.author.id) in self.reps else 0)}!')
+			return await ctx.send(f'{ctx.author.mention} has a reputation of {(self.reps[str(ctx.author.id)] if str(ctx.author.id) in self.reps else 0)}!')
 
 		# get the id
 		id = mention.id
 
 		# make sure people can't rep themselves
-		if id == ctx.message.author.id:
+		if id == ctx.author.id:
 			return await ctx.send(":japanese_goblin:")
 
 		# make sure a reptime object exists for the author
-		if not ctx.message.author.id in self.reptime:
-			self.reptime[ctx.message.author.id] = {}
+		if not ctx.author.id in self.reptime:
+			self.reptime[ctx.author.id] = {}
 
 		# make sure the repee has an entry, and if it already does, make sure it's outside of the reptime
-		if not id in self.reptime[ctx.message.author.id]:
-			self.reptime[ctx.message.author.id][id] = time.time()
+		if not id in self.reptime[ctx.author.id]:
+			self.reptime[ctx.author.id][id] = time.time()
 		else:
-			if time.time() - self.reptime[ctx.message.author.id][id] < 60:
+			if time.time() - self.reptime[ctx.author.id][id] < 60:
 				return await ctx.send("Woah! You shouldn't be repping *that* fast.")
 			else:
-				self.reptime[ctx.message.author.id][id] = time.time()
+				self.reptime[ctx.author.id][id] = time.time()
 
 		# make sure the repee has a key
 		if not str(id) in self.reps:

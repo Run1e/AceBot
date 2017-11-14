@@ -16,19 +16,28 @@ class AdminCog:
 		return await self.bot.is_owner(ctx.author)
 
 	async def on_command_error(self, ctx, error):
-		if isinstance(error, commands.CheckFailure):
-			await ctx.send('Command is only avaliable for bot owner.')
+		if hasattr(ctx.command, 'cog_name') and ctx.command.cog_name == self.__class__.__name__:
+			if isinstance(error, commands.CheckFailure):
+				await ctx.send('Command is only avaliable for bot owner.')
+
+	@commands.command()
+	async def leave(self, ctx, *, id):
+		"""Leave a guild."""
+		for guild in self.bot.guilds:
+			if (guild.id == int(id)):
+				await guild.leave()
+				await ctx.send(f'Left {guild.name}.')
 
 	@commands.command()
 	async def say(self, ctx, *, text):
+		"""Makes bot repeat what you say."""
 		await ctx.message.delete()
 		await ctx.send(text)
 
 	@commands.command()
 	async def nick(self, ctx, *, nick):
 		"""Change the bot nickname."""
-		if len(nick):
-			await self.bot.user.edit(username=nick)
+		await self.bot.user.edit(username=nick)
 
 	@commands.command()
 	async def notice(self, ctx):
@@ -44,7 +53,7 @@ class AdminCog:
 		self.bot.info['ignore_users'].remove(user)
 
 		with open('cogs/data/ignore.json', 'w') as f:
-			f.write(json.dumps(self.bot.info['ignore_users'], sort_keys=True, indent=4, separators=(',', ': ')))
+			f.write(json.dumps(self.bot.info['ignore_users'], sort_keys=True, indent=4))
 
 		await ctx.send('User removed from ignore list.')
 
@@ -62,7 +71,7 @@ class AdminCog:
 		self.bot.info['ignore_users'].append(user)
 
 		with open('cogs/data/ignore.json', 'w') as f:
-			f.write(json.dumps(self.bot.info['ignore_users'], sort_keys=True, indent=4, separators=(',', ': ')))
+			f.write(json.dumps(self.bot.info['ignore_users'], sort_keys=True, indent=4))
 
 		await ctx.send('User ignored.')
 
