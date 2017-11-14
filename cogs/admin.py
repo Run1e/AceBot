@@ -21,10 +21,18 @@ class AdminCog:
 				await ctx.send('Command is only avaliable for bot owner.')
 
 	@commands.command()
-	async def leave(self, ctx, *, id):
+	async def game(self, ctx, *, presence=None):
+		"""Change bot presence."""
+		if presence == None:
+			presence = self.bot.info['status']
+		await self.bot.change_presence(game=discord.Game(name=str(presence)))
+
+	# if this doesn't work, I changed how id is casted to int
+	@commands.command()
+	async def leave(self, ctx, *, id: int):
 		"""Leave a guild."""
 		for guild in self.bot.guilds:
-			if (guild.id == int(id)):
+			if (guild.id == id):
 				await guild.leave()
 				await ctx.send(f'Left {guild.name}.')
 

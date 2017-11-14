@@ -10,8 +10,8 @@ bot.info = {}
 with open('cogs/data/ignore.json', 'r') as f:
 	bot.info['ignore_users'] = json.loads(f.read())
 
-nick 	= 'Golbot'
-status	= '.help for commands'
+bot.info['nick'] = 'Golbot'
+bot.info['status'] = '.help for commands'
 
 extensions = (
 	'cogs.commands',
@@ -22,8 +22,8 @@ extensions = (
 
 @bot.event
 async def on_ready():
-	await bot.user.edit(username=nick)
-	await bot.change_presence(game=discord.Game(name=status))
+	await bot.user.edit(username=bot.info['nick'])
+	await bot.change_presence(game=discord.Game(name=bot.info['status']))
 
 	if __name__ == '__main__':
 		print(f'Logged in as: {bot.user.name} - {bot.user.id}\nVersion: {discord.__version__}\n')
@@ -37,7 +37,7 @@ async def on_ready():
 # blacklist check
 @bot.check_once
 async def blacklist(ctx):
-	return not ctx.message.author.id in bot.info['ignore_users']
+	return ctx.message.author.id not in bot.info['ignore_users']
 
 # print command usage
 @bot.before_invoke
