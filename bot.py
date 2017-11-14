@@ -10,24 +10,29 @@ bot.info = {}
 with open('cogs/data/ignore.json', 'r') as f:
 	bot.info['ignore_users'] = json.loads(f.read())
 
+nick 	= 'Golbot'
+status	= '.help for commands'
+
 extensions = (
 	'cogs.commands',
 	'cogs.autohotkey',
-	'cogs.admin'
+	'cogs.admin',
+	'cogs.classone'
 )
 
 @bot.event
 async def on_ready():
-	# await bot.change_presence(game=discord.Game(name='autohotkey.com', type=1, url='http://autohotkey.com/'))
-	# bot.user.edit(username='')
+	await bot.user.edit(username=nick)
+	await bot.change_presence(game=discord.Game(name=status))
+
 	if __name__ == '__main__':
-		print(f'\n\nLogged in as: {bot.user.name} - {bot.user.id}\nVersion: {discord.__version__}\n')
+		print(f'Logged in as: {bot.user.name} - {bot.user.id}\nVersion: {discord.__version__}\n')
 		for extension in extensions:
 			print(f'Loading extension: {extension}')
 			bot.load_extension(extension)
+
 	print(f'\nConnected to {len(bot.guilds)} servers:')
-	print('\n'.join(guild.name for guild in bot.guilds))
-	print('\nSuccessfully connected!')
+	print('\n'.join(f'{guild.name} - {guild.id}' for guild in bot.guilds))
 
 # blacklist check
 @bot.check_once

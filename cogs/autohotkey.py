@@ -13,9 +13,9 @@ class AutoHotkeyCog:
 
 	def __init__(self, bot):
 		self.bot = bot
-		self.guild_id = 115993023636176902
 
-		self.pastes = {}
+		with open('cogs/data/pastes.json', 'r') as f:
+			self.pastes = json.loads(f.read())
 
 		# list of commands to ignore
 		self.ignore_cmds = (
@@ -24,37 +24,23 @@ class AutoHotkeyCog:
 			'anime', 'twitch', 'youtube'
 		)
 
-		# list of channels to ignore
-		self.ignore_chan = (
-			318691519223824384,
-			296187311467790339
-		)
 
+	# make sure we're in the ahk guild
 	async def __local_check(self, ctx):
-		# check if we're in the right server
-		if not ctx.guild.id == self.guild_id:
-			return False
-		if ctx.message.author.id in self.bot.info['ignore_users']:
-			return False
-		if ctx.message.channel.id in self.ignore_chan:
-			return False
-		return True
+		return ctx.guild.id == 115993023636176902
 
 	async def on_message(self, message):
+		if message.author.id == self.bot.user.id:
+			return
+
 		# stop if we're running a "command"
 		if message.content.startswith(tuple(await self.bot.get_prefix(message))):
 			return
 
-		# get the message context
 		ctx = await self.bot.get_context(message)
 
-		# check if we're in the ahk server etc
 		if not await self.__local_check(ctx):
 			return
-
-		# see if the message has a reply
-		# if message.content in self.replies:
-		# 	return await ctx.send(self.replies[message.content])
 
 		# see if we can find any links
 		try:
@@ -70,16 +56,15 @@ class AutoHotkeyCog:
 
 	async def on_command_error(self, ctx, error):
 		# check we're in the ahk server
-		if not ctx.message.guild.id == self.guild_id:
+		if not await self.__local_check(ctx):
 			return
 
-		# we're listening to CommandNotFound errors, so if the error is not one of those, print it
+		# we're listening to CommandNotFound errors, so if the error is not one of those, return
 		if not isinstance(error, commands.CommandNotFound):
-			print(error)
 			return
 
 		# if it's a mee6 command, ignore it (don't docs search it)
-		if ctx.invoked_with in self.ignore_cmds:
+		if ctx.prefix == '!' and ctx.invoked_with in self.ignore_cmds:
 			return
 
 		# if none of the above, search the documentation with the input
@@ -153,30 +138,47 @@ class AutoHotkeyCog:
 	async def highlight(self, ctx, *, code):
 		"""Highlights some AutoHotkey code."""
 
+		# don't paste if there's hella many backticks fam
 		if '```'  in code:
 			return
 
+		# if it was invoked (by a user) we deleted the source message
 		if ctx.invoked_with:
 			await ctx.message.delete()
 
+		author = str(ctx.author.id)
+
+		# make sure the user has a key in the pastes object
 		try:
-			self.pastes[ctx.author.id]
+			self.pastes[author]
 		except:
-			self.pastes[ctx.author.id] = []
+			self.pastes[author] = []
 
-		msg = await ctx.send('```AutoIt\n{}\n```*{}, type `!del` to delete this message.*'.format(code, ('Paste by {}' if ctx.invoked_with else "Paste from {}'s link").format(ctx.message.author.mention)))
+		msg = await ctx.send('```AutoIt\n{}\n```*{}, type `.del` to delete this message.*'.format(code, ('Paste by {}' if ctx.invoked_with else "Paste from {}'s link").format(ctx.message.author.mention)))
 
-		self.pastes[ctx.author.id].append(msg)
+		if len(self.pastes[author]) > 4:
+			self.pastes[author].remove(self.pastes[author][0])
+
+		# append the id
+		self.pastes[author].append(msg.id)
+
+		with open('cogs/data/pastes.json', 'w') as f:
+			f.write(json.dumps(self.pastes, sort_keys=True, indent=4))
 
 	@commands.command(aliases=['del'], hidden=True)
 	async def delete(self, ctx):
-		if ctx.author.id in self.pastes:
-			try:
-				message = self.pastes[ctx.author.id].pop()
-			except:
-				return await ctx.send('No paste to delete.')
-			await message.delete()
-			await ctx.message.delete()
+		author = str(ctx.author.id)
+
+		if (author not in self.pastes) or not len(self.pastes[author]):
+			return await ctx.send('No paste to delete.')
+
+		id = self.pastes[author].pop()
+		message = await ctx.get_message(id)
+		await message.delete()
+		await ctx.message.delete()
+
+		with open('cogs/data/pastes.json', 'w') as f:
+			f.write(json.dumps(self.pastes, sort_keys=True, indent=4))
 
 	@commands.command(aliases=['download', 'update'])
 	async def version(self, ctx):
@@ -205,6 +207,21 @@ class AutoHotkeyCog:
 		await ctx.send(embed=embed)
 
 	@commands.command(hidden=True)
+	@commands.has_permissions(kick_members=True)
+	async def rule(self, ctx, rule: int, user):
+		rules = (
+			"\nRule #1\n\n**Be nice to eachother.**\nTreat others like you want others to treat you. Be nice.",
+			"\nRule #2\n\n**Keep conversations civil.**\nDisagreeing is fine, but when it becomes a heated and unpleasant argument it will not be tolerated.",
+			"\nRule #3\n\n**Don't post NSFW or antagonizing content.**\nThis includes but is not limited to nudity, sexual content, gore, personal information or disruptive content.",
+			"\nRule #4\n\n**Don't spam/flood voice or text channels.**\nRepeated posting of text, links, images, videos or abusing the voice channels is not allowed.",
+			"\nRule #5\n\n**Don't excessively swear.**\nSwearing is allowed, within reason. Don't litter the chat."
+		)
+		await ctx.message.delete()
+		if rule > len(rules) or rule < 1:
+			return
+		await ctx.send(f'{user}\n{rules[rule - 1]}')
+
+	@commands.command(hidden=True)
 	async def geekdude(self, ctx):
 		await ctx.send('Everyone does a stupid sometimes.')
 
@@ -214,7 +231,7 @@ class AutoHotkeyCog:
 
 	@commands.command(aliases=['c'], hidden=True)
 	async def code(self, ctx):
-		await ctx.send('Use the highlight command to paste code: !hl [paste code here]')
+		await ctx.send('Use the highlight command to paste code: `.hl *paste code here*`')
 
 	@commands.command(aliases=['a'], hidden=True)
 	async def ask(self, ctx):
