@@ -43,13 +43,13 @@ class CommandCog:
 				return
 
 		# errors to print locally
-		for check in (commands.CommandError,):
-			if isinstance(error, check):
-				print(error)
-				return
+		# for check in (commands.CommandError,):
+		# 	if isinstance(error, check):
+		# 		print(error)
+		# 		return
 
 		# other error? print to channel
-		await ctx.send(f'```{error}```')
+		await ctx.send(f'An error occured in `{ctx.command.name}` invoked by `{ctx.message.author}`\n```python\n{error}\n```\nMaybe try `.help {ctx.command.name}`?')
 
 	async def on_message(self, message):
 		if message.author.id == self.bot.user.id:
@@ -58,31 +58,6 @@ class CommandCog:
 		if message.content in self.replies:
 			ctx = await self.bot.get_context(message)
 			await ctx.send(self.replies[message.content])
-
-	@commands.command(aliases=['del'], hidden=True)
-	async def delete(self, ctx):
-		author = str(ctx.author.id)
-		channel = str(ctx.message.channel.id)
-
-		if (channel not in self.bot.info['msgs']) or (author not in self.bot.info['msgs'][channel]) or not len(self.bot.info['msgs'][channel][author]):
-			return await ctx.send('Nothing to delete.')
-
-		ids = self.bot.info['msgs'][channel][author].pop()
-
-		if not len(self.bot.info['msgs'][channel][author]):
-			self.bot.info['msgs'][channel].pop(author)
-
-		for id in ids:
-			try:
-				message = await ctx.get_message(id)
-				await message.delete()
-			except:
-				pass
-
-		await ctx.message.delete()
-
-		with open(f'cogs/data/msgs/{channel}.json', 'w') as f:
-			f.write(json.dumps(self.bot.info['msgs'][channel], sort_keys=True, indent=4))
 
 	async def embedwiki(self, ctx, wiki):
 		embed = discord.Embed()
@@ -137,7 +112,7 @@ class CommandCog:
 		await ctx.send(content=None, embed=embed)
 
 	@commands.command(name='8')
-	async def ball(self, ctx):
+	async def ball(self, ctx, question):
 		"""Classic Magic 8 Ball"""
 		responses = (
 			'It is certain', # yes
@@ -164,6 +139,36 @@ class CommandCog:
 		await ctx.trigger_typing()
 		await asyncio.sleep(3)
 		await ctx.send(random.choice(responses))
+
+	@commands.command(hidden=True)
+	async def vote(self, ctx, question: str, time: int, *choices):
+		return
+		if len(choices) > 9:
+			return await ctx.send('Too many choices!')
+
+		await ctx.message.delete()
+
+		if time > 60:
+			time = 60
+		elif time < 5:
+			time = 5
+
+		msg_content = f'{ctx.message.author.mention} has just started a vote!\n\n***{question}***\n\n'
+
+		for i, choice in enumerate(choices):
+			msg_content += f'**{i + 1}** - {choice}\n'
+
+		msg_content += f'\nVote ends in {time} seconds. Vote with reactions below!'
+
+		msg = await ctx.send(msg_content)
+
+		for i, choice in enumerate(choices):
+			await msg.add_reaction(f'{i + 1}\u20e3')
+
+		await asyncio.sleep(time)
+
+		print('fin')
+		print(msg.reactions)
 
 	@commands.command()
 	async def choose(self, ctx, *choices):

@@ -25,7 +25,7 @@ class AutoHotkeyCog:
 
 	# make sure we're in the ahk guild
 	async def __local_check(self, ctx):
-		return ctx.guild.id in self.guilds
+		return ctx.guild.id in (115993023636176902, 367975590143459328, 317632261799411712)
 
 	async def on_message(self, message):
 		if message.author.id == self.bot.user.id:
@@ -99,6 +99,23 @@ class AutoHotkeyCog:
 
 		await ctx.send(embed=embed)
 
+	async def on_reaction_add(self, reaction, user):
+		if user == self.bot.user:
+			return
+
+		ctx = await self.bot.get_context(reaction.message)
+
+		if not await self.__local_check(ctx):
+			return
+
+		if not '```AutoIt\n' in ctx.message.content or not '```*Paste by <@' in ctx.message.content:
+			return
+
+		author = ctx.message.mentions[0]
+
+		if author == user or user.permissions_in(reaction.message.channel).manage_messages:
+			await reaction.message.delete()
+
 	@commands.command(name='helper+')
 	async def helperplus(self, ctx):
 		"""Add yourself to the Helper role."""
@@ -129,6 +146,10 @@ class AutoHotkeyCog:
 		if embed:
 			await ctx.send(embed=embed)
 
+	@commands.command()
+	async def test(self, ctx):
+		msg = await ctx.send('asdf')
+
 	@commands.command(aliases=['hl', 'h1'])
 	async def highlight(self, ctx, *, code):
 		"""Highlights some AutoHotkey code."""
@@ -141,7 +162,9 @@ class AutoHotkeyCog:
 		if ctx.invoked_with:
 			await ctx.message.delete()
 
-		await ctx.send('```AutoIt\n{}\n```*{}, type `.del` to delete this message.*'.format(code, ('Paste by {}' if ctx.invoked_with else "Paste from {}'s link").format(ctx.message.author.mention)))
+		msg = await ctx.send('```AutoIt\n{}\n```*{}, click the cross to delete.*'.format(code, ('Paste by {}' if ctx.invoked_with else "Paste from {}'s link").format(ctx.message.author.mention)))
+
+		await msg.add_reaction('\U0000274C')
 
 	@commands.command(aliases=['download', 'update'])
 	async def version(self, ctx):
@@ -188,17 +211,13 @@ class AutoHotkeyCog:
 	async def geekdude(self, ctx):
 		await ctx.send('Everyone does a stupid sometimes.')
 
-	@commands.command(aliases=['p'], hidden=True)
+	@commands.command(aliases=['code', 'p', 'c'], hidden=True)
 	async def paste(self, ctx):
-		await ctx.send('Paste your code at http://p.ahkscript.org/')
-
-	@commands.command(aliases=['c'], hidden=True)
-	async def code(self, ctx):
-		await ctx.send('Use the highlight command to paste code: `.hl *paste code here*`')
+		await ctx.send('To paste code snippets directly into the chat, use the highlight command:\n```.hl *paste code here*```If you have a larger script you want to share, paste it to the AutoHotkey pastebin instead:\nhttp://p.ahkscript.org/')
 
 	@commands.command(aliases=['a'], hidden=True)
 	async def ask(self, ctx):
-		await ctx.send("Just ask your question, don't ask if you can ask!")
+		await ctx.send("Just ask your question, don't ask whether you *can* ask!")
 
 	@commands.command(aliases=['bow'], hidden=True)
 	async def mae(self, ctx):
@@ -216,6 +235,10 @@ class AutoHotkeyCog:
 	@commands.command(aliases=['tut'], hidden=True)
 	async def tutorial(self, ctx):
 		await ctx.send(embed=discord.Embed(title='Tutorial by tidbit', description='https://autohotkey.com/docs/Tutorial.htm'))
+
+	@commands.command()
+	async def tias(self, ctx):
+		await ctx.send('http://i.imgur.com/6A6tcD0.png')
 
 
 def setup(bot):

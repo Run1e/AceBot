@@ -3,7 +3,7 @@ from bs4 import BeautifulSoup
 import urllib.parse
 
 def search(query):
-	req = requests.get('http://google.com/search?hl=en&safe=off&q={}'.format(query))
+	req = requests.get('http://google.com/search?hl=en&safe=on&q={}'.format(query))
 	soup = BeautifulSoup(req.text, 'html.parser')
 	url = soup.find_all('div')
 	url = [x for x in url if x.find('h3')]

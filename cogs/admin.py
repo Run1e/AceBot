@@ -101,6 +101,7 @@ class AdminCog:
 	@commands.command(aliases=['g'])
 	async def search(self, ctx, *, query):
 		"""Search Google."""
+		await ctx.trigger_typing()
 		result = search(query)
 		if not result:
 			await ctx.send('No results.')
