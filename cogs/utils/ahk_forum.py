@@ -72,12 +72,13 @@ def getThread(url):
 				bool = False
 			lst[i]["content"] = re.sub("\n+", "\n", lst[i]["content"])
 			i += 1
-			
-	desc = re.sub("\n+", "\n", res)
-	
-	return {"title": title, "user": {"name": username, "url": userUrl, "icon": icon}, 
-		 "image": image, "description": desc, "content": QOS(lst, 2000 - len(desc))}
 
+	desc = re.sub("\n+", "\n", res)
+
+	print(res)
+
+	return {"title": title, "user": {"name": username, "url": userUrl, "icon": icon},
+		 "image": image, "description": desc}
 
 def QOS(content, maxChars = 5000):
 	for i in content:
@@ -91,7 +92,7 @@ def QOS(content, maxChars = 5000):
 		if(len(i["content"]) < 100 or not len(i["head"]) > 1):
 			i["Q"] = 0
 			
-		if(i["content"].count("\n") and len(i["content"]) / i["content"].count("\n") < 50):
+		if(i["content"].count("\n") and len(i["content"]) / i["content"].count("\n") < 20):
 			i["Q"] = 0
 	
 	qContent = []

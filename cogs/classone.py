@@ -4,9 +4,10 @@ from discord.ext import commands
 class ClassOneCog:
 	def __init__(self, bot):
 		self.bot = bot
+		self.guilds = (372163679010947074,)
 
 	async def __local_check(self, ctx):
-		return ctx.guild.id == 372163679010947074
+		return ctx.guild.id in self.guilds
 
 	@commands.command(name='beta+')
 	async def betaplus(self, ctx):

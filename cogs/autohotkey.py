@@ -13,9 +13,7 @@ class AutoHotkeyCog:
 
 	def __init__(self, bot):
 		self.bot = bot
-
-		with open('cogs/data/pastes.json', 'r') as f:
-			self.pastes = json.loads(f.read())
+		self.guilds = (115993023636176902, 367975590143459328, 317632261799411712)
 
 		# list of commands to ignore
 		self.ignore_cmds = (
@@ -27,7 +25,7 @@ class AutoHotkeyCog:
 
 	# make sure we're in the ahk guild
 	async def __local_check(self, ctx):
-		return ctx.guild.id == 115993023636176902
+		return ctx.guild.id in self.guilds
 
 	async def on_message(self, message):
 		if message.author.id == self.bot.user.id:
@@ -88,7 +86,7 @@ class AutoHotkeyCog:
 	async def forumlink(self, ctx, url):
 		post = Preview.getThread(url)
 
-		embed = discord.Embed(title=post["title"], description=post["description"], color=0x00ff00, url=url)
+		embed = discord.Embed(title=post["title"], description=post["description"], url=url)
 
 		if (post["image"]):
 			embed.set_image(url=post["image"] if post["image"][0] != "." else "https://autohotkey.com/boards" + post["image"][1:post["image"].find("&") + 1])
@@ -139,43 +137,11 @@ class AutoHotkeyCog:
 		if '```'  in code:
 			return
 
-		# if it was invoked (by a user) we deleted the source message
+		# if it was invoked (by a user) we delete the source message
 		if ctx.invoked_with:
 			await ctx.message.delete()
 
-		author = str(ctx.author.id)
-
-		# make sure the user has a key in the pastes object
-		try:
-			self.pastes[author]
-		except:
-			self.pastes[author] = []
-
-		msg = await ctx.send('```AutoIt\n{}\n```*{}, type `.del` to delete this message.*'.format(code, ('Paste by {}' if ctx.invoked_with else "Paste from {}'s link").format(ctx.message.author.mention)))
-
-		if len(self.pastes[author]) > 4:
-			self.pastes[author].remove(self.pastes[author][0])
-
-		# append the id
-		self.pastes[author].append(msg.id)
-
-		with open('cogs/data/pastes.json', 'w') as f:
-			f.write(json.dumps(self.pastes, sort_keys=True, indent=4))
-
-	@commands.command(aliases=['del'], hidden=True)
-	async def delete(self, ctx):
-		author = str(ctx.author.id)
-
-		if (author not in self.pastes) or not len(self.pastes[author]):
-			return await ctx.send('No paste to delete.')
-
-		id = self.pastes[author].pop()
-		message = await ctx.get_message(id)
-		await message.delete()
-		await ctx.message.delete()
-
-		with open('cogs/data/pastes.json', 'w') as f:
-			f.write(json.dumps(self.pastes, sort_keys=True, indent=4))
+		await ctx.send('```AutoIt\n{}\n```*{}, type `.del` to delete this message.*'.format(code, ('Paste by {}' if ctx.invoked_with else "Paste from {}'s link").format(ctx.message.author.mention)))
 
 	@commands.command(aliases=['download', 'update'])
 	async def version(self, ctx):

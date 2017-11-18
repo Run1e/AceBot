@@ -37,11 +37,19 @@ class CommandCog:
 			self.reps = json.loads(f.read())
 
 	async def on_command_error(self, ctx, error):
-		for check in [commands.CommandNotFound, commands.CheckFailure, commands.CommandError]:
+		# errors to ignore
+		for check in (commands.CommandNotFound, commands.CheckFailure):
+			if isinstance(error, check):
+				return
+
+		# errors to print locally
+		for check in (commands.CommandError,):
 			if isinstance(error, check):
 				print(error)
 				return
-		await ctx.send(f'`{error}`')
+
+		# other error? print to channel
+		await ctx.send(f'```{error}```')
 
 	async def on_message(self, message):
 		if message.author.id == self.bot.user.id:
@@ -50,6 +58,31 @@ class CommandCog:
 		if message.content in self.replies:
 			ctx = await self.bot.get_context(message)
 			await ctx.send(self.replies[message.content])
+
+	@commands.command(aliases=['del'], hidden=True)
+	async def delete(self, ctx):
+		author = str(ctx.author.id)
+		channel = str(ctx.message.channel.id)
+
+		if (channel not in self.bot.info['msgs']) or (author not in self.bot.info['msgs'][channel]) or not len(self.bot.info['msgs'][channel][author]):
+			return await ctx.send('Nothing to delete.')
+
+		ids = self.bot.info['msgs'][channel][author].pop()
+
+		if not len(self.bot.info['msgs'][channel][author]):
+			self.bot.info['msgs'][channel].pop(author)
+
+		for id in ids:
+			try:
+				message = await ctx.get_message(id)
+				await message.delete()
+			except:
+				pass
+
+		await ctx.message.delete()
+
+		with open(f'cogs/data/msgs/{channel}.json', 'w') as f:
+			f.write(json.dumps(self.bot.info['msgs'][channel], sort_keys=True, indent=4))
 
 	async def embedwiki(self, ctx, wiki):
 		embed = discord.Embed()
