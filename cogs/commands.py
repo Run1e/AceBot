@@ -259,6 +259,10 @@ class CommandCog:
 		await ctx.send(random.choice(self.splitfacts))
 
 	@commands.command(hidden=True)
+	async def info(self, ctx):
+		await ctx.send(f"```Type .help for help.\n\nWritten by: RUNIE 🔥 #9646\nContributors: Cap'n Odin #8812 and GeekDude #2532\n\nFramework: discord.py {discord.__version__}\n```")
+
+	@commands.command(hidden=True)
 	async def uptime(self, ctx):
 		sec = time.time() - self.time
 		seconds = math.floor(sec % 60)

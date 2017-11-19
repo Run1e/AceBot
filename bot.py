@@ -4,7 +4,9 @@ from discord.ext import commands
 import os
 import json
 
-bot = commands.Bot(command_prefix=('!', '.'), description="RUNIE's bot")
+bot = commands.Bot(command_prefix='.', description="RUNIE's bot")
+
+bot.owner_id = 265644569784221696
 
 bot.info = {}
 

@@ -15,14 +15,6 @@ class AutoHotkeyCog:
 		self.bot = bot
 		self.guilds = (115993023636176902, 367975590143459328, 317632261799411712)
 
-		# list of commands to ignore
-		self.ignore_cmds = (
-			'clear', 'mute', 'levels', 'rank', 'mute',
-			'unmute', 'manga', 'pokemon', 'urban', 'imgur',
-			'anime', 'twitch', 'youtube'
-		)
-
-
 	# make sure we're in the ahk guild
 	async def __local_check(self, ctx):
 		return ctx.guild.id in (115993023636176902, 367975590143459328, 317632261799411712)
@@ -58,15 +50,8 @@ class AutoHotkeyCog:
 			return
 
 		# we're listening to CommandNotFound errors, so if the error is not one of those, return
-		if not isinstance(error, commands.CommandNotFound):
-			return
-
-		# if it's a mee6 command, ignore it (don't docs search it)
-		if ctx.prefix == '!' and ctx.invoked_with in self.ignore_cmds:
-			return
-
-		# if none of the above, search the documentation with the input
-		await ctx.invoke(self.docs, search=ctx.message.content[1:])
+		if isinstance(error, commands.CommandNotFound):
+			await ctx.invoke(self.docs, search=ctx.message.content[1:])
 
 	async def pastelink(self, ctx, link):
 		link = link.replace("?p=", "?r=")
@@ -145,10 +130,6 @@ class AutoHotkeyCog:
 				embed.url = result['url']
 		if embed:
 			await ctx.send(embed=embed)
-
-	@commands.command()
-	async def test(self, ctx):
-		msg = await ctx.send('asdf')
 
 	@commands.command(aliases=['hl', 'h1'])
 	async def highlight(self, ctx, *, code):
@@ -236,9 +217,13 @@ class AutoHotkeyCog:
 	async def tutorial(self, ctx):
 		await ctx.send(embed=discord.Embed(title='Tutorial by tidbit', description='https://autohotkey.com/docs/Tutorial.htm'))
 
-	@commands.command()
+	@commands.command(hidden=True)
 	async def tias(self, ctx):
 		await ctx.send('http://i.imgur.com/6A6tcD0.png')
+
+	@commands.command(hidden=True)
+	async def test(self, ctx):
+		msg = await ctx.send('asdf')
 
 
 def setup(bot):
