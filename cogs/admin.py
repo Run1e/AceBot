@@ -62,7 +62,7 @@ class Admin:
 
 		self.bot.info['ignore_users'].remove(user)
 
-		with open('cogs/data/ignore.json', 'w') as f:
+		with open('lib/ignore.json', 'w') as f:
 			f.write(json.dumps(self.bot.info['ignore_users'], sort_keys=True, indent=4))
 
 		await ctx.send('User removed from ignore list.')
@@ -80,7 +80,7 @@ class Admin:
 
 		self.bot.info['ignore_users'].append(user)
 
-		with open('cogs/data/ignore.json', 'w') as f:
+		with open('lib/ignore.json', 'w') as f:
 			f.write(json.dumps(self.bot.info['ignore_users'], sort_keys=True, indent=4))
 
 		await ctx.send('User ignored.')

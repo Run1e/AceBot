@@ -266,7 +266,7 @@ class Commands:
 		self.reps[id] += 1
 
 		# save the new json
-		open('cogs/data/rep.json', 'w').write(json.dumps(self.reps))
+		open('lib/rep.json', 'w').write(json.dumps(self.reps))
 
 		if id == str(self.bot.user.id):
 			await ctx.send(f'Thanks {ctx.author.mention}! I now have {self.reps[id]} rep points! :blush: ')
