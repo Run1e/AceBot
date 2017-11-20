@@ -7,8 +7,10 @@ https://discord.gg/g5MagEr
 
 However it also runs in several other servers of my choosing. If you want the bot run in your server, you can contact me and ask nicely, or run your own instance of the bot.
 
-![Code highlighting](https://i.imgur.com/y5zwdVg.gifv)
-![Documentation search](https://i.imgur.com/3LnGv6t.gifv)
+![Code highlighting](https://i.imgur.com/y5zwdVg.gif)
+
+![Documentation search](https://i.imgur.com/3LnGv6t.gif)
+
 ## Credits
 
 Avatar artwork: Vinter Borge
