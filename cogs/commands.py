@@ -283,7 +283,7 @@ class Commands:
 
 	@commands.command(hidden=True)
 	async def info(self, ctx):
-		await ctx.send(f'{self.bot.description}\n\nFramework: discord.py {discord.__version__}\nSource: https://github.com/Run1e/A_AhkBot')
+		await ctx.send(f'```{self.bot.description}\n\nFramework: discord.py {discord.__version__}\nSource: https://github.com/Run1e/Acebot```')
 
 	@commands.command(hidden=True)
 	async def uptime(self, ctx):
@@ -304,7 +304,7 @@ class Commands:
 
 	@commands.command(hidden=True)
 	async def source(self, ctx):
-		await ctx.send('https://github.com/Run1e/A_AhkBot')
+		await ctx.send('https://github.com/Run1e/Acebot')
 
 	@commands.command()
 	async def rep(self, ctx):
