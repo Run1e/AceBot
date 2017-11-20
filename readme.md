@@ -1,7 +1,3 @@
-# ![Avatar](https://i.imgur.com/yI5rkNZ.png) A.C.E. - Autonomous Command Executor
+# ![Avatar](https://i.imgur.com/hi93dSO.png) A.C.E. - Autonomous Command Executor
 
-
-![Avatar](https://i.imgur.com/yI5rkNZ.png)
-
-Official bot of the AutoHotkey discord server.
-
+A personal Discord bot.
