@@ -19,7 +19,16 @@ class AutoHotkey:
 	async def __local_check(self, ctx):
 		return ctx.guild.id in (115993023636176902, 317632261799411712, 367975590143459328, 372163679010947074, 380066879919751179) or await self.bot.is_owner(ctx.author)
 
+	async def on_member_join(self, member):
+		if not member.guild.id == 115993023636176902:
+			return
+
+		channel = self.bot.get_channel(339511161672302593)
+		await channel.send(f'Hi {member.mention}! Welcome to the official ***AutoHotkey*** server!\nPlease make sure you read <#304708649748660224> before chatting!')
+
+
 	async def on_message(self, message):
+		# ignore bots and messages that start with a prefix
 		if message.author.bot or message.content.startswith(tuple(await self.bot.get_prefix(message))):
 			return
 
@@ -27,12 +36,13 @@ class AutoHotkey:
 		if not await self.__local_check(ctx):
 			return
 
-		# see if we can find any links
+		# find links in message
 		try:
 			links = re.findall('http[s]?://(?:[a-zA-Z]|[0-9]|[$-_@.&+#]|[!*\(\),]|(?:%[0-9a-fA-F][0-9a-fA-F]))+', message.content)
 		except:
 			return
 
+		# loop through links and send previews if applicable
 		for index, link in enumerate(links):
 			if (index > 1):
 				break
@@ -42,7 +52,6 @@ class AutoHotkey:
 				await self.forumlink(ctx, link)
 
 	async def on_command_error(self, ctx, error):
-		# check we're in the ahk server
 		if not await self.__local_check(ctx):
 			return
 
@@ -128,7 +137,7 @@ class AutoHotkey:
 		if embed:
 			await ctx.send(embed=embed)
 
-	@commands.command(aliases=['hl', 'h1'])
+	@commands.command(aliases=['hl'])
 	async def highlight(self, ctx, *, code):
 		"""Highlights some AutoHotkey code."""
 

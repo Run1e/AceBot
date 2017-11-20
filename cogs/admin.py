@@ -15,6 +15,13 @@ class Admin:
 	async def __local_check(self, ctx):
 		return await self.bot.is_owner(ctx.author)
 
+	async def on_command_error(self, ctx, error):
+		if not isinstance(ctx.cog, self.__class__):
+			return
+
+		if isinstance(error, commands.CheckFailure):
+			return await ctx.send('Command only avaliable for bot owner.')
+
 	@commands.command()
 	async def game(self, ctx, *, presence=None):
 		"""Change bot presence."""

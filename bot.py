@@ -37,6 +37,32 @@ async def on_ready():
 	print(f'\nConnected to {len(bot.guilds)} servers:')
 	print('\n'.join(f'{guild.name} - {guild.id}' for guild in bot.guilds))
 
+@bot.event
+async def on_command_error(ctx, error):
+	if isinstance(error, commands.CommandNotFound):
+		return
+
+	if isinstance(error, commands.CommandInvokeError):
+		return print(error)
+
+	errors = {
+		commands.DisabledCommand: 'Command has been disabled.',
+		commands.MissingPermissions: 'Invoker is missing permissions to run this command.',
+		commands.BotMissingPermissions: 'Bot is missing permissions to run this command.'
+	}
+
+	for type, text in errors.items():
+		if isinstance(error, type):
+			return await ctx.send(errors[type])
+
+	# argument error
+	if isinstance(error, commands.UserInputError):
+		bot.formatter.context = ctx
+		bot.formatter.command = ctx.command
+		return await ctx.send(f'Arguments provided are malformed.\n```{bot.formatter.get_command_signature()}```')
+
+	await ctx.send(f'An error occured in `{ctx.command.name}` invoked by {ctx.message.author}:\n```{error}```')
+	#traceback.print_exception(type(exception), exception, exception.__traceback__, file=sys.stderr)
 
 # blacklist check
 @bot.check_once

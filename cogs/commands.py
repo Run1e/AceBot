@@ -40,32 +40,6 @@ class Commands:
 		with open('lib/rep.json', 'r') as f:
 			self.reps = json.loads(f.read())
 
-	async def on_command_error(self, ctx, error):
-		if isinstance(error, (commands.CommandNotFound,)):
-			return
-
-		if isinstance(error, commands.CheckFailure) and ctx.command.cog_name == 'Admin':
-			return await ctx.send('Commands only avaliable for bot owner.')
-		if isinstance(error, commands.DisabledCommand):
-			return await ctx.send('Command has been disabled.')
-		if isinstance(error, commands.MissingPermissions):
-			return await ctx.send('Invoker is missing permissions to run this command.')
-		if isinstance(error, commands.BotMissingPermissions):
-			return await ctx.send('Bot is missing permissions to run this command.')
-
-		# standard error message
-		if isinstance(error, (discord.Forbidden,)):
-			return await ctx.send(f'An error occured in `{ctx.command.name}` invoked by {ctx.message.author}:\n```{error}```')
-
-		# argument error
-		if isinstance(error, (commands.MissingRequiredArgument, commands.BadArgument, commands.TooManyArguments)):
-			self.bot.formatter.context = ctx
-			self.bot.formatter.command = ctx.command
-			return await ctx.send(f'Arguments provided are malformed.\n```{self.bot.formatter.get_command_signature()}```')
-
-		print(f'\n\n{error}\n')
-		#traceback.print_exception(type(exception), exception, exception.__traceback__, file=sys.stderr)
-
 	async def on_message(self, message):
 		if message.author.bot:
 			return
@@ -254,6 +228,51 @@ class Commands:
 		"""Flip a coin!"""
 		await ctx.send(random.choice(['Heads', 'Tails']) + '!')
 
+	@commands.command()
+	async def rep(self, ctx):
+		"""Give someone some reputation!"""
+
+		# see if anyone was mentioned, if not just return how many points the author has
+		try:
+			mention = ctx.message.mentions[0]
+		except:
+			return await ctx.send(f'{ctx.author.mention} has a reputation of {(self.reps[str(ctx.author.id)] if str(ctx.author.id) in self.reps else 0)}!')
+
+		# get the id
+		id = str(mention.id)
+
+		# make sure people can't rep themselves
+		if id == ctx.author.id:
+			return await ctx.send(":japanese_goblin:")
+
+		# make sure a reptime object exists for the author
+		if not ctx.author.id in self.reptime:
+			self.reptime[ctx.author.id] = {}
+
+		# make sure the repee has an entry, and if it already does, make sure it's outside of the reptime
+		if not id in self.reptime[ctx.author.id]:
+			self.reptime[ctx.author.id][id] = time.time()
+		else:
+			if time.time() - self.reptime[ctx.author.id][id] < 90:
+				return await ctx.send("Woah! You shouldn't be repping *that* fast.")
+			else:
+				self.reptime[ctx.author.id][id] = time.time()
+
+		# make sure the repee has a key
+		if not id in self.reps:
+			self.reps[id] = 0
+
+		# increment
+		self.reps[id] += 1
+
+		# save the new json
+		open('cogs/data/rep.json', 'w').write(json.dumps(self.reps))
+
+		if id == str(self.bot.user.id):
+			await ctx.send(f'Thanks {ctx.author.mention}! I now have {self.reps[id]} rep points! :blush: ')
+		else:
+			await ctx.send(f'{mention.mention} now has {self.reps[id]} rep points!')
+
 	@commands.command(aliases=['w'])
 	async def wolfram(self, ctx, *, query):
 		"""Queries wolfram."""
@@ -309,51 +328,6 @@ class Commands:
 	@commands.command(hidden=True)
 	async def demo(self, ctx):
 		await ctx.send('https://i.imgur.com/Iu04Jro.gifv')
-
-	@commands.command()
-	async def rep(self, ctx):
-		"""Give someone some reputation!"""
-
-		# see if anyone was mentioned, if not just return how many points the author has
-		try:
-			mention = ctx.message.mentions[0]
-		except:
-			return await ctx.send(f'{ctx.author.mention} has a reputation of {(self.reps[str(ctx.author.id)] if str(ctx.author.id) in self.reps else 0)}!')
-
-		# get the id
-		id = str(mention.id)
-
-		# make sure people can't rep themselves
-		if id == ctx.author.id:
-			return await ctx.send(":japanese_goblin:")
-
-		# make sure a reptime object exists for the author
-		if not ctx.author.id in self.reptime:
-			self.reptime[ctx.author.id] = {}
-
-		# make sure the repee has an entry, and if it already does, make sure it's outside of the reptime
-		if not id in self.reptime[ctx.author.id]:
-			self.reptime[ctx.author.id][id] = time.time()
-		else:
-			if time.time() - self.reptime[ctx.author.id][id] < 90:
-				return await ctx.send("Woah! You shouldn't be repping *that* fast.")
-			else:
-				self.reptime[ctx.author.id][id] = time.time()
-
-		# make sure the repee has a key
-		if not id in self.reps:
-			self.reps[id] = 0
-
-		# increment
-		self.reps[id] += 1
-
-		# save the new json
-		open('cogs/data/rep.json', 'w').write(json.dumps(self.reps))
-
-		if id == str(self.bot.user.id):
-			await ctx.send(f'Thanks {ctx.author.mention}! I now have {self.reps[id]} rep points! :blush: ')
-		else:
-			await ctx.send(f'{mention.mention} now has {self.reps[id]} rep points!')
 
 def setup(bot):
 	bot.add_cog(Commands(bot))
