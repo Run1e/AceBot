@@ -1,7 +1,6 @@
 fuzzywuzzy==0.15.1
-requests==2.18.4
 sympy==1.1.1
-discord.py==1.0.0a1397+89bbbec
+requests==2.18.4
 wikipedia==1.4.0
+discord.py==1.0.0a1397+89bbbec
 beautifulsoup4==4.6.0
-discord==0.0.2
