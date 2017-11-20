@@ -16,10 +16,3 @@ However it also runs in several other servers of my choosing. If you want the bo
 Avatar artwork: Vinter Borge
 
 Contributors: Cap'n Odin #8812 and GeekDude #2532
-
-
-wingettitle
-gui
-format
-persistent
-A_AhkVersion
