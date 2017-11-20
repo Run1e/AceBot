@@ -14,7 +14,7 @@ bot.info = {}
 bot.info['nick'] = 'Ace'
 bot.info['status'] = '.help for commands'
 
-with open('cogs/data/ignore.json', 'r') as f:
+with open('lib/ignore.json', 'r') as f:
 	bot.info['ignore_users'] = json.loads(f.read())
 
 extensions = (

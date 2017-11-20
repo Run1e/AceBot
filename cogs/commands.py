@@ -37,7 +37,7 @@ class Commands:
 			self.weather_key = f.read()
 		with open('lib/oxford.txt', 'r') as f:
 			self.oxford = f.read().splitlines()
-		with open('cogs/data/rep.json', 'r') as f:
+		with open('lib/rep.json', 'r') as f:
 			self.reps = json.loads(f.read())
 
 	async def on_command_error(self, ctx, error):
@@ -283,7 +283,7 @@ class Commands:
 
 	@commands.command(hidden=True)
 	async def info(self, ctx):
-		await ctx.send(f'```{self.bot.description}\n\nFramework: discord.py {discord.__version__}\nSource: https://github.com/Run1e/Acebot```')
+		await ctx.send(f'```{self.bot.description}\n\nFramework: discord.py {discord.__version__}\nSource: https://github.com/Run1e/AceBot```')
 
 	@commands.command(hidden=True)
 	async def uptime(self, ctx):
@@ -304,7 +304,11 @@ class Commands:
 
 	@commands.command(hidden=True)
 	async def source(self, ctx):
-		await ctx.send('https://github.com/Run1e/Acebot')
+		await ctx.send('https://github.com/Run1e/AceBot')
+
+	@commands.command(hidden=True)
+	async def demo(self, ctx):
+		await ctx.send('https://i.imgur.com/Iu04Jro.gifv')
 
 	@commands.command()
 	async def rep(self, ctx):
