@@ -53,7 +53,7 @@ class Admin:
 	async def notice(self, ctx):
 		"""Remove user for ignore list."""
 		try:
-			user =  ctx.message.mentions[0].id
+			user = ctx.message.mentions[0].id
 		except:
 			return await ctx.send('No user specified.')
 
