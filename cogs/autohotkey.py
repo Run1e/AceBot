@@ -56,7 +56,7 @@ class AutoHotkey:
 			return
 
 		# command not found? docs search it. only if message string is not *only* dots though
-		if isinstance(error, commands.CommandNotFound) and not re.search('^\.*$', ctx.message.content):
+		if isinstance(error, commands.CommandNotFound) and not re.search('^\.{2}', ctx.message.content):
 			await ctx.invoke(self.docs, search=ctx.message.content[1:])
 
 	async def pastelink(self, ctx, link):
