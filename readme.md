@@ -2,5 +2,8 @@
 
 A personal Discord bot I run.
 
+## Credits
+
 Avatar artwork: Vinter Borge
+
 Contributors: Cap'n Odin #8812 and GeekDude #2532
