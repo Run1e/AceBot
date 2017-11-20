@@ -10,7 +10,7 @@ def shorten(text, max_char, max_newline):
 		shortened = True
 
 	if shortened:
-		text = text[0:len(text) - 3] + '...'
+		text = text[0:len(text) - 4] + ' ...'
 
 	return text
 

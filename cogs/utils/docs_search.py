@@ -1,4 +1,3 @@
-import discord
 import json
 from fuzzywuzzy import fuzz, process
 

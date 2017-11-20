@@ -1,11 +1,7 @@
 import discord
 from discord.ext import commands
-from discord.ext.commands.formatter import HelpFormatter
 
 import json
-
-# fix command error replies
-# fix forum preview
 
 bot = commands.Bot(command_prefix='.', description="RUNIE's bot")
 
@@ -55,9 +51,9 @@ async def before_any_command(ctx):
 
 # overwrite discord.Embed with a monkey patched class that automatically sets the color attribute
 class Embed(discord.Embed):
-    def __init__(self, color=0x78A064, **attrs):
-        attrs['color'] = color
-        super().__init__(**attrs)
+	def __init__(self, color=0x78A064, **attrs):
+		attrs['color'] = color
+		super().__init__(**attrs)
 
 discord.Embed = Embed
 

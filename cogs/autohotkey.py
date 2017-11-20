@@ -17,7 +17,7 @@ class AutoHotkey:
 
 	# make sure we're in the ahk guild
 	async def __local_check(self, ctx):
-		return ctx.guild.id in (115993023636176902, 317632261799411712, 367975590143459328, 372163679010947074, 380066879919751179)
+		return ctx.guild.id in (115993023636176902, 317632261799411712, 367975590143459328, 372163679010947074, 380066879919751179) or await self.bot.is_owner(ctx.author)
 
 	async def on_message(self, message):
 		if message.author.bot or message.content.startswith(tuple(await self.bot.get_prefix(message))):
@@ -29,15 +29,17 @@ class AutoHotkey:
 
 		# see if we can find any links
 		try:
-			link = re.findall('http[s]?://(?:[a-zA-Z]|[0-9]|[$-_@.&+#]|[!*\(\),]|(?:%[0-9a-fA-F][0-9a-fA-F]))+', message.content)[0]
+			links = re.findall('http[s]?://(?:[a-zA-Z]|[0-9]|[$-_@.&+#]|[!*\(\),]|(?:%[0-9a-fA-F][0-9a-fA-F]))+', message.content)
 		except:
 			return
 
-		# if so, post a preview of the forum or paste link
-		if link.startswith("http://p.ahkscript.org/?"):
-			return await self.pastelink(ctx, link)
-		if link.startswith("https://autohotkey.com/boards/viewtopic.php?"):
-			return await self.forumlink(ctx, link)
+		for index, link in enumerate(links):
+			if (index > 1):
+				break
+			if link.startswith("http://p.ahkscript.org/?"):
+				await self.pastelink(ctx, link)
+			if link.startswith("https://autohotkey.com/boards/viewtopic.php?"):
+				await self.forumlink(ctx, link)
 
 	async def on_command_error(self, ctx, error):
 		# check we're in the ahk server
@@ -66,7 +68,7 @@ class AutoHotkey:
 
 		embed = discord.Embed(title=post["title"], url=url)
 
-		embed.description = shorten(post['description'], 2048, 16)
+		embed.description = shorten(post['description'], 2048, 12)
 
 		if post["image"]:
 			embed.set_image(url=post["image"] if post["image"][0] != "." else "https://autohotkey.com/boards" + post["image"][1:post["image"].find("&") + 1])
@@ -79,7 +81,7 @@ class AutoHotkey:
 		await ctx.send(embed=embed)
 
 	async def on_reaction_add(self, reaction, user):
-		if user.bot or not reaction.emoji == '\U0000274C':
+		if user.bot or not reaction.emoji == '\U0000274C' or not reaction.message.author == self.bot.user:
 			return
 
 		ctx = await self.bot.get_context(reaction.message)
@@ -210,7 +212,7 @@ class AutoHotkey:
 
 	@commands.command(aliases=['tut'], hidden=True)
 	async def tutorial(self, ctx):
-		await ctx.send(embed=discord.Embed(title='Tutorial by tidbit', description='https://autohotkey.com/docs/Tutorial.htm'))
+		await ctx.send('Tutorial by tidbit: https://autohotkey.com/docs/Tutorial.htm')
 
 	@commands.command(hidden=True)
 	async def tias(self, ctx):
@@ -218,7 +220,8 @@ class AutoHotkey:
 
 	@commands.command(hidden=True)
 	async def test(self, ctx):
-		await ctx.send(await self.bot.formatter.format())
+		await ctx.send('[vibrancer](http://vibrancer.com/)')
+		await ctx.send(embed=discord.Embed(description='[vibrancer](http://vibrancer.com/)'))
 
 
 def setup(bot):
