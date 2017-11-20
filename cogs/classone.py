@@ -1,7 +1,7 @@
 import discord
 from discord.ext import commands
 
-class ClassOneCog:
+class ClassOne:
 	def __init__(self, bot):
 		self.bot = bot
 		self.guilds = (372163679010947074,)
@@ -24,4 +24,4 @@ class ClassOneCog:
 		await ctx.send('Removed from Beta Access.')
 
 def setup(bot):
-	bot.add_cog(ClassOneCog(bot))
+	bot.add_cog(ClassOne(bot))

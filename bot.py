@@ -1,16 +1,21 @@
 import discord
 from discord.ext import commands
+from discord.ext.commands.formatter import HelpFormatter
 
-import os
 import json
 
+# fix command error replies
+# fix forum preview
+
 bot = commands.Bot(command_prefix='.', description="RUNIE's bot")
+
+bot.description = f"A.C.E. - Autonomous Command Executor\n\nWritten by: RUNIE 🔥 #9646\nAvatar artwork: Vinter Borge\nContributors: Cap'n Odin #8812 and GeekDude #2532"
 
 bot.owner_id = 265644569784221696
 
 bot.info = {}
 
-bot.info['nick'] = 'Golbot'
+bot.info['nick'] = 'Ace'
 bot.info['status'] = '.help for commands'
 
 with open('cogs/data/ignore.json', 'r') as f:
@@ -35,6 +40,7 @@ async def on_ready():
 
 	print(f'\nConnected to {len(bot.guilds)} servers:')
 	print('\n'.join(f'{guild.name} - {guild.id}' for guild in bot.guilds))
+
 
 # blacklist check
 @bot.check_once

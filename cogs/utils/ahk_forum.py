@@ -4,25 +4,27 @@ import requests, re
 
 from bs4 import BeautifulSoup, element
 
+
 def getThread(url):
 	s = requests.Session()
-	
+
 	tmpurl = re.sub("&start=\d+$", "", url)
-	
+
 	response = s.get(tmpurl)
-	
+
 	html = BeautifulSoup(response.text, "lxml")
-	
+
 	id = re.search("(?<=#)p\d+$", url)
-	
-	if(id != None):
+
+	if (id != None):
 		post = html.find("div", id=id.group(0))
 	else:
 		post = html.find("div", class_="post")
 
 	user = post.find("dl", class_="postprofile")
 
-	username = user.find("a", class_="username") if user.find("a", class_="username") else user.find("a", class_="username-coloured")
+	username = user.find("a", class_="username") if user.find("a", class_="username") else user.find("a",
+																									 class_="username-coloured")
 
 	icon = user.find("img", class_="avatar").get("src") if user.find("img", class_="avatar") else ""
 
@@ -36,76 +38,40 @@ def getThread(url):
 
 	image = content.find("img", class_="postimage")
 
-	if(image):
+	if (image):
 		image = image.get("src")
 
 	for_all(content.find_all("div", class_="codebox"), lambda code: code.clear())
 
 	for_all(content.find_all("blockquote"), lambda code, post=content: code.insert_after(post.new_tag("br")))
-	
+
 	for_all(content.find_all("li"), lambda code, post=content: code.insert_before(post.new_tag("br")))
 
 	toMarkdown(content)
 
 	res = ""
 	for child in content.descendants:
-		if (is_Header(child)):
-			break
 		if (child.name == "br"):
 			res += "\n"
 		if (isinstance(child, element.NavigableString)):
-			res += child
+			res += str(child)
 
-	lst = []
-	i = 0
 	for span in content.find_all("span"):
 		if (is_Header(child)):
-			lst.append({"head": span.text, "content": ""})
 			bool = True
 			for child in span.next_elements:
 				if (is_Header(child)):
 					break
 				if (child.name == "br"):
-					lst[i]["content"] += "\n"
+					res += "\n"
 				if (not bool and isinstance(child, element.NavigableString)):
-					lst[i]["content"] += child
+					res += child
 				bool = False
-			lst[i]["content"] = re.sub("\n+", "\n", lst[i]["content"])
-			i += 1
 
-	desc = re.sub("\n+", "\n", res)
-
-	print(res)
+	desc = re.sub("\n\n+", "\n\n", res)
 
 	return {"title": title, "user": {"name": username, "url": userUrl, "icon": icon},
-		 "image": image, "description": desc}
-
-def QOS(content, maxChars = 5000):
-	for i in content:
-		l = len(i["content"])
-		if(l > 1000):
-			i["Q"] = 1000
-			i["content"] = i["content"][:1000-3] + "..."
-		else:
-			i["Q"] = l
-		
-		if(len(i["content"]) < 100 or not len(i["head"]) > 1):
-			i["Q"] = 0
-			
-		if(i["content"].count("\n") and len(i["content"]) / i["content"].count("\n") < 20):
-			i["Q"] = 0
-	
-	qContent = []
-	for i in content:
-		if(maxChars - i["Q"] > 0 and i["Q"]):
-			qContent.append(i)
-			maxChars -= i["Q"]
-		elif(maxChars > 0 and i["Q"]):
-			i["content"] = i["content"][:maxChars-3] + "..."
-			qContent.append(i)
-			maxChars -= i["Q"]
-	return qContent
-
+			"image": image, "description": desc}
 
 def is_Header(tag):
 	if (tag.name == "span" and tag.has_attr("style")):
@@ -148,4 +114,3 @@ def getPreView(url):
 	html = BeautifulSoup(response.text, "lxml")
 
 	return {"title": getTitle(html), "icon": getIcon(url, html)}
-

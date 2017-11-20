@@ -6,29 +6,24 @@ import json
 import re
 
 from cogs.utils.docs_search import docs_search
+from cogs.utils.shorten import shorten
 import cogs.utils.ahk_forum as Preview
 
-class AutoHotkeyCog:
+class AutoHotkey:
 	"""Commands for the AutoHotkey server"""
 
 	def __init__(self, bot):
 		self.bot = bot
-		self.guilds = (115993023636176902, 367975590143459328, 317632261799411712)
 
 	# make sure we're in the ahk guild
 	async def __local_check(self, ctx):
-		return ctx.guild.id in (115993023636176902, 367975590143459328, 317632261799411712)
+		return ctx.guild.id in (115993023636176902, 317632261799411712, 367975590143459328, 372163679010947074, 380066879919751179)
 
 	async def on_message(self, message):
-		if message.author.id == self.bot.user.id:
-			return
-
-		# stop if we're running a "command"
-		if message.content.startswith(tuple(await self.bot.get_prefix(message))):
+		if message.author.bot or message.content.startswith(tuple(await self.bot.get_prefix(message))):
 			return
 
 		ctx = await self.bot.get_context(message)
-
 		if not await self.__local_check(ctx):
 			return
 
@@ -60,9 +55,7 @@ class AutoHotkeyCog:
 		req = requests.get(link)
 		text = req.text
 
-		if len(text) > 1920:
-			return
-		if text.count('\n') > 32:
+		if len(text) > 2048 or text.count('\n') > 24:
 			return
 
 		await ctx.invoke(self.highlight, code=text)
@@ -71,21 +64,22 @@ class AutoHotkeyCog:
 	async def forumlink(self, ctx, url):
 		post = Preview.getThread(url)
 
-		embed = discord.Embed(title=post["title"], description=post["description"], url=url)
+		embed = discord.Embed(title=post["title"], url=url)
 
-		if (post["image"]):
+		embed.description = shorten(post['description'], 2048, 16)
+
+		if post["image"]:
 			embed.set_image(url=post["image"] if post["image"][0] != "." else "https://autohotkey.com/boards" + post["image"][1:post["image"].find("&") + 1])
 
-		embed.set_author(name=post["user"]["name"], url="https://autohotkey.com/boards" + post["user"]["url"][1:], icon_url="https://autohotkey.com/boards" + post["user"]["icon"][1:])
-		
-		for i in post["content"]:
-			value = i["content"]
-			embed.add_field(name=i["head"], value=value, inline=False)
+		embed.set_author(name=post["user"]["name"], url="https://autohotkey.com/boards" + post["user"]["url"][1:],
+						 icon_url="https://autohotkey.com/boards" + post["user"]["icon"][1:])
+
+		embed.set_footer(text='autohotkey.com')
 
 		await ctx.send(embed=embed)
 
 	async def on_reaction_add(self, reaction, user):
-		if user == self.bot.user:
+		if user.bot or not reaction.emoji == '\U0000274C':
 			return
 
 		ctx = await self.bot.get_context(reaction.message)
@@ -93,12 +87,13 @@ class AutoHotkeyCog:
 		if not await self.__local_check(ctx):
 			return
 
-		if not '```AutoIt\n' in ctx.message.content or not '```*Paste by <@' in ctx.message.content:
+		if not re.search('^```AutoIt(\s|.)*, click the cross to delete\.\*$', reaction.message.content):
 			return
 
 		author = ctx.message.mentions[0]
 
 		if author == user or user.permissions_in(reaction.message.channel).manage_messages:
+			print(f'highlight del: {user}\n')
 			await reaction.message.delete()
 
 	@commands.command(name='helper+')
@@ -177,16 +172,16 @@ class AutoHotkeyCog:
 	@commands.has_permissions(kick_members=True)
 	async def rule(self, ctx, rule: int, user):
 		rules = (
-			"\nRule #1\n\n**Be nice to eachother.**\nTreat others like you want others to treat you. Be nice.",
-			"\nRule #2\n\n**Keep conversations civil.**\nDisagreeing is fine, but when it becomes a heated and unpleasant argument it will not be tolerated.",
-			"\nRule #3\n\n**Don't post NSFW or antagonizing content.**\nThis includes but is not limited to nudity, sexual content, gore, personal information or disruptive content.",
-			"\nRule #4\n\n**Don't spam/flood voice or text channels.**\nRepeated posting of text, links, images, videos or abusing the voice channels is not allowed.",
-			"\nRule #5\n\n**Don't excessively swear.**\nSwearing is allowed, within reason. Don't litter the chat."
+			"Rule #1\n\n**Be nice to eachother.**\nTreat others like you want others to treat you. Be nice.",
+			"Rule #2\n\n**Keep conversations civil.**\nDisagreeing is fine, but when it becomes a heated and unpleasant argument it will not be tolerated.",
+			"Rule #3\n\n**Don't post NSFW or antagonizing content.**\nThis includes but is not limited to nudity, sexual content, gore, personal information or disruptive content.",
+			"Rule #4\n\n**Don't spam/flood voice or text channels.**\nRepeated posting of text, links, images, videos or abusing the voice channels is not allowed.",
+			"Rule #5\n\n**Don't excessively swear.**\nSwearing is allowed, within reason. Don't litter the chat."
 		)
 		await ctx.message.delete()
 		if rule > len(rules) or rule < 1:
 			return
-		await ctx.send(f'{user}\n{rules[rule - 1]}')
+		await ctx.send(f'{user}\n\n{rules[rule - 1]}')
 
 	@commands.command(hidden=True)
 	async def geekdude(self, ctx):
@@ -223,8 +218,8 @@ class AutoHotkeyCog:
 
 	@commands.command(hidden=True)
 	async def test(self, ctx):
-		msg = await ctx.send('asdf')
+		await ctx.send(await self.bot.formatter.format())
 
 
 def setup(bot):
-	bot.add_cog(AutoHotkeyCog(bot))
+	bot.add_cog(AutoHotkey(bot))

@@ -6,7 +6,7 @@ import json
 
 from cogs.utils.search import search
 
-class AdminCog:
+class Admin:
 	"""Admin commands"""
 
 	def __init__(self, bot):
@@ -14,11 +14,6 @@ class AdminCog:
 
 	async def __local_check(self, ctx):
 		return await self.bot.is_owner(ctx.author)
-
-	async def on_command_error(self, ctx, error):
-		if hasattr(ctx.command, 'cog_name') and ctx.command.cog_name == self.__class__.__name__:
-			if isinstance(error, commands.CheckFailure):
-				await ctx.send('Command is only avaliable for bot owner.')
 
 	@commands.command()
 	async def game(self, ctx, *, presence=None):
@@ -37,7 +32,7 @@ class AdminCog:
 				await ctx.send(f'Left {guild.name}.')
 
 	@commands.command()
-	async def say(self, ctx, *, text):
+	async def say(self, ctx, *, text: str):
 		"""Makes bot repeat what you say."""
 		await ctx.message.delete()
 		await ctx.send(text)
@@ -96,7 +91,7 @@ class AdminCog:
 	@commands.command(aliases=['f'])
 	async def forum(self, ctx, *, query):
 		"""Search for an AutoHotkey thread."""
-		await ctx.invoke(self.search, query='site:autohotkey.com ' + query)
+		await ctx.invoke(self.search, query='site:https://autohotkey.com/boards/ ' + query)
 
 	@commands.command(aliases=['g'])
 	async def search(self, ctx, *, query):
@@ -111,4 +106,4 @@ class AdminCog:
 			await ctx.send(embed=embed)
 
 def setup(bot):
-	bot.add_cog(AdminCog(bot))
+	bot.add_cog(Admin(bot))

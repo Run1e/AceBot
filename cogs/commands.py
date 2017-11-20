@@ -1,6 +1,7 @@
 import discord
 from discord.ext import commands
 
+import traceback
 import requests
 import random
 import time
@@ -11,11 +12,14 @@ import asyncio
 
 import wikipedia
 
-class CommandCog:
+class Commands:
 	"""Contains global commands"""
 
 	def __init__(self, bot):
 		self.bot = bot
+
+		#self.bot.remove_command('help')
+
 		self.time = time.time()
 		self.reptime = {}
 
@@ -37,22 +41,33 @@ class CommandCog:
 			self.reps = json.loads(f.read())
 
 	async def on_command_error(self, ctx, error):
-		# errors to ignore
-		for check in (commands.CommandNotFound, commands.CheckFailure):
-			if isinstance(error, check):
-				return
+		if isinstance(error, (commands.CommandNotFound,)):
+			return
 
-		# errors to print locally
-		# for check in (commands.CommandError,):
-		# 	if isinstance(error, check):
-		# 		print(error)
-		# 		return
+		if isinstance(error, commands.CheckFailure) and ctx.command.cog_name == 'Admin':
+			return await ctx.send('Commands only avaliable for bot owner.')
+		if isinstance(error, commands.DisabledCommand):
+			return await ctx.send('Command has been disabled.')
+		if isinstance(error, commands.MissingPermissions):
+			return await ctx.send('Invoker is missing permissions to run this command.')
+		if isinstance(error, commands.BotMissingPermissions):
+			return await ctx.send('Bot is missing permissions to run this command.')
 
-		# other error? print to channel
-		await ctx.send(f'An error occured in `{ctx.command.name}` invoked by `{ctx.message.author}`\n```python\n{error}\n```\nMaybe try `.help {ctx.command.name}`?')
+		# standard error message
+		if isinstance(error, (discord.Forbidden,)):
+			return await ctx.send(f'An error occured in `{ctx.command.name}` invoked by {ctx.message.author}:\n```{error}```')
+
+		# argument error
+		if isinstance(error, (commands.MissingRequiredArgument, commands.BadArgument, commands.TooManyArguments)):
+			self.bot.formatter.context = ctx
+			self.bot.formatter.command = ctx.command
+			return await ctx.send(f'Arguments provided are malformed.\n```{self.bot.formatter.get_command_signature()}```')
+
+		print(f'\n\n{error}\n')
+		#traceback.print_exception(type(exception), exception, exception.__traceback__, file=sys.stderr)
 
 	async def on_message(self, message):
-		if message.author.id == self.bot.user.id:
+		if message.author.bot:
 			return
 
 		if message.content in self.replies:
@@ -179,6 +194,7 @@ class CommandCog:
 	async def wikipedia(self, ctx, *, query):
 		"""Preview a Wikipedia article."""
 
+		await ctx.trigger_typing()
 		try:
 			wiki = wikipedia.page(query)
 		except:
@@ -190,6 +206,7 @@ class CommandCog:
 	async def wikirandom(self, ctx):
 		"""Get a random wikipedia page."""
 
+		await ctx.trigger_typing()
 		try:
 			page_name = wikipedia.random(1)
 		except:
@@ -207,6 +224,9 @@ class CommandCog:
 	@commands.command(aliases=['def'])
 	async def define(self, ctx, *, query):
 		"""Define a word using Oxfords dictionary."""
+
+		await ctx.trigger_typing()
+
 		req = requests.get('https://od-api.oxforddictionaries.com:443/api/v1/entries/en/' + query.split('\n')[0].lower(), headers={'Accept': 'application/json', 'app_id': self.oxford[0], 'app_key': self.oxford[1]})
 
 		try:
@@ -237,6 +257,9 @@ class CommandCog:
 	@commands.command(aliases=['w'])
 	async def wolfram(self, ctx, *, query):
 		"""Queries wolfram."""
+
+		await ctx.trigger_typing()
+
 		req = requests.get('https://api.wolframalpha.com/v1/result?i={}&appid={}'.format(query, self.wolframkey))
 		text = f'Query:\n```python\n{query}``` \nResult:\n```python\n{req.text}``` '
 		embed = discord.Embed(description=text)
@@ -260,7 +283,7 @@ class CommandCog:
 
 	@commands.command(hidden=True)
 	async def info(self, ctx):
-		await ctx.send(f"```Type .help for help.\n\nWritten by: RUNIE 🔥 #9646\nContributors: Cap'n Odin #8812 and GeekDude #2532\n\nFramework: discord.py {discord.__version__}\n```")
+		await ctx.send(f'{self.bot.description}\n\nFramework: discord.py {discord.__version__}\nSource: https://github.com/Run1e/A_AhkBot')
 
 	@commands.command(hidden=True)
 	async def uptime(self, ctx):
@@ -294,7 +317,7 @@ class CommandCog:
 			return await ctx.send(f'{ctx.author.mention} has a reputation of {(self.reps[str(ctx.author.id)] if str(ctx.author.id) in self.reps else 0)}!')
 
 		# get the id
-		id = mention.id
+		id = str(mention.id)
 
 		# make sure people can't rep themselves
 		if id == ctx.author.id:
@@ -308,22 +331,25 @@ class CommandCog:
 		if not id in self.reptime[ctx.author.id]:
 			self.reptime[ctx.author.id][id] = time.time()
 		else:
-			if time.time() - self.reptime[ctx.author.id][id] < 60:
+			if time.time() - self.reptime[ctx.author.id][id] < 90:
 				return await ctx.send("Woah! You shouldn't be repping *that* fast.")
 			else:
 				self.reptime[ctx.author.id][id] = time.time()
 
 		# make sure the repee has a key
-		if not str(id) in self.reps:
-			self.reps[str(id)] = 0
+		if not id in self.reps:
+			self.reps[id] = 0
 
 		# increment
-		self.reps[str(id)] += 1
+		self.reps[id] += 1
 
 		# save the new json
 		open('cogs/data/rep.json', 'w').write(json.dumps(self.reps))
 
-		await ctx.send(f'{mention.mention} now has {self.reps[str(id)]} rep points!')
+		if id == str(self.bot.user.id):
+			await ctx.send(f'Thanks {ctx.author.mention}! I now have {self.reps[id]} rep points! :blush: ')
+		else:
+			await ctx.send(f'{mention.mention} now has {self.reps[id]} rep points!')
 
 def setup(bot):
-	bot.add_cog(CommandCog(bot))
+	bot.add_cog(Commands(bot))
