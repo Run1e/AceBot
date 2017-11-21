@@ -129,9 +129,8 @@ class Commands:
 		await asyncio.sleep(3)
 		await ctx.send(random.choice(responses))
 
-	@commands.command(hidden=True)
+	@commands.command(hidden=True, enabled=False)
 	async def vote(self, ctx, question: str, time: int, *choices):
-		return
 		if len(choices) > 9:
 			return await ctx.send('Too many choices!')
 

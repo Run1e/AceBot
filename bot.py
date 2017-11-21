@@ -39,11 +39,12 @@ async def on_ready():
 
 @bot.event
 async def on_command_error(ctx, error):
+
 	if isinstance(error, commands.CommandNotFound):
 		return
 
-	if isinstance(error, commands.CommandInvokeError):
-		return print(error)
+	# if isinstance(error, commands.CommandInvokeError):
+	#	return print(error)
 
 	errors = {
 		commands.DisabledCommand: 'Command has been disabled.',
@@ -59,7 +60,7 @@ async def on_command_error(ctx, error):
 	if isinstance(error, commands.UserInputError):
 		bot.formatter.context = ctx
 		bot.formatter.command = ctx.command
-		return await ctx.send(f'Arguments provided are malformed.\n```{bot.formatter.get_command_signature()}```')
+		return await ctx.send(f'Invalid argument(s) provided.\n```{bot.formatter.get_command_signature()}```')
 
 	await ctx.send(f'An error occured in `{ctx.command.name}` invoked by {ctx.message.author}:\n```{error}```')
 	#traceback.print_exception(type(exception), exception, exception.__traceback__, file=sys.stderr)
