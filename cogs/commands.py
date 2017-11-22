@@ -11,6 +11,8 @@ import datetime
 import asyncio
 
 import wikipedia
+from tabulate import tabulate
+import operator
 
 class Commands:
 	"""Contains global commands"""
@@ -168,7 +170,7 @@ class Commands:
 		"""Preview a Wikipedia article."""
 
 		await ctx.trigger_typing()
-		
+
 		try:
 			wiki = wikipedia.page(query)
 		except:
@@ -230,7 +232,7 @@ class Commands:
 
 	@commands.command()
 	async def rep(self, ctx, mention: discord.Member = None):
-		"""Give someone some reputation! Mention them with @user."""
+		"""Give someone some reputation!"""
 
 		if mention == None:
 			return await ctx.send(f'{ctx.author.mention} has a reputation of {(self.reps[str(ctx.author.id)] if str(ctx.author.id) in self.reps else 0)}!')
@@ -239,7 +241,7 @@ class Commands:
 		id = str(mention.id)
 
 		# make sure people can't rep themselves
-		if id == ctx.author.id:
+		if mention == ctx.author:
 			return await ctx.send(":japanese_goblin:")
 
 		# make sure a reptime object exists for the author
@@ -269,6 +271,37 @@ class Commands:
 			await ctx.send(f'Thanks {ctx.author.mention}! I now have {self.reps[id]} rep points! :blush: ')
 		else:
 			await ctx.send(f'{mention.mention} now has {self.reps[id]} rep points!')
+
+	@commands.command()
+	async def replist(self, ctx, users: int = 8):
+		"""Show who's most reputable to the bot."""
+
+		if users > 20:
+			users = 20
+		elif users < 1:
+			users = 2
+
+		rep_sort = sorted(self.reps.items(), key=operator.itemgetter(1), reverse=True)
+
+		added = 0
+		names = ''
+		reps = ''
+
+		for user, rep_count in rep_sort:
+			member = ctx.guild.get_member(int(user))
+			if not member == None:
+				names += f'*{str(member).split("#")[0]}*\n'
+				reps += f'{rep_count}\n'
+				added += 1
+			if added == users:
+				break
+
+		e = discord.Embed()
+		e.add_field(name='User', value=names, inline=True)
+		e.add_field(name='Reputation', value=reps, inline=True)
+
+		await ctx.send(embed=e)
+
 
 	@commands.command(aliases=['w'])
 	async def wolfram(self, ctx, *, query):
