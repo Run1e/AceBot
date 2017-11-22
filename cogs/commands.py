@@ -168,6 +168,7 @@ class Commands:
 		"""Preview a Wikipedia article."""
 
 		await ctx.trigger_typing()
+		
 		try:
 			wiki = wikipedia.page(query)
 		except:
@@ -228,13 +229,10 @@ class Commands:
 		await ctx.send(random.choice(['Heads', 'Tails']) + '!')
 
 	@commands.command()
-	async def rep(self, ctx):
-		"""Give someone some reputation!"""
+	async def rep(self, ctx, mention: discord.Member = None):
+		"""Give someone some reputation! Mention them with @user."""
 
-		# see if anyone was mentioned, if not just return how many points the author has
-		try:
-			mention = ctx.message.mentions[0]
-		except:
+		if mention == None:
 			return await ctx.send(f'{ctx.author.mention} has a reputation of {(self.reps[str(ctx.author.id)] if str(ctx.author.id) in self.reps else 0)}!')
 
 		# get the id
