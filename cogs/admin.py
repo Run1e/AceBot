@@ -50,17 +50,13 @@ class Admin:
 		await self.bot.user.edit(username=nick)
 
 	@commands.command()
-	async def notice(self, ctx):
+	async def notice(self, ctx, user: discord.Member):
 		"""Remove user for ignore list."""
-		try:
-			user = ctx.message.mentions[0].id
-		except:
-			return await ctx.send('No user specified.')
 
-		if user not in self.bot.info['ignore_users']:
+		if user.id not in self.bot.info['ignore_users']:
 			return await ctx.send('User was never ignored.')
 
-		self.bot.info['ignore_users'].remove(user)
+		self.bot.info['ignore_users'].remove(user.id)
 
 		with open('lib/ignore.json', 'w') as f:
 			f.write(json.dumps(self.bot.info['ignore_users'], sort_keys=True, indent=4))
@@ -68,17 +64,13 @@ class Admin:
 		await ctx.send('User removed from ignore list.')
 
 	@commands.command()
-	async def ignore(self, ctx):
+	async def ignore(self, ctx, user: discord.Member):
 		"""Add user to ignore list."""
-		try:
-			user = ctx.message.mentions[0].id
-		except:
-			return await ctx.send('No user specified.')
 
-		if user in self.bot.info['ignore_users']:
+		if user.id in self.bot.info['ignore_users']:
 			return await ctx.send('User already ignored.')
 
-		self.bot.info['ignore_users'].append(user)
+		self.bot.info['ignore_users'].append(user.id)
 
 		with open('lib/ignore.json', 'w') as f:
 			f.write(json.dumps(self.bot.info['ignore_users'], sort_keys=True, indent=4))
