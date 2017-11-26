@@ -252,7 +252,7 @@ class Commands:
 		if not id in self.reptime[ctx.author.id]:
 			self.reptime[ctx.author.id][id] = time.time()
 		else:
-			if time.time() - self.reptime[ctx.author.id][id] < 90:
+			if time.time() - self.reptime[ctx.author.id][id] < 120:
 				return await ctx.send("Woah! You shouldn't be repping *that* fast.")
 			else:
 				self.reptime[ctx.author.id][id] = time.time()

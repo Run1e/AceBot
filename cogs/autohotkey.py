@@ -187,7 +187,8 @@ class AutoHotkey:
 			"Rule #2\n\n**Keep conversations civil.**\nDisagreeing is fine, but when it becomes a heated and unpleasant argument it will not be tolerated.",
 			"Rule #3\n\n**Don't post NSFW or antagonizing content.**\nThis includes but is not limited to nudity, sexual content, gore, personal information or disruptive content.",
 			"Rule #4\n\n**Don't spam/flood voice or text channels.**\nRepeated posting of text, links, images, videos or abusing the voice channels is not allowed.",
-			"Rule #5\n\n**Don't excessively swear.**\nSwearing is allowed, within reason. Don't litter the chat."
+			"Rule #5\n\n**Don't excessively swear.**\nSwearing is allowed, within reason. Don't litter the chat.",
+			"Rule #6\n\n**Do not tag individuals for help.**\nIf you're asking for help, you have to use the Helpers tag."
 		)
 		await ctx.message.delete()
 		if rule > len(rules) or rule < 1:
