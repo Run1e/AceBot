@@ -24,16 +24,16 @@ class AutoHotkey:
 			return
 
 		channel = self.bot.get_channel(339511161672302593)
-		await channel.send(f'Hi {member.mention}! Welcome to the official ***AutoHotkey*** server!\nPlease make sure you read <#304708649748660224> before chatting!')
+		await channel.send(f"Hi {member.mention}! Welcome to the official ***AutoHotkey*** server!\nPlease read <#304708649748660224> for important infomation and rules before chatting!")
 
 
 	async def on_message(self, message):
-		# ignore bots and messages that start with a prefix
-		if message.author.bot or message.content.startswith(tuple(await self.bot.get_prefix(message))):
-			return
-
 		ctx = await self.bot.get_context(message)
 		if not await self.__local_check(ctx):
+			return
+
+		# ignore bots and messages that start with a prefix
+		if message.author.bot or message.content.startswith(tuple(await self.bot.get_prefix(message))):
 			return
 
 		# find links in message
@@ -90,12 +90,11 @@ class AutoHotkey:
 		await ctx.send(embed=embed)
 
 	async def on_reaction_add(self, reaction, user):
-		if user.bot or not reaction.emoji == '\U0000274C' or not reaction.message.author == self.bot.user:
+		ctx = await self.bot.get_context(reaction.message)
+		if not await self.__local_check(ctx):
 			return
 
-		ctx = await self.bot.get_context(reaction.message)
-
-		if not await self.__local_check(ctx):
+		if user.bot or not reaction.emoji == '\U0000274C' or not reaction.message.author == self.bot.user:
 			return
 
 		if not re.search('^```AutoIt(\s|.)*, click the cross to delete\.\*$', reaction.message.content):
@@ -137,7 +136,7 @@ class AutoHotkey:
 		if embed:
 			await ctx.send(embed=embed)
 
-	@commands.command(aliases=['hl'])
+	@commands.command(aliases=['hl', 'h1'])
 	async def highlight(self, ctx, *, code):
 		"""Highlights some AutoHotkey code."""
 
@@ -183,12 +182,12 @@ class AutoHotkey:
 	@commands.has_permissions(kick_members=True)
 	async def rule(self, ctx, rule: int, user):
 		rules = (
-			"Rule #1\n\n**Be nice to eachother.**\nTreat others like you want others to treat you. Be nice.",
-			"Rule #2\n\n**Keep conversations civil.**\nDisagreeing is fine, but when it becomes a heated and unpleasant argument it will not be tolerated.",
-			"Rule #3\n\n**Don't post NSFW or antagonizing content.**\nThis includes but is not limited to nudity, sexual content, gore, personal information or disruptive content.",
-			"Rule #4\n\n**Don't spam/flood voice or text channels.**\nRepeated posting of text, links, images, videos or abusing the voice channels is not allowed.",
-			"Rule #5\n\n**Don't excessively swear.**\nSwearing is allowed, within reason. Don't litter the chat.",
-			"Rule #6\n\n**Do not tag individuals for help.**\nIf you're asking for help, you have to use the Helpers tag."
+			"**1. Be nice to eachother.**\nTreat others like you want others to treat you. Be nice.",
+			"**2. Keep conversations civil.**\nDisagreeing is fine, but when it becomes a heated and unpleasant argument it will not be tolerated.",
+			"**3. Don't post NSFW or antagonizing content.**\nThis includes but is not limited to nudity, sexual content, gore, personal information or disruptive content.",
+			"**4. Don't spam/flood voice or text channels.**\nRepeated posting of text, links, images, videos or abusing the voice channels is not allowed.",
+			"**5. No one is required or expected to help you.**\nIf no one wants to help you with your script, tough luck. Acting like a baby because of it will get you kicked/banned.",
+			"**6. Do not tag individuals for help.**\nIf you're asking for help, you have to use the Helpers tag."
 		)
 		await ctx.message.delete()
 		if rule > len(rules) or rule < 1:

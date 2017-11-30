@@ -39,7 +39,6 @@ async def on_ready():
 
 @bot.event
 async def on_command_error(ctx, error):
-
 	if isinstance(error, commands.CommandNotFound):
 		return
 
@@ -49,7 +48,8 @@ async def on_command_error(ctx, error):
 	errors = {
 		commands.DisabledCommand: 'Command has been disabled.',
 		commands.MissingPermissions: 'Invoker is missing permissions to run this command.',
-		commands.BotMissingPermissions: 'Bot is missing permissions to run this command.'
+		commands.BotMissingPermissions: 'Bot is missing permissions to run this command.',
+		commands.CheckFailure: 'You are not allowed to run this command.'
 	}
 
 	for type, text in errors.items():
@@ -78,7 +78,7 @@ async def before_any_command(ctx):
 
 # overwrite discord.Embed with a monkey patched class that automatically sets the color attribute
 class Embed(discord.Embed):
-	def __init__(self, color=0x78A064, **attrs):
+	def __init__(self, color=0x4A5E8C, **attrs):
 		attrs['color'] = color
 		super().__init__(**attrs)
 

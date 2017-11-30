@@ -1,8 +1,10 @@
 import discord
 from discord.ext import commands
 
-import sympy
 import json
+import io
+import textwrap
+import traceback
 
 from cogs.utils.search import search
 
@@ -12,18 +14,20 @@ class Admin:
 	def __init__(self, bot):
 		self.bot = bot
 
+	def cleanup_code(self, content):
+		"""Automatically removes code blocks from the code."""
+		# remove ```py\n```
+		if content.startswith('```') and content.endswith('```'):
+			return '\n'.join(content.split('\n')[1:-1])
+
+		# remove `foo`
+		return content.strip('` \n')
+
 	async def __local_check(self, ctx):
 		return await self.bot.is_owner(ctx.author)
 
-	async def on_command_error(self, ctx, error):
-		if not isinstance(ctx.cog, self.__class__):
-			return
-
-		if isinstance(error, commands.CheckFailure):
-			return await ctx.send('Command only avaliable for bot owner.')
-
 	@commands.command()
-	async def game(self, ctx, *, presence=None):
+	async def game(self, ctx, *, presence = None):
 		"""Change bot presence."""
 		if presence == None:
 			presence = self.bot.info['status']
@@ -77,11 +81,6 @@ class Admin:
 
 		await ctx.send('User ignored.')
 
-	@commands.command()
-	async def eval(self, ctx, *, input):
-		"""Evaluate a string using sympy."""
-		await ctx.send(f'```python\n{str(sympy.sympify(input))}\n```')
-
 	@commands.command(aliases=['gh'])
 	async def github(self, ctx, *, query):
 		"""Search for a GitHub repo."""
@@ -103,6 +102,61 @@ class Admin:
 			embed = discord.Embed(title=result['title'], url=result['url'], description=result['description'])
 			embed.set_footer(text=result['domain'])
 			await ctx.send(embed=embed)
+
+	@commands.command(hidden=True)
+	async def evalp(self, ctx, *, body: str):
+		await ctx.invoke(self.eval, body=f'print({body})')
+
+	@commands.command(hidden=True)
+	async def evals(self, ctx, *, body: str):
+		await ctx.invoke(self.eval, body=f'await ctx.send({body})')
+
+	@commands.command(hidden=True)
+	async def eval(self, ctx, *, body: str):
+		from contextlib import redirect_stdout
+		"""Evaluates a code"""
+
+		env = {
+			'discord': discord,
+			'bot': self.bot,
+			'ctx': ctx,
+			'channel': ctx.channel,
+			'author': ctx.author,
+			'guild': ctx.guild,
+			'message': ctx.message
+		}
+
+		env.update(globals())
+
+		body = self.cleanup_code(body)
+		stdout = io.StringIO()
+
+		to_compile = f'async def func():\n{textwrap.indent(body, "  ")}'
+
+		try:
+			exec(to_compile, env)
+		except Exception as e:
+			return await ctx.send(f'```py\n{e.__class__.__name__}: {e}\n```')
+
+		func = env['func']
+		try:
+			with redirect_stdout(stdout):
+				ret = await func()
+		except Exception as e:
+			value = stdout.getvalue()
+			await ctx.send(f'```py\n{value}{traceback.format_exc()}\n```')
+		else:
+			value = stdout.getvalue()
+			try:
+				await ctx.message.add_reaction('\u2705')
+			except:
+				pass
+
+			if ret is None:
+				if value:
+					await ctx.send(f'```py\n{value}\n```')
+			else:
+				await ctx.send(f'```py\n{value}{ret}\n```')
 
 def setup(bot):
 	bot.add_cog(Admin(bot))
