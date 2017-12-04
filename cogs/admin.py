@@ -5,6 +5,7 @@ import json
 import io
 import textwrap
 import traceback
+from contextlib import redirect_stdout
 
 from cogs.utils.search import search
 
@@ -113,7 +114,6 @@ class Admin:
 
 	@commands.command(hidden=True)
 	async def eval(self, ctx, *, body: str):
-		from contextlib import redirect_stdout
 		"""Evaluates a code"""
 
 		env = {

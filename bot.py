@@ -67,8 +67,8 @@ async def on_command_error(ctx, error):
 
 # blacklist check
 @bot.check_once
-async def blacklist(ctx):
-	return ctx.message.author.id not in bot.info['ignore_users']
+async def global_check(ctx):
+	return (ctx.message.author.id not in bot.info['ignore_users']) and not ctx.author.bot
 
 # print command usage
 @bot.before_invoke

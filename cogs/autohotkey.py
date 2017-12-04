@@ -94,17 +94,18 @@ class AutoHotkey:
 		if not await self.__local_check(ctx):
 			return
 
-		if user.bot or not reaction.emoji == '\U0000274C' or not reaction.message.author == self.bot.user:
-			return
-
-		if not re.search('^```AutoIt(\s|.)*, click the cross to delete\.\*$', reaction.message.content):
+		if reaction.message.author == self.bot.user or not re.search('^```AutoIt(\s|.)*, click the cross to delete\.\*$', reaction.message.content):
 			return
 
 		author = ctx.message.mentions[0]
 
-		if author == user or user.permissions_in(reaction.message.channel).manage_messages:
-			print(f'highlight del: {user}\n')
+		if (author == user or user.permissions_in(reaction.message.channel).manage_messages) and reaction.emoji == '\U0000274C':
 			await reaction.message.delete()
+		else:
+			try:
+				await reaction.message.remove_reaction(reaction, user)
+			except:
+				pass
 
 	@commands.command(name='helper+')
 	async def helperplus(self, ctx):

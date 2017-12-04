@@ -1,7 +1,6 @@
 import discord
 from discord.ext import commands
 
-import traceback
 import requests
 import random
 import time
@@ -11,7 +10,6 @@ import datetime
 import asyncio
 
 import wikipedia
-from tabulate import tabulate
 import operator
 
 class Commands:
@@ -73,10 +71,43 @@ class Commands:
 		await ctx.send(embed=embed)
 
 	@commands.command()
+	async def server(self, ctx):
+		"""Show various information about the server."""
+
+		statuses = {
+			discord.Status.online: 0,
+			discord.Status.idle: 0,
+			discord.Status.dnd: 0,
+			discord.Status.offline: 0
+		}
+		for member in ctx.guild.members:
+			for status in statuses:
+				if member.status is status:
+					statuses[status] += 1
+
+		att = {}
+		att['Online'] = f'{sum(member.status is not discord.Status.offline for member in ctx.guild.members)}/{len(ctx.guild.members)}'
+		att['Owner'] = ctx.guild.owner.display_name
+		#att['Emojis'] = len(ctx.guild.emojis)
+		#att['Text channels'] = len(ctx.guild.text_channels)
+		#att['Voice channels'] = len(ctx.guild.voice_channels)
+		att['Region'] = str(ctx.guild.region)
+		att['Created at'] = str(ctx.guild.created_at).split(' ')[0]
+
+		e = discord.Embed(title=ctx.guild.name, description='\n'.join(f'**{a}**: {b}' for a, b in att.items()))
+		e.set_thumbnail(url=ctx.guild.icon_url)
+		e.add_field(name='Status', value='\n'.join(str(status) for status in statuses))
+		e.add_field(name='Amount', value='\n'.join(str(count) for status, count in statuses.items()))
+		await ctx.send(embed=e)
+
+	@commands.command()
 	async def weather(self, ctx, *, location: str = None):
 		"""Check the weather in a location."""
+
 		if location is None:
 			return await ctx.send('Please provide a location to get Weather Information for.')
+
+		await ctx.trigger_typing()
 
 		base = f'http://api.apixu.com/v1/current.json?key={self.weather_key}&q={location}'
 
