@@ -94,18 +94,16 @@ class AutoHotkey:
 		if not await self.__local_check(ctx):
 			return
 
-		if reaction.message.author == self.bot.user or not re.search('^```AutoIt(\s|.)*, click the cross to delete\.\*$', reaction.message.content):
+		if user == self.bot.user or not re.search('^```AutoIt(\s|.)*, click the cross to delete\.\*$', reaction.message.content):
 			return
 
 		author = ctx.message.mentions[0]
 
 		if (author == user or user.permissions_in(reaction.message.channel).manage_messages) and reaction.emoji == '\U0000274C':
+			print(f'{author} del highlight')
 			await reaction.message.delete()
 		else:
-			try:
-				await reaction.message.remove_reaction(reaction, user)
-			except:
-				pass
+			await reaction.message.remove_reaction(reaction, user)
 
 	@commands.command(name='helper+')
 	async def helperplus(self, ctx):
@@ -227,12 +225,6 @@ class AutoHotkey:
 	@commands.command(hidden=True)
 	async def tias(self, ctx):
 		await ctx.send('http://i.imgur.com/6A6tcD0.png')
-
-	@commands.command(hidden=True)
-	async def test(self, ctx):
-		await ctx.send('[vibrancer](http://vibrancer.com/)')
-		await ctx.send(embed=discord.Embed(description='[vibrancer](http://vibrancer.com/)'))
-
 
 def setup(bot):
 	bot.add_cog(AutoHotkey(bot))
