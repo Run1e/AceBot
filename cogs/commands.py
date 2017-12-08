@@ -72,9 +72,12 @@ class Commands:
 
 
 	@commands.command()
-	async def vote(self, ctx, question: str, time: int, *choices):
+	async def vote(self, ctx, question: str, *choices):
+		"""Let people in the channel vote on a question!"""
 		if len(choices) > 9:
 			return await ctx.send('Too many choices!')
+		if len(choices) < 2:
+			return await ctx.send('Too few choices!')
 		if ctx.channel in self.votes.keys():
 			return await ctx.send('Vote already in progress!')
 
@@ -82,15 +85,17 @@ class Commands:
 
 		await ctx.message.delete()
 
-		if time > 60:
-			time = 60
-		elif time < 10:
-			time = 10
+		#if time > 60:
+		#	time = 60
+		#elif time < 10:
+		#	time = 10
+
+		time = 5
 
 		msg_content = f'{ctx.message.author.mention} has just started a vote!\n\n***{question}***\n\n'
 
 		for i, choice in enumerate(choices):
-			msg_content += f'{i + 1}\u20e3 - {choice}\n'
+			msg_content += f'{i + 1}\u20e3 - *{choice}*\n'
 			self.votes[ctx.channel]['score'][f'{i + 1}\u20e3'] = []
 
 		msg_content += f'\nVote ends in {time} seconds. Vote with reactions below!'
@@ -123,15 +128,17 @@ class Commands:
 
 		text = f'{ctx.message.author.mention} asked:\n\n***{question}***\n\n'
 
+		max_text = f"**{max}** {'person' if max == 1 else 'people'}"
+
 		if len(winners) == 0:
 			text += 'And no one voted...'
 		elif len(winners) == 1:
-			text += 'And the people said:\n'
+			text += f'And {max_text} answered with:\n'
 		else:
-			text += 'And there was a tie! The results are:\n'
+			text += f'And at **{max}** votes each, there was a tie:\n'
 
 		for choice in winners:
-			text += f'\n{choice}'
+			text += f'\n***{choice}***'
 
 		await ctx.send(text)
 
