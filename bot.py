@@ -87,3 +87,6 @@ discord.Embed = Embed
 
 with open('lib/bot_token.txt', 'r') as f:
 	bot.run(f.read())
+
+
+# test
