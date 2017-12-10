@@ -24,7 +24,10 @@ class AutoHotkey:
 			return
 
 		channel = self.bot.get_channel(339511161672302593)
-		await channel.send(f"Hi {member.mention}! Welcome to the official ***AutoHotkey*** server!\nPlease read <#304708649748660224> for important infomation and rules before chatting!")
+		await channel.send(f"Hi {member.mention}! Welcome to the official ***AutoHotkey*** server!\n"
+						   "You won't be able to speak for about 10 minutes. Please spend this time reading the rules and tips at <#304708649748660224>.\n"
+						   "If you come with a problem, also spend some time figuring out how to ask your question in a descriptive and thorough way so that people are able to help!\n"
+						   "Happy scripting and we hope you enjoy your stay!")
 
 
 	async def on_message(self, message):
@@ -104,6 +107,13 @@ class AutoHotkey:
 			await reaction.message.delete()
 		else:
 			await reaction.message.remove_reaction(reaction, user)
+
+	@commands.command(hidden=True)
+	async def test(self, ctx):
+		return await ctx.send(f"Hi {ctx.author.mention}! Welcome to the official ***AutoHotkey*** server!\n"
+						   "You won't be able to speak for about 10 minutes. Please spend this time reading the rules and tips at <#304708649748660224>.\n"
+						   "If you come with a problem, also spend some time figuring out how to ask your question in a descriptive and thorough way so that people are able to help!\n"
+						   "Happy scripting and we hope you enjoy your stay!")
 
 	@commands.command(name='helper+')
 	async def helperplus(self, ctx):

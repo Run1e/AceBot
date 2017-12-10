@@ -10,6 +10,8 @@ def search(query):
 	urls = []
 	for index, item in enumerate(url):
 		link = item.find('h3').find('a')
+		if not hasattr(link, 'get'):
+			continue
 		href = link.get('href')
 
 		item_url = href.split('=', 1)[1].split('&')[0]

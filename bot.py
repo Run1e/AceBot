@@ -66,6 +66,7 @@ async def on_command_error(ctx, error):
 	#traceback.print_exception(type(exception), exception, exception.__traceback__, file=sys.stderr)
 
 # blacklist check
+# check is user is blacklister, or if it's a bot
 @bot.check_once
 async def global_check(ctx):
 	return (ctx.message.author.id not in bot.info['ignore_users']) and not ctx.author.bot

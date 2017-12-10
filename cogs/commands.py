@@ -90,7 +90,7 @@ class Commands:
 		#elif time < 10:
 		#	time = 10
 
-		time = 5
+		time = 30
 
 		msg_content = f'{ctx.message.author.mention} has just started a vote!\n\n***{question}***\n\n'
 
