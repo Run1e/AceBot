@@ -45,6 +45,9 @@ class Commands:
 		if message.author.bot:
 			return
 
+		if 'admin_throw' in message.content:
+			print("testing...")
+
 		if message.content in self.replies:
 			ctx = await self.bot.get_context(message)
 			await ctx.send(self.replies[message.content])
@@ -325,7 +328,7 @@ class Commands:
 	@commands.command()
 	async def flip(self, ctx):
 		"""Flip a coin!"""
-		await ctx.send(random.choice(['Heads', 'Tails']) + '!')
+		await ctx.send('I got '.format(random.choice(['Heads', 'Tails']) + '!'))
 
 	@commands.command()
 	async def rep(self, ctx, mention: discord.Member = None):
@@ -339,7 +342,7 @@ class Commands:
 
 		# make sure people can't rep themselves
 		if mention == ctx.author:
-			return await ctx.send(":japanese_goblin:")
+			return await ctx.send("Oi, no repping yourself!")
 
 		# make sure a reptime object exists for the author
 		if not ctx.author.id in self.reptime:
@@ -455,6 +458,12 @@ class Commands:
 	@commands.command(hidden=True)
 	async def demo(self, ctx):
 		await ctx.send('https://i.imgur.com/Iu04Jro.gifv')
+
+	@commands.command(pass_context=True)
+	async def ping(ctx):
+		now = datetime.datetime.utcnow()
+		delta = now-ctx.message.timestamp
+		await client.say(f'Pong! {delta(microseconds = 1)}ms')
 
 def setup(bot):
 	bot.add_cog(Commands(bot))
