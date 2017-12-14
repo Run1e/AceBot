@@ -13,6 +13,8 @@ bot.info = {}
 
 bot.info['nick'] = 'Ace'
 bot.info['status'] = '.help for commands'
+bot.info['stream_link'] = 'https://twitch.tv/' # Twitch username
+#Added this just for shits and giggles :P
 
 with open('lib/ignore.json', 'r') as f:
 	bot.info['ignore_users'] = json.loads(f.read())
@@ -26,7 +28,7 @@ extensions = (
 @bot.event
 async def on_ready():
 	await bot.user.edit(username=bot.info['nick'])
-	await bot.change_presence(game=discord.Game(name=bot.info['status']))
+	await bot.change_presence(game=discord.Game(name=bot.info['status'], url=bot.info['stream_link'], type=1))
 
 	if __name__ == '__main__':
 		print(f'Logged in as: {bot.user.name} - {bot.user.id}\nVersion: {discord.__version__}\n')
