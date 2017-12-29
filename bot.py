@@ -20,13 +20,14 @@ with open('lib/ignore.json', 'r') as f:
 extensions = (
 	'cogs.commands',
 	'cogs.autohotkey',
-	'cogs.admin'
+	'cogs.admin',
+	'cogs.highlighter'
 )
 
 @bot.event
 async def on_ready():
 	await bot.user.edit(username=bot.info['nick'])
-	await bot.change_presence(game=discord.Game(name=bot.info['status'], type=1))
+	await bot.change_presence(game=discord.Game(name=bot.info['status']))
 
 	if __name__ == '__main__':
 		print(f'Logged in as: {bot.user.name} - {bot.user.id}\nVersion: {discord.__version__}\n')

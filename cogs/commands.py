@@ -175,6 +175,7 @@ class Commands:
 			discord.Status.dnd: 0,
 			discord.Status.offline: 0
 		}
+
 		for member in ctx.guild.members:
 			for status in statuses:
 				if member.status is status:
@@ -339,7 +340,7 @@ class Commands:
 
 		# make sure people can't rep themselves
 		if mention == ctx.author:
-			return await ctx.send(":japanese_goblin")
+			return await ctx.send(":japanese_goblin:")
 
 		# make sure a reptime object exists for the author
 		if not ctx.author.id in self.reptime:
@@ -367,7 +368,8 @@ class Commands:
 		if id == str(self.bot.user.id):
 			await ctx.send(f'Thanks {ctx.author.mention}! I now have {self.reps[id]} rep points! :blush: ')
 		else:
-			await ctx.send(f'{mention.mention} now has {self.reps[id]} rep points!')
+			emojis = ['pray', 'raised_hands', 'clap', 'ok_hand', 'tongue', 'heart_eyes']
+			await ctx.send(f'{mention.mention} now has {self.reps[id]} reputation! :{random.choice(emojis)}:')
 
 	@commands.command()
 	async def replist(self, ctx, users: int = 8):
@@ -455,12 +457,6 @@ class Commands:
 	@commands.command(hidden=True)
 	async def demo(self, ctx):
 		await ctx.send('https://i.imgur.com/Iu04Jro.gifv')
-
-	@commands.command(pass_context=True)
-	async def ping(ctx):
-		now = datetime.datetime.utcnow()
-		delta = now-ctx.message.timestamp
-		await client.say(f'Pong! {delta(microseconds = 1)}ms')
 
 def setup(bot):
 	bot.add_cog(Commands(bot))

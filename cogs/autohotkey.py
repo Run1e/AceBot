@@ -92,22 +92,6 @@ class AutoHotkey:
 
 		await ctx.send(embed=embed)
 
-	async def on_reaction_add(self, reaction, user):
-		ctx = await self.bot.get_context(reaction.message)
-		if not await self.__local_check(ctx):
-			return
-
-		if user == self.bot.user or not re.search('^```AutoIt(\s|.)*, click the cross to delete\.\*$', reaction.message.content):
-			return
-
-		author = ctx.message.mentions[0]
-
-		if (author == user or user.permissions_in(reaction.message.channel).manage_messages) and reaction.emoji == '\U0000274C':
-			print(f'{author} del highlight')
-			await reaction.message.delete()
-		else:
-			await reaction.message.remove_reaction(reaction, user)
-
 	@commands.command(hidden=True)
 	async def test(self, ctx):
 		return await ctx.send(f"Hi {ctx.author.mention}! Welcome to the official ***AutoHotkey*** server!\n"
@@ -144,22 +128,6 @@ class AutoHotkey:
 				embed.url = result['url']
 		if embed:
 			await ctx.send(embed=embed)
-
-	@commands.command(aliases=['hl', 'h1'])
-	async def highlight(self, ctx, *, code):
-		"""Highlights some AutoHotkey code."""
-
-		# don't paste if there's hella many backticks fam
-		if '```'  in code:
-			return
-
-		# if it was invoked (by a user) we delete the source message
-		if ctx.invoked_with:
-			await ctx.message.delete()
-
-		msg = await ctx.send('```AutoIt\n{}\n```*{}, click the cross to delete.*'.format(code, ('Paste by {}' if ctx.invoked_with else "Paste from {}'s link").format(ctx.message.author.mention)))
-
-		await msg.add_reaction('\U0000274C')
 
 	@commands.command(aliases=['download', 'update'])
 	async def version(self, ctx):
@@ -206,10 +174,6 @@ class AutoHotkey:
 	@commands.command(hidden=True)
 	async def geekdude(self, ctx):
 		await ctx.send('Everyone does a stupid sometimes.')
-
-	@commands.command(aliases=['code', 'p', 'c'], hidden=True)
-	async def paste(self, ctx):
-		await ctx.send('To paste code snippets directly into the chat, use the highlight command:\n```.hl *paste code here*```If you have a larger script you want to share, paste it to the AutoHotkey pastebin instead:\nhttp://p.ahkscript.org/')
 
 	@commands.command(aliases=['a'], hidden=True)
 	async def ask(self, ctx):
