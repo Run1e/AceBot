@@ -1,18 +1,13 @@
 # ty capn! x2
 
-import requests, re
+import re
 
 from bs4 import BeautifulSoup, element
 
 
-def getThread(url):
-	s = requests.Session()
+def getThread(url, text):
 
-	tmpurl = re.sub("&start=\d+$", "", url)
-
-	response = s.get(tmpurl)
-
-	html = BeautifulSoup(response.text, "lxml")
+	html = BeautifulSoup(text, "lxml")
 
 	id = re.search("(?<=#)p\d+$", url)
 

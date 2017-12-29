@@ -1,81 +1,107 @@
-import discord
+import discord, aiohttp, time, json
 from discord.ext import commands
 
-import json
+nick = 'Ace'
+status = '.help for commands'
 
-bot = commands.Bot(command_prefix='.', description="RUNIE's bot")
+description = """
+A.C.E. - Autonomous Command Executor
 
-bot.description = f"A.C.E. - Autonomous Command Executor\n\nWritten by: RUNIE 🔥 #9646\nAvatar artwork: Vinter Borge\nContributors: Cap'n Odin #8812 and GeekDude #2532"
-
-bot.owner_id = 265644569784221696
-
-bot.info = {}
-
-bot.info['nick'] = 'Ace'
-bot.info['status'] = '.help for commands'
-
-with open('lib/ignore.json', 'r') as f:
-	bot.info['ignore_users'] = json.loads(f.read())
+Written by: RUNIE 🔥#9646
+Avatar artwork: Vinter Borge
+Contributors: Cap'n Odin #8812 and GeekDude #2532
+"""
 
 extensions = (
-	'cogs.commands',
-	'cogs.autohotkey',
 	'cogs.admin',
-	'cogs.highlighter'
+	'cogs.commands',
+	'cogs.highlighter',
+	'cogs.autohotkey',
+	'cogs.dwitter'
 )
 
-@bot.event
-async def on_ready():
-	await bot.user.edit(username=bot.info['nick'])
-	await bot.change_presence(game=discord.Game(name=bot.info['status']))
+class AceBot(commands.Bot):
+	def __init__(self):
 
-	if __name__ == '__main__':
-		print(f'Logged in as: {bot.user.name} - {bot.user.id}\nVersion: {discord.__version__}\n')
+		# load config file
+		with open('lib/config.json', 'r') as f:
+			self.config = json.loads(f.read())
+
+		# init bot
+		super().__init__(command_prefix=self.config['prefix'], description=description)
+
+		self.owner_id = 265644569784221696
+		self.session = aiohttp.ClientSession(loop=self.loop)
+
+		with open('lib/ignore.json', 'r') as f:
+			self.ignore_users = json.loads(f.read())
+
+		# check for ignored users and bots
+		self.add_check(self.blacklist)
+
+		# print before invoke
+		self.before_invoke(self.before_command)
+
+	async def request(self, method, url, **args):
+		try:
+			async with self.session.request(method, url, **args) as resp:
+				print(resp.status)
+				if resp.status != 200:
+					return None
+				if resp.content_type == 'application/json':
+					return await resp.json()
+				else:
+					return await resp.text()
+		except:
+			return None
+
+	async def before_command(self, ctx):
+		print(f'\nServer: {ctx.guild.name}\nUser: {ctx.message.author.name}\nCommand: {ctx.command.name}')
+
+	async def blacklist(self, ctx):
+		return (ctx.message.author.id not in self.ignore_users and not ctx.author.bot)
+
+	async def on_ready(self):
+		if not hasattr(self, 'uptime'):
+			self.uptime = time.time()
+
+		await self.user.edit(username=nick)
+		await self.change_presence(game=discord.Game(name=status))
+
 		for extension in extensions:
 			print(f'Loading extension: {extension}')
-			bot.load_extension(extension)
+			self.load_extension(extension)
 
-	print(f'\nConnected to {len(bot.guilds)} servers:')
-	print('\n'.join(f'{guild.name} - {guild.id}' for guild in bot.guilds))
+		print(f'\nLogged in as: {self.user.name} - {self.user.id}\ndiscord.py {discord.__version__}')
+		print(f'\nConnected to {len(self.guilds)} servers:')
+		print('\n'.join(f'{guild.name} - {guild.id}' for guild in self.guilds))
 
-@bot.event
-async def on_command_error(ctx, error):
-	if isinstance(error, commands.CommandNotFound):
-		return
+	async def on_command_error(self, ctx, error):
+		if isinstance(error, commands.CommandNotFound):
+			return
 
-	# if isinstance(error, commands.CommandInvokeError):
-	#	return print(error)
+		# if isinstance(error, commands.CommandInvokeError):
+		#	return print(error)
 
-	errors = {
-		commands.DisabledCommand: 'Command has been disabled.',
-		commands.MissingPermissions: 'Invoker is missing permissions to run this command.',
-		commands.BotMissingPermissions: 'Bot is missing permissions to run this command.',
-		commands.CheckFailure: 'You are not allowed to run this command.'
-	}
+		errors = {
+			commands.DisabledCommand: 'Command has been disabled.',
+			commands.MissingPermissions: 'Invoker is missing permissions to run this command.',
+			commands.BotMissingPermissions: 'Bot is missing permissions to run this command.',
+			commands.CheckFailure: 'You are not allowed to run this command.'
+		}
 
-	for type, text in errors.items():
-		if isinstance(error, type):
-			return await ctx.send(errors[type])
+		for type, text in errors.items():
+			if isinstance(error, type):
+				return await ctx.send(errors[type])
 
-	# argument error
-	if isinstance(error, commands.UserInputError):
-		bot.formatter.context = ctx
-		bot.formatter.command = ctx.command
-		return await ctx.send(f'Invalid argument(s) provided.\n```{bot.formatter.get_command_signature()}```')
+		# argument error
+		if isinstance(error, commands.UserInputError):
+			self.formatter.context = ctx
+			self.formatter.command = ctx.command
+			return await ctx.send(f'Invalid argument(s) provided.\n```{self.formatter.get_command_signature()}```')
 
-	await ctx.send(f'An error occured in `{ctx.command.name}` invoked by {ctx.message.author}:\n```{error}```')
-	#traceback.print_exception(type(exception), exception, exception.__traceback__, file=sys.stderr)
-
-# blacklist check
-# check is user is blacklister, or if it's a bot
-@bot.check_once
-async def global_check(ctx):
-	return (ctx.message.author.id not in bot.info['ignore_users']) and not ctx.author.bot
-
-# print command usage
-@bot.before_invoke
-async def before_any_command(ctx):
-	print(f'------------------------\nServer: {ctx.guild.name}\nUser: {ctx.message.author.name}\nCommand: {ctx.command.name}\n')
+		await ctx.send(f'An error occured in `{ctx.command.name}` invoked by {ctx.message.author}:\n```{error}```')
+		raise error.original
 
 
 # overwrite discord.Embed with a monkey patched class that automatically sets the color attribute
@@ -86,8 +112,6 @@ class Embed(discord.Embed):
 
 discord.Embed = Embed
 
-with open('lib/bot_token.txt', 'r') as f:
-	bot.run(f.read())
-
-
-# test
+if __name__ == '__main__':
+	bot = AceBot()
+	AceBot().run(bot.config['token'])

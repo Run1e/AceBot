@@ -1,8 +1,6 @@
 import discord
 from discord.ext import commands
 
-import requests
-import json
 import re
 
 from cogs.utils.docs_search import docs_search
@@ -15,9 +13,9 @@ class AutoHotkey:
 	def __init__(self, bot):
 		self.bot = bot
 
-	# make sure we're in the ahk guild
+	# make sure we're in the the correct guild(s)
 	async def __local_check(self, ctx):
-		return ctx.guild.id in (115993023636176902, 317632261799411712, 367975590143459328, 372163679010947074, 380066879919751179) or await self.bot.is_owner(ctx.author)
+		return ctx.guild.id in (115993023636176902, 317632261799411712, 372163679010947074, 380066879919751179) or await self.bot.is_owner(ctx.author)
 
 	async def on_member_join(self, member):
 		if not member.guild.id == 115993023636176902:
@@ -31,12 +29,13 @@ class AutoHotkey:
 
 
 	async def on_message(self, message):
-		ctx = await self.bot.get_context(message)
-		if not await self.__local_check(ctx):
+		# ignore messages that start with a prefix
+		if message.content.startswith(tuple(await self.bot.get_prefix(message))):
 			return
 
-		# ignore bots and messages that start with a prefix
-		if message.author.bot or message.content.startswith(tuple(await self.bot.get_prefix(message))):
+		# get context and do checks
+		ctx = await self.bot.get_context(message)
+		if not (await self.__local_check(ctx) and await self.bot.can_run(ctx)):
 			return
 
 		# find links in message
@@ -49,9 +48,9 @@ class AutoHotkey:
 		for index, link in enumerate(links):
 			if (index > 1):
 				break
-			if link.startswith("http://p.ahkscript.org/?"):
+			if re.match("^https?://(www.)?p.ahkscript.org/\?", link):
 				await self.pastelink(ctx, link)
-			if link.startswith("https://autohotkey.com/boards/viewtopic.php?"):
+			if re.match("^https?://(www.)?autohotkey.com/boards/viewtopic.php\?", link):
 				await self.forumlink(ctx, link)
 
 	async def on_command_error(self, ctx, error):
@@ -62,32 +61,34 @@ class AutoHotkey:
 		if isinstance(error, commands.CommandNotFound) and not re.search('^\.{2}', ctx.message.content):
 			await ctx.invoke(self.docs, search=ctx.message.content[1:])
 
-	async def pastelink(self, ctx, link):
-		link = link.replace("?p=", "?r=")
-		link = link.replace("?e=", "?r=")
+	async def pastelink(self, ctx, url):
+		url = url.replace("?p=", "?r=")
+		url = url.replace("?e=", "?r=")
 
-		req = requests.get(link)
-		text = req.text
+		text = await self.bot.request('get', url)
+		if text is None:
+			return
 
 		if len(text) > 2048 or text.count('\n') > 24:
 			return
 
-		await ctx.invoke(self.highlight, code=text)
+		await ctx.invoke(self.bot.get_command('highlight'), code=text)
 
 	# ty capn!
 	async def forumlink(self, ctx, url):
-		post = Preview.getThread(url)
+		tempurl = re.sub("&start=\d+$", "", url)
 
+		text = await self.bot.request('get', tempurl)
+		if text is None:
+			return
+
+		post = Preview.getThread(url, text)
 		embed = discord.Embed(title=post["title"], url=url)
-
 		embed.description = shorten(post['description'], 2048, 12)
-
 		if post["image"]:
 			embed.set_image(url=post["image"] if post["image"][0] != "." else "https://autohotkey.com/boards" + post["image"][1:post["image"].find("&") + 1])
-
 		embed.set_author(name=post["user"]["name"], url="https://autohotkey.com/boards" + post["user"]["url"][1:],
 						 icon_url="https://autohotkey.com/boards" + post["user"]["icon"][1:])
-
 		embed.set_footer(text='autohotkey.com')
 
 		await ctx.send(embed=embed)
@@ -133,8 +134,12 @@ class AutoHotkey:
 	async def version(self, ctx):
 		"""Get a download link to the latest AutoHotkey_L version."""
 
-		req = requests.get('https://api.github.com/repos/Lexikos/AutoHotkey_L/releases/latest')
-		version = json.loads(req.text)['tag_name']
+		data = await self.bot.request('get', 'https://api.github.com/repos/Lexikos/AutoHotkey_L/releases/latest')
+		if data is None:
+			return
+
+		version = data['tag_name']
+
 		down = "https://github.com/Lexikos/AutoHotkey_L/releases/download/{}/AutoHotkey_{}_setup.exe".format(version, version[1:])
 
 		embed = discord.Embed(title="<:ahk:317997636856709130> AutoHotkey_L", url=down)
@@ -146,8 +151,11 @@ class AutoHotkey:
 	async def studio(self, ctx):
 		"""Returns a download link to AHK Studio."""
 
-		req = requests.get('https://raw.githubusercontent.com/maestrith/AHK-Studio/master/AHK-Studio.text')
-		version = req.text.split('\r\n')[0]
+		text = await self.bot.request('get', 'https://raw.githubusercontent.com/maestrith/AHK-Studio/master/AHK-Studio.text')
+		if text is None:
+			return
+
+		version = text.split('\r\n')[0][:-1]
 
 		embed = discord.Embed(description='Feature rich IDE for AutoHotkey!\n[Direct download]({})'.format('https://raw.githubusercontent.com/maestrith/AHK-Studio/master/AHK-Studio.ahk'))
 		embed.set_author(name='AHK Studio', url='https://autohotkey.com/boards/viewtopic.php?f=62&t=300', icon_url='https://i.imgur.com/DXtmUwN.png')

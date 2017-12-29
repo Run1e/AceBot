@@ -1,7 +1,6 @@
 import discord
 from discord.ext import commands
 
-import requests
 import random
 import time
 import math
@@ -32,12 +31,6 @@ class Commands:
 
 		with open('cogs/data/facts.txt', 'r') as f:
 			self.splitfacts = f.read().splitlines()
-		with open('lib/wolfram.txt', 'r') as f:
-			self.wolframkey = f.read()
-		with open('lib/weather.txt', 'r') as f:
-			self.weather_key = f.read()
-		with open('lib/oxford.txt', 'r') as f:
-			self.oxford = f.read().splitlines()
 		with open('lib/rep.json', 'r') as f:
 			self.reps = json.loads(f.read())
 
@@ -184,36 +177,33 @@ class Commands:
 		att = {}
 		att['Online'] = f'{sum(member.status is not discord.Status.offline for member in ctx.guild.members)}/{len(ctx.guild.members)}'
 		att['Owner'] = ctx.guild.owner.display_name
-		#att['Emojis'] = len(ctx.guild.emojis)
-		#att['Text channels'] = len(ctx.guild.text_channels)
-		#att['Voice channels'] = len(ctx.guild.voice_channels)
+		att['Channels'] = len(ctx.guild.text_channels) + len(ctx.guild.voice_channels)
 		att['Region'] = str(ctx.guild.region)
 		att['Created at'] = str(ctx.guild.created_at).split(' ')[0]
 
 		e = discord.Embed(title=ctx.guild.name, description='\n'.join(f'**{a}**: {b}' for a, b in att.items()))
 		e.set_thumbnail(url=ctx.guild.icon_url)
 		e.add_field(name='Status', value='\n'.join(str(status) for status in statuses))
-		e.add_field(name='Amount', value='\n'.join(str(count) for status, count in statuses.items()))
+		e.add_field(name='Users', value='\n'.join(str(count) for status, count in statuses.items()))
 		await ctx.send(embed=e)
 
 	@commands.command()
 	async def weather(self, ctx, *, location: str = None):
-		"""Check the weather in a location."""
+		"""Check the weather at a location."""
 
 		if location is None:
-			return await ctx.send('Please provide a location to get Weather Information for.')
+			return await ctx.send('Please provide a location to get weather information for.')
 
 		await ctx.trigger_typing()
 
-		base = f'http://api.apixu.com/v1/current.json?key={self.weather_key}&q={location}'
+		base = f'http://api.apixu.com/v1/current.json?key={self.bot.config["apixu"]}&q={location}'
 
-		try:
-			res = requests.get(base)
-			data = json.loads(res.text)
-		except:
+		data = await self.bot.request('get', base)
+		if data is None:
 			return await ctx.send('Failed getting weather information.')
 
 		location = data['location']
+
 		locmsg = f'{location["name"]}, {location["region"]} {location["country"].upper()}'
 		current = data['current']
 
@@ -227,7 +217,7 @@ class Commands:
 		embed.add_field(name='Wind Direction', value=current['wind_dir'])
 		embed.timestamp = datetime.datetime.utcnow()
 
-		await ctx.send(content=None, embed=embed)
+		await ctx.send(embed=embed)
 
 	@commands.command(name='8')
 	async def ball(self, ctx, question):
@@ -301,12 +291,12 @@ class Commands:
 
 		await ctx.trigger_typing()
 
-		req = requests.get('https://od-api.oxforddictionaries.com:443/api/v1/entries/en/' + query.split('\n')[0].lower(), headers={'Accept': 'application/json', 'app_id': self.oxford[0], 'app_key': self.oxford[1]})
+		url = 'https://od-api.oxforddictionaries.com:443/api/v1/entries/en/' + query.split('\n')[0].lower()
+		headers = {'Accept': 'application/json', 'app_id': self.bot.config['oxford']['id'], 'app_key': self.bot.config['oxford']['key']}
 
-		try:
-			info = json.loads(req.text)
-		except:
-			return await ctx.send("Couldn't process query.")
+		info = await self.bot.request('get', url, headers=headers)
+		if info is None:
+			return await ctx.send('Failed getting definition.')
 
 		result = info['results'][0]
 		entry = result['lexicalEntries'][0]
@@ -326,13 +316,15 @@ class Commands:
 	@commands.command()
 	async def flip(self, ctx):
 		"""Flip a coin!"""
-		await ctx.send(f'I got {random.choice(["Heads", "Tails"])}!')
+		msg = await ctx.send('Flipping...')
+		await asyncio.sleep(3)
+		await msg.edit(content=random.choice(["Heads!", "Tails!"]))
 
 	@commands.command()
 	async def rep(self, ctx, mention: discord.Member = None):
 		"""Give someone some reputation!"""
 
-		if mention == None:
+		if mention is None:
 			return await ctx.send(f'{ctx.author.mention} has a reputation of {(self.reps[str(ctx.author.id)] if str(ctx.author.id) in self.reps else 0)}!')
 
 		# get the id
@@ -388,7 +380,7 @@ class Commands:
 
 		for user, rep_count in rep_sort:
 			member = ctx.guild.get_member(int(user))
-			if not member == None:
+			if not member is None:
 				names += f'*{str(member).split("#")[0]}*\n'
 				reps += f'{rep_count}\n'
 				added += 1
@@ -408,21 +400,28 @@ class Commands:
 
 		await ctx.trigger_typing()
 
-		req = requests.get('https://api.wolframalpha.com/v1/result?i={}&appid={}'.format(query, self.wolframkey))
-		text = f'Query:\n```python\n{query}``` \nResult:\n```python\n{req.text}``` '
+		url = f'https://api.wolframalpha.com/v1/result?appid={self.bot.config["wolfram"]}&i={query}'
+
+		res = await self.bot.request('get', url)
+		if res is None:
+			return await ctx.send('Wolfram request failed.')
+
+		text = f'Query:\n```python\n{query}```\nResult:\n```python\n{res}```'
 		embed = discord.Embed(description=text)
 		embed.set_author(name='Wolfram Alpha', icon_url='https://i.imgur.com/KFppH69.png')
 		embed.set_footer(text='wolframalpha.com')
 		if len(text) > 2000:
-			await ctx.send('Response too large.')
+			await ctx.send('Response too long.')
 		else:
 			await ctx.send(embed=embed)
 
 	@commands.command(aliases=['num'])
 	async def number(self, ctx, *, num: int):
 		"""Get a random fact about a number!"""
-		req = requests.get('http://numbersapi.com/{}?notfound=floor'.format(num))
-		await ctx.send(req.text)
+		text = await self.bot.request('get', f'http://numbersapi.com/{num}?notfound=floor')
+		if text is None:
+			return await ctx.send('Number API request failed.')
+		await ctx.send(text)
 
 	@commands.command()
 	async def fact(self, ctx):
@@ -435,7 +434,7 @@ class Commands:
 
 	@commands.command(hidden=True)
 	async def uptime(self, ctx):
-		sec = time.time() - self.time
+		sec = time.time() - self.bot.uptime
 		seconds = math.floor(sec % 60)
 		minutes = math.floor(sec/60 % 60)
 		hours = math.floor(sec/60/60 % 24)

@@ -1,10 +1,8 @@
-import requests
 from bs4 import BeautifulSoup
 import urllib.parse
 
-def search(query):
-	req = requests.get('http://google.com/search?hl=en&safe=on&q={}'.format(query))
-	soup = BeautifulSoup(req.text, 'html.parser')
+def google_result(text):
+	soup = BeautifulSoup(text, 'html.parser')
 	url = soup.find_all('div')
 	url = [x for x in url if x.find('h3')]
 	urls = []
@@ -15,6 +13,7 @@ def search(query):
 		href = link.get('href')
 
 		item_url = href.split('=', 1)[1].split('&')[0]
+
 		if not item_url.startswith('http'):
 			continue
 

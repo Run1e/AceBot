@@ -9,7 +9,7 @@ class Highlighter:
 	def __init__(self, bot):
 		self.bot = bot
 		self.default = 'AutoIt'
-		self.guilds = {395956681793863690: "js"}
+		self.guilds = {395956681793863690: 'js'}
 
 	async def on_message(self, message):
 		return
@@ -24,7 +24,7 @@ class Highlighter:
 		author = ctx.message.mentions[0]
 
 		if (author == user or user.permissions_in(reaction.message.channel).manage_messages) and reaction.emoji == '\U0000274C':
-			print(f'{author} del highlight')
+			print(f'\n{author} del highlight')
 			await reaction.message.delete()
 		else:
 			await reaction.message.remove_reaction(reaction, user)

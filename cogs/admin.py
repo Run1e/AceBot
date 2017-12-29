@@ -7,7 +7,7 @@ import textwrap
 import traceback
 from contextlib import redirect_stdout
 
-from cogs.utils.search import search
+from cogs.utils.google_result import google_result
 
 class Admin:
 	"""Admin commands"""
@@ -26,13 +26,6 @@ class Admin:
 
 	async def __local_check(self, ctx):
 		return await self.bot.is_owner(ctx.author)
-
-	@commands.command()
-	async def game(self, ctx, *, presence = None):
-		"""Change bot presence."""
-		if presence == None:
-			presence = self.bot.info['status']
-		await self.bot.change_presence(game=discord.Game(name=str(presence)))
 
 	# if this doesn't work, I changed how id is casted to int
 	@commands.command()
@@ -58,13 +51,13 @@ class Admin:
 	async def notice(self, ctx, user: discord.Member):
 		"""Remove user for ignore list."""
 
-		if user.id not in self.bot.info['ignore_users']:
+		if user.id not in self.bot.ignore_users:
 			return await ctx.send('User was never ignored.')
 
-		self.bot.info['ignore_users'].remove(user.id)
+		self.bot.ignore_users.remove(user.id)
 
 		with open('lib/ignore.json', 'w') as f:
-			f.write(json.dumps(self.bot.info['ignore_users'], sort_keys=True, indent=4))
+			f.write(json.dumps(self.bot.ignore_users, sort_keys=True, indent=4))
 
 		await ctx.send('User removed from ignore list.')
 
@@ -72,13 +65,13 @@ class Admin:
 	async def ignore(self, ctx, user: discord.Member):
 		"""Add user to ignore list."""
 
-		if user.id in self.bot.info['ignore_users']:
+		if user.id in self.bot.ignore_users:
 			return await ctx.send('User already ignored.')
 
-		self.bot.info['ignore_users'].append(user.id)
+		self.bot.ignore_users.append(user.id)
 
 		with open('lib/ignore.json', 'w') as f:
-			f.write(json.dumps(self.bot.info['ignore_users'], sort_keys=True, indent=4))
+			f.write(json.dumps(self.bot.ignore_users, sort_keys=True, indent=4))
 
 		await ctx.send('User ignored.')
 
@@ -95,8 +88,20 @@ class Admin:
 	@commands.command(aliases=['g'])
 	async def search(self, ctx, *, query):
 		"""Search Google."""
+		import requests
+		"""
 		await ctx.trigger_typing()
-		result = search(query)
+		headers = {
+			'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_10_1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/39.0.2171.95 Safari/537.36',
+			'Accept:': 'text/html'
+		}
+		params = {'hl': 'en', 'safe': 'on', 'q': query}
+		text = await self.bot.request('get', 'http://google.com/search', params=params, headers=headers)
+		if text is None:
+			return await ctx.send('Request failed.')
+		"""
+		req = requests.get('http://google.com/search?hl=en&safe=on&q={}'.format(query))
+		result = google_result(req.text)
 		if not result:
 			await ctx.send('No results.')
 		else:
