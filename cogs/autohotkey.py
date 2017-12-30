@@ -66,6 +66,7 @@ class AutoHotkey:
 		url = url.replace("?e=", "?r=")
 
 		text = await self.bot.request('get', url)
+
 		if text is None:
 			return
 
@@ -79,6 +80,7 @@ class AutoHotkey:
 		tempurl = re.sub("&start=\d+$", "", url)
 
 		text = await self.bot.request('get', tempurl)
+
 		if text is None:
 			return
 
@@ -92,13 +94,6 @@ class AutoHotkey:
 		embed.set_footer(text='autohotkey.com')
 
 		await ctx.send(embed=embed)
-
-	@commands.command(hidden=True)
-	async def test(self, ctx):
-		return await ctx.send(f"Hi {ctx.author.mention}! Welcome to the official ***AutoHotkey*** server!\n"
-						   "You won't be able to speak for about 10 minutes. Please spend this time reading the rules and tips at <#304708649748660224>.\n"
-						   "If you come with a problem, also spend some time figuring out how to ask your question in a descriptive and thorough way so that people are able to help!\n"
-						   "Happy scripting and we hope you enjoy your stay!")
 
 	@commands.command(name='helper+')
 	async def helperplus(self, ctx):
@@ -135,6 +130,7 @@ class AutoHotkey:
 		"""Get a download link to the latest AutoHotkey_L version."""
 
 		data = await self.bot.request('get', 'https://api.github.com/repos/Lexikos/AutoHotkey_L/releases/latest')
+
 		if data is None:
 			return
 
@@ -152,6 +148,7 @@ class AutoHotkey:
 		"""Returns a download link to AHK Studio."""
 
 		text = await self.bot.request('get', 'https://raw.githubusercontent.com/maestrith/AHK-Studio/master/AHK-Studio.text')
+
 		if text is None:
 			return
 
@@ -179,34 +176,10 @@ class AutoHotkey:
 			return
 		await ctx.send(f'{user}\n\n{rules[rule - 1]}')
 
-	@commands.command(hidden=True)
-	async def geekdude(self, ctx):
-		await ctx.send('Everyone does a stupid sometimes.')
-
-	@commands.command(aliases=['a'], hidden=True)
-	async def ask(self, ctx):
-		await ctx.send("Just ask your question, don't ask whether you *can* ask!")
-
 	@commands.command(aliases=['bow'], hidden=True)
 	async def mae(self, ctx):
 		await ctx.message.delete()
 		await ctx.send('*' + ctx.author.mention + " bows*")
-
-	@commands.command(hidden=True)
-	async def documentation(self, ctx):
-		await ctx.send(embed=discord.Embed(title='AutoHotkey documentation', description='https://autohotkey.com/docs/AutoHotkey.htm'))
-
-	@commands.command(hidden=True)
-	async def forums(self, ctx):
-		await ctx.send(embed=discord.Embed(title='AutoHotkey forums', description='https://autohotkey.com/boards/'))
-
-	@commands.command(aliases=['tut'], hidden=True)
-	async def tutorial(self, ctx):
-		await ctx.send('Tutorial by tidbit: https://autohotkey.com/docs/Tutorial.htm')
-
-	@commands.command(hidden=True)
-	async def tias(self, ctx):
-		await ctx.send('http://i.imgur.com/6A6tcD0.png')
 
 def setup(bot):
 	bot.add_cog(AutoHotkey(bot))

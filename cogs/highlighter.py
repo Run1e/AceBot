@@ -31,7 +31,7 @@ class Highlighter:
 
 	@commands.command(aliases=['hl', 'h1'])
 	async def highlight(self, ctx, *, code):
-		"""Highlights some AutoHotkey code."""
+		"""Highlights some code."""
 
 		# don't paste if there's hella many backticks fam
 		if '```'  in code:

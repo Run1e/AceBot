@@ -4,7 +4,7 @@ from discord.ext import commands
 import re
 
 class Dwitter:
-	"""Admin commands"""
+	"""Commands for the Dwitter server."""
 
 	def __init__(self, bot):
 		self.bot = bot

@@ -196,9 +196,15 @@ class Commands:
 
 		await ctx.trigger_typing()
 
-		base = f'http://api.apixu.com/v1/current.json?key={self.bot.config["apixu"]}&q={location}'
+		url = 'http://api.apixu.com/v1/current.json'
 
-		data = await self.bot.request('get', base)
+		params = {
+			'key': self.bot.config["apixu"],
+			'q': location
+		}
+
+		data = await self.bot.request('get', url, params=params)
+
 		if data is None:
 			return await ctx.send('Failed getting weather information.')
 
@@ -292,9 +298,15 @@ class Commands:
 		await ctx.trigger_typing()
 
 		url = 'https://od-api.oxforddictionaries.com:443/api/v1/entries/en/' + query.split('\n')[0].lower()
-		headers = {'Accept': 'application/json', 'app_id': self.bot.config['oxford']['id'], 'app_key': self.bot.config['oxford']['key']}
+
+		headers = {
+			'Accept': 'application/json',
+			'app_id': self.bot.config['oxford']['id'],
+			'app_key': self.bot.config['oxford']['key']
+		}
 
 		info = await self.bot.request('get', url, headers=headers)
+
 		if info is None:
 			return await ctx.send('Failed getting definition.')
 
@@ -400,9 +412,15 @@ class Commands:
 
 		await ctx.trigger_typing()
 
-		url = f'https://api.wolframalpha.com/v1/result?appid={self.bot.config["wolfram"]}&i={query}'
+		url = 'https://api.wolframalpha.com/v1/result'
 
-		res = await self.bot.request('get', url)
+		params = {
+			'appid': self.bot.config["wolfram"],
+			'i': query
+		}
+
+		res = await self.bot.request('get', url, params=params)
+
 		if res is None:
 			return await ctx.send('Wolfram request failed.')
 
@@ -418,9 +436,12 @@ class Commands:
 	@commands.command(aliases=['num'])
 	async def number(self, ctx, *, num: int):
 		"""Get a random fact about a number!"""
+
 		text = await self.bot.request('get', f'http://numbersapi.com/{num}?notfound=floor')
+
 		if text is None:
 			return await ctx.send('Number API request failed.')
+
 		await ctx.send(text)
 
 	@commands.command()

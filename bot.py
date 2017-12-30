@@ -16,6 +16,7 @@ extensions = (
 	'cogs.admin',
 	'cogs.commands',
 	'cogs.highlighter',
+	'cogs.tags',
 	'cogs.autohotkey',
 	'cogs.dwitter'
 )
@@ -45,7 +46,6 @@ class AceBot(commands.Bot):
 	async def request(self, method, url, **args):
 		try:
 			async with self.session.request(method, url, **args) as resp:
-				print(resp.status)
 				if resp.status != 200:
 					return None
 				if resp.content_type == 'application/json':

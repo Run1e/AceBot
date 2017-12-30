@@ -88,9 +88,7 @@ class Admin:
 	@commands.command(aliases=['g'])
 	async def search(self, ctx, *, query):
 		"""Search Google."""
-		import requests
 		"""
-		await ctx.trigger_typing()
 		headers = {
 			'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_10_1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/39.0.2171.95 Safari/537.36',
 			'Accept:': 'text/html'
@@ -100,6 +98,8 @@ class Admin:
 		if text is None:
 			return await ctx.send('Request failed.')
 		"""
+		import requests
+		await ctx.trigger_typing()
 		req = requests.get('http://google.com/search?hl=en&safe=on&q={}'.format(query))
 		result = google_result(req.text)
 		if not result:
