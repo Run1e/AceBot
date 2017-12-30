@@ -274,7 +274,7 @@ class Commands:
 
 	@commands.command()
 	async def wikirandom(self, ctx):
-		"""Get a random wikipedia page."""
+		"""Get a random Wikipedia page."""
 
 		await ctx.trigger_typing()
 		try:

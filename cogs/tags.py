@@ -1,36 +1,44 @@
 import discord
 from discord.ext import commands
 
-import unicodedata
-import datetime
+import datetime, re
 from peewee import *
 
 db = SqliteDatabase('lib/tags.db')
+
+def make_lower(s: str): return s.lower()
 
 class Tags:
 	"""Tag system."""
 
 	def __init__(self, bot):
 		self.bot = bot
-		self.reserved_names = ['create', 'edit', 'delete', 'info']
+		self.reserved_names = ['create', 'edit', 'delete', 'info', 'list', 'top', 'raw', 'get']
 
-	async def get_tag(self, tag_name, guild_id, alias=True):
+	async def get_tag(self, tag_name: make_lower, guild_id, alias=True):
 		for tag_obj in Tag.select().where(Tag.guild == guild_id):
-			if canonical_caseless(tag_name) == canonical_caseless(tag_obj.name):
+			if tag_name == tag_obj.name:
 				return tag_obj
-			if alias and canonical_caseless(tag_name) == canonical_caseless(tag_obj.alias):
+			if alias and tag_name == tag_obj.alias:
 				return tag_obj
 		return None
 
-	def name_ban(self, tag_name):
+	def name_ban(self, tag_name: make_lower):
 		if len(tag_name) < 2:
 			return 'Tag name too short.'
 		if len(tag_name) > 16:
 			return 'Tag name too long.'
-		if canonical_caseless(tag_name) in (canonical_caseless(name) for name in self.reserved_names):
+		if tag_name in self.reserved_names:
 			return f"Tag name '{tag_name}' is reserved."
 		return None
 
+	"""
+	todo
+
+	just save the tags as .lower() to start off with to make it a lot simpler...
+	allow removal of alias, just make last default to None and check for that
+	add tag raw <tag_name>
+	"""
 
 	@commands.group(aliases=['t'])
 	async def tag(self, ctx):
@@ -38,7 +46,7 @@ class Tags:
 
 		# send tag
 		if ctx.invoked_subcommand is None:
-			tag_name = ctx.message.content[ctx.message.content.find(' ') + 1:]
+			tag_name = make_lower(ctx.message.content[ctx.message.content.find(' ') + 1:])
 			get_tag = await self.get_tag(tag_name, ctx.guild.id)
 
 			if get_tag is None:
@@ -50,8 +58,9 @@ class Tags:
 			await ctx.send(get_tag.content)
 
 	@tag.group()
-	async def create(self, ctx, tag_name: str, *, content: str):
+	async def create(self, ctx, tag_name: make_lower, *, content: str):
 		"""Create a tag."""
+
 		ban = self.name_ban(tag_name)
 		if ban:
 			return await ctx.send(ban)
@@ -66,7 +75,8 @@ class Tags:
 		await ctx.send(f"Tag '{tag_name}' created.")
 
 	@tag.group()
-	async def edit(self, ctx, tag_name: str, *, new_content: str):
+	async def edit(self, ctx, tag_name: make_lower, *, new_content: str):
+		"""Edit an existing tag."""
 		get_tag = await self.get_tag(tag_name, ctx.guild.id)
 
 		if get_tag is None:
@@ -82,13 +92,15 @@ class Tags:
 		await ctx.send('Tag edited.')
 
 	@tag.group()
-	async def delete(self, ctx, *, tag_name: str):
+	async def delete(self, ctx, *, tag_name: make_lower):
+		"""Delete a tag."""
+
 		get_tag = await self.get_tag(tag_name, ctx.guild.id)
 
 		if get_tag is None:
 			return await ctx.send('Could not find tag.')
 
-		if not get_tag.owner == ctx.author.id: # or not await self.bot.is_owner(ctx.author):
+		if not get_tag.owner == ctx.author.id:
 			return await ctx.send('You do not own this tag.')
 
 		deleted = get_tag.delete_instance()
@@ -99,11 +111,21 @@ class Tags:
 			await ctx.send(f"Tag '{get_tag.name}' deleted.")
 
 	@tag.group()
-	async def alias(self, ctx, tag_name: str, alias: str):
+	async def alias(self, ctx, tag_name: make_lower, alias: make_lower = None):
+		"""Set an alias to a tag."""
+
+		if tag_name == alias:
+			return await ctx.send('Tag name and Alias can not be identical.')
+
 		get_tag = await self.get_tag(tag_name, ctx.guild.id, alias=False)
 
 		if get_tag is None:
 			return await ctx.send('Could not find tag.')
+
+		if alias is None:
+			get_tag.alias = ''
+			get_tag.save()
+			return await ctx.send(f"Alias for '{tag_name}' removed.")
 
 		ban = self.name_ban(alias)
 		if ban:
@@ -115,7 +137,72 @@ class Tags:
 		await ctx.send(f"Set alias for '{get_tag.name}' to '{alias}'")
 
 	@tag.group()
-	async def info(self, ctx, *, tag_name: str):
+	async def raw(self, ctx, *, tag_name: make_lower):
+		"""Get raw content of tag.
+
+		Useful for editing! Code taken from Danny's RoboDanny bot.
+		"""
+
+		get_tag = await self.get_tag(tag_name, ctx.guild.id)
+
+		if get_tag is None:
+			return await ctx.send('Could not find tag.')
+
+		transformations = {
+			re.escape(c): '\\' + c
+			for c in ('*', '`', '_', '~', '\\', '<')
+			}
+
+		def replace(obj):
+			return transformations.get(re.escape(obj.group(0)), '')
+
+		pattern = re.compile('|'.join(transformations.keys()))
+		await ctx.send(pattern.sub(replace, get_tag.content))
+
+
+	@tag.group()
+	async def list(self, ctx, *, member: discord.Member = None):
+		"""List tags from the server or a user."""
+
+		max_tags = 6
+
+		names, uses, tags = '', '', 0
+
+		list = Tag.select()\
+			.where(Tag.owner == (Tag.owner if member is None else member.id), Tag.guild == ctx.guild.id)\
+			.order_by(Tag.uses.desc())
+
+		for index, get_tag in enumerate(list):
+			if (tags < max_tags):
+				names += f'\n{get_tag.name}'
+				if not get_tag.alias == '':
+					names += f' ({get_tag.alias})'
+				uses += f'\n{get_tag.uses}'
+			tags += 1
+
+		if not tags:
+			return await ctx.send('No tags found.')
+
+		e = discord.Embed()
+		e.add_field(name='Tag', value=names, inline=True)
+		e.add_field(name='Uses', value=uses, inline=True)
+		e.description = f'{tags if tags < max_tags else max_tags}/{tags} tags'
+
+		if member is None:
+			nick = ctx.guild.name
+			avatar = ctx.guild.icon_url
+		else:
+			nick = member.display_name
+			avatar = member.avatar_url
+
+		e.set_author(name=nick, icon_url=avatar)
+
+		await ctx.send(embed=e)
+
+	@tag.group()
+	async def info(self, ctx, *, tag_name: make_lower):
+		"""Show info about a tag."""
+
 		get_tag = await self.get_tag(tag_name, ctx.guild.id)
 
 		if get_tag is None:
@@ -150,6 +237,10 @@ class Tags:
 
 		await ctx.send(embed=e)
 
+	@commands.command()
+	async def tags(self, ctx):
+		"""Short manual on the tag system."""
+
 
 class Tag(Model):
 	name = CharField()
@@ -163,15 +254,6 @@ class Tag(Model):
 
 	class Meta:
 		database = db
-
-def NFD(text):
-	return unicodedata.normalize('NFD', text)
-
-def canonical_caseless(text):
-	return NFD(NFD(text).casefold())
-
-def match_nocase(s1, s2):
-	return canonical_caseless(s1) == canonical_caseless(s2)
 
 def setup(bot):
 	db.connect()
