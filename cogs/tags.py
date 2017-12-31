@@ -1,7 +1,9 @@
 import discord
 from discord.ext import commands
 
-import datetime, re
+from cogs.utils.strip_markdown import *
+
+import datetime
 from peewee import *
 
 db = SqliteDatabase('lib/tags.db')
@@ -26,23 +28,15 @@ class Tags:
 	def name_ban(self, tag_name: make_lower):
 		if len(tag_name) < 2:
 			return 'Tag name too short.'
-		if len(tag_name) > 16:
+		if len(tag_name) > 20:
 			return 'Tag name too long.'
 		if tag_name in self.reserved_names:
 			return f"Tag name '{tag_name}' is reserved."
 		return None
 
-	"""
-	todo
-
-	just save the tags as .lower() to start off with to make it a lot simpler...
-	allow removal of alias, just make last default to None and check for that
-	add tag raw <tag_name>
-	"""
-
 	@commands.group(aliases=['t'])
 	async def tag(self, ctx):
-		"""Create tags."""
+		"""Create and manage tags."""
 
 		# send tag
 		if ctx.invoked_subcommand is None:
@@ -68,8 +62,13 @@ class Tags:
 		if await self.get_tag(tag_name, ctx.guild.id):
 			return await ctx.send(f"Tag '{tag_name}' already exists.")
 
-		date = datetime.datetime.now()
-		new_tag = Tag(name=tag_name, content=content, owner=ctx.author.id, guild=ctx.guild.id, created_at=date, edited_at=date, uses=0, alias='')
+		new_tag = Tag(
+			name=tag_name,
+			content=content,
+			owner=ctx.author.id,
+			guild=ctx.guild.id,
+		)
+
 		new_tag.save()
 
 		await ctx.send(f"Tag '{tag_name}' created.")
@@ -123,7 +122,7 @@ class Tags:
 			return await ctx.send('Could not find tag.')
 
 		if alias is None:
-			get_tag.alias = ''
+			get_tag.alias = None
 			get_tag.save()
 			return await ctx.send(f"Alias for '{tag_name}' removed.")
 
@@ -148,17 +147,9 @@ class Tags:
 		if get_tag is None:
 			return await ctx.send('Could not find tag.')
 
-		transformations = {
-			re.escape(c): '\\' + c
-			for c in ('*', '`', '_', '~', '\\', '<')
-			}
+		raw = strip_markdown(get_tag.content)
 
-		def replace(obj):
-			return transformations.get(re.escape(obj.group(0)), '')
-
-		pattern = re.compile('|'.join(transformations.keys()))
-		await ctx.send(pattern.sub(replace, get_tag.content))
-
+		await ctx.send(raw)
 
 	@tag.group()
 	async def list(self, ctx, *, member: discord.Member = None):
@@ -175,7 +166,7 @@ class Tags:
 		for index, get_tag in enumerate(list):
 			if (tags < max_tags):
 				names += f'\n{get_tag.name}'
-				if not get_tag.alias == '':
+				if not get_tag.alias is None:
 					names += f' ({get_tag.alias})'
 				uses += f'\n{get_tag.uses}'
 			tags += 1
@@ -209,8 +200,10 @@ class Tags:
 			return await ctx.send("Could not find tag.")
 
 		created_at = str(get_tag.created_at)[0: str(get_tag.created_at).find('.')]
-		edited_at = str(get_tag.edited_at)[0: str(get_tag.edited_at).find('.')]
-		edited_at = None if created_at == edited_at else edited_at
+		if get_tag.edited_at is None:
+			edited_at = None
+		else:
+			edited_at = str(get_tag.edited_at)[0: str(get_tag.edited_at).find('.')]
 
 		member = ctx.guild.get_member(get_tag.owner)
 
@@ -226,40 +219,32 @@ class Tags:
 		e.set_author(name=nick, icon_url=avatar)
 		e.add_field(name='Owner', value=member.mention if member else nick)
 		e.add_field(name='Uses', value=get_tag.uses)
-		if get_tag.alias:
+		if not get_tag.alias is None:
 			e.add_field(name='Alias', value=get_tag.alias)
 
 		footer = f'Created at: {created_at}'
-		if edited_at:
+		if edited_at is not None:
 			footer += f' (edited: {edited_at})'
 
 		e.set_footer(text=footer)
 
 		await ctx.send(embed=e)
 
-	@commands.command()
-	async def tags(self, ctx):
-		"""Short manual on the tag system."""
-
 
 class Tag(Model):
-	name = CharField()
+	name = CharField(max_length=20)
+	alias = CharField(null=True, max_length=20)
 	content = TextField()
-	owner = IntegerField()
-	guild = IntegerField()
-	created_at = DateTimeField()
-	edited_at = DateTimeField()
-	uses = IntegerField()
-	alias = CharField()
+	owner = BigIntegerField()
+	guild = BigIntegerField()
+	uses = IntegerField(default=0)
+	created_at = DateTimeField(default=datetime.datetime.now)
+	edited_at = DateTimeField(null=True)
 
 	class Meta:
 		database = db
 
 def setup(bot):
 	db.connect()
-	try:
-		db.create_tables([Tag])
-	except:
-		pass
-
+	db.create_tables([Tag], safe=True)
 	bot.add_cog(Tags(bot))

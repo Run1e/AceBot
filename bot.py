@@ -17,8 +17,9 @@ extensions = (
 	'cogs.commands',
 	'cogs.highlighter',
 	'cogs.tags',
-	'cogs.autohotkey',
-	'cogs.dwitter'
+	'cogs.reps',
+	'cogs.guilds.autohotkey',
+	'cogs.guilds.dwitter'
 )
 
 class AceBot(commands.Bot):
@@ -100,7 +101,7 @@ class AceBot(commands.Bot):
 			self.formatter.command = ctx.command
 			return await ctx.send(f'Invalid argument(s) provided.\n```{self.formatter.get_command_signature()}```')
 
-		await ctx.send(f'An error occured in `{ctx.command.name}` invoked by {ctx.message.author}:\n```{error}```')
+		# await ctx.send(f'An error occured in `{ctx.command.name}` invoked by {ctx.message.author}:\n```{error}```')
 		raise error.original
 
 
