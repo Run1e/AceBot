@@ -1,10 +1,9 @@
 import discord
 from discord.ext import commands
 
-import json
-import io
-import textwrap
-import traceback
+import json, io, textwrap, traceback, os
+from shutil import copy2
+from datetime import datetime
 from contextlib import redirect_stdout
 
 from cogs.utils.google_result import google_result
@@ -26,6 +25,21 @@ class Admin:
 
 	async def __local_check(self, ctx):
 		return await self.bot.is_owner(ctx.author)
+
+	@commands.command()
+	async def backup(self, ctx):
+		timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+		directory = f'lib/backups/{timestamp}/'
+		try:
+			if not os.path.exists(directory):
+				os.makedirs(directory)
+			copy2('lib/tags.db', directory)
+			copy2('lib/reps.db', directory)
+		except Exception as ex:
+			await ctx.send(f'```{str(ex)}```')
+			return
+		await ctx.send(f'Databases backed up under `{timestamp}`', delete_after=5)
+
 
 	# if this doesn't work, I changed how id is casted to int
 	@commands.command()

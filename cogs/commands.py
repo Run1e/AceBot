@@ -31,8 +31,6 @@ class Commands:
 
 		with open('cogs/data/facts.txt', 'r') as f:
 			self.splitfacts = f.read().splitlines()
-		with open('lib/rep.json', 'r') as f:
-			self.reps = json.loads(f.read())
 
 	async def on_message(self, message):
 		if message.author.bot:
