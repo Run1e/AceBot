@@ -1,7 +1,7 @@
 import discord
 from discord.ext import commands
 
-import random, time
+import random, datetime
 from peewee import *
 
 db = SqliteDatabase('lib/reps.db')
@@ -11,7 +11,7 @@ class Reputation:
 
 	def __init__(self, bot):
 		self.bot = bot
-		self.timeout = 5
+		self.timeout = 60
 		self.times = {}
 		self.good_emoji = ['pray', 'raised_hands', 'clap', 'ok_hand', 'tongue', 'heart_eyes']
 		self.bad_emoji = ['cry', 'disappointed_relieved', 'sleepy', 'sob', 'thinking']
@@ -68,9 +68,10 @@ class Reputation:
 
 		# time check
 		try:
-			since_last = time.time() - self.times[ctx.guild][ctx.author]
-			if since_last < self.timeout:
-				return await ctx.send(f'You have to wait {round(since_last)} more seconds until you can rep again.')
+			delta = datetime.datetime.now() - self.times[ctx.guild][ctx.author]
+			elapsed = delta.total_seconds()
+			if elapsed < self.timeout:
+				return await ctx.send(f'You have to wait {round(self.timeout - elapsed)} seconds before you can give out more reputation.')
 		except:
 			pass
 
@@ -91,7 +92,7 @@ class Reputation:
 				self.times[ctx.guild][ctx.author] = 0
 
 		# set current time
-		self.times[ctx.guild][ctx.author] = time.time()
+		self.times[ctx.guild][ctx.author] = datetime.datetime.now()
 
 		await ctx.send(f'{member.mention} now has {user.count} reputation! :{random.choice(self.good_emoji)}:')
 
