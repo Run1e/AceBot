@@ -1,66 +1,104 @@
 import discord
 from discord.ext import commands
 
-import re
+import random, time
 from peewee import *
-from playhouse.migrate import *
 
 db = SqliteDatabase('lib/reps.db')
-migrator = SqliteMigrator(db)
 
 class Reputation:
 	"""Handles the highlight command."""
 
 	def __init__(self, bot):
 		self.bot = bot
+		self.timeout = 5
+		self.times = {}
 		self.good_emoji = ['pray', 'raised_hands', 'clap', 'ok_hand', 'tongue', 'heart_eyes']
-		self.bad_emoji = []
+		self.bad_emoji = ['cry', 'disappointed_relieved', 'sleepy', 'sob', 'thinking']
+
+	@commands.command()
+	async def replist(self, ctx, amount: int = 8):
+		"""Show a list of the most respected users."""
+
+		list = RepUser.select()\
+			.where(RepUser.guild_id == ctx.guild.id)\
+			.order_by(RepUser.count.desc())
+
+		users, counts, added = '', '', 0
+		for rep_user in list:
+			if added >= amount:
+				break
+			user = ctx.guild.get_member(rep_user.user_id)
+			if not user:
+				continue
+			users += f'{user.display_name}\n'
+			counts += f'{rep_user.count}\n'
+			added += 1
+
+		if not added:
+			return await ctx.send('No users with any reputation in this server.')
+
+		e = discord.Embed()
+		e.set_author(name=ctx.guild.name, icon_url=ctx.guild.icon_url)
+		e.add_field(name='Users', value=users, inline=True)
+		e.add_field(name='Reputation', value=counts, inline=True)
+
+		await ctx.send(embed=e)
 
 	@commands.command()
 	async def rep(self, ctx, member: discord.Member = None):
+		"""Send some love!"""
 
 		# get self-rep
 		if member is None:
 			try:
-				user = RepUser.get(RepUser.user == ctx.author.id)
+				user = RepUser.get(RepUser.user_id == ctx.author.id, RepUser.guild_id == ctx.guild.id)
 			except RepUser.DoesNotExist:
-				return await ctx.send('You have 0 reputation!')
+				return await ctx.send(f'You have 0 reputation... {random.choice(self.bad_emoji)}')
+			return await ctx.send(f'You have {user.count} reputation! :{random.choice(self.good_emoji)}:')
 
-			print(user.user)
-			print(user[ctx.guild.id])
-			return await ctx.send('your rep here')
-
-		# nah
+		# nah fam
 		if member == ctx.author:
-			return await ctx.send(':japanese_goblin:')
+			return await ctx.send(':japanese_goblin: :thumbsdown:')
 
-		has_guild = False
-		for column in db.get_columns('repuser'):
-			if column.name == str(ctx.guild.id):
-				has_guild = True
-				break
-
-		# if not, add it to the table
-		if not has_guild:
-			guild_field = IntegerField(null=True)
-			migrate(migrator.add_column('repuser', f'_{str(ctx.guild.id)}', guild_field))
-
-		# rep someone else
+		# time check
 		try:
-			user = RepUser.get(RepUser.user == member.id)
-		except RepUser.DoesNotExist:
-			user = RepUser(user=member.id)
-		print(ctx.guild.id)
-		user.update(**{'_115993023636176902': 4}).execute()
+			since_last = time.time() - self.times[ctx.guild][ctx.author]
+			if since_last < self.timeout:
+				return await ctx.send(f'You have to wait {round(since_last)} more seconds until you can rep again.')
+		except:
+			pass
 
+		# get user
+		try:
+			user = RepUser.get(RepUser.user_id == member.id, RepUser.guild_id == ctx.guild.id)
+		except RepUser.DoesNotExist:
+			user = RepUser.create(user_id=member.id, guild_id=ctx.guild.id)
+
+		# increment and save
+		user.count += 1
 		user.save()
+
+		# check if guild/author is in times obj
+		if ctx.guild not in self.times:
+			self.times[ctx.guild] = {}
+			if ctx.author not in self.times[ctx.guild]:
+				self.times[ctx.guild][ctx.author] = 0
+
+		# set current time
+		self.times[ctx.guild][ctx.author] = time.time()
+
+		await ctx.send(f'{member.mention} now has {user.count} reputation! :{random.choice(self.good_emoji)}:')
 
 
 class RepUser(Model):
-	user = BigIntegerField()
+	user_id = BigIntegerField()
+	guild_id = BigIntegerField()
+	count = IntegerField(default=0)
 
 	class Meta:
 		database = db
+		primary_key = CompositeKey('user_id', 'guild_id')
 
 def setup(bot):
 	db.connect()
