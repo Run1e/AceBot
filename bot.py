@@ -18,6 +18,7 @@ extensions = (
 	'cogs.highlighter',
 	'cogs.tags',
 	'cogs.reps',
+	'cogs.votes',
 	'cogs.guilds.autohotkey',
 	'cogs.guilds.dwitter'
 )

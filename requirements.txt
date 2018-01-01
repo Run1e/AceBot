@@ -1,5 +1,8 @@
-fuzzywuzzy==0.15.1
-requests==2.18.4
-wikipedia==1.4.0
 discord.py==1.0.0a1397+89bbbec
+aiohttp==2.2.5
+requests==2.18.4
+fuzzywuzzy==0.15.1
+wikipedia==1.4.0
 beautifulsoup4==4.6.0
+discord==0.0.2
+peewee==2.10.2

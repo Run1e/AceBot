@@ -230,6 +230,38 @@ class Tags:
 
 		await ctx.send(embed=e)
 
+	@commands.command()
+	async def tags(self, ctx):
+		"""Short guide on how to use tags."""
+		contents = """
+**Short guide on tags**
+
+To create a tag use *create*:
+```
+.tag create mytag this is the tag content
+```
+Then to bring up the contents, you can do:
+```py
+.tag mytag
+# this is the tag content
+```
+If you want your tag name to contain multiple words, wrap the tag name in quotes:
+```py
+.tag "my tag" tag contents here
+.tag my tag
+# tag content here
+```
+To edit a tag use *edit*:
+```py
+.tag edit "my tag" new content here
+.tag my tag
+# new content here
+```
+To see all sub-commands, do `.help tag`
+		"""
+
+		await ctx.send(contents)
+
 
 class Tag(Model):
 	name = CharField(max_length=20)

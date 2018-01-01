@@ -7,7 +7,7 @@ from peewee import *
 db = SqliteDatabase('lib/reps.db')
 
 class Reputation:
-	"""Handles the highlight command."""
+	"""Handles the reputation command."""
 
 	def __init__(self, bot):
 		self.bot = bot

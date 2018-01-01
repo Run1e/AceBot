@@ -28,6 +28,7 @@ class Admin:
 
 	@commands.command()
 	async def backup(self, ctx):
+		"""Made a backup of databases."""
 		timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
 		directory = f'lib/backups/{timestamp}/'
 		try:
