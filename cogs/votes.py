@@ -6,6 +6,7 @@ class Votes:
 	def __init__(self, bot):
 		self.bot = bot
 		self.votes = {}
+		self.time = 30
 
 	async def on_reaction_add(self, reaction, user):
 		if user == self.bot.user or reaction.message.channel not in self.votes.keys():
@@ -42,20 +43,13 @@ class Votes:
 
 		await ctx.message.delete()
 
-		#if time > 60:
-		#	time = 60
-		#elif time < 10:
-		#	time = 10
-
-		time = 30
-
 		msg_content = f'{ctx.message.author.mention} has just started a vote!\n\n***{question}***\n\n'
 
 		for i, choice in enumerate(choices):
 			msg_content += f'{i + 1}\u20e3 - *{choice}*\n'
 			self.votes[ctx.channel]['score'][f'{i + 1}\u20e3'] = []
 
-		msg_content += f'\nVote ends in {time} seconds. Vote with reactions below!'
+		msg_content += f'\nVote ends in {self.time} seconds. Vote with reactions below!'
 
 		msg = await ctx.send(msg_content)
 
@@ -64,7 +58,7 @@ class Votes:
 
 		self.votes[ctx.channel]['msg'] = msg
 
-		await asyncio.sleep(time)
+		await asyncio.sleep(self.time)
 
 		max = 0
 		i = 0
