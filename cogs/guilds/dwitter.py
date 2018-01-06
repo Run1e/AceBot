@@ -11,18 +11,18 @@ class Dwitter:
 
 	def __init__(self, bot):
 		self.bot = bot
+		self.guilds = (395956681793863690,)
 
 	async def __local_check(self, ctx):
-		return ctx.guild.id in (395956681793863690,) or await self.bot.is_owner(ctx.author)
+		return ctx.guild.id in self.guilds or await self.bot.is_owner(ctx.author)
 
 	async def on_message(self, message):
 		# ignore messages that start with a prefix
 		if message.content.startswith(tuple(await self.bot.get_prefix(message))):
 			return
 
-		# get context and do checks
-		ctx = await self.bot.get_context(message)
-		if not (await self.__local_check(ctx) and await self.bot.can_run(ctx)):
+		# check for correct guild
+		if message.guild.id not in self.guilds or self.bot.blacklist(message.author):
 			return
 
 		# find links in message
@@ -32,13 +32,17 @@ class Dwitter:
 			return
 
 		# loop through links and send previews if applicable
-		for index, link in enumerate(links):
-			if (index > 2):
+		seen = []
+		for link in links:
+			if len(seen) > 2:
 				break
+			if link in seen:
+				continue
 			if re.match("^https?://(www.)?dwitter.net/d/\d{2,}$", link):
-				await self.dwitterlink(ctx, link)
+				seen.append(link)
+				await self.dwitterlink(message, link)
 
-	async def dwitterlink(self, ctx, link):
+	async def dwitterlink(self, message, link):
 		split = link.split('/')
 		id = split[len(split) - 1]
 
@@ -58,7 +62,7 @@ class Dwitter:
 
 		ids, counts = '', ''
 		for index, dwit in enumerate(list):
-			if (index > 4):
+			if (index > 7):
 				break
 			ids += f'\n[{dwit.id}](https://www.dwitter.net/d/{dwit.id})'
 			counts += f'\n{dwit.count}'
@@ -71,6 +75,11 @@ class Dwitter:
 		e.add_field(name='Times linked', value=counts, inline=True)
 
 		await ctx.send(embed=e)
+
+	@commands.command(aliases=['site'])
+	async def dwitter(self, ctx):
+		"""Return a link to the Dwitter site."""
+		await ctx.send('https://www.dwitter.net/')
 
 
 class Dweet(Model):

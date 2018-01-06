@@ -19,6 +19,7 @@ extensions = (
 	'cogs.tags',
 	'cogs.reps',
 	'cogs.votes',
+	'cogs.muter',
 	'cogs.guilds.autohotkey',
 	'cogs.guilds.dwitter'
 )
@@ -40,7 +41,7 @@ class AceBot(commands.Bot):
 			self.ignore_users = json.loads(f.read())
 
 		# check for ignored users and bots
-		self.add_check(self.blacklist)
+		self.add_check(self.blacklist_ctx)
 
 		# print before invoke
 		self.before_invoke(self.before_command)
@@ -60,8 +61,11 @@ class AceBot(commands.Bot):
 	async def before_command(self, ctx):
 		print(f'\nServer: {ctx.guild.name}\nUser: {ctx.message.author.name}\nCommand: {ctx.command.name}')
 
-	async def blacklist(self, ctx):
-		return (ctx.message.author.id not in self.ignore_users and not ctx.author.bot)
+	async def blacklist_ctx(self, ctx):
+		return not self.blacklist(ctx.author)
+
+	def blacklist(self, author):
+		return (author.id in self.ignore_users or author.bot)
 
 	async def on_ready(self):
 		if not hasattr(self, 'uptime'):

@@ -12,10 +12,11 @@ class AutoHotkey:
 
 	def __init__(self, bot):
 		self.bot = bot
+		self.guilds = (115993023636176902, 317632261799411712, 372163679010947074, 380066879919751179)
 
 	# make sure we're in the the correct guild(s)
 	async def __local_check(self, ctx):
-		return ctx.guild.id in (115993023636176902, 317632261799411712, 372163679010947074, 380066879919751179) or await self.bot.is_owner(ctx.author)
+		return ctx.guild.id in self.guilds or await self.bot.is_owner(ctx.author)
 
 	async def on_member_join(self, member):
 		if not member.guild.id == 115993023636176902:
@@ -33,9 +34,8 @@ class AutoHotkey:
 		if message.content.startswith(tuple(await self.bot.get_prefix(message))):
 			return
 
-		# get context and do checks
-		ctx = await self.bot.get_context(message)
-		if not (await self.__local_check(ctx) and await self.bot.can_run(ctx)):
+		# check for correct guild
+		if message.guild.id not in self.guilds or self.bot.blacklist(message.author):
 			return
 
 		# find links in message
@@ -45,13 +45,18 @@ class AutoHotkey:
 			return
 
 		# loop through links and send previews if applicable
-		for index, link in enumerate(links):
-			if (index > 1):
+		seen = []
+		for link in links:
+			if len(seen) > 2:
 				break
+			if link in seen:
+				continue
 			if re.match("^https?://(www.)?p.ahkscript.org/\?", link):
-				await self.pastelink(ctx, link)
+				seen.append(link)
+				await self.pastelink(message, link)
 			if re.match("^https?://(www.)?autohotkey.com/boards/viewtopic.php\?", link):
-				await self.forumlink(ctx, link)
+				seen.append(link)
+				await self.forumlink(message, link)
 
 	async def on_command_error(self, ctx, error):
 		if not await self.__local_check(ctx):
@@ -61,7 +66,7 @@ class AutoHotkey:
 		if isinstance(error, commands.CommandNotFound) and not re.search('^\.{2}', ctx.message.content):
 			await ctx.invoke(self.docs, search=ctx.message.content[1:])
 
-	async def pastelink(self, ctx, url):
+	async def pastelink(self, message, url):
 		url = url.replace("?p=", "?r=")
 		url = url.replace("?e=", "?r=")
 
@@ -73,10 +78,11 @@ class AutoHotkey:
 		if len(text) > 2048 or text.count('\n') > 24:
 			return
 
+		ctx = await self.bot.get_context(message)
 		await ctx.invoke(self.bot.get_command('highlight'), code=text)
 
 	# ty capn!
-	async def forumlink(self, ctx, url):
+	async def forumlink(self, message, url):
 		tempurl = re.sub("&start=\d+$", "", url)
 
 		text = await self.bot.request('get', tempurl)
@@ -93,7 +99,7 @@ class AutoHotkey:
 						 icon_url="https://autohotkey.com/boards" + post["user"]["icon"][1:])
 		embed.set_footer(text='autohotkey.com')
 
-		await ctx.send(embed=embed)
+		await message.channel.send(embed=embed)
 
 	@commands.command(name='helper+')
 	async def helperplus(self, ctx):

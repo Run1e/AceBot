@@ -10,12 +10,10 @@ import asyncio
 import wikipedia
 
 class Commands:
-	"""Contains global commands"""
+	"""Contains global commands."""
 
 	def __init__(self, bot):
 		self.bot = bot
-
-		#self.bot.remove_command('help')
 
 		# simple reply
 		self.replies = {
@@ -27,12 +25,11 @@ class Commands:
 			self.splitfacts = f.read().splitlines()
 
 	async def on_message(self, message):
-		if message.author.bot:
+		if self.bot.blacklist(message.author):
 			return
 
 		if message.content in self.replies:
-			ctx = await self.bot.get_context(message)
-			await ctx.send(self.replies[message.content])
+			await message.channel.send(self.replies[message.content])
 
 	async def embedwiki(self, ctx, wiki):
 		embed = discord.Embed()

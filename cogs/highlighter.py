@@ -10,17 +10,12 @@ class Highlighter:
 		self.default = 'AutoIt'
 		self.guilds = {395956681793863690: 'js'}
 
-	async def on_message(self, message):
-		return
-
 	async def on_reaction_add(self, reaction, user):
-		ctx = await self.bot.get_context(reaction.message)
-
 		pattern = f'^```{self.guilds[reaction.message.guild.id] if reaction.message.guild.id in self.guilds else self.default}(\s|.)*, click the cross to delete\.\*$'
 		if user == self.bot.user or not re.search(pattern, reaction.message.content):
 			return
 
-		author = ctx.message.mentions[0]
+		author = reaction.message.mentions[0]
 
 		if (author == user or user.permissions_in(reaction.message.channel).manage_messages) and reaction.emoji == '\U0000274C':
 			print(f'\n{author} del highlight')
