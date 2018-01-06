@@ -59,7 +59,7 @@ class AutoHotkey:
 				await self.forumlink(message, link)
 
 	async def on_command_error(self, ctx, error):
-		if not await self.__local_check(ctx):
+		if not await self.__local_check(ctx) or not await self.bot.can_run(ctx):
 			return
 
 		# command not found? docs search it. only if message string is not *only* dots though

@@ -65,7 +65,7 @@ class AceBot(commands.Bot):
 		return not self.blacklist(ctx.author)
 
 	def blacklist(self, author):
-		return (author.id in self.ignore_users or author.bot)
+		return author.id in self.ignore_users or author.bot
 
 	async def on_ready(self):
 		if not hasattr(self, 'uptime'):
