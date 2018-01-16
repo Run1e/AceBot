@@ -6,7 +6,7 @@ class Votes:
 	def __init__(self, bot):
 		self.bot = bot
 		self.votes = {}
-		self.time = 30
+		self.time = 50
 
 	async def on_reaction_add(self, reaction, user):
 		if user == self.bot.user or reaction.message.channel not in self.votes.keys():

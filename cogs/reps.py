@@ -45,7 +45,7 @@ class Reputation:
 
 		e = discord.Embed()
 		e.set_author(name=ctx.guild.name, icon_url=ctx.guild.icon_url)
-		e.add_field(name='Users', value=users, inline=True)
+		e.add_field(name='User', value=users, inline=True)
 		e.add_field(name='Reputation', value=counts, inline=True)
 
 		await ctx.send(embed=e)

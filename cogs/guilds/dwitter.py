@@ -14,7 +14,7 @@ class Dwitter:
 		self.guilds = (395956681793863690,)
 
 	async def __local_check(self, ctx):
-		return ctx.guild.id in self.guilds or await self.bot.is_owner(ctx.author)
+		return ctx.guild.id in self.guilds
 
 	async def on_message(self, message):
 		# ignore messages that start with a prefix

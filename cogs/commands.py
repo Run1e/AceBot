@@ -254,6 +254,27 @@ class Commands:
 		else:
 			await ctx.send(embed=embed)
 
+	@commands.command()
+	async def cat(self, ctx):
+		"""Gets a random cat picture/gif!"""
+
+		await ctx.trigger_typing()
+
+		url = 'http://thecatapi.com/api/images/get'
+		params = {
+			'format': 'src',
+			'api_key': self.bot.config['catapikey']
+		}
+
+		try:
+			async with self.bot.session.request('get', url, params=params) as resp:
+				if resp.status != 200:
+					raise Exception
+				file = discord.File(await resp.read(), 'thecatapi.' + resp.content_type.split('/')[1])
+				await ctx.send(file=file)
+		except:
+			pass
+
 	@commands.command(aliases=['num'])
 	async def number(self, ctx, *, num: int):
 		"""Get a random fact about a number!"""

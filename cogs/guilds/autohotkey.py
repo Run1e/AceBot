@@ -16,7 +16,7 @@ class AutoHotkey:
 
 	# make sure we're in the the correct guild(s)
 	async def __local_check(self, ctx):
-		return ctx.guild.id in self.guilds or await self.bot.is_owner(ctx.author)
+		return ctx.guild.id in self.guilds
 
 	async def on_member_join(self, member):
 		if not member.guild.id == 115993023636176902:

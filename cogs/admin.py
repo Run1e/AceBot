@@ -36,9 +36,11 @@ class Admin:
 				os.makedirs(directory)
 			copy2('lib/tags.db', directory)
 			copy2('lib/reps.db', directory)
+			copy2('lib/dwitter_top.db', directory)
 		except Exception as ex:
 			await ctx.send(f'```{str(ex)}```')
 			return
+		await ctx.message.delete()
 		await ctx.send(f'Databases backed up under `{timestamp}`', delete_after=5)
 
 

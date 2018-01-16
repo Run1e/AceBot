@@ -2,14 +2,14 @@ import discord
 from discord.ext import commands
 
 class Muter:
-	"""Admin commands"""
+	"""Mute/unmute commands and anti-mention spam."""
 
 	def __init__(self, bot):
 		self.bot = bot
 		self.guilds = (115993023636176902,)
 
 	async def __local_check(self, ctx):
-		return ctx.author.permissions_in(ctx.channel).ban_members
+		return ctx.guild.id in self.guilds and ctx.author.permissions_in(ctx.channel).ban_members
 
 	async def on_message(self, message):
 		if message.guild.id not in self.guilds:

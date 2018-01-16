@@ -23,8 +23,8 @@ class Highlighter:
 		else:
 			await reaction.message.remove_reaction(reaction, user)
 
-	@commands.command(aliases=['hl', 'h1'])
-	async def highlight(self, ctx, *, code):
+	@commands.command(aliases=['h1'])
+	async def hl(self, ctx, *, code):
 		"""Highlights some code."""
 
 		# don't paste if there's hella many backticks fam
@@ -39,7 +39,7 @@ class Highlighter:
 
 		await msg.add_reaction('\U0000274C')
 
-	@commands.command(aliases=['code', 'p', 'c'], hidden=True)
+	@commands.command(aliases=['p'], hidden=True)
 	async def paste(self, ctx):
 		msg = 'To paste code snippets directly into the chat, use the highlight command:\n```.hl *paste code here*```'
 		if (ctx.guild.id == 115993023636176902):

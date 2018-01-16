@@ -120,4 +120,4 @@ discord.Embed = Embed
 
 if __name__ == '__main__':
 	bot = AceBot()
-	AceBot().run(bot.config['token'])
+	bot.run(bot.config['token'])
