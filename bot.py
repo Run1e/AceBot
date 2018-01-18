@@ -20,6 +20,7 @@ extensions = (
 	'cogs.reps',
 	'cogs.votes',
 	'cogs.muter',
+	'cogs.roles',
 	'cogs.guilds.autohotkey',
 	'cogs.guilds.dwitter'
 )

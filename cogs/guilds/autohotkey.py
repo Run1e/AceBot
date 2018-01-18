@@ -101,20 +101,6 @@ class AutoHotkey:
 
 		await message.channel.send(embed=embed)
 
-	@commands.command(name='helper+')
-	async def helperplus(self, ctx):
-		"""Add yourself to the Helper role."""
-		role = discord.utils.get(ctx.guild.roles, name="Helpers")
-		await ctx.author.add_roles(role)
-		await ctx.send('Added to Helpers!')
-
-	@commands.command(name='helper-')
-	async def helperminus(self, ctx):
-		"""Remove yourself from the Helper role."""
-		role = discord.utils.get(ctx.guild.roles, name="Helpers")
-		await ctx.author.remove_roles(role)
-		await ctx.send('Removed from Helpers.')
-
 	@commands.command()
 	async def docs(self, ctx, *, search):
 		"""Search the documentation."""

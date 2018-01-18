@@ -15,7 +15,7 @@ class Tags:
 
 	def __init__(self, bot):
 		self.bot = bot
-		self.reserved_names = ['create', 'edit', 'delete', 'info', 'list', 'top', 'raw', 'get']
+		self.reserved_names = ['create', 'edit', 'delete', 'info', 'list', 'top', 'raw', 'get', 'exec']
 
 	async def get_tag(self, tag_name: make_lower, guild_id, alias=True):
 		for tag_obj in Tag.select().where(Tag.guild == guild_id):
@@ -26,9 +26,11 @@ class Tags:
 		return None
 
 	def name_ban(self, tag_name: make_lower):
+		if strip_markdown(tag_name) != tag_name:
+			return 'No formatting allowed in tag names.'
 		if len(tag_name) < 2:
 			return 'Tag name too short.'
-		if len(tag_name) > 20:
+		if len(tag_name) > 100:
 			return 'Tag name too long.'
 		if tag_name in self.reserved_names:
 			return f"Tag name '{tag_name}' is reserved."
