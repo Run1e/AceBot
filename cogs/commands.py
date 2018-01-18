@@ -266,14 +266,33 @@ class Commands:
 			'api_key': self.bot.config['catapikey']
 		}
 
-		try:
-			async with self.bot.session.request('get', url, params=params) as resp:
-				if resp.status != 200:
-					raise Exception
-				file = discord.File(await resp.read(), 'thecatapi.' + resp.content_type.split('/')[1])
-				await ctx.send(file=file)
-		except:
-			pass
+		async with self.bot.session.request('get', url, params=params) as resp:
+			if resp.status != 200:
+				return
+			file = discord.File(await resp.read(), 'cat.' + resp.content_type.split('/')[1])
+			await ctx.send(file=file)
+
+	@commands.command()
+	async def dog(self, ctx):
+		"""Gets a random dog picture/gif!"""
+
+		await ctx.trigger_typing()
+
+		url = 'https://random.dog/'
+		params = {
+			'filter': 'mp4'
+		}
+
+		async with self.bot.session.request('get', url + 'woof', params=params) as resp:
+			if resp.status != 200:
+				return
+			id = await resp.text()
+
+		async with self.bot.session.request('get', url + id, params=params) as resp:
+			if resp.status != 200:
+				return
+			file = discord.File(await resp.read(), 'dog.' + resp.content_type.split('/')[1])
+			await ctx.send(file=file)
 
 	@commands.command(aliases=['num'])
 	async def number(self, ctx, *, num: int):
