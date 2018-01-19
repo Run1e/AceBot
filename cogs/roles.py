@@ -21,8 +21,8 @@ class Roles:
 				if command in seen:
 					continue
 				seen.append(command)
-				self.bot.add_command(commands.Command(name=command + "+", callback=self.add_role))
-				self.bot.add_command(commands.Command(name=command + "-", callback=self.remove_role))
+				self.bot.add_command(commands.Command(name=command + "+", callback=self.add_role, hidden=True))
+				self.bot.add_command(commands.Command(name=command + "-", callback=self.remove_role, hidden=True))
 
 
 	def get_role(self, guild_id, role_name):
@@ -30,7 +30,11 @@ class Roles:
 		return discord.utils.get(guild.roles, name=role_name)
 
 	async def add_role(self, ctx):
-		role = self.guilds[ctx.guild.id][ctx.invoked_with[:-1]]
+		try:
+			role = self.guilds[ctx.guild.id][ctx.invoked_with[:-1]]
+		except KeyError:
+			return
+
 		try:
 			await ctx.author.add_roles(role)
 		except:
@@ -38,7 +42,11 @@ class Roles:
 		await ctx.send(f"Added to {role.name}!")
 
 	async def remove_role(self, ctx):
-		role = self.guilds[ctx.guild.id][ctx.invoked_with[:-1]]
+		try:
+			role = self.guilds[ctx.guild.id][ctx.invoked_with[:-1]]
+		except KeyError:
+			return
+
 		try:
 			await ctx.author.remove_roles(role)
 		except:

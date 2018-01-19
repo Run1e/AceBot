@@ -17,7 +17,7 @@ class Tags:
 		self.bot = bot
 		self.reserved_names = ['create', 'edit', 'delete', 'info', 'list', 'top', 'raw', 'get', 'exec']
 
-	async def get_tag(self, tag_name: make_lower, guild_id, alias=True):
+	def get_tag(self, tag_name: make_lower, guild_id, alias=True):
 		for tag_obj in Tag.select().where(Tag.guild == guild_id):
 			if tag_name == tag_obj.name:
 				return tag_obj
@@ -36,14 +36,14 @@ class Tags:
 			return f"Tag name '{tag_name}' is reserved."
 		return None
 
-	@commands.group(aliases=['t'])
+	@commands.group()
 	async def tag(self, ctx):
 		"""Create and manage tags."""
 
 		# send tag
 		if ctx.invoked_subcommand is None:
 			tag_name = make_lower(ctx.message.content[ctx.message.content.find(' ') + 1:])
-			get_tag = await self.get_tag(tag_name, ctx.guild.id)
+			get_tag = self.get_tag(tag_name, ctx.guild.id)
 
 			if get_tag is None:
 				return
@@ -61,7 +61,7 @@ class Tags:
 		if ban:
 			return await ctx.send(ban)
 
-		if await self.get_tag(tag_name, ctx.guild.id):
+		if self.get_tag(tag_name, ctx.guild.id):
 			return await ctx.send(f"Tag '{tag_name}' already exists.")
 
 		new_tag = Tag(
@@ -78,7 +78,7 @@ class Tags:
 	@tag.group()
 	async def edit(self, ctx, tag_name: make_lower, *, new_content: str):
 		"""Edit an existing tag."""
-		get_tag = await self.get_tag(tag_name, ctx.guild.id)
+		get_tag = self.get_tag(tag_name, ctx.guild.id)
 
 		if get_tag is None:
 			return await ctx.send('Could not find tag.')
@@ -96,7 +96,7 @@ class Tags:
 	async def delete(self, ctx, *, tag_name: make_lower):
 		"""Delete a tag."""
 
-		get_tag = await self.get_tag(tag_name, ctx.guild.id)
+		get_tag = self.get_tag(tag_name, ctx.guild.id)
 
 		if get_tag is None:
 			return await ctx.send('Could not find tag.')
@@ -118,7 +118,7 @@ class Tags:
 		if tag_name == alias:
 			return await ctx.send('Tag name and Alias can not be identical.')
 
-		get_tag = await self.get_tag(tag_name, ctx.guild.id, alias=False)
+		get_tag = self.get_tag(tag_name, ctx.guild.id, alias=False)
 
 		if get_tag is None:
 			return await ctx.send('Could not find tag.')
@@ -144,7 +144,7 @@ class Tags:
 		Useful for editing! Code taken from Danny's RoboDanny bot.
 		"""
 
-		get_tag = await self.get_tag(tag_name, ctx.guild.id)
+		get_tag = self.get_tag(tag_name, ctx.guild.id)
 
 		if get_tag is None:
 			return await ctx.send('Could not find tag.')
@@ -196,7 +196,7 @@ class Tags:
 	async def info(self, ctx, *, tag_name: make_lower):
 		"""Show info about a tag."""
 
-		get_tag = await self.get_tag(tag_name, ctx.guild.id)
+		get_tag = self.get_tag(tag_name, ctx.guild.id)
 
 		if get_tag is None:
 			return await ctx.send("Could not find tag.")

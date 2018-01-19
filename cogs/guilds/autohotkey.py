@@ -18,17 +18,6 @@ class AutoHotkey:
 	async def __local_check(self, ctx):
 		return ctx.guild.id in self.guilds
 
-	async def on_member_join(self, member):
-		if not member.guild.id == 115993023636176902:
-			return
-
-		channel = self.bot.get_channel(339511161672302593)
-		await channel.send(f"Hi {member.mention}! Welcome to the official ***AutoHotkey*** server!\n"
-						   "You won't be able to speak for about 10 minutes. Please spend this time reading the rules and tips at <#304708649748660224>.\n"
-						   "If you come with a problem, also spend some time figuring out how to ask your question in a descriptive and thorough way so that people are able to help!\n"
-						   "Happy scripting and we hope you enjoy your stay!")
-
-
 	async def on_message(self, message):
 		# ignore messages that start with a prefix
 		if message.content.startswith(tuple(await self.bot.get_prefix(message))):

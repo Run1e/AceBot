@@ -21,6 +21,7 @@ extensions = (
 	'cogs.votes',
 	'cogs.muter',
 	'cogs.roles',
+	'cogs.welcome',
 	'cogs.guilds.autohotkey',
 	'cogs.guilds.dwitter'
 )
@@ -93,8 +94,8 @@ class AceBot(commands.Bot):
 		errors = {
 			commands.DisabledCommand: 'Command has been disabled.',
 			commands.MissingPermissions: 'Invoker is missing permissions to run this command.',
-			commands.BotMissingPermissions: 'Bot is missing permissions to run this command.',
-			commands.CheckFailure: 'You are not allowed to run this command.'
+			commands.BotMissingPermissions: 'Bot is missing permissions to run this command.'
+			#commands.CheckFailure: 'You are not allowed to run this command.'
 		}
 
 		for type, text in errors.items():
@@ -108,7 +109,8 @@ class AceBot(commands.Bot):
 			return await ctx.send(f'Invalid argument(s) provided.\n```{self.formatter.get_command_signature()}```')
 
 		# await ctx.send(f'An error occured in `{ctx.command.name}` invoked by {ctx.message.author}:\n```{error}```')
-		raise error.original
+		if hasattr(error, 'original'):
+			raise error.original
 
 
 # overwrite discord.Embed with a monkey patched class that automatically sets the color attribute

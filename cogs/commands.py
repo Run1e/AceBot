@@ -260,14 +260,14 @@ class Commands:
 	async def cat(self, ctx):
 		"""Gets a random cat picture/gif!"""
 
+		url = 'http://thecatapi.com/api/images/get'
+		params = {
+			'format': 'src',
+			'api_key': self.bot.config['catapikey']
+		}
+
 		for attempt in range(3):
 			await ctx.trigger_typing()
-
-			url = 'http://thecatapi.com/api/images/get'
-			params = {
-				'format': 'src',
-				'api_key': self.bot.config['catapikey']
-			}
 
 			try:
 				async with self.bot.session.request('get', url, params=params) as resp:
@@ -285,13 +285,13 @@ class Commands:
 	async def dog(self, ctx):
 		"""Gets a random dog picture/gif!"""
 
+		url = 'https://random.dog/'
+		params = {
+			'filter': 'mp4'
+		}
+
 		for attempt in range(3):
 			await ctx.trigger_typing()
-
-			url = 'https://random.dog/'
-			params = {
-				'filter': 'mp4'
-			}
 
 			try:
 				async with self.bot.session.request('get', url + 'woof', params=params) as resp:

@@ -36,6 +36,8 @@ class Admin:
 				os.makedirs(directory)
 			copy2('lib/tags.db', directory)
 			copy2('lib/reps.db', directory)
+			copy2('lib/welcome.db', directory)
+			copy2('lib/ignore.json', directory)
 			copy2('lib/dwitter_top.db', directory)
 		except Exception as ex:
 			await ctx.send(f'```{str(ex)}```')
