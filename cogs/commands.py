@@ -7,6 +7,8 @@ import math
 import datetime
 import asyncio
 
+import aiohttp.client_exceptions as client_exceptions
+
 import wikipedia
 
 class Commands:
@@ -258,41 +260,55 @@ class Commands:
 	async def cat(self, ctx):
 		"""Gets a random cat picture/gif!"""
 
-		await ctx.trigger_typing()
+		for attempt in range(3):
+			await ctx.trigger_typing()
 
-		url = 'http://thecatapi.com/api/images/get'
-		params = {
-			'format': 'src',
-			'api_key': self.bot.config['catapikey']
-		}
+			url = 'http://thecatapi.com/api/images/get'
+			params = {
+				'format': 'src',
+				'api_key': self.bot.config['catapikey']
+			}
 
-		async with self.bot.session.request('get', url, params=params) as resp:
-			if resp.status != 200:
-				return
-			file = discord.File(await resp.read(), 'cat.' + resp.content_type.split('/')[1])
-			await ctx.send(file=file)
+			try:
+				async with self.bot.session.request('get', url, params=params) as resp:
+					if resp.status != 200:
+						return
+					file = discord.File(await resp.read(), 'cat.' + resp.content_type.split('/')[1])
+					await ctx.send(file=file)
+					return
+			except (client_exceptions.ClientConnectorError, discord.errors.HTTPException):
+				pass
+
+		await ctx.send('thecatapi request failed.')
 
 	@commands.command()
 	async def dog(self, ctx):
 		"""Gets a random dog picture/gif!"""
 
-		await ctx.trigger_typing()
+		for attempt in range(3):
+			await ctx.trigger_typing()
 
-		url = 'https://random.dog/'
-		params = {
-			'filter': 'mp4'
-		}
+			url = 'https://random.dog/'
+			params = {
+				'filter': 'mp4'
+			}
 
-		async with self.bot.session.request('get', url + 'woof', params=params) as resp:
-			if resp.status != 200:
-				return
-			id = await resp.text()
+			try:
+				async with self.bot.session.request('get', url + 'woof', params=params) as resp:
+					if resp.status != 200:
+						return
+					id = await resp.text()
 
-		async with self.bot.session.request('get', url + id, params=params) as resp:
-			if resp.status != 200:
-				return
-			file = discord.File(await resp.read(), 'dog.' + resp.content_type.split('/')[1])
-			await ctx.send(file=file)
+				async with self.bot.session.request('get', url + id) as resp:
+					if resp.status != 200:
+						return
+					file = discord.File(await resp.read(), 'dog.' + resp.content_type.split('/')[1])
+					await ctx.send(file=file)
+					return
+			except (client_exceptions.ClientConnectorError, discord.errors.HTTPException):
+				pass
+
+		await ctx.send('random.dog request failed.')
 
 	@commands.command(aliases=['num'])
 	async def number(self, ctx, *, num: int):

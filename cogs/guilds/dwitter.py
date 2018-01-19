@@ -46,7 +46,7 @@ class Dwitter:
 	async def dwitterlink(self, message, id):
 		dweet = await self.bot.request('get', self.url + 'api/dweets/' + id)
 
-		if dweet is None:
+		if dweet is None or 'link' not in dweet:
 			return None
 
 		e = await self.embeddweet(dweet)
