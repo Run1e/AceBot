@@ -7,7 +7,7 @@ status = '.help for commands'
 description = """
 A.C.E. - Autonomous Command Executor
 
-Written by: RUNIE 🔥#9646
+Written by: RUNIE 🔥 #9646
 Avatar artwork: Vinter Borge
 Contributors: Cap'n Odin #8812 and GeekDude #2532
 """

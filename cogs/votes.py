@@ -1,3 +1,4 @@
+import discord
 from discord.ext import commands
 
 import asyncio
@@ -54,7 +55,11 @@ class Votes:
 		msg = await ctx.send(msg_content)
 
 		for emoji in self.votes[ctx.channel]['score'].keys():
-			await msg.add_reaction(emoji)
+			try:
+				await msg.add_reaction(emoji)
+			except discord.errors.Forbidden:
+				self.votes.pop(ctx.channel)
+				return await msg.edit(content="`Missing permissions, can't add emojis.`")
 
 		self.votes[ctx.channel]['msg'] = msg
 

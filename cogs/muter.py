@@ -1,29 +1,66 @@
 import discord
 from discord.ext import commands
 
+import datetime
+
 class Muter:
 	"""Mute/unmute commands and anti-mention spam."""
 
 	def __init__(self, bot):
 		self.bot = bot
+
+		# lifespan for the bot to listen to
+		self.lifespan = 90
+
+		# mentions per lifespan that triggers a warning
+		self.max_warn = 4
+
+		# --||-- that triggers a mute
+		self.max_mute = 6
+
+		# guilds this feature is enabled for
 		self.guilds = (115993023636176902,)
+
+		self.counter = {}
+		for guild in self.guilds:
+			self.counter[guild] = {}
 
 	async def __local_check(self, ctx):
 		return ctx.guild.id in self.guilds and ctx.author.permissions_in(ctx.channel).ban_members
 
 	async def on_message(self, message):
-		if message.guild.id not in self.guilds:
+		if message.guild.id not in self.guilds or message.author.bot:
 			return
 
-		if len(message.mentions) > 4:
-			ctx = await self.bot.get_context(message)
-			await ctx.invoke(self.mute, member=message.author, reason='Misuse of mentions. A <@&311784919208558592> member will have to assess the situation.')
+		if len(message.mentions):
+			now = datetime.datetime.now()
+
+			if message.author.id not in self.counter[message.guild.id]:
+				self.counter[message.guild.id][message.author.id] = []
+
+			for mention in message.mentions:
+				self.counter[message.guild.id][message.author.id].append(now)
+
+			total = 0
+			for time in self.counter[message.guild.id][message.author.id]:
+				delta = (now - time).total_seconds()
+				if delta > self.lifespan:
+					self.counter[message.guild.id][message.author.id].remove(time)
+					continue
+				total += 1
+
+			if total >= self.max_mute:
+				ctx = await self.bot.get_context(message)
+				await ctx.invoke(self.mute, member=message.author, reason='Misuse of mentions. A <@&311784919208558592> member will have to assess the situation.')
+
+			elif total >= self.max_warn:
+				await message.channel.send(f"{message.author.mention} Please refrain from using so many mentions, continuing might warrant a server-wide mute.")
 
 	@commands.command(hidden=True)
 	async def mute(self, ctx, member: discord.Member, reason: str = None):
 		role = discord.utils.get(ctx.guild.roles, name='Muted')
 		await member.add_roles(role)
-		await ctx.send(f"{member.mention} muted{'.' if reason is None else ': ' + reason}")
+		await ctx.send(f"{member.mention} muted.{'' if reason is None else ' Reason: ' + reason}")
 
 	@commands.command(hidden=True)
 	async def unmute(self, ctx, member: discord.Member):

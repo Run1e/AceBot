@@ -281,7 +281,7 @@ class Commands:
 
 		await ctx.send('thecatapi request failed.')
 
-	@commands.command()
+	@commands.command(aliases=['woof'])
 	async def dog(self, ctx):
 		"""Gets a random dog picture/gif!"""
 
