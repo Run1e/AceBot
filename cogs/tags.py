@@ -36,6 +36,9 @@ class Tags:
 			return f"Tag name '{tag_name}' is reserved."
 		return None
 
+	async def is_owner(self, owner_id, invoker):
+		return owner_id == invoker.id or await self.bot.is_owner(invoker)
+
 	@commands.group()
 	async def tag(self, ctx):
 		"""Create and manage tags."""
@@ -83,7 +86,7 @@ class Tags:
 		if get_tag is None:
 			return await ctx.send('Could not find tag.')
 
-		if not get_tag.owner == ctx.author.id:
+		if not await self.is_owner(get_tag.owner, ctx.author):
 			return await ctx.send('You do not own this tag.')
 
 		get_tag.content = new_content
@@ -101,7 +104,7 @@ class Tags:
 		if get_tag is None:
 			return await ctx.send('Could not find tag.')
 
-		if not get_tag.owner == ctx.author.id:
+		if not await self.is_owner(get_tag.owner, ctx.author):
 			return await ctx.send('You do not own this tag.')
 
 		deleted = get_tag.delete_instance()
@@ -123,6 +126,9 @@ class Tags:
 		if get_tag is None:
 			return await ctx.send('Could not find tag.')
 
+		if not await self.is_owner(get_tag.owner, ctx.author):
+			return await ctx.send('You do not own this tag.')
+
 		if alias is None:
 			get_tag.alias = None
 			get_tag.save()
@@ -136,6 +142,29 @@ class Tags:
 		get_tag.save()
 
 		await ctx.send(f"Set alias for '{get_tag.name}' to '{alias}'")
+
+	@tag.group()
+	async def rename(self, ctx, tag_name: make_lower, new_name: make_lower):
+		"""Rename a tag."""
+
+		if tag_name == new_name:
+			return await ctx.send('New tag name cannot be identical to old name.')
+
+		get_tag = self.get_tag(tag_name, ctx.guild.id, alias=False)
+		if get_tag is None:
+			return await ctx.send('Could not find tag.')
+
+		ban = self.name_ban(new_name)
+		if ban is not None:
+			return await ctx.send(ban)
+
+		if self.get_tag(new_name, ctx.guild.id):
+			return await ctx.send('Tag with that name already exists.')
+
+		get_tag.name = new_name
+		get_tag.save()
+
+		await ctx.send('Tag renamed.')
 
 	@tag.group()
 	async def raw(self, ctx, *, tag_name: make_lower):
