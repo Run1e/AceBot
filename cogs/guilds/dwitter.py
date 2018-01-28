@@ -54,9 +54,9 @@ class Dwitter:
                 terminator = "\u23F9"
 		e = await self.embeddweet(dweet)
 		originalMessage = await message.channel.send(embed=e)
-		await add_reaction(originalMessage, leftArrow)
-		await add_reaction(originalMessage, terminator)
-		await add_reaction(originalMessage, rightArrow)
+		await originalMessage.add_reaction(leftArrow)
+		await originalMessage.add_reaction(terminator)
+		await originalMessage.add_reaction(rightArrow)
 
 		# don't count my own links because I only use it for testing
 		if await self.bot.is_owner(message.author):
