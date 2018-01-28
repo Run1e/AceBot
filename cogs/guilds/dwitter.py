@@ -80,7 +80,7 @@ class Dwitter:
                         except asyncio.TimeoutError:
                                 opReaction = None
                         if not opReaction is None:
-                                remove_reaction(originalMessage, opReaction.reaction.emoji, message.author)
+                                await originalMessage.remove_reaction(opReaction.reaction.emoji, message.author)
                                 if opReaction.reaction.emoji == leftArrow:
                                         id+=1
                                 elif opReaction.reaction.emoji == rightArrow:
