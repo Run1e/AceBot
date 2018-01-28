@@ -71,7 +71,7 @@ class Dwitter:
 		dwit.save()
 
 		def checkReaction(opReaction, user):
-                        return (opReaction.reaction.emoji in [leftArrow, rightArrow, terminator]) and (user==message.author) and (opReaction.message==originalMessage)
+                        return (str(opReaction.reaction.emoji) in [leftArrow, rightArrow, terminator]) and (user==message.author) and (opReaction.message==originalMessage)
 
                 replyStatic = False
                 while not replyStatic:
@@ -81,11 +81,11 @@ class Dwitter:
                                 opReaction = None
                         if not opReaction is None:
                                 await originalMessage.remove_reaction(opReaction.reaction.emoji, message.author)
-                                if opReaction.reaction.emoji == leftArrow:
+                                if str(opReaction.reaction.emoji) == leftArrow:
                                         id+=1
-                                elif opReaction.reaction.emoji == rightArrow:
+                                elif str(opReaction.reaction.emoji) == rightArrow:
                                         id-=1
-                                elif opReaction.reaction.emoji == terminator:
+                                elif str(opReaction.reaction.emoji) == terminator:
                                         replyStatic = True
                                 dweet = await self.bot.request('get', self.url + 'api/dweets/' + id)
                                 if not (dweet is None or 'link' not in dweet):
