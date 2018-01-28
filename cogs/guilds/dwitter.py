@@ -90,7 +90,7 @@ class Dwitter:
                                 dweet = await self.bot.request('get', self.url + 'api/dweets/' + id)
                                 if not (dweet is None or 'link' not in dweet):
                                         e = await self.embeddweet(dweet)
-                                        await edit_message(originalMessage, embed = e)
+                                        await originalMessage.edit_message(embed = e)
                         else:
                                 replyStatic = True
 
