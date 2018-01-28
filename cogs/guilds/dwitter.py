@@ -93,6 +93,10 @@ class Dwitter:
                                         await originalMessage.edit_message(embed = e)
                         else:
                                 replyStatic = True
+		try:
+			await originalMessage.clear_reactions()
+		except Forbidden:
+			return None
 
 	async def embeddweet(self, dweet):
 		e = discord.Embed()
