@@ -49,8 +49,14 @@ class Dwitter:
 		if dweet is None or 'link' not in dweet:
 			return None
 
+                leftArrow = "⬅"
+                rightArrow = "➡"
+                terminator = "\u23F9"
 		e = await self.embeddweet(dweet)
-		await message.channel.send(embed=e)
+		originalMessage = await message.channel.send(embed=e)
+		await add_reaction(originalMessage, leftArrow)
+		await add_reaction(originalMessage, terminator)
+		await add_reaction(originalMessage, rightArrow)
 
 		# don't count my own links because I only use it for testing
 		if await self.bot.is_owner(message.author):
@@ -63,6 +69,30 @@ class Dwitter:
 
 		dwit.count += 1
 		dwit.save()
+
+		def checkReaction(opReaction, user):
+                        return (opReaction.reaction.emoji in [leftArrow, rightArrow, terminator]) and (user=message.author) and (opReaction.message=originalMessage)
+
+                replyStatic = False
+                while not replyStatic:
+                        try:
+                                opReaction, user = await client.wait_for("reaction_add", timeout=9000, check = checkReaction)
+                        except asyncio.TimeoutError:
+                                opReaction = None
+                        if not opReaction is None:
+                                remove_reaction(originalMessage, opReaction.reaction.emoji, message.author)
+                                if opReaction.reaction.emoji == leftArrow:
+                                        id+=1
+                                elif opReaction.reaction.emoji == rightArrow:
+                                        id-=1
+                                elif opReaction.reaction.emoji == terminator:
+                                        replyStatic = True
+                                dweet = await self.bot.request('get', self.url + 'api/dweets/' + id)
+                                if not (dweet is None or 'link' not in dweet):
+                                        e = await self.embeddweet(dweet)
+                                        await edit_message(originalMessage, embed = e)
+                        else:
+                                replyStatic = True
 
 	async def embeddweet(self, dweet):
 		e = discord.Embed()
