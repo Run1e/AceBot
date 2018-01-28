@@ -71,7 +71,7 @@ class Dwitter:
 		dwit.save()
 
 		def checkReaction(opReaction, user):
-                        return (opReaction.reaction.emoji in [leftArrow, rightArrow, terminator]) and (user=message.author) and (opReaction.message=originalMessage)
+                        return (opReaction.reaction.emoji in [leftArrow, rightArrow, terminator]) and (user==message.author) and (opReaction.message==originalMessage)
 
                 replyStatic = False
                 while not replyStatic:
