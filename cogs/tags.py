@@ -171,7 +171,8 @@ class Tags:
 
 	@tag.group()
 	async def raw(self, ctx, *, tag_name: make_lower):
-		"""Get raw content of tag.
+		"""
+		Get raw content of tag.
 
 		Useful for editing! Code taken from Danny's RoboDanny bot.
 		"""

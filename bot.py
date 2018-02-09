@@ -95,8 +95,8 @@ class AceBot(commands.Bot):
 			commands.DisabledCommand: 'Command has been disabled.',
 			commands.MissingPermissions: 'Invoker is missing permissions to run this command.',
 			commands.BotMissingPermissions: 'Bot is missing permissions to run this command.',
+			commands.CommandOnCooldown: 'Please wait before running command again.',
 			discord.errors.Forbidden: "Bot can't do an action because it is missing permissions to do so."
-			#commands.CheckFailure: 'You are not allowed to run this command.'
 		}
 
 		for type, text in errors.items():

@@ -9,8 +9,6 @@ import asyncio
 
 import aiohttp.client_exceptions as client_exceptions
 
-import wikipedia
-
 class Commands:
 	"""Contains global commands."""
 
@@ -32,28 +30,6 @@ class Commands:
 
 		if message.content in self.replies:
 			await message.channel.send(self.replies[message.content])
-
-	async def embedwiki(self, ctx, wiki):
-		embed = discord.Embed()
-
-		sum = wiki.summary
-		if len(sum) > 1024:
-			sum = sum[0:1024] + '...'
-
-		embed.description = sum
-		embed.set_author(name=wiki.title, url=wiki.url, icon_url='https://i.imgur.com/qIor1ag.png')
-
-		image = ''
-		for img in wiki.images:
-			if not img.endswith('.svg'):
-				image = img
-				break
-
-		if image:
-			embed.set_image(url=image)
-
-		embed.set_footer(text='wikipedia.com')
-		await ctx.send(embed=embed)
 
 	@commands.command()
 	async def server(self, ctx):
@@ -84,6 +60,7 @@ class Commands:
 		e.add_field(name='Users', value='\n'.join(str(count) for status, count in statuses.items()))
 		await ctx.send(embed=e)
 
+	@commands.cooldown(rate=2, per=5.0, type=commands.BucketType.user)
 	@commands.command()
 	async def weather(self, ctx, *, location: str = None):
 		"""Check the weather at a location."""
@@ -156,38 +133,7 @@ class Commands:
 		"""Choose from a list."""
 		await ctx.send(random.choice(choices))
 
-	@commands.command(aliases=['wiki'], enabled=False)
-	async def wikipedia(self, ctx, *, query):
-		"""Preview a Wikipedia article."""
-
-		await ctx.trigger_typing()
-
-		try:
-			wiki = wikipedia.page(query)
-		except:
-			return await ctx.send('No results.')
-
-		await self.embedwiki(ctx, wiki)
-
-	@commands.command(enabled=False)
-	async def wikirandom(self, ctx):
-		"""Get a random Wikipedia page."""
-
-		await ctx.trigger_typing()
-		try:
-			page_name = wikipedia.random(1)
-		except:
-			return await ctx.invoke(self.wikirandom)
-
-		try:
-			wiki = wikipedia.page(page_name)
-			for attr in ('summary', 'url', 'title'):
-				if not hasattr(wiki, attr):
-					return await ctx.invoke(self.wikirandom)
-		except wikipedia.exceptions.DisambiguationError as e:
-			return await ctx.invoke(self.wikirandom)
-		await self.embedwiki(ctx, wiki)
-
+	@commands.cooldown(rate=2, per=5.0, type=commands.BucketType.user)
 	@commands.command(aliases=['def'])
 	async def define(self, ctx, *, query):
 		"""Define a word using Oxfords dictionary."""
@@ -229,6 +175,7 @@ class Commands:
 		await asyncio.sleep(3)
 		await msg.edit(content=random.choice(["Heads!", "Tails!"]))
 
+	@commands.cooldown(rate=2, per=5.0, type=commands.BucketType.user)
 	@commands.command(aliases=['w'])
 	async def wolfram(self, ctx, *, query):
 		"""Queries wolfram."""
@@ -256,6 +203,7 @@ class Commands:
 		else:
 			await ctx.send(embed=embed)
 
+	@commands.cooldown(rate=2, per=5.0, type=commands.BucketType.user)
 	@commands.command(aliases=['meow'])
 	async def cat(self, ctx):
 		"""Gets a random cat picture/gif!"""
@@ -281,6 +229,7 @@ class Commands:
 
 		await ctx.send('thecatapi request failed.')
 
+	@commands.cooldown(rate=2, per=5.0, type=commands.BucketType.user)
 	@commands.command(aliases=['woof'])
 	async def dog(self, ctx):
 		"""Gets a random dog picture/gif!"""
@@ -310,6 +259,7 @@ class Commands:
 
 		await ctx.send('random.dog request failed.')
 
+	@commands.cooldown(rate=2, per=5.0, type=commands.BucketType.user)
 	@commands.command(aliases=['num'])
 	async def number(self, ctx, *, num: int):
 		"""Get a random fact about a number!"""

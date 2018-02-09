@@ -150,22 +150,6 @@ class AutoHotkey:
 		embed.set_footer(text='Latest version: {}'.format(version))
 		await ctx.send(embed=embed)
 
-	@commands.command(hidden=True, enabled=False)
-	@commands.has_permissions(kick_members=True)
-	async def rule(self, ctx, rule: int, user):
-		rules = (
-			"**1. Be nice to eachother.**\nTreat others like you want others to treat you. Be nice.",
-			"**2. Keep conversations civil.**\nDisagreeing is fine, but when it becomes a heated and unpleasant argument it will not be tolerated.",
-			"**3. Don't post NSFW or antagonizing content.**\nThis includes but is not limited to nudity, sexual content, gore, personal information or disruptive content.",
-			"**4. Don't spam/flood voice or text channels.**\nRepeated posting of text, links, images, videos or abusing the voice channels is not allowed.",
-			"**5. No one is required or expected to help you.**\nIf no one wants to help you with your script, tough luck. Acting like a baby because of it will get you kicked/banned.",
-			"**6. Do not tag individuals for help.**\nIf you're asking for help, you have to use the Helpers tag."
-		)
-		await ctx.message.delete()
-		if rule > len(rules) or rule < 1:
-			return
-		await ctx.send(f'{user}\n\n{rules[rule - 1]}')
-
 	@commands.command(aliases=['bow'], hidden=True)
 	async def mae(self, ctx):
 		await ctx.message.delete()
