@@ -8,7 +8,10 @@ class Highlighter:
 	def __init__(self, bot):
 		self.bot = bot
 		self.default = 'AutoIt'
-		self.guilds = {395956681793863690: 'js'}
+		self.guilds = {
+			395956681793863690: 'js',
+			330423308103319562: 'cs'
+		}
 
 	async def on_reaction_add(self, reaction, user):
 		pattern = f'^```{self.guilds[reaction.message.guild.id] if reaction.message.guild.id in self.guilds else self.default}(\s|.)*, click the cross to delete\.\*$'

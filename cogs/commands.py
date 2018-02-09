@@ -156,7 +156,7 @@ class Commands:
 		"""Choose from a list."""
 		await ctx.send(random.choice(choices))
 
-	@commands.command(aliases=['wiki'])
+	@commands.command(aliases=['wiki'], enabled=False)
 	async def wikipedia(self, ctx, *, query):
 		"""Preview a Wikipedia article."""
 
@@ -169,7 +169,7 @@ class Commands:
 
 		await self.embedwiki(ctx, wiki)
 
-	@commands.command()
+	@commands.command(enabled=False)
 	async def wikirandom(self, ctx):
 		"""Get a random Wikipedia page."""
 
@@ -256,7 +256,7 @@ class Commands:
 		else:
 			await ctx.send(embed=embed)
 
-	@commands.command()
+	@commands.command(aliases=['meow'])
 	async def cat(self, ctx):
 		"""Gets a random cat picture/gif!"""
 

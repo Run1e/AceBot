@@ -2,6 +2,7 @@ import discord
 from discord.ext import commands
 
 import re
+import random
 
 from cogs.utils.docs_search import docs_search
 from cogs.utils.shorten import shorten
@@ -19,18 +20,26 @@ class AutoHotkey:
 		return ctx.guild.id in self.guilds
 
 	async def on_message(self, message):
-		# ignore messages that start with a prefix
-		if message.content.startswith(tuple(await self.bot.get_prefix(message))):
-			return
 
 		# check for correct guild
 		if message.guild.id not in self.guilds or self.bot.blacklist(message.author):
+			return
+
+		# ignore messages that start with a prefix
+		if message.content.startswith(tuple(await self.bot.get_prefix(message))):
 			return
 
 		# find links in message
 		try:
 			links = re.findall('http[s]?://(?:[a-zA-Z]|[0-9]|[$-_@.&+#]|[!*\(\),]|(?:%[0-9a-fA-F][0-9a-fA-F]))+', message.content)
 		except:
+			return
+
+		if not len(links):
+			# nothing, do the Alledgedly thing here
+			if await self.bot.is_owner(message.author):
+				if random.random() < 0.01:
+					await message.channel.send('*Allegedly...*')
 			return
 
 		# loop through links and send previews if applicable
@@ -141,7 +150,7 @@ class AutoHotkey:
 		embed.set_footer(text='Latest version: {}'.format(version))
 		await ctx.send(embed=embed)
 
-	@commands.command(hidden=True)
+	@commands.command(hidden=True, enabled=False)
 	@commands.has_permissions(kick_members=True)
 	async def rule(self, ctx, rule: int, user):
 		rules = (

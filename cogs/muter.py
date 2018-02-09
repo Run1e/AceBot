@@ -19,7 +19,7 @@ class Muter:
 		self.max_mute = 6
 
 		# guilds this feature is enabled for
-		self.guilds = (115993023636176902,)
+		self.guilds = (115993023636176902, 367975590143459328)
 
 		self.counter = {}
 		for guild in self.guilds:
@@ -52,6 +52,7 @@ class Muter:
 			if total >= self.max_mute:
 				ctx = await self.bot.get_context(message)
 				await ctx.invoke(self.mute, member=message.author, reason='Misuse of mentions. A <@&311784919208558592> member will have to assess the situation.')
+				self.counter[message.guild.id][message.author.id] = []
 
 			elif total >= self.max_warn:
 				await message.channel.send(f"{message.author.mention} Please refrain from using so many mentions, continuing might warrant a server-wide mute.")
@@ -59,12 +60,16 @@ class Muter:
 	@commands.command(hidden=True)
 	async def mute(self, ctx, member: discord.Member, reason: str = None):
 		role = discord.utils.get(ctx.guild.roles, name='Muted')
+		if role is None:
+			return
 		await member.add_roles(role)
 		await ctx.send(f"{member.mention} muted.{'' if reason is None else ' Reason: ' + reason}")
 
 	@commands.command(hidden=True)
 	async def unmute(self, ctx, member: discord.Member):
 		role = discord.utils.get(ctx.guild.roles, name='Muted')
+		if role is None:
+			return
 		await member.remove_roles(role)
 		await ctx.send(f"{member.mention} unmuted.")
 

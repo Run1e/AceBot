@@ -15,7 +15,7 @@ class Tags:
 
 	def __init__(self, bot):
 		self.bot = bot
-		self.reserved_names = ['create', 'edit', 'delete', 'info', 'list', 'top', 'raw', 'get', 'exec']
+		self.reserved_names = ['tag', 'create', 'edit', 'delete', 'info', 'list', 'top', 'raw', 'get', 'set', 'exec']
 
 	def get_tag(self, tag_name: make_lower, guild_id, alias=True):
 		for tag_obj in Tag.select().where(Tag.guild == guild_id):
@@ -66,6 +66,9 @@ class Tags:
 
 		if self.get_tag(tag_name, ctx.guild.id):
 			return await ctx.send(f"Tag '{tag_name}' already exists.")
+
+		if len(ctx.message.mentions):
+			return await ctx.send('Mentions are not allowed in tag contents.')
 
 		new_tag = Tag(
 			name=tag_name,
