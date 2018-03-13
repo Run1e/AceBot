@@ -17,12 +17,13 @@ class Tags:
 		self.bot = bot
 		self.reserved_names = ['tag', 'create', 'edit', 'delete', 'info', 'list', 'top', 'raw', 'get', 'set', 'exec']
 
-	def get_tag(self, tag_name: make_lower, guild_id, alias=True):
+	async def get_tag(self, tag_name: make_lower, guild_id, owner=None, alias=True):
 		for tag_obj in Tag.select().where(Tag.guild == guild_id):
-			if tag_name == tag_obj.name:
-				return tag_obj
-			if alias and tag_name == tag_obj.alias:
-				return tag_obj
+			if tag_name == tag_obj.name or (alias and tag_name == tag_obj.alias):
+				if owner is None:
+					return tag_obj
+				elif owner.id == tag_obj.owner or await self.bot.is_owner(owner):
+					return tag_obj
 		return None
 
 	def name_ban(self, tag_name: make_lower):
@@ -36,9 +37,6 @@ class Tags:
 			return f"Tag name '{tag_name}' is reserved."
 		return None
 
-	async def is_owner(self, owner_id, invoker):
-		return owner_id == invoker.id or await self.bot.is_owner(invoker)
-
 	@commands.group()
 	async def tag(self, ctx):
 		"""Create and manage tags."""
@@ -46,8 +44,8 @@ class Tags:
 		# send tag
 		if ctx.invoked_subcommand is None:
 			tag_name = make_lower(ctx.message.content[ctx.message.content.find(' ') + 1:])
-			get_tag = self.get_tag(tag_name, ctx.guild.id)
 
+			get_tag = await self.get_tag(tag_name, ctx.guild.id)
 			if get_tag is None:
 				return
 
@@ -64,7 +62,7 @@ class Tags:
 		if ban:
 			return await ctx.send(ban)
 
-		if self.get_tag(tag_name, ctx.guild.id):
+		if await self.get_tag(tag_name, ctx.guild.id):
 			return await ctx.send(f"Tag '{tag_name}' already exists.")
 
 		if len(ctx.message.mentions):
@@ -84,13 +82,10 @@ class Tags:
 	@tag.group()
 	async def edit(self, ctx, tag_name: make_lower, *, new_content: str):
 		"""Edit an existing tag."""
-		get_tag = self.get_tag(tag_name, ctx.guild.id)
 
+		get_tag = await self.get_tag(tag_name, ctx.guild.id, owner=ctx.author)
 		if get_tag is None:
-			return await ctx.send('Could not find tag.')
-
-		if not await self.is_owner(get_tag.owner, ctx.author):
-			return await ctx.send('You do not own this tag.')
+			return await ctx.send("Couldn't find the tag or you do not own it.")
 
 		get_tag.content = new_content
 		get_tag.edited_at = datetime.datetime.now()
@@ -102,13 +97,9 @@ class Tags:
 	async def delete(self, ctx, *, tag_name: make_lower):
 		"""Delete a tag."""
 
-		get_tag = self.get_tag(tag_name, ctx.guild.id)
-
+		get_tag = await self.get_tag(tag_name, ctx.guild.id, owner=ctx.author)
 		if get_tag is None:
-			return await ctx.send('Could not find tag.')
-
-		if not await self.is_owner(get_tag.owner, ctx.author):
-			return await ctx.send('You do not own this tag.')
+			return await ctx.send("Couldn't find the tag or you do not own it.")
 
 		deleted = get_tag.delete_instance()
 
@@ -124,13 +115,9 @@ class Tags:
 		if tag_name == alias:
 			return await ctx.send('Tag name and Alias can not be identical.')
 
-		get_tag = self.get_tag(tag_name, ctx.guild.id, alias=False)
-
+		get_tag = await self.get_tag(tag_name, ctx.guild.id, owner=ctx.author, alias=False)
 		if get_tag is None:
-			return await ctx.send('Could not find tag.')
-
-		if not await self.is_owner(get_tag.owner, ctx.author):
-			return await ctx.send('You do not own this tag.')
+			return await ctx.send("Couldn't find the tag or you do not own it.")
 
 		if alias is None:
 			get_tag.alias = None
@@ -147,21 +134,37 @@ class Tags:
 		await ctx.send(f"Set alias for '{get_tag.name}' to '{alias}'")
 
 	@tag.group()
+	async def transfer(self, ctx, tag_name: make_lower, new_owner: discord.Member):
+		"""Transfer ownership of a tag to someone else."""
+
+		get_tag = await self.get_tag(tag_name, ctx.guild.id, owner=ctx.author)
+		if get_tag is None:
+			return await ctx.send("Couldn't find the tag or you do not own it.")
+
+		if ctx.author == new_owner:
+			return await ctx.send('You already own the tag, silly! :joy:')
+
+		get_tag.owner = new_owner.id
+		get_tag.save()
+
+		await ctx.send(f"Ownership of tag '{tag_name}' given to {new_owner.name}")
+
+	@tag.group()
 	async def rename(self, ctx, tag_name: make_lower, new_name: make_lower):
 		"""Rename a tag."""
 
 		if tag_name == new_name:
 			return await ctx.send('New tag name cannot be identical to old name.')
 
-		get_tag = self.get_tag(tag_name, ctx.guild.id, alias=False)
-		if get_tag is None:
-			return await ctx.send('Could not find tag.')
-
 		ban = self.name_ban(new_name)
 		if ban is not None:
 			return await ctx.send(ban)
 
-		if self.get_tag(new_name, ctx.guild.id):
+		get_tag = await self.get_tag(tag_name, ctx.guild.id, owner=ctx.author, alias=False)
+		if get_tag is None:
+			return await ctx.send("Couldn't find the tag or you do not own it.")
+
+		if await self.get_tag(new_name, ctx.guild.id):
 			return await ctx.send('Tag with that name already exists.')
 
 		get_tag.name = new_name
@@ -177,8 +180,7 @@ class Tags:
 		Useful for editing! Code taken from Danny's RoboDanny bot.
 		"""
 
-		get_tag = self.get_tag(tag_name, ctx.guild.id)
-
+		get_tag = await self.get_tag(tag_name, ctx.guild.id)
 		if get_tag is None:
 			return await ctx.send('Could not find tag.')
 
@@ -190,12 +192,27 @@ class Tags:
 	async def list(self, ctx, *, member: discord.Member = None):
 		"""List tags from the server or a user."""
 
-		max_tags = 6
+		e = self.get_tag_list(ctx=ctx, member=member, max_tags=10)
+		if e is None:
+			await ctx.send('No tags found.')
+		else:
+			await ctx.send(embed=e)
 
+	@tag.group()
+	async def listpm(self, ctx, *, member: discord.Member = None):
+		"""Get a larger lists of tags sent in a PM."""
+
+		e = self.get_tag_list(ctx=ctx, member=member, max_tags=999)
+		if e is None:
+			await ctx.send('No tags found.')
+		else:
+			await ctx.author.send(embed=e)
+
+	def get_tag_list(self, ctx, member=None, max_tags=10):
 		names, uses, tags = '', '', 0
 
-		list = Tag.select()\
-			.where(Tag.owner == (Tag.owner if member is None else member.id), Tag.guild == ctx.guild.id)\
+		list = Tag.select() \
+			.where(Tag.owner == (Tag.owner if member is None else member.id), Tag.guild == ctx.guild.id) \
 			.order_by(Tag.uses.desc())
 
 		for index, get_tag in enumerate(list):
@@ -204,10 +221,13 @@ class Tags:
 				if not get_tag.alias is None:
 					names += f' ({get_tag.alias})'
 				uses += f'\n{get_tag.uses}'
+				# if more than 924, we risk the next tag name making the field value over 1024 chars which will error
+				if len(names) > 920:
+					break
 			tags += 1
 
 		if not tags:
-			return await ctx.send('No tags found.')
+			return None
 
 		e = discord.Embed()
 		e.add_field(name='Tag', value=names, inline=True)
@@ -223,13 +243,13 @@ class Tags:
 
 		e.set_author(name=nick, icon_url=avatar)
 
-		await ctx.send(embed=e)
+		return e
 
 	@tag.group()
 	async def info(self, ctx, *, tag_name: make_lower):
 		"""Show info about a tag."""
 
-		get_tag = self.get_tag(tag_name, ctx.guild.id)
+		get_tag = await self.get_tag(tag_name, ctx.guild.id)
 
 		if get_tag is None:
 			return await ctx.send("Could not find tag.")

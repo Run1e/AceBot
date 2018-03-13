@@ -18,15 +18,19 @@ class Dwitter:
 		self.url = 'https://www.dwitter.net/'
 
 	async def __local_check(self, ctx):
-		return ctx.guild.id in self.guilds
+		return getattr(ctx.guild, 'id', None) in self.guilds
 
 	async def on_message(self, message):
-		# ignore messages that start with a prefix
-		if message.content.startswith(tuple(await self.bot.get_prefix(message))):
+		# guild check
+		if not await self.__local_check(message):
 			return
 
-		# check for correct guild
-		if message.guild.id not in self.guilds or self.bot.blacklist(message.author):
+		# run blacklist test
+		if self.bot.blacklist(message):
+			return
+
+		# ignore messages that start with a prefix
+		if message.content.startswith(tuple(await self.bot.get_prefix(message))):
 			return
 
 		# find dweet shorthands in message

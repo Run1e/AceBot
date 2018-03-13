@@ -13,16 +13,19 @@ class AutoHotkey:
 
 	def __init__(self, bot):
 		self.bot = bot
-		self.guilds = (115993023636176902, 317632261799411712, 372163679010947074, 380066879919751179)
+		self.guilds = (115993023636176902, 317632261799411712)
 
 	# make sure we're in the the correct guild(s)
 	async def __local_check(self, ctx):
-		return ctx.guild.id in self.guilds
+		return getattr(ctx.guild, 'id', None) in self.guilds
 
 	async def on_message(self, message):
+		# guild check
+		if not await self.__local_check(message):
+			return
 
-		# check for correct guild
-		if message.guild.id not in self.guilds or self.bot.blacklist(message.author):
+		# run blacklist test
+		if self.bot.blacklist(message):
 			return
 
 		# ignore messages that start with a prefix

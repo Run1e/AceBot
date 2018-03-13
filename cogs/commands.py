@@ -1,13 +1,13 @@
+import asyncio
+import datetime
+import math
+import random
+import time
+
+import aiohttp.client_exceptions as client_exceptions
 import discord
 from discord.ext import commands
 
-import random
-import time
-import math
-import datetime
-import asyncio
-
-import aiohttp.client_exceptions as client_exceptions
 
 class Commands:
 	"""Contains global commands."""
@@ -25,7 +25,7 @@ class Commands:
 			self.splitfacts = f.read().splitlines()
 
 	async def on_message(self, message):
-		if self.bot.blacklist(message.author):
+		if self.bot.blacklist(message):
 			return
 
 		if message.content in self.replies:
@@ -204,8 +204,8 @@ class Commands:
 			await ctx.send(embed=embed)
 
 	@commands.cooldown(rate=2, per=5.0, type=commands.BucketType.user)
-	@commands.command(aliases=['meow'])
-	async def cat(self, ctx):
+	@commands.command()
+	async def meow(self, ctx):
 		"""Gets a random cat picture/gif!"""
 
 		url = 'http://thecatapi.com/api/images/get'
@@ -230,8 +230,8 @@ class Commands:
 		await ctx.send('thecatapi request failed.')
 
 	@commands.cooldown(rate=2, per=5.0, type=commands.BucketType.user)
-	@commands.command(aliases=['woof'])
-	async def dog(self, ctx):
+	@commands.command()
+	async def woof(self, ctx):
 		"""Gets a random dog picture/gif!"""
 
 		url = 'https://random.dog/'

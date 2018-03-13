@@ -30,7 +30,7 @@ class Votes:
 			if reaction.emoji == emoji:
 				self.votes[reaction.message.channel]['score'][emoji].remove(user)
 
-	@commands.command()
+	@commands.command(aliases=['poll'])
 	async def vote(self, ctx, question: str, *choices):
 		"""Let people in the channel vote on a question!"""
 		if len(choices) > 9:

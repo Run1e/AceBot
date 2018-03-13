@@ -1,15 +1,17 @@
 import discord
 from discord.ext import commands
+from peewee import *
 
 from cogs.utils.strip_markdown import *
-
-from peewee import *
 
 db = SqliteDatabase('lib/welcome.db')
 
 class Welcome:
 	def __init__(self, bot):
 		self.bot = bot
+
+	async def __local_check(self, ctx):
+		return ctx.author.permissions_in(ctx.channel).manage_guild or await self.bot.is_owner(ctx.author)
 
 	async def on_member_join(self, member):
 		wel_msg = self.get_msg(member.guild.id)
@@ -44,7 +46,6 @@ class Welcome:
 		return msg
 
 	@commands.group(hidden=True)
-	@commands.has_permissions(manage_guild=True)
 	async def welcome(self, ctx):
 		pass
 

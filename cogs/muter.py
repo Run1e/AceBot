@@ -19,7 +19,12 @@ class Muter:
 		self.max_mute = 6
 
 		# guilds this feature is enabled for
-		self.guilds = (115993023636176902, 367975590143459328)
+		self.guilds = {
+			115993023636176902: {
+				'channel': 423143852304760863,
+				'ignore_channels': (423143852304760863,)
+			}
+		}
 
 		self.counter = {}
 		for guild in self.guilds:
@@ -29,7 +34,11 @@ class Muter:
 		return ctx.guild.id in self.guilds and ctx.author.permissions_in(ctx.channel).ban_members
 
 	async def on_message(self, message):
-		if message.guild.id not in self.guilds or message.author.bot:
+		# check if we even should
+		if not isinstance(message.channel, discord.TextChannel) or message.guild.id not in self.guilds:
+			return
+
+		if message.channel.id in self.guilds[message.guild.id]['ignore_channels'] or self.bot.is_owner(message.author):
 			return
 
 		if len(message.mentions):
@@ -51,7 +60,7 @@ class Muter:
 
 			if total >= self.max_mute:
 				ctx = await self.bot.get_context(message)
-				await ctx.invoke(self.mute, member=message.author, reason='Misuse of mentions. A <@&311784919208558592> member will have to assess the situation.')
+				await ctx.invoke(self.mute, member=message.author, reason='Auto-mute because of mention abuse.') #<@&311784919208558592>
 				self.counter[message.guild.id][message.author.id] = []
 
 			elif total >= self.max_warn:
@@ -63,7 +72,12 @@ class Muter:
 		if role is None:
 			return
 		await member.add_roles(role)
-		await ctx.send(f"{member.mention} muted.{'' if reason is None else ' Reason: ' + reason}")
+		serv = self.guilds[ctx.guild.id]
+		message = f"{member.mention} muted.{'' if reason is None else ' Reason: ' + reason}"
+		if serv['channel'] is None:
+			await ctx.send(message)
+		else:
+			await self.bot.get_channel(self.guilds[ctx.guild.id]['channel']).send(message)
 
 	@commands.command(hidden=True)
 	async def unmute(self, ctx, member: discord.Member):

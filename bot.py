@@ -7,9 +7,9 @@ status = '.help for commands'
 description = """
 A.C.E. - Autonomous Command Executor
 
-Written by: RUNIE 🔥 #9646
+Written by: RUNIE 🔥#9646
 Avatar artwork: Vinter Borge
-Contributors: Cap'n Odin #8812 and GeekDude #2532
+Contributors: Cap'n Odin#8812 and GeekDude#2532
 """
 
 extensions = (
@@ -61,13 +61,16 @@ class AceBot(commands.Bot):
 			return None
 
 	async def before_command(self, ctx):
-		print(f'\nServer: {ctx.guild.name}\nUser: {ctx.message.author.name}\nCommand: {ctx.command.name}')
+		try:
+			print(f'\nServer: {ctx.guild.name}\nUser: {ctx.message.author.name}\nCommand: {ctx.invoked_subcommand if ctx.invoked_subcommand is not None else ctx.command.name}')
+		except:
+			pass
 
 	async def blacklist_ctx(self, ctx):
-		return not self.blacklist(ctx.author)
+		return not self.blacklist(ctx.message)
 
-	def blacklist(self, author):
-		return author.id in self.ignore_users or author.bot
+	def blacklist(self, message):
+		return message.author.id in self.ignore_users or message.author.bot or not isinstance(message.channel, discord.TextChannel)
 
 	async def on_ready(self):
 		if not hasattr(self, 'uptime'):
