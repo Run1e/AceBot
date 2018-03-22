@@ -21,8 +21,7 @@ class Muter:
 		# guilds this feature is enabled for
 		self.guilds = {
 			115993023636176902: {
-				'channel': 423143852304760863,
-				'ignore_channels': (423143852304760863,)
+				'channel': 423143852304760863
 			}
 		}
 
@@ -38,7 +37,7 @@ class Muter:
 		if not isinstance(message.channel, discord.TextChannel) or message.guild.id not in self.guilds:
 			return
 
-		if message.channel.id in self.guilds[message.guild.id]['ignore_channels'] or self.bot.is_owner(message.author):
+		if message.author.bot or message.author.permissions_in(message.channel).ban_members:
 			return
 
 		if len(message.mentions):
@@ -60,7 +59,7 @@ class Muter:
 
 			if total >= self.max_mute:
 				ctx = await self.bot.get_context(message)
-				await ctx.invoke(self.mute, member=message.author, reason='Auto-mute because of mention abuse.') #<@&311784919208558592>
+				await ctx.invoke(self.mute, member=message.author, reason='Auto-mute because of mention abuse. - ') # <@&311784919208558592>
 				self.counter[message.guild.id][message.author.id] = []
 
 			elif total >= self.max_warn:
