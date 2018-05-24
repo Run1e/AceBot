@@ -128,7 +128,10 @@ class Welcome:
 		if wel_msg.disabled:
 			test += '\n\n*Please notice welcome messages are disabled.*'
 
-		await ctx.send(test)
+		channel = self.bot.get_channel(wel_msg.channel)
+
+		if channel:
+			await channel.send(test)
 
 	@welcome.group()
 	async def raw(self, ctx):

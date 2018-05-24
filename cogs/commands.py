@@ -56,6 +56,7 @@ class Commands:
 
 		e = discord.Embed(title=ctx.guild.name, description='\n'.join(f'**{a}**: {b}' for a, b in att.items()))
 		e.set_thumbnail(url=ctx.guild.icon_url)
+		e.set_footer(text=f'ID: {ctx.guild.id}')
 		e.add_field(name='Status', value='\n'.join(str(status) for status in statuses))
 		e.add_field(name='Users', value='\n'.join(str(count) for status, count in statuses.items()))
 		await ctx.send(embed=e)

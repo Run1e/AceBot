@@ -38,13 +38,6 @@ class AutoHotkey:
 		except:
 			return
 
-		if not len(links):
-			# nothing, do the Alledgedly thing here
-			if await self.bot.is_owner(message.author):
-				if random.random() < 0.01:
-					await message.channel.send('*Allegedly...*')
-			return
-
 		# loop through links and send previews if applicable
 		seen = []
 		for link in links:

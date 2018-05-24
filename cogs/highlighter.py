@@ -30,6 +30,8 @@ class Highlighter:
 	async def hl(self, ctx, *, code):
 		"""Highlights some code."""
 
+		code = ctx.message.content[4:]
+
 		# don't paste if there's hella many backticks fam
 		if '```'  in code:
 			return

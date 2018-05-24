@@ -34,10 +34,9 @@ class Muter:
 
 	async def on_message(self, message):
 		# check if we even should
-		if not isinstance(message.channel, discord.TextChannel) or message.guild.id not in self.guilds:
-			return
-
-		if message.author.bot or message.author.permissions_in(message.channel).ban_members:
+		if not isinstance(message.channel, discord.TextChannel) or message.guild.id not in self.guilds \
+		or message.author.bot or message.author.permissions_in(message.channel).ban_members \
+		or message.channel.id == self.guilds[message.guild.id]['channel']:
 			return
 
 		if len(message.mentions):
@@ -59,7 +58,7 @@ class Muter:
 
 			if total >= self.max_mute:
 				ctx = await self.bot.get_context(message)
-				await ctx.invoke(self.mute, member=message.author, reason='Auto-mute because of mention abuse. - ') # <@&311784919208558592>
+				await ctx.invoke(self.mute, member=message.author, reason='Auto-mute because of mention abuse. - <@&311784919208558592>')
 				self.counter[message.guild.id][message.author.id] = []
 
 			elif total >= self.max_warn:

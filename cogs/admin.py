@@ -97,15 +97,15 @@ class Admin:
 	@commands.command(aliases=['gh'])
 	async def github(self, ctx, *, query):
 		"""Search for a GitHub repo."""
-		await ctx.invoke(self.search, query='site:github.com ' + query)
+		await ctx.invoke(self.google, query='site:github.com ' + query)
 
 	@commands.command(aliases=['f'])
 	async def forum(self, ctx, *, query):
 		"""Search for an AutoHotkey thread."""
-		await ctx.invoke(self.search, query='site:https://autohotkey.com/boards/ ' + query)
+		await ctx.invoke(self.google, query='site:https://autohotkey.com/boards/ ' + query)
 
 	@commands.command(aliases=['g'])
-	async def search(self, ctx, *, query):
+	async def google(self, ctx, *, query):
 		"""Search Google."""
 		"""
 		headers = {
@@ -127,14 +127,6 @@ class Admin:
 			embed = discord.Embed(title=result['title'], url=result['url'], description=result['description'])
 			embed.set_footer(text=result['domain'])
 			await ctx.send(embed=embed)
-
-	@commands.command(hidden=True)
-	async def evalp(self, ctx, *, body: str):
-		await ctx.invoke(self.eval, body=f'print({body})')
-
-	@commands.command(hidden=True)
-	async def evals(self, ctx, *, body: str):
-		await ctx.invoke(self.eval, body=f'await ctx.send({body})')
 
 	@commands.command(hidden=True)
 	async def eval(self, ctx, *, body: str):
