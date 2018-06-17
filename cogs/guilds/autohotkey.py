@@ -140,10 +140,10 @@ class AutoHotkey:
 
 		version = text.split('\r\n')[0][:-1]
 
-		embed = discord.Embed(description='Feature rich IDE for AutoHotkey!\n[Direct download]({})'.format('https://raw.githubusercontent.com/maestrith/AHK-Studio/master/AHK-Studio.ahk'))
+		embed = discord.Embed(description='Feature rich IDE for AutoHotkey!')
 		embed.set_author(name='AHK Studio', url='https://autohotkey.com/boards/viewtopic.php?f=62&t=300', icon_url='https://i.imgur.com/DXtmUwN.png')
-
 		embed.set_footer(text='Latest version: {}'.format(version))
+
 		await ctx.send(embed=embed)
 
 	@commands.command(aliases=['bow'], hidden=True)

@@ -14,6 +14,7 @@ Contributors: Cap'n Odin#8812 and GeekDude#2532
 
 extensions = (
 	'cogs.admin',
+	'cogs.mod',
 	'cogs.commands',
 	'cogs.highlighter',
 	'cogs.tags',

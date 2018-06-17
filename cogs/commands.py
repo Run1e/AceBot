@@ -261,6 +261,33 @@ class Commands:
 		await ctx.send('random.dog request failed.')
 
 	@commands.cooldown(rate=2, per=5.0, type=commands.BucketType.user)
+	@commands.command()
+	async def quack(self, ctx):
+		"""Gets a random duck picture/gif!"""
+
+		url = 'https://random-d.uk/api/v1/random'
+
+		for attempt in range(3):
+			await ctx.trigger_typing()
+
+			try:
+				async with self.bot.session.request('get', url) as resp:
+					if resp.status != 200:
+						return
+					json = await resp.json()
+
+				async with self.bot.session.request('get', json['url']) as resp:
+					if resp.status != 200:
+						return
+					file = discord.File(await resp.read(), 'duck.' + resp.content_type.split('/')[1])
+					await ctx.send(file=file)
+					return
+			except (client_exceptions.ClientConnectorError, discord.errors.HTTPException):
+				pass
+
+		await ctx.send('random-d.uk request failed.')
+
+	@commands.cooldown(rate=2, per=5.0, type=commands.BucketType.user)
 	@commands.command(aliases=['num'])
 	async def number(self, ctx, *, num: int):
 		"""Get a random fact about a number!"""
