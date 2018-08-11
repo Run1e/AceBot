@@ -6,7 +6,8 @@ from shutil import copy2
 from datetime import datetime
 from contextlib import redirect_stdout
 
-from cogs.utils.google_result import google_result
+from utils.google_result import google_result
+
 
 class Admin:
 	"""Admin commands"""
@@ -30,21 +31,20 @@ class Admin:
 	async def backup(self, ctx):
 		"""Made a backup of databases."""
 		timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-		directory = f'lib/backups/{timestamp}/'
+		directory = f'data/backups/{timestamp}/'
 		try:
 			if not os.path.exists(directory):
 				os.makedirs(directory)
-			copy2('lib/tags.db', directory)
-			copy2('lib/reps.db', directory)
-			copy2('lib/welcome.db', directory)
-			copy2('lib/ignore.json', directory)
-			copy2('lib/dwitter_top.db', directory)
+			copy2('data/tags.db', directory)
+			copy2('data/reps.db', directory)
+			copy2('data/welcome.db', directory)
+			copy2('data/ignore.json', directory)
+			copy2('data/dwitter_top.db', directory)
 		except Exception as ex:
 			await ctx.send(f'```{str(ex)}```')
 			return
 		await ctx.message.delete()
 		await ctx.send(f'Databases backed up under `{timestamp}`', delete_after=5)
-
 
 	# if this doesn't work, I changed how id is casted to int
 	@commands.command()
@@ -75,7 +75,7 @@ class Admin:
 
 		self.bot.ignore_users.remove(user.id)
 
-		with open('lib/ignore.json', 'w') as f:
+		with open('data/ignore.json', 'w') as f:
 			f.write(json.dumps(self.bot.ignore_users, sort_keys=True, indent=4))
 
 		await ctx.send('User removed from ignore list.')
@@ -89,7 +89,7 @@ class Admin:
 
 		self.bot.ignore_users.append(user.id)
 
-		with open('lib/ignore.json', 'w') as f:
+		with open('data/ignore.json', 'w') as f:
 			f.write(json.dumps(self.bot.ignore_users, sort_keys=True, indent=4))
 
 		await ctx.send('User ignored.')
@@ -173,6 +173,7 @@ class Admin:
 					await ctx.send(f'```py\n{value}\n```')
 			else:
 				await ctx.send(f'```py\n{value}{ret}\n```')
+
 
 def setup(bot):
 	bot.add_cog(Admin(bot))

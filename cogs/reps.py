@@ -4,7 +4,7 @@ from discord.ext import commands
 import random, datetime
 from peewee import *
 
-db = SqliteDatabase('lib/reps.db')
+db = SqliteDatabase('data/reps.db')
 
 class Reputation:
 	"""Handles the reputation command."""

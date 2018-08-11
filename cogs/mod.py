@@ -12,7 +12,7 @@ class Moderator:
 		return ctx.author.permissions_in(ctx.channel).manage_messages
 
 	@commands.command()
-	async def clear(self, ctx, message_count : int = None, user : discord.User = None):
+	async def clear(self, ctx, message_count: int = None, user: discord.User = None):
 		"""Clear x amount of messages, either from user or just indiscriminately."""
 
 		if message_count is None:
@@ -28,7 +28,6 @@ class Moderator:
 
 		await ctx.message.delete()
 		await ctx.channel.purge(limit=message_count, check=check)
-
 
 
 def setup(bot):

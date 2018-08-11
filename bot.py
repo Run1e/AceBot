@@ -1,6 +1,9 @@
 import discord, aiohttp, time, json
 from discord.ext import commands
 
+import os
+from datetime import date
+
 nick = 'Ace'
 status = '.help for commands'
 
@@ -31,7 +34,7 @@ class AceBot(commands.Bot):
 	def __init__(self):
 
 		# load config file
-		with open('lib/config.json', 'r') as f:
+		with open('data/config.json', 'r', encoding='utf-8-sig') as f:
 			self.config = json.loads(f.read())
 
 		# init bot
@@ -40,7 +43,7 @@ class AceBot(commands.Bot):
 		self.owner_id = 265644569784221696
 		self.session = aiohttp.ClientSession(loop=self.loop)
 
-		with open('lib/ignore.json', 'r') as f:
+		with open('data/ignore.json', 'r', encoding='utf-8-sig') as f:
 			self.ignore_users = json.loads(f.read())
 
 		# check for ignored users and bots
@@ -62,31 +65,36 @@ class AceBot(commands.Bot):
 			return None
 
 	async def before_command(self, ctx):
-		try:
-			print(f'\nServer: {ctx.guild.name}\nUser: {ctx.message.author.name}\nCommand: {ctx.invoked_subcommand if ctx.invoked_subcommand is not None else ctx.command.name}')
-		except:
-			pass
+		today = date.today()
+
+		cont = ctx.message.content.replace('\n', '\\n').replace('\r', '\\r')
+
+		msg = f'{ctx.message.author.name}@{ctx.guild.name}: {cont}'
+
+		print(msg)
 
 	async def blacklist_ctx(self, ctx):
 		return not self.blacklist(ctx.message)
 
 	def blacklist(self, message):
-		return message.author.id in self.ignore_users or message.author.bot or not isinstance(message.channel, discord.TextChannel)
+		return message.author.id in self.ignore_users or message.author.bot or not isinstance(message.channel,
+																							  discord.TextChannel)
 
 	async def on_ready(self):
 		if not hasattr(self, 'uptime'):
 			self.uptime = time.time()
 
 		await self.user.edit(username=nick)
-		await self.change_presence(game=discord.Game(name=status))
+		await self.change_presence(activity=discord.Game(name=status))
 
 		for extension in extensions:
 			print(f'Loading extension: {extension}')
 			self.load_extension(extension)
 
-		print(f'\nLogged in as: {self.user.name} - {self.user.id}\ndiscord.py {discord.__version__}')
-		print(f'\nConnected to {len(self.guilds)} servers:')
+		print(f'Logged in as: {self.user.name} - {self.user.id}\ndiscord.py {discord.__version__}\n')
+		print(f'Connected to {len(self.guilds)} servers:\n')
 		print('\n'.join(f'{guild.name} - {guild.id}' for guild in self.guilds))
+		print('\n')
 
 	async def on_command_error(self, ctx, error):
 		if isinstance(error, commands.CommandNotFound):
@@ -124,8 +132,10 @@ class Embed(discord.Embed):
 		attrs['color'] = color
 		super().__init__(**attrs)
 
+
 discord.Embed = Embed
 
 if __name__ == '__main__':
+	print('Launching AceBot')
 	bot = AceBot()
 	bot.run(bot.config['token'])

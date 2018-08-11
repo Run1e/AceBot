@@ -3,6 +3,7 @@ from discord.ext import commands
 
 import datetime
 
+
 class Muter:
 	"""Mute/unmute commands and anti-mention spam."""
 
@@ -35,8 +36,8 @@ class Muter:
 	async def on_message(self, message):
 		# check if we even should
 		if not isinstance(message.channel, discord.TextChannel) or message.guild.id not in self.guilds \
-		or message.author.bot or message.author.permissions_in(message.channel).ban_members \
-		or message.channel.id == self.guilds[message.guild.id]['channel']:
+				or message.author.bot or message.author.permissions_in(message.channel).ban_members \
+				or message.channel.id == self.guilds[message.guild.id]['channel']:
 			return
 
 		if len(message.mentions):
@@ -58,11 +59,13 @@ class Muter:
 
 			if total >= self.max_mute:
 				ctx = await self.bot.get_context(message)
-				await ctx.invoke(self.mute, member=message.author, reason='Auto-mute because of mention abuse. - <@&311784919208558592>')
+				await ctx.invoke(self.mute, member=message.author,
+								 reason='Auto-mute because of mention abuse. - <@&311784919208558592>')
 				self.counter[message.guild.id][message.author.id] = []
 
 			elif total >= self.max_warn:
-				await message.channel.send(f"{message.author.mention} Please refrain from using so many mentions, continuing might warrant a server-wide mute.")
+				await message.channel.send(
+					f"{message.author.mention} Please refrain from using so many mentions, continuing might warrant a server-wide mute.")
 
 	@commands.command(hidden=True)
 	async def mute(self, ctx, member: discord.Member, reason: str = None):
@@ -84,6 +87,7 @@ class Muter:
 			return
 		await member.remove_roles(role)
 		await ctx.send(f"{member.mention} unmuted.")
+
 
 def setup(bot):
 	bot.add_cog(Muter(bot))

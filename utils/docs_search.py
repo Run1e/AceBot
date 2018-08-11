@@ -1,14 +1,15 @@
 import json
 from fuzzywuzzy import fuzz, process
 
-with open('cogs/data/Docs.json', 'r') as f:
+with open('data/Docs.json', 'r', encoding='utf-8-sig') as f:
 	docs_assoc = json.loads(f.read())
 	docs = []
 	for x in docs_assoc:
 		docs.append(x)
 
+
 def docs_search(search_terms):
-	md_trans = str.maketrans({c: '\\'+c for c in '\\*#/()[]<>'})
+	md_trans = str.maketrans({c: '\\' + c for c in '\\*#/()[]<>'})
 	search_terms = search_terms.splitlines()
 
 	# Finds a documentation page with fuzzy search
@@ -16,7 +17,7 @@ def docs_search(search_terms):
 		# Simple check
 		for page_name in docs:
 			if (page_name.lower().startswith(search_term.lower() + ' ')
-						or search_term.lower() == page_name.lower()):
+				or search_term.lower() == page_name.lower()):
 				return page_name
 
 		# String matching check
@@ -29,7 +30,7 @@ def docs_search(search_terms):
 
 		for match, score in matches:
 			if (search_term.upper() == ''.join(filter(str.isupper, match))
-						or match.lower().startswith(search_term.lower())):
+				or match.lower().startswith(search_term.lower())):
 				return match
 
 		return matches[0][0]
@@ -47,7 +48,7 @@ def docs_search(search_terms):
 			'title': page.get('syntax', page_name),
 			'description': page.get('desc', ''),
 			'url': 'https://autohotkey.com/docs/' + page['dir']
-				if 'dir' in page else None
+			if 'dir' in page else None
 		}
 
 	# Find multiple pages and put them in embed fields
@@ -72,11 +73,11 @@ def docs_search(search_terms):
 		fields.append({
 			'name': page.get('syntax', page_name),
 			'value': page.get('desc', 'Link').translate(md_trans)
-				if 'dir' not in page else
-				'{0}\n[{1}](https://autohotkey.com/docs/{2})'.format(
-					page.get('desc', 'Link').translate(md_trans),
-					'Documentation',
-					page['dir'].translate(md_trans)
-				)
+			if 'dir' not in page else
+			'{0}\n[{1}](https://autohotkey.com/docs/{2})'.format(
+				page.get('desc', 'Link').translate(md_trans),
+				'Documentation',
+				page['dir'].translate(md_trans)
+			)
 		})
 	return {'title': None, 'fields': fields}

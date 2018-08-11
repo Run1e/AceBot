@@ -1,4 +1,4 @@
-{
+﻿{
 	"#AllowSameLineComments": {
 		"desc": "Removed in v1.1.09: AutoIt scripts are no longer supported.",
 		"dir": "commands/_AllowSameLineComments.htm",

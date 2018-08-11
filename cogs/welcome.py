@@ -1,10 +1,11 @@
-import discord
+import discord, asyncio
 from discord.ext import commands
 from peewee import *
 
-from cogs.utils.strip_markdown import *
+from utils.strip_markdown import *
 
-db = SqliteDatabase('lib/welcome.db')
+db = SqliteDatabase('data/welcome.db')
+
 
 class Welcome:
 	def __init__(self, bot):
@@ -21,6 +22,11 @@ class Welcome:
 		channel = self.bot.get_channel(wel_msg.channel)
 		if channel is None:
 			return
+
+		# wait a bit since it seems like when joining a server it takes some time before the client
+		# starts listening to messages. instantly sending the welcome message might make their
+		# client miss the msg...
+		await asyncio.sleep(2)
 
 		await channel.send(self.format_welcome(member, wel_msg.content))
 
@@ -60,7 +66,8 @@ class Welcome:
 				wel_msg.disabled = False
 				wel_msg.save()
 
-		await ctx.send('Welcome messages enabled.\nUse `.welcome msg <contents>` to set welcome message contents.\nUse `.welcome channel <channel>` to set welcome message channel.')
+		await ctx.send(
+			'Welcome messages enabled.\nUse `.welcome msg <contents>` to set welcome message contents.\nUse `.welcome channel <channel>` to set welcome message channel.')
 
 	@welcome.group()
 	async def disable(self, ctx):
@@ -152,6 +159,7 @@ class WelcomeMsg(Model):
 
 	class Meta:
 		database = db
+
 
 def setup(bot):
 	db.connect()

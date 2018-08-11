@@ -6,7 +6,7 @@ from peewee import *
 
 import datetime
 
-db = SqliteDatabase('lib/dwitter_top.db')
+db = SqliteDatabase('data/dwitter_top.db')
 
 class Dwitter:
 	"""Commands for the Dwitter server."""

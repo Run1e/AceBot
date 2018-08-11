@@ -1,14 +1,16 @@
 import discord
 from discord.ext import commands
 
-from cogs.utils.strip_markdown import *
+from utils.strip_markdown import *
 
 import datetime
 from peewee import *
 
-db = SqliteDatabase('lib/tags.db')
+db = SqliteDatabase('data/tags.db')
+
 
 def make_lower(s: str): return s.lower()
+
 
 class Tags:
 	"""Tag system."""
@@ -330,6 +332,7 @@ class Tag(Model):
 
 	class Meta:
 		database = db
+
 
 def setup(bot):
 	db.connect()

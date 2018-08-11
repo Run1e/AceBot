@@ -21,7 +21,7 @@ class Commands:
 			'o/': '\o'
 		}
 
-		with open('cogs/data/facts.txt', 'r') as f:
+		with open('data/facts.txt', 'r') as f:
 			self.splitfacts = f.read().splitlines()
 
 	async def on_message(self, message):
@@ -48,7 +48,8 @@ class Commands:
 					statuses[status] += 1
 
 		att = {}
-		att['Online'] = f'{sum(member.status is not discord.Status.offline for member in ctx.guild.members)}/{len(ctx.guild.members)}'
+		att[
+			'Online'] = f'{sum(member.status is not discord.Status.offline for member in ctx.guild.members)}/{len(ctx.guild.members)}'
 		att['Owner'] = ctx.guild.owner.display_name
 		att['Channels'] = len(ctx.guild.text_channels) + len(ctx.guild.voice_channels)
 		att['Region'] = str(ctx.guild.region)
@@ -104,7 +105,7 @@ class Commands:
 	async def ball(self, ctx, question):
 		"""Classic Magic 8 Ball"""
 		responses = (
-			'It is certain', # yes
+			'It is certain',  # yes
 			'It is decidedly so',
 			'Without a doubt',
 			'Yes definitely',
@@ -113,13 +114,13 @@ class Commands:
 			'Most likely',
 			'Outlook good',
 			'Yes',
-			'Signs point to yes', # uncertain
+			'Signs point to yes',  # uncertain
 			'Reply hazy try again',
 			'Ask again later',
 			'Better not tell you now',
 			'Cannot predict now',
 			'Concentrate and ask again',
-			"Don't count on it", # no
+			"Don't count on it",  # no
 			'My reply is no',
 			'My sources say no',
 			'Outlook not so good',
@@ -306,15 +307,16 @@ class Commands:
 
 	@commands.command(hidden=True)
 	async def info(self, ctx):
-		await ctx.send(f'```{self.bot.description}\n\nFramework: discord.py {discord.__version__}\nSource: https://github.com/Run1e/AceBot```')
+		await ctx.send(
+			f'```{self.bot.description}\n\nFramework: discord.py {discord.__version__}\nSource: https://github.com/Run1e/AceBot```')
 
 	@commands.command(hidden=True)
 	async def uptime(self, ctx):
 		sec = time.time() - self.bot.uptime
 		seconds = math.floor(sec % 60)
-		minutes = math.floor(sec/60 % 60)
-		hours = math.floor(sec/60/60 % 24)
-		days = math.floor(sec/60/60/24)
+		minutes = math.floor(sec / 60 % 60)
+		hours = math.floor(sec / 60 / 60 % 24)
+		days = math.floor(sec / 60 / 60 / 24)
 		await ctx.send('{}d {:02d}:{:02d}:{:02d}'.format(days, hours, minutes, seconds))
 
 	@commands.command(hidden=True)
@@ -332,6 +334,7 @@ class Commands:
 	@commands.command(hidden=True)
 	async def demo(self, ctx):
 		await ctx.send('https://i.imgur.com/Iu04Jro.gifv')
+
 
 def setup(bot):
 	bot.add_cog(Commands(bot))
