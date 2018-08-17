@@ -1,8 +1,9 @@
-import discord, aiohttp, time, json
+import discord, aiohttp, time, json, sys
 from discord.ext import commands
 
-import os
-from datetime import date
+
+import logging
+import logging.handlers
 
 nick = 'Ace'
 status = '.help for commands'
@@ -33,6 +34,25 @@ extensions = (
 class AceBot(commands.Bot):
 	def __init__(self):
 
+		# setup logger
+		self.logger = logging.getLogger('AceBot')
+		self.logger.setLevel(logging.INFO)
+
+		fmt = logging.Formatter('[%(asctime)s] %(levelname)s: %(message)s', datefmt='%Y-%m-%d %H:%M:%S')
+
+		stream = logging.StreamHandler(sys.stdout)
+		stream.setLevel(logging.INFO)
+		stream.setFormatter(fmt)
+
+		file = logging.handlers.TimedRotatingFileHandler('logs/log.log', when='midnight', encoding='utf-8-sig')
+		file.setLevel(logging.INFO)
+		file.setFormatter(fmt)
+
+		self.logger.addHandler(stream)
+		self.logger.addHandler(file)
+
+		self.logger.info(f'Startup...')
+
 		# load config file
 		with open('data/config.json', 'r', encoding='utf-8-sig') as f:
 			self.config = json.loads(f.read())
@@ -53,6 +73,7 @@ class AceBot(commands.Bot):
 		self.before_invoke(self.before_command)
 
 	async def request(self, method, url, **args):
+		self.logger.info(f"{method} request towards '{url}'")
 		try:
 			async with self.session.request(method, url, **args) as resp:
 				if resp.status != 200:
@@ -65,20 +86,14 @@ class AceBot(commands.Bot):
 			return None
 
 	async def before_command(self, ctx):
-		today = date.today()
-
 		cont = ctx.message.content.replace('\n', '\\n').replace('\r', '\\r')
-
-		msg = f'{ctx.message.author.name}@{ctx.guild.name}: {cont}'
-
-		print(msg)
+		self.logger.info(f'{ctx.message.author.name} ({ctx.message.author.id}) at {ctx.message.guild.name} ({ctx.message.guild.id}): {cont}')
 
 	async def blacklist_ctx(self, ctx):
 		return not self.blacklist(ctx.message)
 
 	def blacklist(self, message):
-		return message.author.id in self.ignore_users or message.author.bot or not isinstance(message.channel,
-																							  discord.TextChannel)
+		return message.author.id in self.ignore_users or message.author.bot or not isinstance(message.channel, discord.TextChannel)
 
 	async def on_ready(self):
 		if not hasattr(self, 'uptime'):
@@ -88,27 +103,23 @@ class AceBot(commands.Bot):
 		await self.change_presence(activity=discord.Game(name=status))
 
 		for extension in extensions:
-			print(f'Loading extension: {extension}')
+			self.logger.debug(f'Loading extension: {extension}')
 			self.load_extension(extension)
 
-		print(f'Logged in as: {self.user.name} - {self.user.id}\ndiscord.py {discord.__version__}\n')
-		print(f'Connected to {len(self.guilds)} servers:\n')
-		print('\n'.join(f'{guild.name} - {guild.id}' for guild in self.guilds))
-		print('\n')
+		self.logger.info(f'Logged in as: {self.user.name} ({self.user.id}), discord.py version {discord.__version__}')
+		self.logger.info(f'Connected to {len(self.guilds)} servers.')
 
 	async def on_command_error(self, ctx, error):
 		if isinstance(error, commands.CommandNotFound):
 			return
 
-		# if isinstance(error, commands.CommandInvokeError):
-		#	return print(error)
+		#self.logger.warning(f'Command error: ', exc_info=)
 
 		errors = {
 			commands.DisabledCommand: 'Command has been disabled.',
 			commands.MissingPermissions: 'Invoker is missing permissions to run this command.',
 			commands.BotMissingPermissions: 'Bot is missing permissions to run this command.',
 			commands.CommandOnCooldown: 'Please wait before running command again.',
-			discord.errors.Forbidden: "Bot can't do an action because it is missing permissions to do so."
 		}
 
 		for type, text in errors.items():
@@ -123,6 +134,7 @@ class AceBot(commands.Bot):
 
 		# await ctx.send(f'An error occured in `{ctx.command.name}` invoked by {ctx.message.author}:\n```{error}```')
 		if hasattr(error, 'original'):
+			self.logger.error(error.original)
 			raise error.original
 
 
@@ -136,6 +148,5 @@ class Embed(discord.Embed):
 discord.Embed = Embed
 
 if __name__ == '__main__':
-	print('Launching AceBot')
 	bot = AceBot()
 	bot.run(bot.config['token'])

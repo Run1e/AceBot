@@ -1,5 +1,5 @@
-fuzzywuzzy==0.15.1
-requests==2.18.4
-beautifulsoup4==4.6.0
-peewee==3.6.4
+fuzzywuzzy
+requests
+beautifulsoup4
+peewee
 lxml

@@ -1,3 +1,6 @@
 __pycache__/
 utils/__pycache__/
 cogs/__pycache__/
+.idea
+data/config.json
+*.db

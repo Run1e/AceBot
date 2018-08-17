@@ -21,7 +21,7 @@ class Commands:
 			'o/': '\o'
 		}
 
-		with open('data/facts.txt', 'r') as f:
+		with open('data/facts.txt', 'r', encoding='utf-8-sig') as f:
 			self.splitfacts = f.read().splitlines()
 
 	async def on_message(self, message):
@@ -48,8 +48,7 @@ class Commands:
 					statuses[status] += 1
 
 		att = {}
-		att[
-			'Online'] = f'{sum(member.status is not discord.Status.offline for member in ctx.guild.members)}/{len(ctx.guild.members)}'
+		att['Online'] = f'{sum(member.status is not discord.Status.offline for member in ctx.guild.members)}/{len(ctx.guild.members)}'
 		att['Owner'] = ctx.guild.owner.display_name
 		att['Channels'] = len(ctx.guild.text_channels) + len(ctx.guild.voice_channels)
 		att['Region'] = str(ctx.guild.region)

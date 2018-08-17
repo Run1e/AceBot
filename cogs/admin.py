@@ -27,25 +27,6 @@ class Admin:
 	async def __local_check(self, ctx):
 		return await self.bot.is_owner(ctx.author)
 
-	@commands.command()
-	async def backup(self, ctx):
-		"""Made a backup of databases."""
-		timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-		directory = f'data/backups/{timestamp}/'
-		try:
-			if not os.path.exists(directory):
-				os.makedirs(directory)
-			copy2('data/tags.db', directory)
-			copy2('data/reps.db', directory)
-			copy2('data/welcome.db', directory)
-			copy2('data/ignore.json', directory)
-			copy2('data/dwitter_top.db', directory)
-		except Exception as ex:
-			await ctx.send(f'```{str(ex)}```')
-			return
-		await ctx.message.delete()
-		await ctx.send(f'Databases backed up under `{timestamp}`', delete_after=5)
-
 	# if this doesn't work, I changed how id is casted to int
 	@commands.command()
 	async def leave(self, ctx, *, id: int):

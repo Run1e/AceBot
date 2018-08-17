@@ -17,9 +17,14 @@ class Roles:
 		seen = []
 		for guild, roles in self.guilds.items():
 			for command, role in roles.items():
-				self.guilds[guild][command] = self.get_role(guild, role)
+				try:
+					self.guilds[guild][command] = self.get_role(guild, role)
+				except AttributeError as e:
+					continue
+
 				if command in seen:
 					continue
+
 				seen.append(command)
 				self.bot.add_command(commands.Command(name=command + "+", callback=self.add_role, hidden=True))
 				self.bot.add_command(commands.Command(name=command + "-", callback=self.remove_role, hidden=True))

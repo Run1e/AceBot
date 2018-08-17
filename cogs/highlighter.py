@@ -1,3 +1,4 @@
+import discord
 from discord.ext import commands
 
 import re
@@ -23,7 +24,7 @@ class Highlighter:
 
 		if (author == user or user.permissions_in(
 				reaction.message.channel).manage_messages) and reaction.emoji == '\U0000274C':
-			print(f'\n{author} del highlight')
+			self.bot.logger.info(f'{user.name} ({user.id}) deleted hl message with id {reaction.message.id}')
 			await reaction.message.delete()
 		else:
 			await reaction.message.remove_reaction(reaction, user)
