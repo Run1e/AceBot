@@ -86,8 +86,25 @@ class AceBot(commands.Bot):
 			return None
 
 	async def before_command(self, ctx):
-		cont = ctx.message.content.replace('\n', '\\n').replace('\r', '\\r')
-		self.logger.info(f'{ctx.message.author.name} ({ctx.message.author.id}) at {ctx.message.guild.name} ({ctx.message.guild.id}): {cont}')
+		uname = ctx.author.name
+		sname = ctx.guild.name
+		uid = ctx.author.id
+		sid = ctx.guild.id
+		mid = ctx.message.id
+		cmd = ctx.command.name
+
+		if ctx.invoked_subcommand is not None:
+			cmd = ctx.command.name if ctx.invoked_subcommand is None else ctx.invoked_subcommand
+
+		args = ''
+		for index, arg in enumerate(ctx.args):
+			if index < 2:
+				continue
+			args += f'\n{str(arg)}'
+		for key, val in ctx.kwargs.items():
+			args += f'\n{key}={val}'
+
+		self.logger.info(f'sname={sname} uname={uname} cmd={cmd} uid={uid} sid={sid} mid={mid}{args}')
 
 	async def blacklist_ctx(self, ctx):
 		return not self.blacklist(ctx.message)
@@ -99,8 +116,8 @@ class AceBot(commands.Bot):
 		if not hasattr(self, 'uptime'):
 			self.uptime = time.time()
 
-		await self.user.edit(username=nick)
-		await self.change_presence(activity=discord.Game(name=status))
+		await self.user.edit(username=self.config['nick'])
+		await self.change_presence(activity=discord.Game(name=self.config['status']))
 
 		for extension in extensions:
 			self.logger.debug(f'Loading extension: {extension}')
@@ -128,9 +145,7 @@ class AceBot(commands.Bot):
 
 		# argument error
 		if isinstance(error, commands.UserInputError):
-			self.formatter.context = ctx
-			self.formatter.command = ctx.command
-			return await ctx.send(f'Invalid argument(s) provided.\n```{self.formatter.get_command_signature()}```')
+			return await ctx.send(f'Invalid argument(s) provided.\n```{ctx.command.signature}```')
 
 		# await ctx.send(f'An error occured in `{ctx.command.name}` invoked by {ctx.message.author}:\n```{error}```')
 		if hasattr(error, 'original'):

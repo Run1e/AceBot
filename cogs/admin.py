@@ -27,7 +27,10 @@ class Admin:
 	async def __local_check(self, ctx):
 		return await self.bot.is_owner(ctx.author)
 
-	# if this doesn't work, I changed how id is casted to int
+	@commands.command()
+	async def logs(self, ctx):
+		pass
+
 	@commands.command()
 	async def leave(self, ctx, *, id: int):
 		"""Leave a guild."""
