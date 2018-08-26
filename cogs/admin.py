@@ -32,6 +32,12 @@ class Admin:
 		pass
 
 	@commands.command()
+	async def invite(self, ctx):
+		if 'permissions' not in self.bot.config:
+			return await ctx.send('No permissions set!')
+		await ctx.send(f'https://discordapp.com/oauth2/authorize?&client_id={self.bot.user.id}&scope=bot&permissions={self.bot.config["permissions"]}')
+
+	@commands.command()
 	async def leave(self, ctx, *, id: int):
 		"""Leave a guild."""
 		for guild in self.bot.guilds:

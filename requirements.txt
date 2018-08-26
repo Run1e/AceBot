@@ -3,3 +3,4 @@ requests
 beautifulsoup4
 peewee
 lxml
+python-Levenshtein

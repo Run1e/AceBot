@@ -26,7 +26,7 @@ class Welcome:
 		# wait a bit since it seems like when joining a server it takes some time before the client
 		# starts listening to messages. instantly sending the welcome message might make their
 		# client miss the msg...
-		await asyncio.sleep(2)
+		await asyncio.sleep(4)
 
 		await channel.send(self.format_welcome(member, wel_msg.content))
 
