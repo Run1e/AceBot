@@ -35,7 +35,7 @@ class AceBot(commands.Bot):
 		self.logger = logging.getLogger('AceBot')
 		self.logger.setLevel(logging.INFO)
 
-		fmt = logging.Formatter('[%(asctime)s] %(levelname)s: %(message)s', datefmt='%Y-%m-%d %H:%M:%S')
+		fmt = logging.Formatter('%(asctime)s %(levelname)s %(message)s', datefmt='%Y-%m-%dT%H:%M:%S')
 
 		stream = logging.StreamHandler(sys.stdout)
 		stream.setLevel(logging.INFO)
@@ -76,7 +76,7 @@ class AceBot(commands.Bot):
 		for guild in self.guilds:
 			usr += len(guild.members)
 
-		await self.change_presence(activity=discord.Game(name=f'.help / {srv} guilds / {usr} users'))
+		await self.change_presence(activity=discord.Game(name=f'.help | {srv} guild{"s" if srv > 1 else ""} | {usr} user{"s" if usr > 1 else ""}'))
 
 	async def request(self, method, url, **args):
 		self.logger.info(f"{method} request towards '{url}' args: {saferepr(args)}")
@@ -108,7 +108,7 @@ class AceBot(commands.Bot):
 		if ctx.kwargs:
 			argstr += f' kwargs={saferepr(ctx.kwargs)}'
 
-		self.logger.info(f'cmd={cmd} usr={uid} ({uname}) srv={sid} ({sname}) mid={mid}{argstr}')
+		self.logger.info(f'cmd={cmd} usr={uid} ({uname}) srv={sid} ({sname}) msg={mid}{argstr}')
 
 	async def blacklist_ctx(self, ctx):
 		return not self.blacklist(ctx.message)
