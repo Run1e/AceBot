@@ -1,8 +1,6 @@
-import asyncio
-import datetime
-import math
-import random
-import time
+import asyncio, math, random, time
+
+from datetime import datetime
 
 import aiohttp.client_exceptions as client_exceptions
 import discord
@@ -78,7 +76,7 @@ class Commands:
 			'q': location
 		}
 
-		data = await self.bot.request('get', url, params=params)
+		data, content_type = await self.bot.request('get', url, params=params)
 
 		if data is None:
 			return await ctx.send('Failed getting weather information.')
@@ -96,7 +94,7 @@ class Commands:
 		embed.add_field(name='Humidity', value=f'{current["humidity"]}%')
 		embed.add_field(name='Windspeed', value=f'{current["wind_kph"]} kph | {current["wind_mph"]} mph')
 		embed.add_field(name='Wind Direction', value=current['wind_dir'])
-		embed.timestamp = datetime.datetime.utcnow()
+		embed.timestamp = datetime.utcnow()
 
 		await ctx.send(embed=embed)
 
@@ -149,7 +147,7 @@ class Commands:
 			'app_key': self.bot.config['oxford']['key']
 		}
 
-		info = await self.bot.request('get', url, headers=headers)
+		info, content_type = await self.bot.request('get', url, headers=headers)
 
 		if info is None:
 			return await ctx.send('Failed getting definition.')
@@ -190,7 +188,7 @@ class Commands:
 			'i': query
 		}
 
-		res = await self.bot.request('get', url, params=params)
+		res, content_type = await self.bot.request('get', url, params=params)
 
 		if res is None:
 			return await ctx.send('Wolfram request failed.')
@@ -203,6 +201,12 @@ class Commands:
 			await ctx.send('Response too long.')
 		else:
 			await ctx.send(embed=embed)
+
+	@commands.cooldown(rate=2, per=5.0, type=commands.BucketType.user)
+	@commands.command(hidden=True)
+	async def breed(self, ctx):
+		"""Shows info about a random dog breed!"""
+		pass
 
 	@commands.cooldown(rate=2, per=5.0, type=commands.BucketType.user)
 	@commands.command()
@@ -218,15 +222,11 @@ class Commands:
 		for attempt in range(3):
 			await ctx.trigger_typing()
 
-			try:
-				async with self.bot.session.request('get', url, params=params) as resp:
-					if resp.status != 200:
-						return
-					file = discord.File(await resp.read(), 'cat.' + resp.content_type.split('/')[1])
-					await ctx.send(file=file)
-					return
-			except (client_exceptions.ClientConnectorError, discord.errors.HTTPException):
-				pass
+			data, content_type = await self.bot.request('get', url, params=params)
+			if data is None:
+				return
+			file = discord.File(data, 'cat.' + content_type.split('/')[1])
+			return await ctx.send(file=file)
 
 		await ctx.send('thecatapi request failed.')
 
@@ -244,17 +244,20 @@ class Commands:
 			await ctx.trigger_typing()
 
 			try:
-				async with self.bot.session.request('get', url + 'woof', params=params) as resp:
-					if resp.status != 200:
-						return
-					id = await resp.text()
+				# get id of dig image
+				id, content_type = await self.bot.request('get', url + 'woof', params=params)
+				if id is None:
+					continue
 
-				async with self.bot.session.request('get', url + id) as resp:
-					if resp.status != 200:
-						return
-					file = discord.File(await resp.read(), 'dog.' + resp.content_type.split('/')[1])
-					await ctx.send(file=file)
-					return
+				# fetch actual dog image
+				data, content_type = await self.bot.request('get', url + id)
+				if data is None:
+					continue
+
+				# upload it
+				file = discord.File(data, 'dog.' + content_type.split('/')[1])
+				return await ctx.send(file=file)
+
 			except (client_exceptions.ClientConnectorError, discord.errors.HTTPException):
 				pass
 
@@ -270,20 +273,16 @@ class Commands:
 		for attempt in range(3):
 			await ctx.trigger_typing()
 
-			try:
-				async with self.bot.session.request('get', url) as resp:
-					if resp.status != 200:
-						return
-					json = await resp.json()
+			json, content_type = await self.bot.request('get', url)
+			if json is None:
+				continue
 
-				async with self.bot.session.request('get', json['url']) as resp:
-					if resp.status != 200:
-						return
-					file = discord.File(await resp.read(), 'duck.' + resp.content_type.split('/')[1])
-					await ctx.send(file=file)
-					return
-			except (client_exceptions.ClientConnectorError, discord.errors.HTTPException):
-				pass
+			data, content_type = await self.bot.request('get', json['url'])
+			if data is None:
+				continue
+
+			file = discord.File(data, 'duck.' + content_type.split('/')[1])
+			return await ctx.send(file=file)
 
 		await ctx.send('random-d.uk request failed.')
 
@@ -292,7 +291,7 @@ class Commands:
 	async def number(self, ctx, *, num: int):
 		"""Get a random fact about a number!"""
 
-		text = await self.bot.request('get', f'http://numbersapi.com/{num}?notfound=floor')
+		text, content_type = await self.bot.request('get', f'http://numbersapi.com/{num}?notfound=floor')
 
 		if text is None:
 			return await ctx.send('Number API request failed.')
@@ -311,12 +310,7 @@ class Commands:
 
 	@commands.command(hidden=True)
 	async def uptime(self, ctx):
-		sec = time.time() - self.bot.uptime
-		seconds = math.floor(sec % 60)
-		minutes = math.floor(sec / 60 % 60)
-		hours = math.floor(sec / 60 / 60 % 24)
-		days = math.floor(sec / 60 / 60 / 24)
-		await ctx.send('{}d {:02d}:{:02d}:{:02d}'.format(days, hours, minutes, seconds))
+		await ctx.send(f'`{str(datetime.now() - self.bot.startup_time).split(".")[0]}`')
 
 	@commands.command(hidden=True)
 	async def hello(self, ctx):
@@ -329,10 +323,6 @@ class Commands:
 	@commands.command(hidden=True)
 	async def source(self, ctx):
 		await ctx.send('https://github.com/Run1e/AceBot')
-
-	@commands.command(hidden=True)
-	async def demo(self, ctx):
-		await ctx.send('https://i.imgur.com/Iu04Jro.gifv')
 
 
 def setup(bot):

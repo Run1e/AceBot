@@ -14,7 +14,7 @@ class AutoHotkey:
 
 	def __init__(self, bot):
 		self.bot = bot
-		self.guilds = (115993023636176902, 317632261799411712)
+		self.guilds = (115993023636176902, 317632261799411712, 367975590143459328)
 
 	# make sure we're in the the correct guild(s)
 	async def __local_check(self, ctx):
@@ -66,7 +66,7 @@ class AutoHotkey:
 		url = url.replace("?p=", "?r=")
 		url = url.replace("?e=", "?r=")
 
-		text = await self.bot.request('get', url)
+		text, content_type = await self.bot.request('get', url)
 
 		if text is None:
 			return
@@ -75,13 +75,14 @@ class AutoHotkey:
 			return
 
 		ctx = await self.bot.get_context(message)
-		await ctx.invoke(self.bot.get_command('highlight'), code=text)
+		ctx.message.content = f'.hl {text}' # LMFAO FUCKIN HAAACK BROOO
+		await ctx.invoke(self.bot.get_command('hl'), code=text)
 
 	# ty capn!
 	async def forumlink(self, message, url):
 		tempurl = re.sub("&start=\d+$", "", url)
 
-		text = await self.bot.request('get', tempurl)
+		text, content_type = await self.bot.request('get', tempurl)
 
 		if text is None:
 			return
@@ -91,12 +92,8 @@ class AutoHotkey:
 		embed.description = shorten(post['description'], 2048, 12)
 		if post["image"]:
 			embed.set_image(
-				url=post["image"] if post["image"][0] != "." else "https://autohotkey.com/boards" + post["image"][
-																									1:post[
-																										  "image"].find(
-																										"&") + 1])
-		embed.set_author(name=post["user"]["name"], url="https://autohotkey.com/boards" + post["user"]["url"][1:],
-						 icon_url="https://autohotkey.com/boards" + post["user"]["icon"][1:])
+				url=post["image"] if post["image"][0] != "." else "https://autohotkey.com/boards" + post["image"][1:post["image"].find("&") + 1])
+		embed.set_author(name=post["user"]["name"], url="https://autohotkey.com/boards" + post["user"]["url"][1:], icon_url="https://autohotkey.com/boards" + post["user"]["icon"][1:])
 		embed.set_footer(text='autohotkey.com')
 
 		await message.channel.send(embed=embed)
@@ -121,7 +118,7 @@ class AutoHotkey:
 	async def version(self, ctx):
 		"""Get a download link to the latest AutoHotkey_L version."""
 
-		data = await self.bot.request('get', 'https://api.github.com/repos/Lexikos/AutoHotkey_L/releases/latest')
+		data, content_type = await self.bot.request('get', 'https://api.github.com/repos/Lexikos/AutoHotkey_L/releases/latest')
 
 		if data is None:
 			return
@@ -141,8 +138,7 @@ class AutoHotkey:
 	async def studio(self, ctx):
 		"""Returns a download link to AHK Studio."""
 
-		text = await self.bot.request('get',
-									  'https://raw.githubusercontent.com/maestrith/AHK-Studio/master/AHK-Studio.text')
+		text, content_type = await self.bot.request('get', 'https://raw.githubusercontent.com/maestrith/AHK-Studio/master/AHK-Studio.text')
 
 		if text is None:
 			return
@@ -150,8 +146,7 @@ class AutoHotkey:
 		version = text.split('\r\n')[0][:-1]
 
 		embed = discord.Embed(description='Feature rich IDE for AutoHotkey!')
-		embed.set_author(name='AHK Studio', url='https://autohotkey.com/boards/viewtopic.php?f=62&t=300',
-						 icon_url='https://i.imgur.com/DXtmUwN.png')
+		embed.set_author(name='AHK Studio', url='https://autohotkey.com/boards/viewtopic.php?f=62&t=300', icon_url='https://i.imgur.com/DXtmUwN.png')
 		embed.set_footer(text='Latest version: {}'.format(version))
 
 		await ctx.send(embed=embed)

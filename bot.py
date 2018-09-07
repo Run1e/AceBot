@@ -1,5 +1,6 @@
 import aiohttp, time, json, sys, logging, logging.handlers
 
+from datetime import datetime
 from pprint import saferepr
 
 import discord
@@ -69,6 +70,8 @@ class AceBot(commands.Bot):
 		# print before invoke
 		self.before_invoke(self.before_command)
 
+		self.logger.info('Finished init...')
+
 	async def update_status(self):
 		srv = len(self.guilds)
 
@@ -79,15 +82,19 @@ class AceBot(commands.Bot):
 		await self.change_presence(activity=discord.Game(name=f'.help | {srv} guild{"s" if srv > 1 else ""} | {usr} user{"s" if usr > 1 else ""}'))
 
 	async def request(self, method, url, **args):
-		self.logger.info(f"{method} request towards '{url}' args: {saferepr(args)}")
+		self.logger.info(f"{method.upper()} request url: '{url}' args: {saferepr(args)}")
 		try:
 			async with self.session.request(method, url, **args) as resp:
 				if resp.status != 200:
 					return None
 				if resp.content_type == 'application/json':
-					return await resp.json()
+					return await resp.json(), resp.content_type
+				elif resp.content_type.startswith('image'):
+					return await resp.read(), resp.content_type
+				elif resp.content_type.startswith('text'):
+					return await resp.text(), resp.content_type
 				else:
-					return await resp.text()
+					return None
 		except:
 			return None
 
@@ -129,8 +136,10 @@ class AceBot(commands.Bot):
 		await self.update_status()
 
 	async def on_ready(self):
-		if not hasattr(self, 'uptime'):
-			self.uptime = time.time()
+		self.logger.info('Setting up user and extensions...')
+
+		if not hasattr(self, 'startup_time'):
+			self.startup_time = datetime.now()
 
 		await self.user.edit(username=self.config['nick'])
 		await self.update_status()
@@ -140,7 +149,7 @@ class AceBot(commands.Bot):
 			self.load_extension(extension)
 
 		self.logger.info(f'Logged in as: {self.user.name} ({self.user.id}), discord.py version {discord.__version__}')
-		self.logger.info(f'Connected to {len(self.guilds)} servers.')
+		self.logger.info(f'Connected to {len(self.guilds)} servers')
 
 	async def on_command_error(self, ctx, error):
 		if isinstance(error, commands.CommandNotFound):
