@@ -86,7 +86,7 @@ class AceBot(commands.Bot):
 		try:
 			async with self.session.request(method, url, **args) as resp:
 				if resp.status != 200:
-					return None
+					return None, None
 				if resp.content_type == 'application/json':
 					return await resp.json(), resp.content_type
 				elif resp.content_type.startswith('image'):
@@ -94,9 +94,9 @@ class AceBot(commands.Bot):
 				elif resp.content_type.startswith('text'):
 					return await resp.text(), resp.content_type
 				else:
-					return None
+					return None, None
 		except:
-			return None
+			return None, None
 
 	async def before_command(self, ctx):
 		uname = ctx.author.name

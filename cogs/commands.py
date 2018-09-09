@@ -243,23 +243,19 @@ class Commands:
 		for attempt in range(3):
 			await ctx.trigger_typing()
 
-			try:
-				# get id of dig image
-				id, content_type = await self.bot.request('get', url + 'woof', params=params)
-				if id is None:
-					continue
+			# get id of dig image
+			id, content_type = await self.bot.request('get', url + 'woof', params=params)
+			if id is None:
+				continue
 
-				# fetch actual dog image
-				data, content_type = await self.bot.request('get', url + id)
-				if data is None:
-					continue
+			# fetch actual dog image
+			data, content_type = await self.bot.request('get', url + id)
+			if data is None:
+				continue
 
-				# upload it
-				file = discord.File(data, 'dog.' + content_type.split('/')[1])
-				return await ctx.send(file=file)
-
-			except (client_exceptions.ClientConnectorError, discord.errors.HTTPException):
-				pass
+			# upload it
+			file = discord.File(data, 'dog.' + content_type.split('/')[1])
+			return await ctx.send(file=file)
 
 		await ctx.send('random.dog request failed.')
 
