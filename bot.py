@@ -121,7 +121,22 @@ class AceBot(commands.Bot):
 		return not self.blacklist(ctx.message)
 
 	def blacklist(self, message):
-		return message.author.id in self.ignore_users or message.author.bot or not isinstance(message.channel, discord.TextChannel)
+		# ignore if in ignore_users
+		if message.author.id in self.ignore_users:
+			return True
+
+		# ignore if bot
+		if message.author.bot:
+			return True
+
+		# ignore if channel is not normal text channel
+		if not isinstance(message.channel, discord.TextChannel):
+			return True
+
+		if message.channel.name == f'muted-{message.author.id}':
+			return True
+
+		return False
 
 	async def on_member_join(self, member):
 		await self.update_status()
