@@ -281,6 +281,29 @@ class Commands:
 			return await ctx.send(file=file)
 
 		await ctx.send('random-d.uk request failed.')
+	@commands.command()
+	async def floof(self, ctx):
+		"""Gets a random fox picture!"""
+
+		url = 'https://randomfox.ca/floof/'
+
+		for attempt in range(3):
+			await ctx.trigger_typing()
+
+			json, content_type = await self.bot.request('get', url)
+			if json is None:
+				continue
+
+			data, content_type = await self.bot.request('get', json['image'])
+			if data is None:
+				continue
+
+			file = discord.File(data, 'duck.' + content_type.split('/')[1])
+			return await ctx.send(file=file)
+
+		await ctx.send('random-d.uk request failed.')
+
+	@commands.cooldown(rate=2, per=5.0, type=commands.BucketType.user)
 
 	@commands.cooldown(rate=2, per=5.0, type=commands.BucketType.user)
 	@commands.command(aliases=['num'])
