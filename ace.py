@@ -11,6 +11,13 @@ from utils.setup_logger import config_logger
 log = logging.getLogger(__name__)
 log = config_logger(log)
 
+description = """
+A.C.E. - Autonomous Command Executor
+
+Written and maintained by RUNIE 🔥#9646
+Contributions: Vinter Borge, Cap'n Odin#8812, and GeekDude#2532
+"""
+
 extensions = (
 	'cogs.commands',
 	'cogs.owner',
