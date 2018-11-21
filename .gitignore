@@ -1,7 +1,7 @@
-__pycache__/
-utils/__pycache__/
-cogs/__pycache__/
+__pycache__
 .idea
-logs/
-data/config.json
-*.db
+logs
+old
+config.py
+notes
+test.py

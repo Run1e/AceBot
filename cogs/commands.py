@@ -1,34 +1,58 @@
-import asyncio, math, random, time
+import discord, asyncio, random, inspect
 
+from discord.ext import commands
 from datetime import datetime
 
-import aiohttp.client_exceptions as client_exceptions
-import discord
-from discord.ext import commands
+from config import wolfram_key, thecatapi_key, apixu_key, oxford_id, oxford_key
 
+DISCORD_SIZE_LIMIT = 8388608 # 8mb
 
 class Commands:
-	"""Contains global commands."""
-
+	
+	query_error = commands.CommandError('Query failed. Try again later!')
+	
 	def __init__(self, bot):
 		self.bot = bot
-
-		# simple reply
-		self.replies = {
-			'\o': 'o/',
-			'o/': '\o'
-		}
-
-		with open('data/facts.txt', 'r', encoding='utf-8-sig') as f:
-			self.splitfacts = f.read().splitlines()
-
-	async def on_message(self, message):
-		if self.bot.blacklist(message):
+	
+	@commands.command()
+	async def code(self, ctx, *, command_name: str):
+		'''Display code of a command.'''
+		
+		command = self.bot.get_command(command_name)
+		
+		if command is None:
 			return
+		
+		code = '\n'.join(line[1:] for line in inspect.getsource(command.callback).splitlines())
+		
+		# insert zero width spaces before any `
+		code = code.replace('`', '\u200b`')
+		
+		await ctx.send(f'```py\n{code}\n```')
+	
+	@commands.command()
+	async def flip(self, ctx):
+		'''Flip a coin!'''
+		msg = await ctx.send('Flipping...')
+		await asyncio.sleep(3)
+		await msg.edit(content=random.choice(('Heads!', 'Tails!')))
 
-		if message.content in self.replies:
-			await message.channel.send(self.replies[message.content])
+	@commands.command(hidden=True)
+	async def uptime(self, ctx):
+		await ctx.send(f'`{str(datetime.now() - self.bot.startup_time).split(".")[0]}`')
 
+	@commands.command(hidden=True)
+	async def hello(self, ctx):
+		await ctx.send(f'Hello {ctx.author.mention}!')
+
+	@commands.command(hidden=True)
+	async def shrug(self, ctx):
+		await ctx.send('¯\_(ツ)_/¯')
+
+	@commands.command(hidden=True)
+	async def source(self, ctx):
+		await ctx.send('https://github.com/Run1e/AceBot')
+		
 	@commands.command()
 	async def server(self, ctx):
 		"""Show various information about the server."""
@@ -59,48 +83,205 @@ class Commands:
 		e.add_field(name='Users', value='\n'.join(str(count) for status, count in statuses.items()))
 		await ctx.send(embed=e)
 
+	@commands.command()
+	@commands.cooldown(rate=3, per=10.0, type=commands.BucketType.user)
+	async def woof(self, ctx):
+		'''Get a random doggo!'''
+		
+		url = 'https://random.dog/'
+		params = {'filter': 'mp4'}
+		
+		async with ctx.channel.typing():
+			try:
+				async with self.bot.aiohttp.request('get', url + 'woof', params=params) as resp:
+					if resp.status != 200:
+						raise self.query_error
+					id = await resp.text()
+				
+				# fetch image using id
+				async with self.bot.aiohttp.get(url + id) as resp:
+					if resp.status != 200:
+						raise self.query_error
+					data = await resp.read()
+			except asyncio.TimeoutError:
+				raise self.query_error
+				
+		if len(data) > DISCORD_SIZE_LIMIT:
+			await ctx.reinvoke()
+		
+		await ctx.send(file=discord.File(data, 'dog.' + resp.content_type.split('/')[-1]))
+	
+	@commands.command()
+	@commands.cooldown(rate=3, per=10.0, type=commands.BucketType.user)
+	async def meow(self, ctx):
+		'''Get a random cat image!'''
+		
+		url = 'http://thecatapi.com/api/images/get'
+		params = {
+			'format': 'src',
+			'api_key': thecatapi_key
+		}
+		
+		async with ctx.channel.typing():
+			try:
+				async with self.bot.aiohttp.get(url, params=params) as resp:
+					if resp.status != 200:
+						raise self.query_error
+					data = await resp.read()
+			except asyncio.TimeoutError:
+				raise self.query_error
+		
+		if len(data) > DISCORD_SIZE_LIMIT:
+			await ctx.reinvoke()
+		
+		await ctx.send(file=discord.File(data, 'cat.' + resp.content_type.split('/')[-1]))
+	
+	@commands.command()
+	@commands.cooldown(rate=3, per=10.0, type=commands.BucketType.user)
+	async def quack(self, ctx):
+		'''Get a random duck image!'''
+		
+		url = 'https://random-d.uk/api/v1/random'
+		
+		async with ctx.channel.typing():
+			try:
+				async with self.bot.aiohttp.get(url) as resp:
+					if resp.status != 200:
+						raise self.query_error
+					json = await resp.json()
+					image_url = json['url']
+				
+				async with self.bot.aiohttp.get(image_url) as resp:
+					if resp.status != 200:
+						raise self.query_error
+					data = await resp.read()
+			except asyncio.TimeoutError:
+				raise self.query_error
+		
+		if len(data) > DISCORD_SIZE_LIMIT:
+			await ctx.reinvoke()
+		
+		await ctx.send(file=discord.File(data, 'duck.' + resp.content_type.split('/')[-1]))
+		
+	@commands.command()
+	async def floof(self, ctx):
+		'''FLOOF'''
+		
+		url = 'https://randomfox.ca/floof/'
+		
+		async with ctx.channel.typing():
+			try:
+				async with self.bot.aiohttp.request('get', url) as resp:
+					if resp.status != 200:
+						raise self.query_error
+					json = await resp.json()
+					image_url = json['image']
+				
+				async with self.bot.aiohttp.get(image_url) as resp:
+					if resp.status != 200:
+						raise self.query_error
+					data = await resp.read()
+			except asyncio.TimeoutError:
+				raise self.query_error
+			
+		if len(data) > DISCORD_SIZE_LIMIT:
+			await ctx.reinvoke()
+		
+		await ctx.send(file=discord.File(data, 'fix.' + resp.content_type.split('/')[-1]))
+	
+	@commands.command(aliases=['num'])
+	@commands.cooldown(rate=3, per=10.0, type=commands.BucketType.user)
+	async def number(self, ctx, number: int):
+		'''Get a fact about a number!'''
+		
+		url = f'http://numbersapi.com/{number}?notfound=floor'
+		
+		async with ctx.channel.typing():
+			try:
+				async with self.bot.aiohttp.get(url) as resp:
+					if resp.status != 200:
+						raise self.query_error
+					text = await resp.text()
+			except asyncio.TimeoutError:
+				raise self.query_error
+				
+		await ctx.send(text)
+	
+	@commands.command(aliases=['w'])
+	@commands.cooldown(rate=3, per=10.0, type=commands.BucketType.user)
+	async def wolfram(self, ctx, *, query):
+		'''Queries wolfram.'''
+		
+		params = {
+			'appid': wolfram_key,
+			'i': query
+		}
+		
+		async with ctx.channel.typing():
+			try:
+				async with self.bot.aiohttp.get('https://api.wolframalpha.com/v1/result', params=params) as resp:
+					if resp.status != 200:
+						raise self.query_error
+					
+					res = await resp.text()
+			except asyncio.TimeoutError:
+				raise self.query_error
+					
+		text = f'Query:\n```{query}```\nResult:\n```{res}```'
+		
+		embed = discord.Embed(description=text)
+		embed.set_author(name='Wolfram Alpha', icon_url='https://i.imgur.com/KFppH69.png')
+		embed.set_footer(text='wolframalpha.com')
+		
+		if len(text) > 2000:
+			raise commands.CommandError('Wolfram response too long.')
+		
+		await ctx.send(embed=embed)
+		
 	@commands.cooldown(rate=2, per=5.0, type=commands.BucketType.user)
 	@commands.command()
 	async def weather(self, ctx, *, location: str = None):
-		"""Check the weather at a location."""
+		'''Check the weather at a location.'''
 
 		if location is None:
 			return await ctx.send('Please provide a location to get weather information for.')
 
-		await ctx.trigger_typing()
-
 		url = 'http://api.apixu.com/v1/current.json'
 
 		params = {
-			'key': self.bot.config["apixu"],
+			'key': apixu_key,
 			'q': location
 		}
 
-		data, content_type = await self.bot.request('get', url, params=params)
-
-		if data is None:
-			return await ctx.send('Failed getting weather information.')
-
-		location = data['location']
-
-		locmsg = f'{location["name"]}, {location["region"]} {location["country"].upper()}'
-		current = data['current']
-
-		embed = discord.Embed(title=f'Weather for {locmsg}', description=f'*{current["condition"]["text"]}*')
-		embed.set_thumbnail(url=f'http:{current["condition"]["icon"]}')
-		embed.add_field(name='Temperature', value=f'{current["temp_c"]}°C | {current["temp_f"]}°F')
-		embed.add_field(name='Feels Like', value=f'{current["feelslike_c"]}°C | {current["feelslike_f"]}°F')
-		embed.add_field(name='Precipitation', value=f'{current["precip_mm"]} mm')
-		embed.add_field(name='Humidity', value=f'{current["humidity"]}%')
-		embed.add_field(name='Windspeed', value=f'{current["wind_kph"]} kph | {current["wind_mph"]} mph')
-		embed.add_field(name='Wind Direction', value=current['wind_dir'])
-		embed.timestamp = datetime.utcnow()
-
-		await ctx.send(embed=embed)
-
+		async with ctx.channel.typing():
+			try:
+				async with self.bot.aiohttp.get(url, params=params) as resp:
+					if resp.status != 200:
+						raise self.query_error
+					data = await resp.json()
+			except asyncio.TimeoutError:
+				raise self.query_error
+			
+			location = data['location']
+			
+			locmsg = f'{location["name"]}, {location["region"]} {location["country"].upper()}'
+			current = data['current']
+			
+			embed = discord.Embed(title=f'Weather for {locmsg}', description=f'*{current["condition"]["text"]}*')
+			embed.set_thumbnail(url=f'http:{current["condition"]["icon"]}')
+			embed.add_field(name='Temperature', value=f'{current["temp_c"]}°C | {current["temp_f"]}°F')
+			embed.add_field(name='Feels Like', value=f'{current["feelslike_c"]}°C | {current["feelslike_f"]}°F')
+			embed.add_field(name='Precipitation', value=f'{current["precip_mm"]} mm')
+			embed.add_field(name='Humidity', value=f'{current["humidity"]}%')
+			embed.add_field(name='Windspeed', value=f'{current["wind_kph"]} kph | {current["wind_mph"]} mph')
+			embed.add_field(name='Wind Direction', value=current['wind_dir'])
+			embed.timestamp = datetime.utcnow()
+			
+			await ctx.send(embed=embed)
+			
 	@commands.command(name='8')
-	async def ball(self, ctx, question):
-		"""Classic Magic 8 Ball"""
+	async def ball(self, ctx, *, question):
+		'''Classic Magic 8 Ball'''
 		responses = (
 			'It is certain',  # yes
 			'It is decidedly so',
@@ -126,16 +307,11 @@ class Commands:
 		await ctx.trigger_typing()
 		await asyncio.sleep(3)
 		await ctx.send(random.choice(responses))
-
-	@commands.command()
-	async def choose(self, ctx, *choices):
-		"""Choose from a list."""
-		await ctx.send(random.choice(choices))
-
+		
 	@commands.cooldown(rate=2, per=5.0, type=commands.BucketType.user)
 	@commands.command(aliases=['def'])
 	async def define(self, ctx, *, query):
-		"""Define a word using Oxfords dictionary."""
+		'''Define a word using Oxfords dictionary.'''
 
 		await ctx.trigger_typing()
 
@@ -143,14 +319,17 @@ class Commands:
 
 		headers = {
 			'Accept': 'application/json',
-			'app_id': self.bot.config['oxford']['id'],
-			'app_key': self.bot.config['oxford']['key']
+			'app_id': oxford_id,
+			'app_key': oxford_key
 		}
-
-		info, content_type = await self.bot.request('get', url, headers=headers)
-
-		if info is None:
-			return await ctx.send('Failed getting definition.')
+		
+		try:
+			async with self.bot.aiohttp.get(url, headers=headers) as resp:
+				if resp.status != 200:
+					raise self.query_error
+				info = await resp.json()
+		except asyncio.TimeoutError:
+			raise self.query_error
 
 		result = info['results'][0]
 		entry = result['lexicalEntries'][0]
@@ -166,160 +345,10 @@ class Commands:
 		embed.set_footer(text='Oxford University Press', icon_url='https://i.imgur.com/7GMY4dP.png')
 
 		await ctx.send(embed=embed)
-
-	@commands.command()
-	async def flip(self, ctx):
-		"""Flip a coin!"""
-		msg = await ctx.send('Flipping...')
-		await asyncio.sleep(3)
-		await msg.edit(content=random.choice(["Heads!", "Tails!"]))
-
-	@commands.cooldown(rate=2, per=5.0, type=commands.BucketType.user)
-	@commands.command(aliases=['w'])
-	async def wolfram(self, ctx, *, query):
-		"""Queries wolfram."""
-
-		await ctx.trigger_typing()
-
-		url = 'https://api.wolframalpha.com/v1/result'
-
-		params = {
-			'appid': self.bot.config["wolfram"],
-			'i': query
-		}
-
-		res, content_type = await self.bot.request('get', url, params=params)
-
-		if res is None:
-			return await ctx.send('Wolfram request failed.')
-
-		text = f'Query:\n```python\n{query}```\nResult:\n```python\n{res}```'
-		embed = discord.Embed(description=text)
-		embed.set_author(name='Wolfram Alpha', icon_url='https://i.imgur.com/KFppH69.png')
-		embed.set_footer(text='wolframalpha.com')
-		if len(text) > 2000:
-			await ctx.send('Response too long.')
-		else:
-			await ctx.send(embed=embed)
-
-	@commands.cooldown(rate=2, per=5.0, type=commands.BucketType.user)
-	@commands.command(hidden=True)
-	async def breed(self, ctx):
-		"""Shows info about a random dog breed!"""
-		pass
-
-	@commands.cooldown(rate=2, per=5.0, type=commands.BucketType.user)
-	@commands.command()
-	async def meow(self, ctx):
-		"""Gets a random cat picture/gif!"""
-
-		url = 'http://thecatapi.com/api/images/get'
-		params = {
-			'format': 'src',
-			'api_key': self.bot.config['catapikey']
-		}
-
-		for attempt in range(3):
-			await ctx.trigger_typing()
-
-			data, content_type = await self.bot.request('get', url, params=params)
-			if data is None:
-				return
-			file = discord.File(data, 'cat.' + content_type.split('/')[1])
-			return await ctx.send(file=file)
-
-		await ctx.send('thecatapi request failed.')
-
-	@commands.cooldown(rate=2, per=5.0, type=commands.BucketType.user)
-	@commands.command()
-	async def woof(self, ctx):
-		"""Gets a random dog picture/gif!"""
-
-		url = 'https://random.dog/'
-		params = {
-			'filter': 'mp4'
-		}
-
-		for attempt in range(3):
-			await ctx.trigger_typing()
-
-			# get id of dig image
-			id, content_type = await self.bot.request('get', url + 'woof', params=params)
-			if id is None:
-				continue
-
-			# fetch actual dog image
-			data, content_type = await self.bot.request('get', url + id)
-			if data is None:
-				continue
-
-			# upload it
-			file = discord.File(data, 'dog.' + content_type.split('/')[1])
-			return await ctx.send(file=file)
-
-		await ctx.send('random.dog request failed.')
-
-	@commands.cooldown(rate=2, per=5.0, type=commands.BucketType.user)
-	@commands.command()
-	async def quack(self, ctx):
-		"""Gets a random duck picture/gif!"""
-
-		url = 'https://random-d.uk/api/v1/random'
-
-		for attempt in range(3):
-			await ctx.trigger_typing()
-
-			json, content_type = await self.bot.request('get', url)
-			if json is None:
-				continue
-
-			data, content_type = await self.bot.request('get', json['url'])
-			if data is None:
-				continue
-
-			file = discord.File(data, 'duck.' + content_type.split('/')[1])
-			return await ctx.send(file=file)
-
-		await ctx.send('random-d.uk request failed.')
-
-	@commands.cooldown(rate=2, per=5.0, type=commands.BucketType.user)
-	@commands.command(aliases=['num'])
-	async def number(self, ctx, *, num: int):
-		"""Get a random fact about a number!"""
-
-		text, content_type = await self.bot.request('get', f'http://numbersapi.com/{num}?notfound=floor')
-
-		if text is None:
-			return await ctx.send('Number API request failed.')
-
-		await ctx.send(text)
-
-	@commands.command()
-	async def fact(self, ctx):
-		"""Get a fun fact!"""
-		await ctx.send(random.choice(self.splitfacts))
-
-	@commands.command(hidden=True)
-	async def info(self, ctx):
-		await ctx.send(
-			f'```{self.bot.description}\n\nFramework: discord.py {discord.__version__}\nSource: https://github.com/Run1e/AceBot```')
-
-	@commands.command(hidden=True)
-	async def uptime(self, ctx):
-		await ctx.send(f'`{str(datetime.now() - self.bot.startup_time).split(".")[0]}`')
-
-	@commands.command(hidden=True)
-	async def hello(self, ctx):
-		await ctx.send(f'Hello {ctx.author.mention}!')
-
-	@commands.command(hidden=True)
-	async def shrug(self, ctx):
-		await ctx.send('¯\_(ツ)_/¯')
-
+		
 	@commands.command(hidden=True)
 	async def source(self, ctx):
 		await ctx.send('https://github.com/Run1e/AceBot')
-
-
+		
 def setup(bot):
 	bot.add_cog(Commands(bot))

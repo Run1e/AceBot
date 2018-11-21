@@ -1,7 +1,7 @@
 from bs4 import BeautifulSoup
 import urllib.parse
 
-def google_result(text):
+def google_search(text):
 	soup = BeautifulSoup(text, 'html.parser')
 	url = soup.find_all('div')
 	url = [x for x in url if x.find('h3')]

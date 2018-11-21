@@ -1,19 +1,26 @@
 import discord
 from discord.ext import commands
 
+from cogs.base import TogglableCogMixin
 
-class Moderator:
-	"""Admin commands"""
-
-	def __init__(self, bot):
-		self.bot = bot
+class Moderator(TogglableCogMixin):
+	'''Commands accessible to members with Ban Members permissions.'''
 
 	async def __local_check(self, ctx):
-		return ctx.author.permissions_in(ctx.channel).manage_messages
+		return await self._is_used(ctx) and ctx.author.permissions_in(ctx.channel).ban_members
+
+	@commands.command(hidden=True)
+	async def info(self, ctx, user : discord.User = None):
+		'''Display information about user or self.'''
+		
+		if user is None:
+			user = ctx.author
+			
+		await ctx.send(user)
 
 	@commands.command()
 	async def clear(self, ctx, message_count: int = None, user: discord.User = None):
-		"""Clear x amount of messages, either from user or just indiscriminately."""
+		'''Clear messages, either from user or indiscriminately.'''
 
 		if message_count is None:
 			return await ctx.send('Please choose a message count.')

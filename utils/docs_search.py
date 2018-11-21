@@ -7,7 +7,7 @@ with open('data/Docs.json', 'r', encoding='utf-8-sig') as f:
 	for x in docs_assoc:
 		docs.append(x)
 
-
+# courtesy of geekdude
 def docs_search(search_terms):
 	md_trans = str.maketrans({c: '\\' + c for c in '\\*#/()[]<>'})
 	search_terms = search_terms.splitlines()
