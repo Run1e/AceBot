@@ -114,7 +114,7 @@ class Highlighter(TogglableCogMixin):
 		else:
 			await server.update(language=language).apply()
 		
-		await ctx.send(f'Language preference set to `{language}`')
+		await ctx.send(f'Guild language preference set to `{language}`')
 	
 	@commands.command()
 	async def lang(self, ctx, *, language: LangConverter = None):

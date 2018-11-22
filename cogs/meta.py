@@ -21,7 +21,7 @@ class Meta:
 		)
 		
 	@commands.command(aliases=['source'])
-	async def code(self, ctx, command: str = None):
+	async def code(self, ctx, *, command: str = None):
 		'''Show info about a command or get GitHub repo link.'''
 		
 		if command is None:
