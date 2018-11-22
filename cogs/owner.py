@@ -1,13 +1,15 @@
-import io
-import textwrap
-import traceback
-from contextlib import redirect_stdout
-
-import discord
+import discord, io, textwrap, traceback
 from discord.ext import commands
+from contextlib import redirect_stdout
 
 from utils.database import IgnoredUser, UniqueViolationError
 
+
+OK_EMOJI = '\U00002705'
+NOTOK_EMOJI = '\U0000274C'
+ERROR_EMOJI = '\U0001F1E9'
+DUPE_EMOJI = '\U0001F1E9'
+NOTFOUND_EMOJI = '\U0001F1F3'
 
 class Owner:
 	'''Owner commands.'''
@@ -27,7 +29,7 @@ class Owner:
 		# remove `foo`
 		return content.strip('` \n')
 	
-	@commands.command(name='reload', aliases=['re'], hidden=True)
+	@commands.command(name='rl', aliases=['re'], hidden=True)
 	async def _reload(self, ctx, *, module):
 		'''Reloads a module.'''
 		try:
@@ -46,11 +48,11 @@ class Owner:
 		try:
 			await IgnoredUser.create(user_id=user.id)
 		except UniqueViolationError:
-			emoji = '\U0001F1E9'
+			emoji = DUPE_EMOJI
 		except:
-			emoji = '\U0000274C'
+			emoji = NOTOK_EMOJI
 		else:
-			emoji = '\U00002705'
+			emoji = OK_EMOJI
 			
 		await ctx.message.add_reaction(emoji)
 		
@@ -61,12 +63,12 @@ class Owner:
 		user = await IgnoredUser.get(user.id)
 		
 		if user is None:
-			emoji = '\U0001F1F3'
+			emoji = NOTFOUND_EMOJI
 		else:
 			if await user.delete() != 'DELETE 1':
-				emoji = '\U0000274C'
+				emoji = NOTOK_EMOJI
 			else:
-				emoji = '\U00002705'
+				emoji = OK_EMOJI
 		
 		await ctx.message.add_reaction(emoji)
 				

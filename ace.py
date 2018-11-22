@@ -5,9 +5,10 @@ from datetime import datetime
 from sqlalchemy import and_
 
 from utils.database import setup_db, GuildModule, IgnoredUser
+from utils.setup_logger import config_logger
 from config import *
 
-from utils.setup_logger import config_logger
+
 log = logging.getLogger(__name__)
 log = config_logger(log)
 
@@ -19,10 +20,11 @@ Contributions: Vinter Borge, Cap'n Odin#8812, and GeekDude#2532
 """
 
 extensions = (
+	'cogs.meta',
 	'cogs.commands',
 	'cogs.owner',
 	'cogs.verify',
-	'cogs.moderator',
+	'cogs.mod',
 	'cogs.module',
 	'cogs.hl',
 	'cogs.tags',
@@ -40,7 +42,11 @@ class AceBot(commands.Bot):
 	def __init__(self):
 		log.info('Launching')
 		
-		super().__init__(command_prefix=command_prefix, owner_id=owner_id, description=description)
+		super().__init__(
+			command_prefix=command_prefix,
+			owner_id=owner_id,
+			description=description
+		)
 		
 		# do blacklist check before all commands
 		self.add_check(self.blacklist)
@@ -94,8 +100,8 @@ class AceBot(commands.Bot):
 		if ctx.author.bot:
 			return False
 		
-		# only allow invokes from normal text channels
-		if not isinstance(ctx.channel, discord.TextChannel):
+		# ignore DMs
+		if ctx.guild is None:
 			return False
 		
 		# ignore ignored users
@@ -145,7 +151,7 @@ class AceBot(commands.Bot):
 		elif isinstance(exc, (commands.CommandNotFound, commands.CheckFailure)):
 			return # fuck these
 		elif isinstance(exc, commands.CommandError):
-			title = 'An error occured, specifically:'
+			title = None
 			extra = str(exc)
 		
 		if extra is None:

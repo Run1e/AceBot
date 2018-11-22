@@ -1,8 +1,9 @@
 import discord
 from discord.ext import commands
+from sqlalchemy import and_
 
 from utils.database import GuildModule
-from sqlalchemy import and_
+
 
 class Modules:
 	'''Manage modules.'''
@@ -11,20 +12,13 @@ class Modules:
 		self.bot = bot
 	
 	async def __local_check(self, ctx):
-		return ctx.guild.owner is ctx.author or await self.bot.is_owner(ctx.author)
-	
-	@commands.group()
-	async def mod(self, ctx):
-		'''Manage bot modules.'''
+		return (
+			ctx.author.permissions_in(ctx.channel).manage_guild or
+			await self.bot.is_owner(ctx.author)
+		)
 		
-		if ctx.invoked_subcommand is not None:
-			return
-		
-		help_text = await self.bot.formatter.format_help_for(ctx, ctx.command)
-		await ctx.send('\n'.join(help_text[0].split('\n')[:-3]) + '```')
-		
-	@mod.command()
-	async def list(self, ctx):
+	@commands.command(aliases=['mods'])
+	async def modules(self, ctx):
 		'''List modules.'''
 		
 		mods = await GuildModule.query.where(
@@ -36,18 +30,18 @@ class Modules:
 		for modu in mods:
 			mod_list.append(modu.module)
 			
-		e = discord.Embed(title='Modules', description='See `.help mod` for more commands.')
+		e = discord.Embed(title='Modules', description='`.enable <module>` to enable a module.\n`.disable <module>` to disable.')
 		
 		enabled = '\n'.join(mod_list)
-		disabled = '\n'.join([mod for mod in self.bot._toggleable if mod not in mod_list])
+		disabled = '\n'.join(filter(lambda mod: mod not in mod_list, self.bot._toggleable))
 		
 		e.add_field(name='Enabled', value=enabled if len(enabled) else 'None')
 		e.add_field(name='Disabled', value=disabled if len(disabled) else 'None')
 		
 		await ctx.send(embed=e)
 	
-	@mod.command()
-	async def info(self, ctx, module: str):
+	@commands.command()
+	async def modinfo(self, ctx, module: str):
 		'''Show info about a module.'''
 		
 		lower = module.lower()
@@ -77,7 +71,7 @@ class Modules:
 		
 		await ctx.send(embed=e)
 	
-	@mod.command()
+	@commands.command()
 	async def enable(self, ctx, module: str):
 		'''Enable a module.'''
 		
@@ -98,7 +92,7 @@ class Modules:
 		
 		await ctx.send(f'Module `{module}` successfully enabled.')
 			
-	@mod.command()
+	@commands.command()
 	async def disable(self, ctx, module: str):
 		'''Disable a module.'''
 	

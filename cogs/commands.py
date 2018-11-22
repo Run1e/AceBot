@@ -1,34 +1,28 @@
 import discord, asyncio, random, inspect
-
 from discord.ext import commands
 from datetime import datetime
 
 from config import wolfram_key, thecatapi_key, apixu_key, oxford_id, oxford_key
 
-DISCORD_SIZE_LIMIT = 8388608 # 8mb
+
+DISCORD_SIZE_LIMIT = 8 * 1024 * 1024 # 8MiB
 
 class Commands:
+	'''General command collection.'''
 	
 	query_error = commands.CommandError('Query failed. Try again later!')
 	
 	def __init__(self, bot):
 		self.bot = bot
+		
+		with open('data/facts.txt', 'r', encoding='utf-8-sig') as f:
+			self._facts = f.read().splitlines()
 	
 	@commands.command()
-	async def code(self, ctx, *, command_name: str):
-		'''Display code of a command.'''
+	async def fact(self, ctx):
+		'''Get a random fact!'''
 		
-		command = self.bot.get_command(command_name)
-		
-		if command is None:
-			return
-		
-		code = '\n'.join(line[1:] for line in inspect.getsource(command.callback).splitlines())
-		
-		# insert zero width spaces before any `
-		code = code.replace('`', '\u200b`')
-		
-		await ctx.send(f'```py\n{code}\n```')
+		await ctx.send(random.choice(self._facts))
 	
 	@commands.command()
 	async def flip(self, ctx):
@@ -38,21 +32,9 @@ class Commands:
 		await msg.edit(content=random.choice(('Heads!', 'Tails!')))
 
 	@commands.command(hidden=True)
-	async def uptime(self, ctx):
-		await ctx.send(f'`{str(datetime.now() - self.bot.startup_time).split(".")[0]}`')
-
-	@commands.command(hidden=True)
-	async def hello(self, ctx):
-		await ctx.send(f'Hello {ctx.author.mention}!')
-
-	@commands.command(hidden=True)
 	async def shrug(self, ctx):
 		await ctx.send('¯\_(ツ)_/¯')
 
-	@commands.command(hidden=True)
-	async def source(self, ctx):
-		await ctx.send('https://github.com/Run1e/AceBot')
-		
 	@commands.command()
 	async def server(self, ctx):
 		"""Show various information about the server."""
@@ -346,9 +328,6 @@ class Commands:
 
 		await ctx.send(embed=embed)
 		
-	@commands.command(hidden=True)
-	async def source(self, ctx):
-		await ctx.send('https://github.com/Run1e/AceBot')
 		
 def setup(bot):
 	bot.add_cog(Commands(bot))

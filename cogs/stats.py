@@ -1,15 +1,15 @@
 import discord
 from discord.ext import commands
-
 from datetime import datetime, timedelta
 
 from utils.database import db, LogEntry
 from cogs.base import TogglableCogMixin
 
+
 MEDALS = ['🥇', '🥈', '🥉', '🏅', '🏅']
 
 class Stats(TogglableCogMixin):
-	'''Show stats about the bot.'''
+	'''Show stats about the bot or a user.'''
 	
 	def __init__(self, bot):
 		super().__init__(bot)
@@ -103,22 +103,25 @@ class Stats(TogglableCogMixin):
 		e.add_field(
 			name='Top Commands',
 			value=self.create_list(all_time),
+		#	inline=False
 		)
 		
 		e.add_field(
 			name="Today's Top Commands",
 			value=self.create_list(today),
+		#	inline=True
 		)
 		
 		e.add_field(
 			name='Top Users',
 			value=self.create_list(top_users, topu),
-			inline=True
+		#	inline=False
 		)
 		
 		e.add_field(
 			name="Today's Top Users",
 			value=self.create_list(top_users_today, topt),
+		#	inline=True
 		)
 		
 		return e
@@ -172,6 +175,8 @@ class Stats(TogglableCogMixin):
 		
 	@commands.command()
 	async def stats(self, ctx, member: discord.Member = None):
+		'''Show command stats.'''
+		
 		await ctx.send(embed=
 			await self.user_stats(member)
 			if member else

@@ -1,12 +1,12 @@
-import discord, logging
+import discord
 from discord.ext import commands
-
 from sqlalchemy import and_, or_
 from datetime import datetime
 
 from utils.database import Tag
 from utils.strip_markdown import strip_markdown
 from cogs.base import TogglableCogMixin
+
 
 def make_lower(s: str): return s.lower()
 
@@ -29,6 +29,7 @@ class TagName(commands.Converter):
 	
 
 class Tags(TogglableCogMixin):
+	'''Create and manage tags.'''
 	
 	async def __local_check(self, ctx):
 		return await self._is_used(ctx)
@@ -59,7 +60,7 @@ class Tags(TogglableCogMixin):
 			tags = await Tag.query.where(
 				and_(
 					Tag.guild_id == guild_id,
-					 Tag.owner_id == owner_id
+					Tag.owner_id == owner_id
 				)
 			).order_by(
 				Tag.uses.desc()

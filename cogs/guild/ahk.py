@@ -1,9 +1,9 @@
-import discord, re
+import discord
 from discord.ext import commands
 
 from utils.docs_search import docs_search
-
 from cogs.base import TogglableCogMixin
+
 
 class AutoHotkey(TogglableCogMixin):
 	'''Commands for the AutoHotkey guild.'''
@@ -20,7 +20,7 @@ class AutoHotkey(TogglableCogMixin):
 			return
 
 		# command not found? docs search it. only if message string is not *only* dots though
-		if isinstance(error, commands.CommandNotFound) and len(ctx.message.content) > 3:
+		if isinstance(error, commands.CommandNotFound) and len(ctx.message.content) > 3 and not ctx.message.content.startswith('..'):
 			await ctx.invoke(self.docs, search=ctx.message.content[1:])
 	
 	@commands.command()

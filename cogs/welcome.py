@@ -1,7 +1,6 @@
 import discord, asyncio
 from discord.ext import commands
 
-
 from utils.database import WelcomeMsg
 from utils.strip_markdown import strip_markdown
 from utils.welcome import welcomify
@@ -13,9 +12,10 @@ class Welcome(TogglableCogMixin):
 	_sleep = 3 # seconds
 	
 	async def __local_check(self, ctx):
-		return await self._is_used(ctx)\
-			   and (ctx.author.permissions_in(ctx.channel).manage_guild
-					or await self.bot.is_owner(ctx.author))
+		return await self._is_used(ctx) and (
+			ctx.author.permissions_in(ctx.channel).manage_guild or
+			await self.bot.is_owner(ctx.author)
+		)
 	
 	async def get_welcome(self, guild_id):
 		welc = await WelcomeMsg.query.where(

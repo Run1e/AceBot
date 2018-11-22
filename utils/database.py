@@ -48,6 +48,14 @@ class WelcomeMsg(db.Model):
 	guild_id = db.Column(db.BigInteger)
 	channel_id = db.Column(db.BigInteger, nullable=True)
 	content = db.Column(db.Unicode)
+	
+class HighlightLang(db.Model):
+	__tablename__ = 'highlight'
+	
+	id = db.Column(db.Integer, primary_key=True)
+	guild_id = db.Column(db.BigInteger)
+	user_id = db.Column(db.BigInteger, nullable=True)
+	language = db.Column(db.Text)
 
 async def setup_db(bind, loop):
 	

@@ -1,11 +1,11 @@
-import discord, asyncio
+import discord, asyncio, logging
 from discord.ext import commands
 from datetime import datetime
 
 from utils.welcome import welcomify
-
 from utils.setup_logger import config_logger
-import logging
+
+
 log = logging.getLogger(__name__)
 log = config_logger(log)
 
