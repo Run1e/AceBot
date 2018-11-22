@@ -9,6 +9,17 @@ class Meta:
 	def __init__(self, bot):
 		self.bot = bot
 		
+	@commands.command()
+	async def join(self, ctx):
+		'''Get bot invite link.'''
+		
+		await ctx.send(
+			'https://discordapp.com/oauth2/authorize?'
+			f'&client_id={self.bot.user.id}'
+			'&scope=bot'
+			'&permissions=67497025'
+		)
+		
 	@commands.command(aliases=['source'])
 	async def code(self, ctx, command: str = None):
 		'''Show info about a command or get GitHub repo link.'''

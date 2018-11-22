@@ -25,7 +25,7 @@ class LangConverter(commands.Converter):
 			raise commands.CommandError('Markdown not allowed in tag names.')
 		return lang
 
-class Highlight(TogglableCogMixin):
+class Highlighter(TogglableCogMixin):
 	'''Easily highlight code.'''
 	
 	timeout = 2
@@ -169,26 +169,4 @@ class Highlight(TogglableCogMixin):
 			
 	
 def setup(bot):
-	bot.add_cog(Highlight(bot))
-
-"""
-async def on_reaction_add(reaction, user):
-	if reaction.message.id != msg.id or user.bot:
-		return
-	if reaction.emoji == self.emoji and (
-			user is ctx.author or user.permissions_in(reaction.message.channel).manage_messages):
-		await msg.delete()
-	else:
-		await reaction.message.remove_reaction(reaction, user)
-
-
-self.bot.add_listener(on_reaction_add)
-await asyncio.sleep(self.timeout * 60)
-self.bot.remove_listener(on_reaction_add)
-
-try:
-	await msg.clear_reactions()
-	await msg.edit(content=' - '.join(msg.content.split(' - ')[:-1]))
-except discord.errors.NotFound:
-	pass  # message already deleted
-"""
+	bot.add_cog(Highlighter(bot))

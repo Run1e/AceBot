@@ -14,12 +14,12 @@ class Stats(TogglableCogMixin):
 	def __init__(self, bot):
 		super().__init__(bot)
 		
-		self.bot.before_invoke(self.on_invoke)
+		self.bot.after_invoke(self.after_invoke)
 		
 	async def __local_check(self, ctx):
 		return await self._is_used(ctx)
 		
-	async def on_invoke(self, ctx):
+	async def after_invoke(self, ctx):
 		await LogEntry.create(
 			guild_id=ctx.guild.id,
 			channel_id=ctx.channel.id,

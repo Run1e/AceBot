@@ -29,9 +29,10 @@ class Owner:
 		# remove `foo`
 		return content.strip('` \n')
 	
-	@commands.command(name='rl', aliases=['re'], hidden=True)
-	async def _reload(self, ctx, *, module):
+	@commands.command(name='reload', aliases=['rl'], hidden=True)
+	async def _reload(self, ctx, *, module: str):
 		'''Reloads a module.'''
+		
 		try:
 			module = 'cogs.' + module
 			self.bot.unload_extension(module)

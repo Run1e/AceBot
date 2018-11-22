@@ -106,7 +106,7 @@ class Tags(TogglableCogMixin):
 			created_at=datetime.now()
 		)
 		
-		await ctx.message.add_reaction(OK_EMOJI)
+		await ctx.send('Tag created.')
 		
 	@tag.command(aliases=['remove'])
 	async def delete(self, ctx, tag_name: TagName):
@@ -114,10 +114,10 @@ class Tags(TogglableCogMixin):
 		
 		tg = await self.get_tag(ctx.guild.id, tag_name)
 		if tg is None or not self.can_edit(ctx.author.id, tg):
-			raise commands.CommandError("Tag doesn't exist, or you don't own it.")
+			raise commands.CommandError('Tag doesn\'t exist, or you don\'t own it.')
 		
 		if await tg.delete() == 'DELETE 1':
-			await ctx.message.add_reaction(OK_EMOJI)
+			await ctx.send('Tag deleted.')
 		else:
 			raise commands.CommandError('Failed deleting tag.')
 		
@@ -127,14 +127,14 @@ class Tags(TogglableCogMixin):
 		
 		tg = await self.get_tag(ctx.guild.id, tag_name)
 		if tg is None or not self.can_edit(ctx.author.id, tg):
-			raise commands.CommandError("Tag doesn't exist, or you don't own it.")
+			raise commands.CommandError('Tag doesn\'t exist, or you don\'t own it.')
 		
 		await tg.update(
 			content=content,
 			edited_at=datetime.now()
 		).apply()
 		
-		await ctx.message.add_reaction(OK_EMOJI)
+		await ctx.send('Tag edited.')
 	
 	@tag.command()
 	async def rename(self, ctx, old_name: TagName, new_name: TagName):
@@ -142,7 +142,7 @@ class Tags(TogglableCogMixin):
 		
 		tg = await self.get_tag(ctx.guild.id, old_name)
 		if tg is None or not self.can_edit(ctx.author.id, tg):
-			raise commands.CommandError("Tag doesn't exist, or you don't own it.")
+			raise commands.CommandError('Tag doesn\'t exist, or you don\'t own it.')
 		
 		if await self.tag_exists(ctx.guild.id, new_name):
 			raise commands.CommandError('Tag with new selected name already exists.')
@@ -151,7 +151,7 @@ class Tags(TogglableCogMixin):
 			name=new_name
 		).apply()
 		
-		await ctx.message.add_reaction(OK_EMOJI)
+		await ctx.send('Tag renamed.')
 		
 	@tag.command()
 	async def alias(self, ctx, tag_name: TagName, alias: TagName):
@@ -162,13 +162,13 @@ class Tags(TogglableCogMixin):
 			raise commands.CommandError("Tag doesn't exist, or you don't own it.")
 		
 		if await self.tag_exists(ctx.guild.id, alias):
-			raise commands.CommandError('Alias already in use.')
+			raise commands.CommandError('Tag name already in use.')
 		
 		await tg.update(
 			alias=alias
 		).apply()
 		
-		await ctx.message.add_reaction(OK_EMOJI)
+		await ctx.send('Alias set.')
 		
 	@tag.command()
 	async def transfer(self, ctx, tag_name: TagName, new_owner: discord.Member):
@@ -182,7 +182,7 @@ class Tags(TogglableCogMixin):
 			owner_id=new_owner.id
 		).apply()
 		
-		await ctx.message.add_reaction(OK_EMOJI)
+		await ctx.send(f'Tag transferred to {new_owner.mention}')
 	
 	@tag.command()
 	async def raw(self, ctx, *, tag_name: TagName):
@@ -268,7 +268,7 @@ class Tags(TogglableCogMixin):
 	
 	@commands.command()
 	async def tags(self, ctx, member: discord.Member = None):
-		'''List a users tags.'''
+		'''List tags.'''
 		
 		await ctx.invoke(self.list, member=member or ctx.author)
 	

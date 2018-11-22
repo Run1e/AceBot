@@ -147,7 +147,7 @@ class Commands:
 		
 	@commands.command()
 	async def floof(self, ctx):
-		'''FLOOF'''
+		'''~floooof~'''
 		
 		url = 'https://randomfox.ca/floof/'
 		
@@ -263,7 +263,7 @@ class Commands:
 			
 	@commands.command(name='8')
 	async def ball(self, ctx, *, question):
-		'''Classic Magic 8 Ball'''
+		'''Classic Magic 8 Ball!'''
 		responses = (
 			'It is certain',  # yes
 			'It is decidedly so',
