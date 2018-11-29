@@ -1,14 +1,38 @@
 # ![Avatar](https://i.imgur.com/Sv7L0a1.png) A.C.E. - Autonomous Command Executor
 
-A Discord bot that I run.
+A fun, general purpose Discord bot that I run!
 
 Want it in your server? [Click here to add it!](https://discordapp.com/oauth2/authorize?&client_id=367977994486022146&scope=bot&permissions=67497025)
 
 The bot was initially made for, and is mostly used in the [AutoHotkey server](https://discord.gg/9HeafP).
 
-## Usage
+## Commands
 
-To list modules, do:
+To get a random animal picture:
+```
+.woof		Get a random doggo
+.meow		Get a random cat
+.quack		Get a random duck
+.floof		Get a random fox
+```
+To use the tag system, do `.help tag` to see usage.
+
+Miscellaneous other commands:
+```
+.stats		Gets command usage stats for your guild.
+.define		Returns definition of a word.
+.weather	Display weather information for a location.
+.wolfram	Query Wolfram Alpha.
+.fact		Get a random fact.
+```
+
+To otherwise see a list of commands you can use, do:
+```
+.help
+```
+## Moderator usage
+
+To moderate the bot, you can list available modules by doing:
 ```
 .mods
 ```
@@ -18,10 +42,6 @@ Then to enable or disable any module, do:
 ```
 .enable <module>
 .disable <module>
-```
-To see commands that you can use, do:
-```
-.help
 ```
 
 ## Installation

@@ -34,7 +34,7 @@ class Stats(TogglableCogMixin):
 			value += f'\n{MEDALS[index]} {members[index] if members else cmd[1]} ({cmd[0]} uses)'
 		
 		if not len(value):
-			raise commands.CommandError('No stats found!')
+			return 'None!'
 		
 		return value[1:]
 	
@@ -103,25 +103,21 @@ class Stats(TogglableCogMixin):
 		e.add_field(
 			name='Top Commands',
 			value=self.create_list(all_time),
-		#	inline=False
 		)
 		
 		e.add_field(
 			name="Today's Top Commands",
 			value=self.create_list(today),
-		#	inline=True
 		)
 		
 		e.add_field(
 			name='Top Users',
 			value=self.create_list(top_users, topu),
-		#	inline=False
 		)
 		
 		e.add_field(
 			name="Today's Top Users",
 			value=self.create_list(top_users_today, topt),
-		#	inline=True
 		)
 		
 		return e
