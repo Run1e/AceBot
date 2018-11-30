@@ -1,4 +1,4 @@
-import discord, aiohttp, logging
+import discord, aiohttp, logging, dbl, asyncio
 from discord.ext import commands
 from math import floor
 from datetime import datetime
@@ -59,7 +59,12 @@ class AceBot(commands.Bot):
 		
 	# run on successful connection
 	async def on_ready(self):
-		self.startup_time = datetime.now()
+		if not hasattr(self, 'startup_time'):
+			self.startup_time = datetime.now()
+			
+			# add dblpy updater
+			self.dblpy = dbl.Client(self, dbl_key)
+			self.loop.create_task(self.update_dbl())
 		
 		log.info('Connected, starting setup')
 		
@@ -82,6 +87,14 @@ class AceBot(commands.Bot):
 		await self.update_status()
 		
 		log.info('Finished!')
+	
+	async def update_dbl(self):
+		while True:
+			try:
+				await self.dblpy.post_server_count()
+			except Exception as e:
+				log.exception(e)
+			await asyncio.sleep(1800)
 	
 	async def uses_module(self, ctx, mod):
 		'''Checks if any context should allow a module to run.'''
@@ -123,7 +136,7 @@ class AceBot(commands.Bot):
 	
 	async def update_status(self, *args, **kwargs):
 		users = 0
-		for guild in self.guilds:
+		for guild in filter(lambda guild: guild.id != 264445053596991498, self.guilds):
 			users += len(guild.members)
 		
 		await self.change_presence(activity=discord.Game(name=f'.help | {users} users'))

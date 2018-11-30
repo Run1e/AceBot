@@ -3,3 +3,4 @@ gino
 aiohttp
 fuzzywuzzy
 beautifulsoup4
+dblpy

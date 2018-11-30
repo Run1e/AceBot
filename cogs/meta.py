@@ -9,8 +9,8 @@ class Meta:
 	def __init__(self, bot):
 		self.bot = bot
 		
-	@commands.command()
-	async def join(self, ctx):
+	@commands.command(aliases=['join'])
+	async def invite(self, ctx):
 		'''Get bot invite link.'''
 		
 		await ctx.send(

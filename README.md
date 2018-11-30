@@ -4,7 +4,7 @@ A fun, general purpose Discord bot that I run!
 
 Want it in your server? [Click here to add it!](https://discordapp.com/oauth2/authorize?&client_id=367977994486022146&scope=bot&permissions=67497025)
 
-The bot was initially made for, and is mostly used in the [AutoHotkey server](https://discord.gg/9HeafP).
+The bot was initially made for, and is mostly used in the [AutoHotkey server](https://discord.gg/tPGdSr2).
 
 ## Commands
 
