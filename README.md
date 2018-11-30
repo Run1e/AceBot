@@ -1,5 +1,7 @@
 # ![Avatar](https://i.imgur.com/Sv7L0a1.png) A.C.E. - Autonomous Command Executor
 
+[![Discord Bots](https://discordbots.org/api/widget/status/367977994486022146.svg)](https://discordbots.org/bot/367977994486022146)
+
 A fun, general purpose Discord bot that I run!
 
 Want it in your server? [Click here to add it!](https://discordapp.com/oauth2/authorize?&client_id=367977994486022146&scope=bot&permissions=67497025)
