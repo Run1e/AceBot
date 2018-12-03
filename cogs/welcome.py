@@ -49,7 +49,11 @@ class Welcome(TogglableCogMixin):
 	
 	@commands.group()
 	async def welcome(self, ctx):
-		'''Welcome your users with a message!'''
+		'''
+		Welcome your users with a message!
+
+		To insert a user mention, put {user} in your welcome message. {guild} does the same for the server name!
+		'''
 	
 		if ctx.invoked_subcommand is not None:
 			return
@@ -59,7 +63,11 @@ class Welcome(TogglableCogMixin):
 	
 	@welcome.command()
 	async def msg(self, ctx, *, content: commands.clean_content):
-		'''Set a new welcome message.'''
+		'''
+		Set a new welcome message.
+
+		To insert a user mention, put {user} in your welcome message. {guild} does the same for the server name!
+		'''
 		
 		welc = await self.get_welcome(ctx.guild.id)
 		

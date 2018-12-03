@@ -16,7 +16,7 @@ class Modules:
 			ctx.author.permissions_in(ctx.channel).manage_guild or
 			await self.bot.is_owner(ctx.author)
 		)
-		
+	
 	@commands.command(aliases=['mods'])
 	async def modules(self, ctx):
 		'''List modules.'''
@@ -29,8 +29,11 @@ class Modules:
 		
 		for modu in mods:
 			mod_list.append(modu.module)
-			
-		e = discord.Embed(title='Modules', description='`.enable <module>` to enable a module.\n`.disable <module>` to disable.')
+		
+		e = discord.Embed(
+			title='Modules',
+			description='`.enable <module>` to enable a module.\n`.disable <module>` to disable.'
+		)
 		
 		enabled = '\n'.join(mod_list)
 		disabled = '\n'.join(filter(lambda mod: mod not in mod_list, self.bot._toggleable))
@@ -52,7 +55,7 @@ class Modules:
 			if lower == cog.lower():
 				module = cog
 				break
-				
+		
 		cog = self.bot.get_cog(module)
 		cog_commands = self.bot.get_cog_commands(module)
 		
@@ -62,7 +65,7 @@ class Modules:
 		for command in cog_commands:
 			cmds.append(command.name)
 			cmds_brief.append('-' if command.help is None else command.help)
-			
+		
 		e = discord.Embed(title=cog.__class__.__name__, description=cog.__doc__)
 		
 		if len(cmds):
@@ -91,11 +94,11 @@ class Modules:
 			raise commands.CommandError(f'Failed enabling module `{module}`')
 		
 		await ctx.send(f'Module `{module}` successfully enabled.')
-			
+	
 	@commands.command()
 	async def disable(self, ctx, module: str):
 		'''Disable a module.'''
-	
+		
 		module = module.lower()
 		if module not in self.bot._toggleable:
 			raise commands.CommandError(f'{module} is not a valid module.')
@@ -114,6 +117,7 @@ class Modules:
 			await ctx.send(f'Module `{module}` disabled.')
 		else:
 			raise commands.CommandError(f'Failed disabling module `{module}`')
+
 
 def setup(bot):
 	bot.add_cog(Modules(bot))

@@ -10,8 +10,8 @@ from utils.database import HighlightLang
 
 def make_lower(s: str): return s.lower()
 
+
 class LangConverter(commands.Converter):
-	
 	_length_limit = 32
 	
 	async def convert(self, ctx, lang: make_lower):
@@ -24,6 +24,7 @@ class LangConverter(commands.Converter):
 		if lang != strip_markdown(lang):
 			raise commands.CommandError('Markdown not allowed in tag names.')
 		return lang
+
 
 class Highlighter(TogglableCogMixin):
 	'''Easily highlight code.'''
@@ -53,12 +54,13 @@ class Highlighter(TogglableCogMixin):
 			return
 		
 		# remove off-topic emojis
-		if str(payload.emoji) == self.emoji and (payload.user_id == self.messages[payload.message_id] or member.permissions_in(channel).manage_messages):
+		if str(payload.emoji) == self.emoji and (
+				payload.user_id == self.messages[payload.message_id] or member.permissions_in(channel).manage_messages):
 			del self.messages[payload.message_id]
 			await message.delete()
 		else:
 			await message.remove_reaction(payload.emoji, member)
-		
+	
 	@commands.command(aliases=['h1'])
 	@commands.bot_has_permissions(manage_messages=True, add_reactions=True)
 	async def hl(self, ctx, *, code):
@@ -92,9 +94,9 @@ class Highlighter(TogglableCogMixin):
 			if lang.user_id is not None:
 				return lang.language
 			selected = lang.language
-			
-		return selected or self.language
 		
+		return selected or self.language
+	
 	@commands.command()
 	@bot_or_guild_owner()
 	async def guildlang(self, ctx, *, language: LangConverter):
@@ -157,16 +159,16 @@ class Highlighter(TogglableCogMixin):
 				return
 			else:
 				await personal.update(language=language).apply()
-			
-		await ctx.send(f'Language preference set to `{language}`')
 		
+		await ctx.send(f'Language preference set to `{language}`')
+	
 	@commands.command(aliases=['p'], hidden=True)
 	async def paste(self, ctx):
 		msg = 'To paste code snippets directly into the chat, use the highlight command:\n```.hl *paste code here*```'
 		if (ctx.guild.id == 115993023636176902):
 			msg += 'If you have a larger script you want to share, paste it to the AutoHotkey pastebin instead:\nhttp://p.ahkscript.org/'
 		await ctx.send(msg)
-			
-	
+
+
 def setup(bot):
 	bot.add_cog(Highlighter(bot))
