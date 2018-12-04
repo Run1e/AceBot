@@ -1,8 +1,10 @@
-import discord, io, textwrap, traceback
+import discord, io, textwrap, traceback, asyncio
 from discord.ext import commands
 from contextlib import redirect_stdout
+from urllib.parse import urlencode
 
 from utils.database import IgnoredUser, UniqueViolationError
+from utils.google import google_parse
 
 OK_EMOJI = '\U00002705'
 NOTOK_EMOJI = '\U0000274C'
@@ -42,6 +44,39 @@ class Owner:
 		else:
 			await ctx.message.add_reaction('\N{OK HAND SIGN}')
 	
+	@commands.command()
+	async def gh(self, ctx, *, query: str):
+		await ctx.invoke(self.google, query='site:github.com ' + query)
+	
+	@commands.command()
+	async def f(self, ctx, *, query: str):
+		await ctx.invoke(self.google, query='site:autohotkey.com ' + query)
+	
+	@commands.command(aliases=['g'])
+	async def google(self, ctx, *, query: str):
+		headers = {
+			'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_10_1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/39.0.2171.95 Safari/537.36',
+			'Accept:': 'text/html'
+		}
+		
+		async with ctx.channel.typing():
+			try:
+				async with self.bot.aiohttp.get(f'http://google.com/search', params=dict(hl='en', safe='on', q=query),
+												headers=headers) as resp:
+					if resp.status != 200:
+						raise commands.CommandError(f'Query returned status {resp.status} {resp.reason}')
+					result = google_parse(await resp.text())
+					if not result:
+						raise commands.CommandError('No results.')
+					else:
+						embed = discord.Embed(title=result[0], url=result[1], description=result[2])
+						embed.set_footer(text=result[3])
+						# embed.set_image(url=f'https://{result[3]}/favicon.ico')
+						await ctx.send(embed=embed)
+			
+			except asyncio.TimeoutError:
+				raise commands.CommandError('Query timed out.')
+	
 	@commands.command(hidden=True)
 	async def ignore(self, ctx, user: discord.User):
 		'''Make bot ignore a user.'''
@@ -72,6 +107,10 @@ class Owner:
 				emoji = OK_EMOJI
 		
 		await ctx.message.add_reaction(emoji)
+	
+	@commands.command()
+	async def pm(self, ctx, user: discord.User, *, content: str):
+		await user.send(content)
 	
 	@commands.command(hidden=True)
 	async def eval(self, ctx, *, body: str):

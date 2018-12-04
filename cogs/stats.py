@@ -14,12 +14,10 @@ class Stats(TogglableCogMixin):
 	def __init__(self, bot):
 		super().__init__(bot)
 		
-		self.bot.after_invoke(self.after_invoke)
-		
 	async def __local_check(self, ctx):
 		return await self._is_used(ctx)
 		
-	async def after_invoke(self, ctx):
+	async def on_command_completion(self, ctx):
 		await LogEntry.create(
 			guild_id=ctx.guild.id,
 			channel_id=ctx.channel.id,
@@ -173,11 +171,18 @@ class Stats(TogglableCogMixin):
 	async def stats(self, ctx, member: discord.Member = None):
 		'''Show command stats.'''
 		
-		await ctx.send(embed=
-			await self.user_stats(member)
-			if member else
-			await self.guild_stats(ctx.guild)
-		)
+		if member is None:
+			embed = await self.guild_stats(ctx.guild)
+		else:
+			embed = await self.user_stats(member)
+		
+		await ctx.send(embed=embed)
+		
+	@commands.command()
+	async def uptime(self, ctx):
+		'''Time since last bot restart.'''
+		
+		await ctx.send(f'`{str(datetime.now() - self.bot.startup_time).split(".")[0]}`')
 	
 def setup(bot):
 	bot.add_cog(Stats(bot))

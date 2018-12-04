@@ -5,16 +5,16 @@ from sqlalchemy import and_
 from utils.database import GuildModule
 
 
-class Modules:
-	'''Manage modules.'''
+class Module:
+	'''Manage modules. Only available to users with the Manage Server permission.'''
 	
 	def __init__(self, bot):
 		self.bot = bot
 	
 	async def __local_check(self, ctx):
 		return (
-			ctx.author.permissions_in(ctx.channel).manage_guild or
-			await self.bot.is_owner(ctx.author)
+				ctx.author.permissions_in(ctx.channel).manage_guild or
+				await self.bot.is_owner(ctx.author)
 		)
 	
 	@commands.command(aliases=['mods'])
@@ -40,37 +40,6 @@ class Modules:
 		
 		e.add_field(name='Enabled', value=enabled if len(enabled) else 'None')
 		e.add_field(name='Disabled', value=disabled if len(disabled) else 'None')
-		
-		await ctx.send(embed=e)
-	
-	@commands.command()
-	async def modinfo(self, ctx, module: str):
-		'''Show info about a module.'''
-		
-		lower = module.lower()
-		if lower not in self.bot._toggleable:
-			raise commands.CommandError(f'{lower} is not a toggleable module.')
-		
-		for cog in self.bot.cogs:
-			if lower == cog.lower():
-				module = cog
-				break
-		
-		cog = self.bot.get_cog(module)
-		cog_commands = self.bot.get_cog_commands(module)
-		
-		cmds = []
-		cmds_brief = []
-		
-		for command in cog_commands:
-			cmds.append(command.name)
-			cmds_brief.append('-' if command.help is None else command.help)
-		
-		e = discord.Embed(title=cog.__class__.__name__, description=cog.__doc__)
-		
-		if len(cmds):
-			e.add_field(name='Command', value='\n'.join(cmds))
-			e.add_field(name='Description', value='\n'.join(cmds_brief))
 		
 		await ctx.send(embed=e)
 	
@@ -120,4 +89,4 @@ class Modules:
 
 
 def setup(bot):
-	bot.add_cog(Modules(bot))
+	bot.add_cog(Module(bot))

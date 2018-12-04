@@ -30,7 +30,11 @@ class TagName(commands.Converter):
 
 
 class Tags(TogglableCogMixin):
-	'''Create and manage tags.'''
+	'''
+	Create and manage tags.
+	
+	To bring up a tag, do `tag <tag_name>`
+	'''
 	
 	async def __local_check(self, ctx):
 		return await self._is_used(ctx)

@@ -7,7 +7,7 @@ from config import wolfram_key, thecatapi_key, apixu_key, oxford_id, oxford_key
 
 DISCORD_SIZE_LIMIT = 8 * 1024 * 1024 # 8MiB
 
-class Commands:
+class General:
 	'''General command collection.'''
 	
 	query_error = commands.CommandError('Query failed. Try again later!')
@@ -64,112 +64,6 @@ class Commands:
 		e.add_field(name='Status', value='\n'.join(str(status) for status in statuses))
 		e.add_field(name='Users', value='\n'.join(str(count) for status, count in statuses.items()))
 		await ctx.send(embed=e)
-
-	@commands.command()
-	@commands.cooldown(rate=3, per=10.0, type=commands.BucketType.user)
-	async def woof(self, ctx):
-		'''Get a random doggo!'''
-		
-		url = 'https://random.dog/'
-		params = {'filter': 'mp4'}
-		
-		async with ctx.channel.typing():
-			try:
-				async with self.bot.aiohttp.request('get', url + 'woof', params=params) as resp:
-					if resp.status != 200:
-						raise self.query_error
-					id = await resp.text()
-				
-				# fetch image using id
-				async with self.bot.aiohttp.get(url + id) as resp:
-					if resp.status != 200:
-						raise self.query_error
-					data = await resp.read()
-			except asyncio.TimeoutError:
-				raise self.query_error
-				
-		if len(data) > DISCORD_SIZE_LIMIT:
-			await ctx.reinvoke()
-		
-		await ctx.send(file=discord.File(data, 'dog.' + resp.content_type.split('/')[-1]))
-	
-	@commands.command()
-	@commands.cooldown(rate=3, per=10.0, type=commands.BucketType.user)
-	async def meow(self, ctx):
-		'''Get a random cat image!'''
-		
-		url = 'http://thecatapi.com/api/images/get'
-		params = {
-			'format': 'src',
-			'api_key': thecatapi_key
-		}
-		
-		async with ctx.channel.typing():
-			try:
-				async with self.bot.aiohttp.get(url, params=params) as resp:
-					if resp.status != 200:
-						raise self.query_error
-					data = await resp.read()
-			except asyncio.TimeoutError:
-				raise self.query_error
-		
-		if len(data) > DISCORD_SIZE_LIMIT:
-			await ctx.reinvoke()
-		
-		await ctx.send(file=discord.File(data, 'cat.' + resp.content_type.split('/')[-1]))
-	
-	@commands.command()
-	@commands.cooldown(rate=3, per=10.0, type=commands.BucketType.user)
-	async def quack(self, ctx):
-		'''Get a random duck image!'''
-		
-		url = 'https://random-d.uk/api/v1/random'
-		
-		async with ctx.channel.typing():
-			try:
-				async with self.bot.aiohttp.get(url) as resp:
-					if resp.status != 200:
-						raise self.query_error
-					json = await resp.json()
-					image_url = json['url']
-				
-				async with self.bot.aiohttp.get(image_url) as resp:
-					if resp.status != 200:
-						raise self.query_error
-					data = await resp.read()
-			except asyncio.TimeoutError:
-				raise self.query_error
-		
-		if len(data) > DISCORD_SIZE_LIMIT:
-			await ctx.reinvoke()
-		
-		await ctx.send(file=discord.File(data, 'duck.' + resp.content_type.split('/')[-1]))
-		
-	@commands.command()
-	async def floof(self, ctx):
-		'''~floooof~'''
-		
-		url = 'https://randomfox.ca/floof/'
-		
-		async with ctx.channel.typing():
-			try:
-				async with self.bot.aiohttp.request('get', url) as resp:
-					if resp.status != 200:
-						raise self.query_error
-					json = await resp.json()
-					image_url = json['image']
-				
-				async with self.bot.aiohttp.get(image_url) as resp:
-					if resp.status != 200:
-						raise self.query_error
-					data = await resp.read()
-			except asyncio.TimeoutError:
-				raise self.query_error
-			
-		if len(data) > DISCORD_SIZE_LIMIT:
-			await ctx.reinvoke()
-		
-		await ctx.send(file=discord.File(data, 'fix.' + resp.content_type.split('/')[-1]))
 	
 	@commands.command(aliases=['num'])
 	@commands.cooldown(rate=3, per=10.0, type=commands.BucketType.user)
@@ -222,11 +116,8 @@ class Commands:
 		
 	@commands.cooldown(rate=2, per=5.0, type=commands.BucketType.user)
 	@commands.command()
-	async def weather(self, ctx, *, location: str = None):
+	async def weather(self, ctx, *, location: str):
 		'''Check the weather at a location.'''
-
-		if location is None:
-			return await ctx.send('Please provide a location to get weather information for.')
 
 		url = 'http://api.apixu.com/v1/current.json'
 
@@ -330,4 +221,4 @@ class Commands:
 		
 		
 def setup(bot):
-	bot.add_cog(Commands(bot))
+	bot.add_cog(General(bot))

@@ -10,13 +10,9 @@ class AutoHotkey(TogglableCogMixin):
 	
 	async def __local_check(self, ctx):
 		return await self._is_used(ctx)
-	
-	async def on_message(self, msg):
-		if not await self.__local_check(msg) or not await self.bot.blacklist(msg):
-			return
 		
 	async def on_command_error(self, ctx, error):
-		if not await self.__local_check(ctx) or not await self.bot.can_run(ctx):
+		if ctx.guild.id != 115993023636176902:
 			return
 
 		# command not found? docs search it. only if message string is not *only* dots though
