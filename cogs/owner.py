@@ -1,7 +1,6 @@
 import discord, io, textwrap, traceback, asyncio
 from discord.ext import commands
 from contextlib import redirect_stdout
-from urllib.parse import urlencode
 
 from utils.database import IgnoredUser, UniqueViolationError
 from utils.google import google_parse
@@ -14,7 +13,7 @@ NOTFOUND_EMOJI = '\U0001F1F3'
 
 
 class Owner:
-	'''Owner commands.'''
+	'''Commands accessible to the bot owner.'''
 	
 	def __init__(self, bot):
 		self.bot = bot
@@ -46,14 +45,17 @@ class Owner:
 	
 	@commands.command()
 	async def gh(self, ctx, *, query: str):
+		'''Google search for GitHub pages.'''
 		await ctx.invoke(self.google, query='site:github.com ' + query)
 	
 	@commands.command()
 	async def f(self, ctx, *, query: str):
+		'''Google search for AutoHotkey pages.'''
 		await ctx.invoke(self.google, query='site:autohotkey.com ' + query)
 	
 	@commands.command(aliases=['g'])
 	async def google(self, ctx, *, query: str):
+		'''Get first result from google.'''
 		headers = {
 			'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_10_1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/39.0.2171.95 Safari/537.36',
 			'Accept:': 'text/html'
@@ -77,7 +79,7 @@ class Owner:
 			except asyncio.TimeoutError:
 				raise commands.CommandError('Query timed out.')
 	
-	@commands.command(hidden=True)
+	@commands.command()
 	async def ignore(self, ctx, user: discord.User):
 		'''Make bot ignore a user.'''
 		
@@ -92,7 +94,7 @@ class Owner:
 		
 		await ctx.message.add_reaction(emoji)
 	
-	@commands.command(hidden=True)
+	@commands.command()
 	async def notice(self, ctx, user: discord.User):
 		'''Make bot notice an ignore user.'''
 		
@@ -110,11 +112,14 @@ class Owner:
 	
 	@commands.command()
 	async def pm(self, ctx, user: discord.User, *, content: str):
+		'''Primate message a user.'''
 		await user.send(content)
 	
-	@commands.command(hidden=True)
+	@commands.command()
 	async def eval(self, ctx, *, body: str):
 		'''Evaluates some code.'''
+		
+		from pprint import pprint
 		
 		env = {
 			'discord': discord,
@@ -123,7 +128,9 @@ class Owner:
 			'channel': ctx.channel,
 			'author': ctx.author,
 			'guild': ctx.guild,
-			'message': ctx.message
+			'message': ctx.message,
+			'sp': self.bot.spoofy,
+			'pprint': pprint
 		}
 		
 		env.update(globals())

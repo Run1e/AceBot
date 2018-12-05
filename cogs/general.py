@@ -4,8 +4,8 @@ from datetime import datetime
 
 from config import wolfram_key, thecatapi_key, apixu_key, oxford_id, oxford_key
 
+DISCORD_SIZE_LIMIT = 8 * 1024 * 1024  # 8MiB
 
-DISCORD_SIZE_LIMIT = 8 * 1024 * 1024 # 8MiB
 
 class General:
 	'''General command collection.'''
@@ -30,34 +30,34 @@ class General:
 		msg = await ctx.send('Flipping...')
 		await asyncio.sleep(3)
 		await msg.edit(content=random.choice(('Heads!', 'Tails!')))
-
+	
 	@commands.command(hidden=True)
 	async def shrug(self, ctx):
 		await ctx.send('¯\_(ツ)_/¯')
-
+	
 	@commands.command()
 	async def server(self, ctx):
 		"""Show various information about the server."""
-
+		
 		statuses = {
 			discord.Status.online: 0,
 			discord.Status.idle: 0,
 			discord.Status.dnd: 0,
 			discord.Status.offline: 0
 		}
-
+		
 		for member in ctx.guild.members:
 			for status in statuses:
 				if member.status is status:
 					statuses[status] += 1
-
+		
 		att = {}
 		att['Online'] = f'{sum(member.status is not discord.Status.offline for member in ctx.guild.members)}/{len(ctx.guild.members)}'
 		att['Owner'] = ctx.guild.owner.display_name
 		att['Channels'] = len(ctx.guild.text_channels) + len(ctx.guild.voice_channels)
 		att['Region'] = str(ctx.guild.region)
 		att['Created at'] = str(ctx.guild.created_at).split(' ')[0]
-
+		
 		e = discord.Embed(title=ctx.guild.name, description='\n'.join(f'**{a}**: {b}' for a, b in att.items()))
 		e.set_thumbnail(url=ctx.guild.icon_url)
 		e.set_footer(text=f'ID: {ctx.guild.id}')
@@ -80,7 +80,7 @@ class General:
 					text = await resp.text()
 			except asyncio.TimeoutError:
 				raise self.query_error
-				
+		
 		await ctx.send(text)
 	
 	@commands.command(aliases=['w'])
@@ -102,30 +102,36 @@ class General:
 					res = await resp.text()
 			except asyncio.TimeoutError:
 				raise self.query_error
-					
-		text = f'Query:\n```{query}```\nResult:\n```{res}```'
 		
-		embed = discord.Embed(description=text)
+		embed = discord.Embed()
+		
+		backtick = '`'
+		
+		query = query.replace('`', '\u200b`')
+		
+		embed.add_field(name='Query', value=f'```{query}```')
+		embed.add_field(name='Result', value=f'```{res}```', inline=False)
+		
 		embed.set_author(name='Wolfram Alpha', icon_url='https://i.imgur.com/KFppH69.png')
 		embed.set_footer(text='wolframalpha.com')
 		
-		if len(text) > 2000:
+		if len(query) + len(res) > 1200:
 			raise commands.CommandError('Wolfram response too long.')
 		
 		await ctx.send(embed=embed)
-		
+	
 	@commands.cooldown(rate=2, per=5.0, type=commands.BucketType.user)
 	@commands.command()
 	async def weather(self, ctx, *, location: str):
 		'''Check the weather at a location.'''
-
+		
 		url = 'http://api.apixu.com/v1/current.json'
-
+		
 		params = {
 			'key': apixu_key,
 			'q': location
 		}
-
+		
 		async with ctx.channel.typing():
 			try:
 				async with self.bot.aiohttp.get(url, params=params) as resp:
@@ -151,7 +157,7 @@ class General:
 			embed.timestamp = datetime.utcnow()
 			
 			await ctx.send(embed=embed)
-			
+	
 	@commands.command(name='8')
 	async def ball(self, ctx, *, question):
 		'''Classic Magic 8 Ball!'''
@@ -180,16 +186,16 @@ class General:
 		await ctx.trigger_typing()
 		await asyncio.sleep(3)
 		await ctx.send(random.choice(responses))
-		
+	
 	@commands.cooldown(rate=2, per=5.0, type=commands.BucketType.user)
 	@commands.command(aliases=['def'])
-	async def define(self, ctx, *, query):
+	async def define(self, ctx, *, word: str):
 		'''Define a word using Oxfords dictionary.'''
-
+		
 		await ctx.trigger_typing()
-
-		url = 'https://od-api.oxforddictionaries.com:443/api/v1/entries/en/' + query.split('\n')[0].lower()
-
+		
+		url = 'https://od-api.oxforddictionaries.com:443/api/v1/entries/en/' + word.split('\n')[0].lower()
+		
 		headers = {
 			'Accept': 'application/json',
 			'app_id': oxford_id,
@@ -203,22 +209,22 @@ class General:
 				info = await resp.json()
 		except asyncio.TimeoutError:
 			raise self.query_error
-
+		
 		result = info['results'][0]
 		entry = result['lexicalEntries'][0]
-
+		
 		word = result['word']
 		type = entry['lexicalCategory']
 		desc = entry['entries'][0]['senses'][0]['definitions'][0]
-
+		
 		word = word[:1].upper() + word[1:]
 		desc = desc[:1].upper() + desc[1:]
-
+		
 		embed = discord.Embed(title=f'{word} ({type})', description=f'```{desc}```')
 		embed.set_footer(text='Oxford University Press', icon_url='https://i.imgur.com/7GMY4dP.png')
-
+		
 		await ctx.send(embed=embed)
-		
-		
+
+
 def setup(bot):
 	bot.add_cog(General(bot))

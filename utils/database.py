@@ -57,6 +57,15 @@ class HighlightLang(db.Model):
 	user_id = db.Column(db.BigInteger, nullable=True)
 	language = db.Column(db.Text)
 
+"""
+class GuildPlaylist(db.Model):
+	__tablename__ = 'playlist'
+	
+	id = db.Column(db.Integer, primary_key=True)
+	guild_id = db.Column(db.BigInteger)
+	playlist_id = db.Column(db.String)
+"""
+
 async def setup_db(bind, loop):
 	
 	# connect

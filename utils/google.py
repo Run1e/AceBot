@@ -1,7 +1,6 @@
 from bs4 import BeautifulSoup
 from urllib.parse import urlparse
 
-from pprint import pprint
 
 def google_parse(text):
 	soup = BeautifulSoup(text, 'lxml')

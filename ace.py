@@ -20,18 +20,18 @@ Contributions: Vinter Borge, Cap'n Odin#8812, and GeekDude#2532
 
 extensions = (
 	'cogs.general',
-	'cogs.animals',
+	'cogs.images',
 	'cogs.tags',
 	'cogs.stats',
+	'cogs.configuration',
 	'cogs.meta',
-	'cogs.module',
-	'cogs.owner',
 	'cogs.verify',
 	'cogs.mod',
 	'cogs.hl',
 	'cogs.welcome',
 	'cogs.roles',
 	'cogs.guild.ahk',
+	'cogs.owner',
 	'cogs.help',
 )
 

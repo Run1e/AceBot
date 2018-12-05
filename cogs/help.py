@@ -46,7 +46,7 @@ def get_signature(command):
 
 
 class EmbedHelp:
-	ignore_cogs = ('Owner', 'Verify', 'Roles', 'Help')
+	ignore_cogs = ('Verify', 'Roles', 'Help')
 	
 	pages = []
 	cogs = []
@@ -65,7 +65,6 @@ class EmbedHelp:
 			cog_name = cog.__class__.__name__
 			
 			e = discord.Embed(
-				title=f'{cog_name} Commands',
 				description=cog.__doc__
 			)
 			
@@ -94,6 +93,8 @@ class EmbedHelp:
 					add_command(command_or_group)
 			
 			e.add_field(name='Support Server', value=bot._support_link)
+			
+			e.set_author(name=f'{cog_name} Commands', icon_url=bot.user.avatar_url)
 			
 			cls.cogs.append(cog)
 			cls.pages.append(e)
@@ -193,19 +194,19 @@ class Help:
 				e = eh.pages[eh.index]
 				
 				if isinstance(cog, TogglableCogMixin):
-					if await ctx.bot.uses_module(ctx, cog.__class__.__name__):
-						state = True
-					else:
-						state = False
+					state = await ctx.bot.uses_module(ctx, cog.__class__.__name__)
 					
 					# this is honestly quite the hack and I don't like it but I think it's okay
-					# also it shouldn't really be here
+					# also it shouldn't really be here z
 					e_dict = e.to_dict()
 					e = discord.Embed(**e_dict)
 					for field in e_dict['fields']:
 						e.add_field(**field)
 					e.set_footer(**e_dict['footer'])
-					e.title += f" ({'enabled' if state else 'disabled'})"
+					e.set_author(
+						name=e_dict['author']['name'] + f" ({'enabled' if state else 'disabled'})",
+						icon_url=e_dict['author']['icon_url']
+					)
 				
 				await msg.edit(embed=e)
 				await msg.remove_reaction(reaction.emoji, user)

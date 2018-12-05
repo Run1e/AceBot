@@ -5,8 +5,12 @@ from sqlalchemy import and_
 from utils.database import GuildModule
 
 
-class Module:
-	'''Manage modules. Only available to users with the Manage Server permission.'''
+class Configuration:
+	'''
+	Manage modules and other settings.
+	
+	Only available to users with the Manage Server permission.
+	'''
 	
 	def __init__(self, bot):
 		self.bot = bot
@@ -89,4 +93,4 @@ class Module:
 
 
 def setup(bot):
-	bot.add_cog(Module(bot))
+	bot.add_cog(Configuration(bot))

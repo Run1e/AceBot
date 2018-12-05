@@ -8,6 +8,7 @@ from cogs.base import TogglableCogMixin
 
 
 class Welcome(TogglableCogMixin):
+	'''Make the bot send welcome messages to new users.'''
 	
 	_sleep = 3 # seconds
 	

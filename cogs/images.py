@@ -5,7 +5,7 @@ from config import thecatapi_key
 
 DISCORD_SIZE_LIMIT = 8 * 1024 * 1024 # 8MiB
 
-class Animal:
+class Image:
 	''':heart_eyes: :heart_eyes: :heart_eyes:'''
 	
 	query_error = commands.CommandError('Query failed. Try again later!')
@@ -121,4 +121,4 @@ class Animal:
 
 
 def setup(bot):
-	bot.add_cog(Animal(bot))
+	bot.add_cog(Image(bot))
