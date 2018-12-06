@@ -3,19 +3,15 @@ from discord.ext import commands
 from datetime import datetime, timedelta
 
 from utils.database import db, LogEntry
-from cogs.base import TogglableCogMixin
 
 
 MEDALS = ['🥇', '🥈', '🥉', '🏅', '🏅']
 
-class Stats(TogglableCogMixin):
+class Stats:
 	'''Show stats about the bot or a user.'''
 	
 	def __init__(self, bot):
-		super().__init__(bot)
-		
-	async def __local_check(self, ctx):
-		return await self._is_used(ctx)
+		self.bot = bot
 		
 	async def on_command_completion(self, ctx):
 		await LogEntry.create(

@@ -25,7 +25,6 @@ extensions = (
 	'cogs.stats',
 	'cogs.configuration',
 	'cogs.meta',
-	'cogs.verify',
 	'cogs.mod',
 	'cogs.hl',
 	'cogs.welcome',
@@ -38,8 +37,7 @@ extensions = (
 
 class AceBot(commands.Bot):
 	_toggleable = []
-	_default_modules = ['tags', 'stats']
-	
+
 	_support_link = 'https://discord.gg/X7abzRe'
 	
 	def __init__(self):
@@ -118,19 +116,13 @@ class AceBot(commands.Bot):
 		if await IgnoredUser.query.where(IgnoredUser.user_id == ctx.author.id).gino.scalar():
 			return False
 		
-		# make sure we're not in a verification channel
-		if ctx.channel.name == f'welcome-{ctx.author.id}' and await self.uses_module(ctx, 'verify'):
+		# hardcoded for the autohotkey verification thing
+		if ctx.guild.id == 115993023636176902 and all(role.id != 509526426198999040 for role in ctx.author.roles):
 			return False
 		
 		return True
 	
 	async def on_guild_join(self, guild):
-		for module in self._default_modules:
-			await GuildModule.create(
-				guild_id=guild.id,
-				module=module
-			)
-		
 		await self.update_dbl()
 		await self.log(f'Joined guild {guild.name} ({guild.id})')
 	

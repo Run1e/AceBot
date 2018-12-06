@@ -167,13 +167,16 @@ class Help:
 			try:
 				reaction, user = await self.bot.wait_for('reaction_add', check=pred, timeout=60.0)
 			except asyncio.TimeoutError:
-				await msg.clear_reactions()
-				return
+				break
 			else:
+				await msg.remove_reaction(reaction.emoji, user)
+
+				if user != ctx.author:
+					continue
+
 				if reaction.emoji == STOP_EMOJI:
-					await msg.clear_reactions()
-					return
-				
+					break
+
 				if reaction.emoji == NEXT_EMOJI:
 					eh.next()
 				elif reaction.emoji == PREV_EMOJI:
@@ -184,10 +187,8 @@ class Help:
 					eh.last()
 				elif reaction.emoji == HELP_EMOJI:
 					await msg.edit(embed=eh.help())
-					await msg.remove_reaction(reaction.emoji, user)
 					continue
 				else:
-					await msg.remove_reaction(reaction.emoji, user)
 					continue
 				
 				cog = eh.cogs[eh.index]
@@ -210,6 +211,10 @@ class Help:
 				
 				await msg.edit(embed=e)
 				await msg.remove_reaction(reaction.emoji, user)
+
+		await msg.clear_reactions()
+
+
 
 
 def setup(bot):

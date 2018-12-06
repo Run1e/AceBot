@@ -5,7 +5,6 @@ from datetime import datetime
 
 from utils.database import Tag
 from utils.strip_markdown import strip_markdown
-from cogs.base import TogglableCogMixin
 
 
 def make_lower(s: str): return s.lower()
@@ -17,7 +16,7 @@ MAX_EMBEDS_TAGS = 10
 
 class TagName(commands.Converter):
 	_length_limit = 32
-	_reserved = ['tag', 'create', 'edit', 'delete', 'info', 'list', 'top', 'raw', 'get', 'set', 'exec']
+	_reserved = ['tag', 'create', 'edit', 'delete', 'info', 'list', 'top', 'raw', 'get', 'set', 'exec', 'search']
 	
 	async def convert(self, ctx, tag_name: make_lower):
 		if len(tag_name) > self._length_limit:
@@ -29,15 +28,15 @@ class TagName(commands.Converter):
 		return tag_name
 
 
-class Tags(TogglableCogMixin):
+class Tags:
 	'''
 	Create and manage tags.
 	
 	To bring up a tag, do `tag <tag_name>`
 	'''
-	
-	async def __local_check(self, ctx):
-		return await self._is_used(ctx)
+
+	def __init__(self, bot):
+		self.bot = bot
 	
 	async def get_tag(self, guild_id, tag_name):
 		return await Tag.query.where(

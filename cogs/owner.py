@@ -129,7 +129,6 @@ class Owner:
 			'author': ctx.author,
 			'guild': ctx.guild,
 			'message': ctx.message,
-			'sp': self.bot.spoofy,
 			'pprint': pprint
 		}
 		
