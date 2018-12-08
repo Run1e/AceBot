@@ -12,9 +12,10 @@ file = logging.handlers.TimedRotatingFileHandler('logs/log.log', when='midnight'
 file.setLevel(logging.INFO)
 file.setFormatter(fmt)
 
+
 def config_logger(logger):
 	logger.setLevel(logging.INFO)
 	logger.addHandler(stream)
 	logger.addHandler(file)
-	
+
 	return logger

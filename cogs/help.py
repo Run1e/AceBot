@@ -73,8 +73,9 @@ class EmbedHelp:
 		return len(self.pages) > 1
 
 	@classmethod
-	async def from_bot(cls, ctx):
+	def from_bot(cls, ctx):
 		self = cls(ctx)
+
 		bot = self.bot
 		cogs = list(filter(lambda cog: cog.__class__.__name__ not in cls.ignore_cogs, bot.cogs.values()))
 
@@ -99,7 +100,7 @@ class EmbedHelp:
 		return self
 
 	@classmethod
-	async def from_command(cls, ctx, command):
+	def from_command(cls, ctx, command):
 		self = cls(ctx)
 
 		cmds = []
@@ -117,7 +118,7 @@ class EmbedHelp:
 		return self
 
 	@classmethod
-	async def from_cog(cls, ctx, cog):
+	def from_cog(cls, ctx, cog):
 		self = cls(ctx)
 
 		cmds = []
@@ -135,12 +136,18 @@ class EmbedHelp:
 
 		return self
 
-	def get_embed(self):
+	async def get_embed(self):
 		page = self.pages[self.index]
 
 		self.embed.clear_fields()
 
-		self.embed.set_author(name=page['cog_name'] + ' Commands', icon_url=self.bot.user.avatar_url)
+		author = page['cog_name'] + ' Commands'
+
+		if isinstance(self.bot.get_cog(page['cog_name']), TogglableCogMixin):
+			used = await self.bot.uses_module(self.ctx, page['cog_name'])
+			author += f" ({'enabled' if used else 'disabled'})"
+
+		self.embed.set_author(name=author, icon_url=self.bot.user.avatar_url)
 		self.embed.description = page['cog_desc']
 
 		for name, value in page['commands']:
@@ -169,23 +176,23 @@ class EmbedHelp:
 
 		return self.embed
 
-	def next(self):
+	async def next(self):
 		if len(self.pages) - 1 != self.index:
 			self.index += 1
-		return self.get_embed()
+		return await self.get_embed()
 
-	def prev(self):
+	async def prev(self):
 		if self.index != 0:
 			self.index -= 1
-		return self.get_embed()
+		return await self.get_embed()
 
-	def first(self):
+	async def first(self):
 		self.index = 0
-		return self.get_embed()
+		return await self.get_embed()
 
-	def last(self):
+	async def last(self):
 		self.index = len(self.pages) - 1
-		return self.get_embed()
+		return await self.get_embed()
 
 
 class Help:
@@ -203,20 +210,20 @@ class Help:
 			command = command.lower()
 			cog = None
 			for cog_name, current_cog in ctx.bot.cogs.items():
-				if cog_name.lower() == command:
+				if cog_name.lower() == command and cog_name not in EmbedHelp.ignore_cogs:
 					cog = current_cog
 					break
 			if cog is not None:
-				eh = await EmbedHelp.from_cog(ctx, cog)
+				eh = EmbedHelp.from_cog(ctx, cog)
 			else:
 				command = ctx.bot.get_command(command)
-				if command is None:
+				if command is None or command.cog_name in EmbedHelp.ignore_cogs:
 					raise commands.CommandError('Couldn\'t find command/cog.')
-				eh = await EmbedHelp.from_command(ctx, command)
+				eh = EmbedHelp.from_command(ctx, command)
 		else:
-			eh = await EmbedHelp.from_bot(ctx)
+			eh = EmbedHelp.from_bot(ctx)
 
-		embed = eh.get_embed()
+		embed = await eh.get_embed()
 		msg = await ctx.send(embed=embed)
 
 		def pred(reaction, user):
@@ -247,13 +254,13 @@ class Help:
 					continue
 
 				if reaction.emoji == NEXT_EMOJI:
-					e = eh.next()
+					e = await eh.next()
 				elif reaction.emoji == PREV_EMOJI:
-					e = eh.prev()
+					e = await eh.prev()
 				elif reaction.emoji == FIRST_EMOJI:
-					e = eh.first()
+					e = await eh.first()
 				elif reaction.emoji == LAST_EMOJI:
-					e = eh.last()
+					e = await eh.last()
 				elif reaction.emoji == HELP_EMOJI:
 					await msg.edit(embed=eh.help())
 					continue

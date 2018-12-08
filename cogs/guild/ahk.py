@@ -5,9 +5,9 @@ from utils.docs_search import docs_search
 from utils.welcome import welcomify
 from cogs.base import TogglableCogMixin
 
-GENERAL_ID	= 115993023636176902
-STAFF_ID	= 311784919208558592
-MEMBER_ID	= 509526426198999040
+GENERAL_ID = 115993023636176902
+STAFF_ID = 311784919208558592
+MEMBER_ID = 509526426198999040
 
 WELCOME_MSG = '''
 Welcome to our Discord community {user}!

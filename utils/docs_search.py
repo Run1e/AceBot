@@ -4,8 +4,8 @@ from fuzzywuzzy import fuzz, process
 with open('data/Docs.json', 'r', encoding='utf-8-sig') as f:
 	docs = json.loads(f.read())
 
+
 def docs_search(search_terms):
-	
 	queries = search_terms.splitlines()
 
 	# Finds a documentation page with fuzzy search
@@ -20,15 +20,15 @@ def docs_search(search_terms):
 		for match, score in matches:
 			if query.upper() == ''.join(filter(str.isupper, match)) or match.lower().startswith(query.lower()):
 				return match
-		
+
 		return matches[0][0]
-	
+
 	results = {}
-	
+
 	for query in queries:
 		page = find_page(query)
 		obj = docs.get(page, None)
 		if obj is not None:
 			results[page] = obj
-			
+
 	return results

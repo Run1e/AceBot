@@ -68,10 +68,12 @@ class Meta:
 	@commands.command(hidden=True)
 	@commands.is_owner()
 	async def reply(self, ctx, user: discord.User, *, content):
-		content += '\n\n--------------\nThis message was sent in reply to feedback you previously gave.' \
-				   ' Please note this conversation is not monitored and replies will not be read.' \
-				   ' To get in contact, either use the feedback command again, or join the support server and tag me' \
-				  f' - {ctx.author.mention}\n{self.bot._support_link}'
+		content += (
+			'\n\n--------------\nThis message was sent in reply to feedback you previously gave. '
+			'Please note this conversation is not monitored and replies will not be read. '
+			'To get in contact, either use the feedback command again, or join the support server and tag me'
+			f' - {ctx.author.mention}\n{self.bot._support_link}'
+		)
 		
 		await user.send(content)
 	
