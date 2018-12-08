@@ -13,10 +13,7 @@ class Welcome(TogglableCogMixin):
 	_sleep = 3 # seconds
 	
 	async def __local_check(self, ctx):
-		return await self._is_used(ctx) and (
-			ctx.author.permissions_in(ctx.channel).manage_guild or
-			await self.bot.is_owner(ctx.author)
-		)
+		return await self._is_used(ctx)
 	
 	async def get_welcome(self, guild_id):
 		welc = await WelcomeMsg.query.where(
@@ -41,8 +38,9 @@ class Welcome(TogglableCogMixin):
 		welc = await self.get_welcome(guild.id)
 		
 		channel = guild.get_channel(welc.channel_id)
+
 		if channel is None:
-			raise commands.CommandError('Failed getting channel. Did you set a valid channel for the welcome message?')
+			return
 		
 		await asyncio.sleep(self._sleep)
 		

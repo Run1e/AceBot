@@ -2,5 +2,6 @@ git+https://github.com/Rapptz/discord.py@rewrite#egg=discord.py
 gino
 aiohttp
 fuzzywuzzy
+lxml
 beautifulsoup4
 dblpy

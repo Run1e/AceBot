@@ -130,6 +130,15 @@ class EmbedHelp:
 	def last(self):
 		self.index = len(self.pages) - 1
 
+'''
+OrderedDict
+
+'cog_name': {'desc': 'cog_desc',
+			 'commands': [(command_name, command_desc),
+			 			  (command_name, command_desc)]
+
+'''
+
 
 class Help:
 	emojis = (FIRST_EMOJI, PREV_EMOJI, NEXT_EMOJI, LAST_EMOJI, STOP_EMOJI, HELP_EMOJI)
@@ -212,7 +221,10 @@ class Help:
 				await msg.edit(embed=e)
 				await msg.remove_reaction(reaction.emoji, user)
 
-		await msg.clear_reactions()
+		try:
+			await msg.clear_reactions()
+		except discord.NotFound:
+			pass
 
 
 
