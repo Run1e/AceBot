@@ -4,6 +4,7 @@ from discord.ext import commands
 from utils.database import WelcomeMsg
 from utils.strip_markdown import strip_markdown
 from utils.welcome import welcomify
+from utils.checks import is_manager
 from cogs.base import TogglableCogMixin
 
 
@@ -47,12 +48,9 @@ class Welcome(TogglableCogMixin):
 		await channel.send(welcomify(member, guild, welc.content))
 	
 	@commands.group()
+	@is_manager()
 	async def welcome(self, ctx):
-		'''
-		Welcome your users with a message!
-
-		To insert a user mention, put {user} in your welcome message. {guild} does the same for the server name!
-		'''
+		'''Welcome your users with a message!'''
 	
 		if ctx.invoked_subcommand is not None:
 			return

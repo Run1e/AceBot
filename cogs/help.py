@@ -16,18 +16,18 @@ def get_signature(command):
 	"""Returns a POSIX-like signature useful for help command output."""
 	result = []
 	parent = command.full_parent_name
-	
+
 	name = command.name if not parent else parent + ' ' + command.name
 	result.append(name)
-	
+
 	if command.usage:
 		result.append(command.usage)
 		return ' '.join(result)
-	
+
 	params = command.clean_params
 	if not params:
 		return ' '.join(result)
-	
+
 	for name, param in params.items():
 		if param.default is not param.empty:
 			# We don't want None or '' to trigger the [name=value] case and instead it should
@@ -41,183 +41,197 @@ def get_signature(command):
 			result.append('[%s...]' % name)
 		else:
 			result.append('<%s>' % name)
-	
+
 	return ' '.join(result)
 
 
 class EmbedHelp:
+	per_page = 8
 	ignore_cogs = ('Verify', 'Roles', 'Help')
-	
-	pages = []
-	cogs = []
-	commands = {}
-	help_page = None
-	
+
 	def __init__(self, ctx):
 		self.ctx = ctx
+		self.bot = ctx.bot
+		self.pages = []
+		self.embed = discord.Embed()
 		self.index = 0
-	
+
+	def add_page(self, cog_name, cog_desc, cmds):
+		'''Will split into several pages to accomodate the per_page limit.'''
+
+		for cmnds in [cmds[i:i + self.per_page] for i in range(0, len(cmds), self.per_page)]:
+			self.pages.append(dict(cog_name=cog_name, cog_desc=cog_desc, commands=cmnds))
+
+	@property
+	def use_buttons(self):
+		return len(self.pages) > 1
+
 	@classmethod
-	def _make_embeds(cls, bot):
+	async def from_bot(cls, ctx):
+		self = cls(ctx)
+		bot = self.bot
 		cogs = list(filter(lambda cog: cog.__class__.__name__ not in cls.ignore_cogs, bot.cogs.values()))
+
+		def add_command(command):
+			hlp = command.brief or command.help
+			cmds.append((get_signature(command), hlp.split('\n')[0]))
+
 		for index, cog in enumerate(cogs):
-			
 			cog_name = cog.__class__.__name__
-			
-			e = discord.Embed(
-				description=cog.__doc__
-			)
-			
-			e.set_footer(text=f'Page {index + 1}/{len(cogs)}')
-			
-			def add_command(command):
-				e.add_field(
-					name=get_signature(command),
-					value=command.brief or command.help,
-					inline=False
-				)
-				
-				cls.commands[command.qualified_name] = index
-				for alias in command.aliases:
-					cls.commands[alias] = index
-			
+			cog_desc = cog.__doc__
+
+			cmds = []
+
 			for command_or_group in sorted(bot.get_cog_commands(cog_name), key=lambda cmd: cmd.name):
 				if command_or_group.hidden:
 					continue
-				
+
+				add_command(command_or_group)
+
 				if isinstance(command_or_group, commands.Group):
-					cls.commands[command_or_group.name] = index
 					for command in sorted(command_or_group.commands, key=lambda cmd: cmd.name):
 						add_command(command)
-				else:
-					add_command(command_or_group)
-			
-			e.add_field(name='Support Server', value=bot._support_link)
-			
-			e.set_author(name=f'{cog_name} Commands', icon_url=bot.user.avatar_url)
-			
-			cls.cogs.append(cog)
-			cls.pages.append(e)
-		
-		# help page
-		
-		e = discord.Embed(
-			title='How do I use the bot?',
-			description='Invoke a command by sending the prefix followed by a command name.\n\nFor example, the command'
-						' signature `define <query>` can be invoked by doing `.define bot`\n\nThe different argument'
-						' brackets mean:'
-		)
-		
-		e.add_field(name='<argument>', value='means the argument is required.', inline=False)
-		e.add_field(name='[argument]', value='means the argument is optional.', inline=False)
-		
-		cls.help_page = e
-	
+
+			self.add_page(cog_name, cog_desc, cmds)
+
+		return self
+
+	@classmethod
+	async def from_command(cls, ctx, command):
+		self = cls(ctx)
+
+		cmds = []
+
+		cog_name = command.cog_name
+
+		def add_command(command):
+			cmds.append((get_signature(command), command.brief or command.help))
+
+		add_command(command)
+
+		if isinstance(command, commands.Group):
+			for cmd in sorted(command.commands, key=lambda cmd: cmd.name):
+				add_command(cmd)
+
+		self.add_page(cog_name, None, cmds)
+
+		return self
+
+	def get_embed(self):
+		page = self.pages[self.index]
+
+		self.embed.clear_fields()
+
+		self.embed.set_author(name=page['cog_name'] + ' Commands', icon_url=self.bot.user.avatar_url)
+		self.embed.description = page['cog_desc']
+
+		for name, value in page['commands']:
+			self.embed.add_field(name=name, value=value, inline=False)
+
+		if len(self.pages) > 1:
+			self.embed.set_footer(text=f'Page {self.index + 1}/{len(self.pages)}')
+		else:
+			self.embed.set_footer()
+
+		return self.embed
+
 	def help(self):
-		return self.help_page
-	
+		self.embed.clear_fields()
+		self.embed.set_footer()
+		self.embed.set_author(name='How do I use the bot?', icon_url=self.bot.user.avatar_url)
+
+		self.embed.description = (
+			'Invoke a command by sending the prefix followed by a command name.\n\n'
+			'For example, the command signature `define <query>` can be invoked by doing `.define bot`\n\n'
+			'The different argument brackets mean:'
+		)
+
+		self.embed.add_field(name='<argument>', value='means the argument is required.', inline=False)
+		self.embed.add_field(name='[argument]', value='means the argument is optional.', inline=False)
+		return self.embed
+
 	def next(self):
 		if len(self.pages) - 1 != self.index:
 			self.index += 1
-	
+		return self.get_embed()
+
 	def prev(self):
 		if self.index != 0:
 			self.index -= 1
-	
+		return self.get_embed()
+
 	def first(self):
 		self.index = 0
-	
+		return self.get_embed()
+
 	def last(self):
 		self.index = len(self.pages) - 1
-
-'''
-OrderedDict
-
-'cog_name': {'desc': 'cog_desc',
-			 'commands': [(command_name, command_desc),
-			 			  (command_name, command_desc)]
-
-'''
+		return self.get_embed()
 
 
 class Help:
 	emojis = (FIRST_EMOJI, PREV_EMOJI, NEXT_EMOJI, LAST_EMOJI, STOP_EMOJI, HELP_EMOJI)
-	
+
 	def __init__(self, bot):
 		self.bot = bot
-		EmbedHelp._make_embeds(bot)
-	
+
 	@commands.command(hidden=True)
 	@commands.bot_has_permissions(add_reactions=True)
 	async def help(self, ctx, *, command: str = None):
-		eh = EmbedHelp(ctx)
-		
+		'''Help command.'''
+
 		if command is not None:
-			command = command.lower()
-			
-			if command in eh.commands:
-				eh.index = eh.commands[command]
-			else:
-				for index, cog in enumerate(eh.cogs):
-					if command == cog.__class__.__name__.lower():
-						eh.index = index
-						break
-		
-		embed = eh.pages[eh.index]
+			command = ctx.bot.get_command(command)
+			if command is None:
+				raise commands.CommandError('Couldn\'t find command.')
+			eh = await EmbedHelp.from_command(ctx, command)
+		else:
+			eh = await EmbedHelp.from_bot(ctx)
+
+		embed = eh.get_embed()
 		msg = await ctx.send(embed=embed)
-		
+
 		def pred(reaction, user):
 			return reaction.message.id == msg.id and user != self.bot.user
-		
-		for emoji in self.emojis:
-			await msg.add_reaction(emoji)
-		
+
+		if eh.use_buttons:
+			if len(eh.pages) < 3:
+				emojis = filter(lambda e: e not in (FIRST_EMOJI, LAST_EMOJI), self.emojis)
+			else:
+				emojis = self.emojis
+
+			for emoji in emojis:
+				await msg.add_reaction(emoji)
+
 		while True:
 			try:
-				reaction, user = await self.bot.wait_for('reaction_add', check=pred, timeout=60.0)
+				reaction, user = await self.bot.wait_for('reaction_add', check=pred, timeout=120.0)
 			except asyncio.TimeoutError:
 				break
 			else:
+				if reaction.emoji == STOP_EMOJI:
+					await msg.delete()
+					return
+
 				await msg.remove_reaction(reaction.emoji, user)
 
 				if user != ctx.author:
 					continue
 
-				if reaction.emoji == STOP_EMOJI:
-					break
-
 				if reaction.emoji == NEXT_EMOJI:
-					eh.next()
+					e = eh.next()
 				elif reaction.emoji == PREV_EMOJI:
-					eh.prev()
+					e = eh.prev()
 				elif reaction.emoji == FIRST_EMOJI:
-					eh.first()
+					e = eh.first()
 				elif reaction.emoji == LAST_EMOJI:
-					eh.last()
+					e = eh.last()
 				elif reaction.emoji == HELP_EMOJI:
 					await msg.edit(embed=eh.help())
 					continue
 				else:
 					continue
-				
-				cog = eh.cogs[eh.index]
-				e = eh.pages[eh.index]
-				
-				if isinstance(cog, TogglableCogMixin):
-					state = await ctx.bot.uses_module(ctx, cog.__class__.__name__)
-					
-					# this is honestly quite the hack and I don't like it but I think it's okay
-					# also it shouldn't really be here z
-					e_dict = e.to_dict()
-					e = discord.Embed(**e_dict)
-					for field in e_dict['fields']:
-						e.add_field(**field)
-					e.set_footer(**e_dict['footer'])
-					e.set_author(
-						name=e_dict['author']['name'] + f" ({'enabled' if state else 'disabled'})",
-						icon_url=e_dict['author']['icon_url']
-					)
-				
+
 				await msg.edit(embed=e)
 				await msg.remove_reaction(reaction.emoji, user)
 
@@ -225,8 +239,6 @@ class Help:
 			await msg.clear_reactions()
 		except discord.NotFound:
 			pass
-
-
 
 
 def setup(bot):

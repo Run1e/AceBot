@@ -4,7 +4,7 @@ from sqlalchemy.sql.operators import and_, or_
 
 from cogs.base import TogglableCogMixin
 from utils.strip_markdown import strip_markdown
-from utils.checks import bot_or_guild_owner
+from utils.checks import is_manager
 from utils.database import HighlightLang
 
 
@@ -98,7 +98,7 @@ class Highlighter(TogglableCogMixin):
 		return selected or self.language
 	
 	@commands.command()
-	@bot_or_guild_owner()
+	@is_manager()
 	async def guildlang(self, ctx, *, language: LangConverter):
 		'''Set the default guild highlighting language.'''
 		
