@@ -29,6 +29,7 @@ def docs_search(search_terms):
 		page = find_page(query)
 		obj = docs.get(page, None)
 		if obj is not None:
+			obj['syntax'] = obj['syntax'].split('\n')[0]  # unsure about this tbh
 			results[page] = obj
 
 	return results
