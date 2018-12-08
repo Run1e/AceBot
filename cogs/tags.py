@@ -16,11 +16,14 @@ MAX_EMBEDS_TAGS = 10
 
 class TagName(commands.Converter):
 	_length_limit = 32
+	_length_min = 3
 	_reserved = ['tag', 'create', 'edit', 'delete', 'info', 'list', 'top', 'raw', 'get', 'set', 'exec', 'search']
 
 	async def convert(self, ctx, tag_name: make_lower):
 		if len(tag_name) > self._length_limit:
 			raise commands.CommandError(f'Tag name limit is {self._length_limit} characters.')
+		if len(tag_name) < 3:
+			raise commands.CommandError(f'Tag names have to at least {self._length_min} characters.')
 		if tag_name in self._reserved:
 			raise commands.CommandError('Sorry, that tag name is reserved!')
 		if tag_name != strip_markdown(tag_name):
@@ -74,11 +77,7 @@ class Tags:
 
 	@commands.group()
 	async def tag(self, ctx):
-		'''
-		Create and manage tags.
-
-		To bring up a tag, do `tag <tag_name>`
-		'''
+		'''Create and manage tags.'''
 
 		if ctx.invoked_subcommand is not None:
 			return
@@ -152,19 +151,21 @@ class Tags:
 		await ctx.send('Tag renamed.')
 
 	@tag.command()
-	async def alias(self, ctx, tag_name: TagName, alias: TagName):
+	async def alias(self, ctx, tag_name: TagName, alias: TagName = None):
 		'''Set an alias for a tag.'''
 
 		tg = await self.get_tag(ctx.guild.id, tag_name)
 		if tg is None or not self.can_edit(ctx.author.id, tg):
 			raise commands.CommandError("Tag doesn't exist, or you don't own it.")
 
-		if await self.tag_exists(ctx.guild.id, alias):
-			raise commands.CommandError('Tag name already in use.')
-
-		await tg.update(alias=alias).apply()
-
-		await ctx.send('Alias set.')
+		if alias is not None:
+			if await self.tag_exists(ctx.guild.id, alias):
+				raise commands.CommandError('Tag name already in use.')
+			await tg.update(alias=alias).apply()
+			await ctx.send('Alias set.')
+		else:
+			await tg.update(alias=None).apply()
+			await ctx.send('Alias removed.')
 
 	@tag.command()
 	async def transfer(self, ctx, tag_name: TagName, new_owner: discord.Member):

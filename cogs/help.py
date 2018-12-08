@@ -62,6 +62,12 @@ class EmbedHelp:
 		for cmnds in [cmds[i:i + self.per_page] for i in range(0, len(cmds), self.per_page)]:
 			self.pages.append(dict(cog_name=cog_name, cog_desc=cog_desc, commands=cmnds))
 
+	def add_command(self, cmd_list, command, brief=True):
+		if not command.hidden:
+			hlp = command.brief or command.help
+			if not command.hidden:
+				cmd_list.append((get_signature(command), hlp.split('\n')[0] if brief else hlp))
+
 	@property
 	def use_buttons(self):
 		return len(self.pages) > 1
@@ -71,10 +77,6 @@ class EmbedHelp:
 		self = cls(ctx)
 		bot = self.bot
 		cogs = list(filter(lambda cog: cog.__class__.__name__ not in cls.ignore_cogs, bot.cogs.values()))
-
-		def add_command(command):
-			hlp = command.brief or command.help
-			cmds.append((get_signature(command), hlp.split('\n')[0]))
 
 		for index, cog in enumerate(cogs):
 			cog_name = cog.__class__.__name__
@@ -86,11 +88,11 @@ class EmbedHelp:
 				if command_or_group.hidden:
 					continue
 
-				add_command(command_or_group)
+				self.add_command(cmds, command_or_group)
 
 				if isinstance(command_or_group, commands.Group):
 					for command in sorted(command_or_group.commands, key=lambda cmd: cmd.name):
-						add_command(command)
+						self.add_command(cmds, command)
 
 			self.add_page(cog_name, cog_desc, cmds)
 
@@ -104,16 +106,32 @@ class EmbedHelp:
 
 		cog_name = command.cog_name
 
-		def add_command(command):
-			cmds.append((get_signature(command), command.brief or command.help))
-
-		add_command(command)
+		self.add_command(cmds, command, brief=False)
 
 		if isinstance(command, commands.Group):
 			for cmd in sorted(command.commands, key=lambda cmd: cmd.name):
-				add_command(cmd)
+				self.add_command(cmds, cmd, brief=False)
 
 		self.add_page(cog_name, None, cmds)
+
+		return self
+
+	@classmethod
+	async def from_cog(cls, ctx, cog):
+		self = cls(ctx)
+
+		cmds = []
+
+		cog_name = cog.__class__.__name__
+
+		for cmd in sorted(self.bot.get_cog_commands(cog_name), key=lambda cd: cd.name):
+			self.add_command(cmds, cmd, brief=False)
+
+			if isinstance(cmd, commands.Group):
+				for gcmd in sorted(cmd.commands, key=lambda cd: cd.name):
+					self.add_command(cmds, gcmd, brief=False)
+
+		self.add_page(cog_name, cog.__doc__, cmds)
 
 		return self
 
@@ -148,6 +166,7 @@ class EmbedHelp:
 
 		self.embed.add_field(name='<argument>', value='means the argument is required.', inline=False)
 		self.embed.add_field(name='[argument]', value='means the argument is optional.', inline=False)
+
 		return self.embed
 
 	def next(self):
@@ -181,10 +200,19 @@ class Help:
 		'''Help command.'''
 
 		if command is not None:
-			command = ctx.bot.get_command(command)
-			if command is None:
-				raise commands.CommandError('Couldn\'t find command.')
-			eh = await EmbedHelp.from_command(ctx, command)
+			command = command.lower()
+			cog = None
+			for cog_name, current_cog in ctx.bot.cogs.items():
+				if cog_name.lower() == command:
+					cog = current_cog
+					break
+			if cog is not None:
+				eh = await EmbedHelp.from_cog(ctx, cog)
+			else:
+				command = ctx.bot.get_command(command)
+				if command is None:
+					raise commands.CommandError('Couldn\'t find command/cog.')
+				eh = await EmbedHelp.from_command(ctx, command)
 		else:
 			eh = await EmbedHelp.from_bot(ctx)
 

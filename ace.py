@@ -193,6 +193,9 @@ class AceBot(commands.Bot):
 		
 		return e
 
+	async def log(self, msg):
+		await self.get_channel(log_channel).send(msg)
+
 
 # monkey-patched Embed class to force embed color
 class Embed(discord.Embed):
