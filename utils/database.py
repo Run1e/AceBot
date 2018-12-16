@@ -64,6 +64,18 @@ class HighlightLang(db.Model):
 	language = db.Column(db.Text)
 
 
+class UserCoin(db.Model):
+	__tablename__ = 'coin'
+	
+	id = db.Column(db.Integer, primary_key=True)
+	guild_id = db.Column(db.BigInteger)
+	user_id = db.Column(db.BigInteger)
+	bets = db.Column(db.Integer)
+	biggest_win = db.Column(db.BigInteger, nullable=True)
+	biggest_loss = db.Column(db.BigInteger, nullable=True)
+	biggest_mult = db.Column(db.BigInteger, nullable=True)
+	coins = db.Column(db.BigInteger)
+
 """
 class GuildPlaylist(db.Model):
 	__tablename__ = 'playlist'

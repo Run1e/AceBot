@@ -28,6 +28,7 @@ extensions = (
 	'cogs.mod',
 	'cogs.hl',
 	'cogs.welcome',
+	'cogs.coins',
 	'cogs.roles',
 	'cogs.guild.ahk',
 	'cogs.owner',

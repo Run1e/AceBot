@@ -33,6 +33,7 @@ class AutoHotkey(TogglableCogMixin):
 	@commands.command()
 	async def docs(self, ctx, *, search):
 		'''Search the AutoHotkey documentation.'''
+		
 		embed = discord.Embed()
 		results = docs_search(search)
 

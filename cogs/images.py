@@ -95,6 +95,7 @@ class Image:
 		await ctx.send(file=discord.File(data, 'duck.' + resp.content_type.split('/')[-1]))
 
 	@commands.command()
+	@commands.cooldown(rate=3, per=10.0, type=commands.BucketType.user)
 	async def floof(self, ctx):
 		'''~floooof~'''
 
