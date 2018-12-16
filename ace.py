@@ -156,16 +156,20 @@ class AceBot(commands.Bot):
 
 		if isinstance(exc, commands.UserInputError):
 			extra = f'Usage: `{self.command_prefix}{ctx.command.signature}`'
+
 		elif isinstance(exc, commands.CommandOnCooldown):
 			title, extra = 'You are on cooldown.', f'Try again in {floor(exc.retry_after)} seconds.'
+
 		elif isinstance(exc, commands.BotMissingPermissions):
 			title = 'Bot is missing permissions to run command.'
 			extra = '\n'.join(perm.replace('_', ' ').title() for perm in exc.missing_perms)
+
 		elif isinstance(exc, commands.DisabledCommand):
 			title = 'This command has been disabled.'
 			extra = 'Check back later!'
 		elif isinstance(exc, (commands.CommandNotFound, commands.CheckFailure)):
 			return  # don't care about these
+
 		elif isinstance(exc, commands.CommandError):
 			title = None
 			extra = str(exc)
@@ -178,6 +182,7 @@ class AceBot(commands.Bot):
 
 	def embed_from_ctx(self, ctx):
 		e = discord.Embed()
+
 		e.set_author(
 			name=ctx.guild.name,
 			icon_url=ctx.guild.icon_url,
@@ -185,6 +190,7 @@ class AceBot(commands.Bot):
 
 		e.add_field(name='Author', value=ctx.author.name)
 		e.add_field(name='Command', value=ctx.command.qualified_name)
+
 		if len(ctx.args) > 2:
 			e.add_field(name='args', value=ctx.args[2:])
 		if ctx.kwargs:

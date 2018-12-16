@@ -14,4 +14,4 @@ def google_parse(text):
 	link = g.a['href']
 	desc = g.find(class_='st')
 
-	return title, link, str(desc.text), urlparse(link).netloc
+	return title, link, desc.text, urlparse(link).netloc
