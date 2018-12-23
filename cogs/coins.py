@@ -10,7 +10,11 @@ POWER = -0.82281617988
 DEFAULT_AMOUNT = 100
 
 STD_MULT = 'You hit a {}x multiplier and won {} coins!'
-
+BROKE_STRINGS = ['You lost it all, you sell some of your child\'s belongings for 100 coins.',
+ 'You gambled away all of your inheritance and it left you unable to pay your mortgage, luckily you found 100 coins while crawling through the sewer.',
+ 'You lost the rest of your savings, you take to the streets and *earn* 100 coins the *hard* way ( ͡° ͜ʖ ͡°).',
+ 'After loosing the rest of your coins, you work in a sweatshop until you have earned back 100 coins.',
+ 'Without any coins to pay back your debts, the mafia comes and breaks your kneecaps, but you found 100 coins in a gutter, so you\'ve got that going for you.']
 
 class Coins(TogglableCogMixin):
 	'''Bet some coins!'''
@@ -75,7 +79,7 @@ class Coins(TogglableCogMixin):
 			
 			if new_balance == 0:
 				await ctx.send(
-					'You lost it all! You\'ve been reset to 100 coins which you can use when the cooldown ends.'
+					BROKE_STRINGS[random.randrange(0, len(BROKE_STRINGS))]
 				)
 			else:
 				await ctx.send(f'Sorry, you lost {self.fmt(coins)} coins!')
