@@ -79,7 +79,7 @@ class Coins(TogglableCogMixin):
 			
 			if new_balance == 0:
 				await ctx.send(
-					BROKE_STRINGS[random.randrange(0, len(BROKE_STRINGS))]
+					random.choice(BROKE_STRINGS)
 				)
 			else:
 				await ctx.send(f'Sorry, you lost {self.fmt(coins)} coins!')
