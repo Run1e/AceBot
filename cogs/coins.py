@@ -15,6 +15,9 @@ STD_MULT = 'You hit a {}x multiplier and won {} coins!'
 class Coins(TogglableCogMixin):
 	'''Bet some coins!'''
 	
+	async def __local_check(self, ctx):
+		return await self._is_used(ctx)
+	
 	async def get_user(self, guild_id, user_id):
 		coins = await UserCoin.query.where(
 			and_(
@@ -41,8 +44,14 @@ class Coins(TogglableCogMixin):
 	
 	@commands.command()
 	@commands.cooldown(rate=1, per=60 * 60, type=commands.BucketType.member)
-	async def bet(self, ctx, coins: int):
+	async def bet(self, ctx, coins):
 		'''Bet some coins.'''
+		
+		try:
+			coins = int(coins)
+		except ValueError:
+			ctx.command.reset_cooldown(ctx)
+			raise commands.BadArgument('Converting to "int" failed for parameter "coins".')
 		
 		cn = await self.get_user(ctx.guild.id, ctx.author.id)
 		
@@ -50,10 +59,12 @@ class Coins(TogglableCogMixin):
 			cn.coins = DEFAULT_AMOUNT
 		
 		if coins < 1:
+			ctx.command.reset_cooldown(ctx)
 			await ctx.send('Sorry, you have to bet an amount greater than 0!')
 			return
 		
 		if cn.coins < coins:
+			ctx.command.reset_cooldown(ctx)
 			await ctx.send('You don\'t have enough coins to bet that amount!')
 			return
 		

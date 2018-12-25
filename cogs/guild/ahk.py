@@ -26,8 +26,7 @@ class AutoHotkey(TogglableCogMixin):
 			return
 
 		# command not found? docs search it. only if message string is not *only* dots though
-		if isinstance(error, commands.CommandNotFound) and len(
-				ctx.message.content) > 3 and not ctx.message.content.startswith('..'):
+		if isinstance(error, commands.CommandNotFound) and len(ctx.message.content) > 3 and not ctx.message.content.startswith('..'):
 			await ctx.invoke(self.docs, search=ctx.message.content[1:])
 
 	@commands.command()
