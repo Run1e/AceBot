@@ -6,7 +6,6 @@ from sqlalchemy import and_
 from .base import TogglableCogMixin
 from utils.database import UserCoin
 
-POWER = -0.82281617988
 DEFAULT_AMOUNT = 100
 
 STD_MULT = 'You hit a {}x multiplier and won {} coins!'
@@ -37,7 +36,7 @@ class Coins(TogglableCogMixin):
 		)
 
 	def get_mult(self, i):
-		return 32 * pow(i, POWER)
+		return 32 * pow(i, -0.82281617988)
 
 	def fmt(self, num):
 		return '{:,}'.format(num)

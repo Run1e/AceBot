@@ -142,8 +142,6 @@ class AceBot(commands.Bot):
 		await self.change_presence(activity=discord.Game(name=f'.help | {users} users'))
 
 	async def on_command_error(self, ctx, exc):
-		print(type(exc))
-		
 		if hasattr(exc, 'original'):
 			try:
 				raise exc.original
