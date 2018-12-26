@@ -1,10 +1,14 @@
-import discord, random
+import discord, random, logging
 from discord.ext import commands
 
 from sqlalchemy import and_
 
 from .base import TogglableCogMixin
+from utils.setup_logger import config_logger
 from utils.database import UserCoin
+
+log = logging.getLogger(__name__)
+log = config_logger(log)
 
 POWER = -0.82281617988
 DEFAULT_AMOUNT = 100
@@ -14,7 +18,10 @@ STD_MULT = 'You hit a {}x multiplier and won {} coins!'
 
 class Coins(TogglableCogMixin):
 	'''Bet some coins!'''
-	
+
+	async def __local_check(self, ctx):
+		return await self._is_used(ctx)
+
 	async def get_user(self, guild_id, user_id):
 		coins = await UserCoin.query.where(
 			and_(
@@ -58,8 +65,10 @@ class Coins(TogglableCogMixin):
 			return
 		
 		res = random.randrange(100000) / 1000
-		
-		if res > 49:
+
+		log.info(f'{ctx.author.name} - {res}')
+
+		if res > 50.0:
 			if cn.biggest_loss is None or coins > cn.biggest_loss:
 				biggest_loss = coins
 			else:
@@ -89,7 +98,7 @@ class Coins(TogglableCogMixin):
 			mult = self.get_mult(res)
 			fmt = STD_MULT
 		
-		simple_mult = round(mult, 1)
+		simple_mult = round(mult, 2)
 		
 		won = int(coins * (mult - 1))
 		

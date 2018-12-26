@@ -1,9 +1,9 @@
 import discord, aiohttp, logging, dbl, asyncio, traceback
 from discord.ext import commands
-from math import floor
-from datetime import datetime
+from datetime import datetime, timedelta
 from sqlalchemy import and_
 
+from utils.time import pretty_seconds
 from utils.database import setup_db, GuildModule, IgnoredUser
 from utils.setup_logger import config_logger
 from config import *
@@ -158,7 +158,7 @@ class AceBot(commands.Bot):
 			extra = f'Usage: `{self.command_prefix}{ctx.command.signature}`'
 
 		elif isinstance(exc, commands.CommandOnCooldown):
-			title, extra = 'You are on cooldown.', f'Try again in {floor(exc.retry_after)} seconds.'
+			title, extra = 'You are on cooldown.', f'Try again in {pretty_seconds(exc.retry_after)}.'
 
 		elif isinstance(exc, commands.BotMissingPermissions):
 			title = 'Bot is missing permissions to run command.'

@@ -3,6 +3,7 @@ from discord.ext import commands
 from datetime import datetime, timedelta
 
 from utils.database import db, LogEntry
+from utils.time import pretty_seconds
 
 MEDALS = ['🥇', '🥈', '🥉', '🏅', '🏅']
 
@@ -178,7 +179,8 @@ class Stats:
 	async def uptime(self, ctx):
 		'''Time since last bot restart.'''
 
-		await ctx.send(f'`{str(datetime.now() - self.bot.startup_time).split(".")[0]}`')
+		delta = datetime.now() - self.bot.startup_time
+		await ctx.send(f'The bot has been online for {pretty_seconds(delta.seconds)}.')
 
 
 def setup(bot):
