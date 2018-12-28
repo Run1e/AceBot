@@ -10,13 +10,16 @@ def pretty_seconds(s):
 
 	parts = []
 
+	def add_part(type, value):
+		parts.append('{} {}{}'.format(str(value), type, 's' if value > 1 else ''))
+
 	if hours > 0:
-		parts.append(str(hours) + ' hours')
+		add_part('hour', hours)
 
 	if minutes > 0:
-		parts.append(str(minutes) + ' minutes')
+		add_part('minute', minutes)
 
 	if not len(parts):
-		parts.append(str(seconds) + ' seconds')
+		add_part('second', seconds)
 
 	return ', '.join(parts)

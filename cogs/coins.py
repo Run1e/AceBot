@@ -1,9 +1,10 @@
-import discord, random
+import discord, random, time
 from discord.ext import commands
 
 from sqlalchemy import and_
 
 from .base import TogglableCogMixin
+from utils.time import pretty_seconds
 from utils.database import UserCoin
 
 DEFAULT_AMOUNT = 100
@@ -36,7 +37,7 @@ class Coins(TogglableCogMixin):
 		)
 
 	def get_mult(self, i):
-		return 32 * pow(i, -0.82281617988)
+		return
 
 	def fmt(self, num):
 		return '{:,}'.format(num)
@@ -96,15 +97,12 @@ class Coins(TogglableCogMixin):
 			mult = 1000.0
 			fmt = '🎉🎉🎉 You hit the ultimate super duper mega-jackpot! With a multiplier of {} you won {} coins!!!'
 		else:
-			mult = self.get_mult(res)
+			mult = 32 * pow(res, -0.82281617988)
 			fmt = STD_MULT
 
 		simple_mult = round(mult, 1)
 
-		won = int(coins * (mult - 1))
-
-		if won < 1:
-			won = 1
+		won = max(1, int(coins * (mult - 1)))
 
 		if cn.biggest_win is None or won > cn.biggest_win:
 			biggest_win = won
@@ -148,6 +146,11 @@ class Coins(TogglableCogMixin):
 
 		if cn.biggest_loss is not None:
 			e.add_field(name='Biggest loss', value='{} coins'.format(self.fmt(cn.biggest_loss)))
+
+		bucket = self.bet._buckets.get_bucket(ctx)
+		if bucket.per < bucket._window:
+			elapsed = time.time() - bucket._window
+			e.add_field(name='Cooldown', value=pretty_seconds(bucket.per - elapsed))
 
 		await ctx.send(embed=e)
 
