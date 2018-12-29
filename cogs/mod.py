@@ -9,7 +9,7 @@ class Moderator(TogglableCogMixin):
 	'''
 	Moderation commands.
 	
-	Only available to members with Ban Members permissions.
+	Only available for members with Ban Members permissions.
 	'''
 
 	async def __local_check(self, ctx):

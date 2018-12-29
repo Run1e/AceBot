@@ -11,7 +11,7 @@ from cogs.base import TogglableCogMixin
 class Welcome(TogglableCogMixin):
 	'''Make the bot send welcome messages to new users.'''
 
-	_sleep = 3 # seconds
+	_sleep = 3  # seconds
 
 	async def __local_check(self, ctx):
 		return await self._is_used(ctx)
@@ -47,16 +47,10 @@ class Welcome(TogglableCogMixin):
 
 		await channel.send(welcomify(member, guild, welc.content))
 
-	@commands.group()
+	@commands.group(hidden=True)
 	@is_manager()
 	async def welcome(self, ctx):
 		'''Welcome your users with a message!'''
-
-		if ctx.invoked_subcommand is not None:
-			return
-
-		help_text = await self.bot.formatter.format_help_for(ctx, ctx.command)
-		await ctx.send('\n'.join(help_text[0].split('\n')[:-3]) + '```')
 
 	@welcome.command()
 	async def msg(self, ctx, *, content: commands.clean_content):
