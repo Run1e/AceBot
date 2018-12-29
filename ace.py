@@ -143,12 +143,13 @@ class AceBot(commands.Bot):
 
 	async def on_command_error(self, ctx, exc):
 		if hasattr(exc, 'original'):
-			try:
-				raise exc.original
-			except Exception:
-				chan = self.get_channel(error_channel)
-				await chan.send(embed=self.embed_from_ctx(ctx))
-				await chan.send(f'```{traceback.format_exc()}```')
+			if ctx.guild.id != 264445053596991498: # ignore errors in DBL guild
+				try:
+					raise exc.original
+				except Exception:
+					chan = self.get_channel(error_channel)
+					await chan.send(embed=self.embed_from_ctx(ctx))
+					await chan.send(f'```{traceback.format_exc()}```')
 			raise exc.original
 
 		title = str(exc)
