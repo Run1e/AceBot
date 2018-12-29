@@ -39,6 +39,7 @@ class Image:
 
 		if len(data) > DISCORD_SIZE_LIMIT:
 			await ctx.reinvoke()
+			return
 
 		await ctx.send(file=discord.File(data, 'dog.' + resp.content_type.split('/')[-1]))
 
@@ -64,6 +65,7 @@ class Image:
 
 		if len(data) > DISCORD_SIZE_LIMIT:
 			await ctx.reinvoke()
+			return
 
 		await ctx.send(file=discord.File(data, 'cat.' + resp.content_type.split('/')[-1]))
 
@@ -91,6 +93,7 @@ class Image:
 
 		if len(data) > DISCORD_SIZE_LIMIT:
 			await ctx.reinvoke()
+			return
 
 		await ctx.send(file=discord.File(data, 'duck.' + resp.content_type.split('/')[-1]))
 
@@ -118,6 +121,7 @@ class Image:
 
 		if len(data) > DISCORD_SIZE_LIMIT:
 			await ctx.reinvoke()
+			return
 
 		await ctx.send(file=discord.File(data, 'fox.' + resp.content_type.split('/')[-1]))
 
