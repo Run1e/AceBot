@@ -31,7 +31,7 @@ A complete list of available commands can be browsed by doing `.help`
 
 ## Modules
 
-#### Tags
+### Tags
 
 The tags module makes it easy to bring up text. The tags system works like this:
 
@@ -46,7 +46,7 @@ The tags module makes it easy to bring up text. The tags system works like this:
 
 To see a full list of tag related commands, do `.help tags`
 
-#### Welcome
+### Welcome
 
 The welcome module makes it easy to welcome new server members with a welcoming message. Has to be enabled using `.enable`
 
@@ -64,7 +64,7 @@ When a member joins, `{user}` is replaced with a mention and `{guild}` is replac
 
 To see a full list of welcome message related commands, do `.help welcome`. To enable/disable welcome messages, simply toggle the module.
 
-#### Moderator
+### Moderator
 
 The moderator module has some basic moderation functionality. Has to be enabled using `.enable`
 
@@ -78,7 +78,7 @@ Clears the newest `message_count` messages in the current channel, either indisc
 
 Shows all practically useful information about a member or yourself.
 
-#### Highlighter
+### Highlighter
 
 Makes it easier to paste code into the chat. Has to be enabled using `.enable`
 
@@ -94,7 +94,7 @@ Change what syntax highlighting the bot should use for your code. For example: `
 
 Sets the default server specific syntax highlighting for `.hl`. Only changable by users with the Manage Server permission.
 
-#### Coins
+### Coins
 
 Bet virtual coins. Lose it all or get rich! Has to be enabled using `.enable`
 
