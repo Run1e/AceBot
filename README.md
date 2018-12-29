@@ -71,11 +71,9 @@ The moderator module has some basic moderation functionality. Has to be enabled 
 These commands are only available to members with the Ban Members permission.
 
 `.clear [message_count] [user]`
-
 Clears the newest `message_count` messages in the current channel, either indiscriminately or only messages from `user`.
 
 `.info [user]`
-
 Shows all practically useful information about a member or yourself.
 
 ### Highlighter
@@ -83,15 +81,12 @@ Shows all practically useful information about a member or yourself.
 Makes it easier to paste code into the chat. Has to be enabled using `.enable`
 
 `.hl <code>`
-
 Deletes your message and reports the code in a code box, with emojis for message deletion.
 
 `.lang <language>`
-
 Change what syntax highlighting the bot should use for your code. For example: `py`, `ahk`, `html`, etc.
 
 `.guildlang <language>`
-
 Sets the default server specific syntax highlighting for `.hl`. Only changable by users with the Manage Server permission.
 
 ### Coins
@@ -99,11 +94,9 @@ Sets the default server specific syntax highlighting for `.hl`. Only changable b
 Bet virtual coins. Lose it all or get rich! Has to be enabled using `.enable`
 
 `.bet <coins>`
-
 Bet an amount of coins. 50% of losing your bet!
 
 `.coins [member]`
-
 Show your balance, and other misc. stats.
 
 ## Bot moderation
