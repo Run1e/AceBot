@@ -10,11 +10,22 @@ from utils.database import UserCoin
 DEFAULT_AMOUNT = 100
 
 STD_MULT = 'You hit a {}x multiplier and won {} coins!'
-BROKE_STRINGS = ['You lost it all, you sell some of your child\'s belongings for 100 coins.',
- 'You gambled away all of your inheritance and it left you unable to pay your mortgage, luckily you found 100 coins while crawling through the sewer.',
- 'You lost the rest of your savings, you take to the streets and *earn* 100 coins the *hard* way ( ͡° ͜ʖ ͡°).',
- 'After loosing the rest of your coins, you work in a sweatshop until you have earned back 100 coins.',
- 'Without any coins to pay back your debts, the mafia comes and breaks your kneecaps, but you found 100 coins in a gutter, so you\'ve got that going for you.']
+
+BROKE_STRINGS = (
+	'You lost it all, you sell some of your child\'s belongings for {} coins.',
+
+	'You gambled away all of your inheritance and it left you unable to pay your mortgage, '
+	'luckily you found {} coins while crawling through the sewer.',
+
+	'You lost the rest of your savings, you take to the streets and *earn* {} coins '
+	'the *hard* way ( ͡° ͜ʖ ͡°).',
+
+	'After loosing the rest of your coins, you work in a sweatshop until you have earned back {} coins.',
+
+	'Without any coins to pay back your debts, the mafia comes and breaks your kneecaps, but you found {} coins in a '
+	'gutter, so you\'ve got that going for you.'
+)
+
 
 class Coins(TogglableCogMixin):
 	'''Bet some coins!'''
@@ -39,9 +50,6 @@ class Coins(TogglableCogMixin):
 			bets=0,
 			coins=DEFAULT_AMOUNT
 		)
-
-	def get_mult(self, i):
-		return
 
 	def fmt(self, num):
 		return '{:,}'.format(num)
@@ -74,7 +82,7 @@ class Coins(TogglableCogMixin):
 
 		res = random.randrange(100000) / 1000
 
-		if res > 49:
+		if res > 50:
 			if cn.biggest_loss is None or coins > cn.biggest_loss:
 				biggest_loss = coins
 			else:
@@ -89,9 +97,7 @@ class Coins(TogglableCogMixin):
 			).apply()
 
 			if new_balance == 0:
-				await ctx.send(
-					random.choice(BROKE_STRINGS)
-				)
+				await ctx.send(random.choice(BROKE_STRINGS).format(DEFAULT_AMOUNT))
 			else:
 				await ctx.send(f'Sorry, you lost {self.fmt(coins)} coins!')
 
