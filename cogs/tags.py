@@ -75,6 +75,22 @@ class Tags:
 			).gino.all()
 		return tags
 
+	async def tag_search(self, guild_id, tag_name):
+		query = '''
+			SELECT
+				name
+			FROM tag
+			WHERE guild_id = $1
+			AND name % $2
+			LIMIT 5
+		'''
+
+		alts = []
+		for row in await db.all(query, guild_id, tag_name):
+			alts.append(row[0])
+
+		return alts
+
 	@commands.group()
 	async def tag(self, ctx):
 		'''Create and manage tags.'''
@@ -93,23 +109,23 @@ class Tags:
 
 		# tag not found, do search
 
-		query = '''
-			SELECT
-				name
-			FROM tag
-			WHERE guild_id = $1
-			AND name % $2
-			LIMIT 5
-		'''
-
-		alts = []
-		for row in await db.all(query, ctx.guild.id, tag_name):
-			alts.append(row[0])
+		alts = await self.tag_search(ctx.guild.id, tag_name)
 
 		if not len(alts):
 			raise commands.CommandError('Tag not found.')
 		else:
 			raise commands.CommandError('Tag not found. Did you mean any of these?\n\n' + '\n'.join(alts))
+
+	@tag.command()
+	async def search(self, ctx, *, tag_name: str):
+		'''Search for a tag.'''
+
+		alts = await self.tag_search(ctx.guild.id, tag_name)
+
+		if not len(alts):
+			raise commands.CommandError('Sorry, found no tags similar to that.')
+		else:
+			await ctx.send('I found these tags:\n\n' + '\n'.join(alts))
 
 	@tag.command()
 	async def create(self, ctx, tag_name: TagName, *, content: commands.clean_content):
