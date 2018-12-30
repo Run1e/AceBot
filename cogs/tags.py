@@ -3,7 +3,7 @@ from discord.ext import commands
 from sqlalchemy import and_, or_
 from datetime import datetime
 
-from utils.database import Tag
+from utils.database import db, Tag
 from utils.strip_markdown import strip_markdown
 
 
@@ -86,11 +86,30 @@ class Tags:
 
 		tg = await self.get_tag(ctx.guild.id, tag_name)
 
-		if tg is None:
+		if tg is not None:
+			await ctx.send(tg.content)
+			await tg.update(uses=tg.uses + 1).apply()
 			return
 
-		await ctx.send(tg.content)
-		await tg.update(uses=tg.uses + 1).apply()
+		# tag not found, do search
+
+		query = '''
+			SELECT
+				name
+			FROM tag
+			WHERE guild_id = $1
+			AND name % $2
+			LIMIT 5
+		'''
+
+		alts = []
+		for row in await db.all(query, ctx.guild.id, tag_name):
+			alts.append(row[0])
+
+		if not len(alts):
+			raise commands.CommandError('Tag not found.')
+		else:
+			raise commands.CommandError('Tag not found. Did you mean any of these?\n\n' + '\n'.join(alts))
 
 	@tag.command()
 	async def create(self, ctx, tag_name: TagName, *, content: commands.clean_content):
@@ -111,7 +130,7 @@ class Tags:
 		await ctx.send('Tag created.')
 
 	@tag.command(aliases=['remove'])
-	async def delete(self, ctx, tag_name: TagName):
+	async def delete(self, ctx, *, tag_name: TagName):
 		'''Delete a tag.'''
 
 		tg = await self.get_tag(ctx.guild.id, tag_name)
@@ -136,7 +155,7 @@ class Tags:
 		await ctx.send('Tag edited.')
 
 	@tag.command()
-	async def rename(self, ctx, old_name: TagName, new_name: TagName):
+	async def rename(self, ctx, old_name: TagName, *, new_name: TagName):
 		'''Rename a tag.'''
 
 		tg = await self.get_tag(ctx.guild.id, old_name)
@@ -151,12 +170,12 @@ class Tags:
 		await ctx.send('Tag renamed.')
 
 	@tag.command()
-	async def alias(self, ctx, tag_name: TagName, alias: TagName = None):
+	async def alias(self, ctx, tag_name: TagName, *, alias: TagName = None):
 		'''Set an alias for a tag.'''
 
 		tg = await self.get_tag(ctx.guild.id, tag_name)
 		if tg is None or not self.can_edit(ctx.author.id, tg):
-			raise commands.CommandError("Tag doesn't exist, or you don't own it.")
+			raise commands.CommandError('Tag doesn\'t exist, or you don\'t own it.')
 
 		if alias is not None:
 			if await self.tag_exists(ctx.guild.id, alias):
@@ -168,7 +187,7 @@ class Tags:
 			await ctx.send('Alias removed.')
 
 	@tag.command()
-	async def transfer(self, ctx, tag_name: TagName, new_owner: discord.Member):
+	async def transfer(self, ctx, tag_name: TagName, *, new_owner: discord.Member):
 		'''Transfer ownership of a tag.'''
 
 		tg = await self.get_tag(ctx.guild.id, tag_name)
@@ -192,7 +211,7 @@ class Tags:
 		await ctx.send(strip_markdown(tg.content))
 
 	@tag.command()
-	async def info(self, ctx, tag_name: TagName):
+	async def info(self, ctx, *, tag_name: TagName):
 		'''Show info about a tag.'''
 
 		tg = await self.get_tag(ctx.guild.id, tag_name)
@@ -231,7 +250,7 @@ class Tags:
 		await ctx.send(embed=e)
 
 	@tag.command()
-	async def list(self, ctx, member: discord.Member = None):
+	async def list(self, ctx, *, member: discord.Member = None):
 		'''List server or user tags.'''
 
 		tags = await self.get_tags(ctx.guild.id, None if member is None else member.id)
@@ -264,7 +283,7 @@ class Tags:
 		await ctx.send(embed=e)
 
 	@commands.command()
-	async def tags(self, ctx, member: discord.Member = None):
+	async def tags(self, ctx, *, member: discord.Member = None):
 		'''List tags.'''
 
 		await ctx.invoke(self.list, member=member or ctx.author)

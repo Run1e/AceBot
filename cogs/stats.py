@@ -29,7 +29,7 @@ class Stats:
 			value += f'\n{MEDALS[index]} {members[index] if members else cmd[1]} ({cmd[0]} uses)'
 
 		if not len(value):
-			return 'None!'
+			return 'None so far!'
 
 		return value[1:]
 
@@ -85,9 +85,11 @@ class Stats:
 		top_users_today = await db.all(query, guild.id, now)
 
 		topu, topt = [], []
+
 		for row in top_users:
 			member = guild.get_member(row[1])
 			topu.append(member.mention if member else 'Unknown')
+
 		for row in top_users_today:
 			member = guild.get_member(row[1])
 			topt.append(member.mention if member else 'Unknown')

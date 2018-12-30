@@ -7,6 +7,8 @@ from .base import TogglableCogMixin
 from utils.time import pretty_seconds
 from utils.database import UserCoin
 
+MEDALS = ['🥇', '🥈', '🥉', '🏅', '🏅']
+
 DEFAULT_AMOUNT = 100
 
 STD_MULT = 'You hit a {}x multiplier and won {} coins!'
@@ -66,9 +68,6 @@ class Coins(TogglableCogMixin):
 			raise commands.BadArgument('Converting to "int" failed for parameter "coins".')
 
 		cn = await self.get_user(ctx.guild.id, ctx.author.id)
-
-		if cn.coins == 0:
-			cn.coins = DEFAULT_AMOUNT
 
 		if coins < 1:
 			ctx.command.reset_cooldown(ctx)
@@ -161,6 +160,25 @@ class Coins(TogglableCogMixin):
 		if bucket.per < bucket._window:
 			elapsed = time.time() - bucket._window
 			e.add_field(name='Cooldown', value=pretty_seconds(bucket.per - elapsed))
+
+		await ctx.send(embed=e)
+
+	@commands.command()
+	async def topcoins(self, ctx):
+		'''List of pro betters.'''
+
+		e = discord.Embed(title='Top betters :moneybag:')
+
+		coins = await UserCoin.query.where(
+			UserCoin.guild_id == ctx.guild.id
+		).order_by(UserCoin.coins.desc()).limit(5).gino.all()
+
+		for index, cn in enumerate(coins):
+			e.add_field(
+				name=' '.join((MEDALS[index], ctx.guild.get_member(cn.user_id).display_name)),
+				value='\u200b ' * 7 + f'{self.fmt(cn.coins)} coins',
+				inline=False
+			)
 
 		await ctx.send(embed=e)
 
