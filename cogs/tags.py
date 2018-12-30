@@ -77,8 +77,7 @@ class Tags:
 
 	async def tag_search(self, guild_id, tag_name):
 		query = '''
-			SELECT
-				name
+			SELECT name
 			FROM tag
 			WHERE guild_id = $1
 			AND name % $2

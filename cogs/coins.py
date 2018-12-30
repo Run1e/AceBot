@@ -106,12 +106,12 @@ class Coins(TogglableCogMixin):
 			mult = 1000.0
 			fmt = '🎉🎉🎉 You hit the ultimate super duper mega-jackpot! With a multiplier of {} you won {} coins!!!'
 		else:
-			mult = 32 * pow(res, -0.82281617988)
+			mult = 32 * pow(res, -0.82281617988) - 1
 			fmt = STD_MULT
 
 		simple_mult = round(mult, 1)
 
-		won = max(1, int(coins * (mult - 1)))
+		won = max(1, int(coins * (mult)))
 
 		if cn.biggest_win is None or won > cn.biggest_win:
 			biggest_win = won

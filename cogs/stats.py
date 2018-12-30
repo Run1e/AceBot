@@ -38,49 +38,49 @@ class Stats:
 
 		uses = await db.first('SELECT COUNT(*) FROM log WHERE guild_id=$1', guild.id)
 
-		query = """ SELECT
-						COUNT(id), command
-					FROM log
-					WHERE guild_id = $1
-					AND date > $2
-					GROUP BY command
-					ORDER BY COUNT DESC
-					LIMIT 5
-				"""
+		query = """
+			SELECT COUNT(id), command
+			FROM log
+			WHERE guild_id = $1
+			AND date > $2
+			GROUP BY command
+			ORDER BY COUNT DESC
+			LIMIT 5
+		"""
 
 		today = await db.all(query, guild.id, now)
 
-		query = """ SELECT
-						COUNT(id), command
-					FROM log
-					WHERE guild_id = $1
-					GROUP BY command
-					ORDER BY COUNT DESC
-					LIMIT 5
-				"""
+		query = """
+			SELECT COUNT(id), command
+			FROM log
+			WHERE guild_id = $1
+			GROUP BY command
+			ORDER BY COUNT DESC
+			LIMIT 5
+		"""
 
 		all_time = await db.all(query, guild.id)
 
-		query = """ SELECT
-						COUNT(id), author_id
-					FROM log
-					WHERE guild_id = $1
-					GROUP BY author_id
-					ORDER BY COUNT DESC
-					LIMIT 5
-				"""
+		query = """
+			SELECT COUNT(id), author_id
+			FROM log
+			WHERE guild_id = $1
+			GROUP BY author_id
+			ORDER BY COUNT DESC
+			LIMIT 5
+		"""
 
 		top_users = await db.all(query, guild.id)
 
-		query = """ SELECT
-						COUNT(id), author_id
-					FROM log
-					WHERE guild_id = $1
-					AND date > $2
-					GROUP BY author_id
-					ORDER BY COUNT DESC
-					LIMIT 5
-				"""
+		query = """
+			SELECT COUNT(id), author_id
+			FROM log
+			WHERE guild_id = $1
+			AND date > $2
+			GROUP BY author_id
+			ORDER BY COUNT DESC
+			LIMIT 5
+		"""
 
 		top_users_today = await db.all(query, guild.id, now)
 
@@ -122,26 +122,26 @@ class Stats:
 	async def user_stats(self, member):
 		uses = await db.first('SELECT COUNT(*) FROM log WHERE author_id=$1', member.id)
 
-		query = """ SELECT
-						COUNT(id), command
-					FROM log
-					WHERE author_id = $1
-					AND date > $2
-					GROUP BY command
-					ORDER BY COUNT DESC
-					LIMIT 5
-				"""
+		query = """
+			SELECT COUNT(id), command
+			FROM log
+			WHERE author_id = $1
+			AND date > $2
+			GROUP BY command
+			ORDER BY COUNT DESC
+			LIMIT 5
+		"""
 
 		today = await db.all(query, member.id, datetime.now() - timedelta(days=1))
 
-		query = """ SELECT
-						COUNT(id), command
-					FROM log
-					WHERE author_id = $1
-					GROUP BY command
-					ORDER BY COUNT DESC
-					LIMIT 5
-				"""
+		query = """
+			SELECT COUNT(id), command
+			FROM log
+			WHERE author_id = $1
+			GROUP BY command
+			ORDER BY COUNT DESC
+			LIMIT 5
+		"""
 
 		all_time = await db.all(query, member.id)
 
