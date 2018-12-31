@@ -57,7 +57,7 @@ class General:
 			f'/{len(ctx.guild.members)}'
 		)
 
-		att['Owner'] = ctx.guild.owner.display_name
+		att['Owner'] = ctx.guild.owner.mention
 		att['Channels'] = len(ctx.guild.text_channels) + len(ctx.guild.voice_channels)
 		att['Region'] = str(ctx.guild.region)
 		att['Created at'] = str(ctx.guild.created_at).split(' ')[0]
