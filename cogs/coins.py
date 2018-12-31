@@ -22,7 +22,7 @@ BROKE_STRINGS = (
 	'You lost the rest of your savings, you take to the streets and *earn* {} coins '
 	'the *hard* way ( ͡° ͜ʖ ͡°).',
 
-	'After loosing the rest of your coins, you work in a sweatshop until you have earned back {} coins.',
+	'After losing the rest of your coins, you work in a sweatshop until you have earned back {} coins.',
 
 	'Without any coins to pay back your debts, the mafia comes and breaks your kneecaps, but you found {} coins in a '
 	'gutter, so you\'ve got that going for you.'
@@ -167,7 +167,7 @@ class Coins(TogglableCogMixin):
 	async def topcoins(self, ctx):
 		'''List of pro betters.'''
 
-		e = discord.Embed(title='Top betters :moneybag:')
+		e = discord.Embed()
 
 		coins = await UserCoin.query.where(
 			UserCoin.guild_id == ctx.guild.id
