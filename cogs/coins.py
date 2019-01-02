@@ -111,7 +111,7 @@ class Coins(TogglableCogMixin):
 
 		simple_mult = round(mult, 1)
 
-		won = max(1, int(coins * (mult)))
+		won = max(1, int(coins * (simple_mult)))
 
 		if cn.biggest_win is None or won > cn.biggest_win:
 			biggest_win = won
