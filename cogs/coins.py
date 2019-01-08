@@ -58,10 +58,12 @@ class Coins(TogglableCogMixin):
 
 	@commands.command()
 	@commands.cooldown(rate=1, per=60 * 60, type=commands.BucketType.member)
-	async def bet(self, ctx, coins):
+	async def bet(self, ctx, coins = None):
 		'''Bet some coins.'''
 
 		try:
+			if coins is None:
+				raise ValueError
 			coins = int(coins)
 		except ValueError:
 			ctx.command.reset_cooldown(ctx)

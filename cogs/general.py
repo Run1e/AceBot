@@ -35,7 +35,7 @@ class General:
 	async def shrug(self, ctx):
 		await ctx.send('¯\_(ツ)_/¯')
 
-	@commands.command()
+	@commands.command(aliases=['guild'])
 	async def server(self, ctx):
 		"""Show various information about the server."""
 
@@ -67,6 +67,7 @@ class General:
 		e.set_footer(text=f'ID: {ctx.guild.id}')
 		e.add_field(name='Status', value='\n'.join(str(status) for status in statuses))
 		e.add_field(name='Users', value='\n'.join(str(count) for status, count in statuses.items()))
+
 		await ctx.send(embed=e)
 
 	@commands.command(aliases=['num'])

@@ -67,14 +67,13 @@ class Highlighter(TogglableCogMixin):
 	async def hl(self, ctx, *, code):
 		'''Highlight some code.'''
 
-		code = ctx.message.clean_content[4:]
+		code = ctx.message.clean_content[4:].replace('`', '`\u200b')
 
 		await ctx.message.delete()
 
 		lang = await self.get_lang(ctx.guild.id, ctx.author.id)
 
 		msg = await ctx.send(f'```{lang}\n{code}```Paste by {ctx.author.mention} - Click the {self.emoji} to delete.')
-
 		await msg.add_reaction('\U0000274C')
 
 		self.messages[msg.id] = ctx.author.id

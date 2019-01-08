@@ -58,7 +58,7 @@ class AutoHotkey(TogglableCogMixin):
 
 		await ctx.send(embed=embed)
 
-	@commands.command(hidden=True)
+	@commands.command(hidden=True, aliases=['app'])
 	@commands.has_role(STAFF_ID)
 	async def approve(self, ctx, member: discord.Member):
 		'''Approve member.'''
