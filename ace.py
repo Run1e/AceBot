@@ -82,7 +82,7 @@ class AceBot(commands.Bot):
 			log.info(f'Loading extension: {extension}')
 			self.load_extension(extension)
 
-		await self.update_status()
+		await self.change_presence(activity=discord.Game(name='.help'))
 
 		log.info('Finished!')
 
@@ -125,15 +125,21 @@ class AceBot(commands.Bot):
 
 	async def on_guild_join(self, guild):
 		await self.update_dbl()
-		await self.log(f'Joined guild {guild.name} ({guild.id})')
+
+		e = discord.Embed(description='Joined guild')
+		e.set_author(name=guild.name, icon_url=guild.icon_url)
+		await self.log(embed=e)
 
 	async def on_guild_remove(self, guild):
 		await self.update_dbl()
-		await self.log(f'Left guild {guild.name} ({guild.id})')
+
+		e = discord.Embed(description='Left guild')
+		e.set_author(name=guild.name, icon_url=guild.icon_url)
+		await self.log(embed=e)
 
 	async def update_status(self, *args, **kwargs):
-		await self.change_presence(activity=discord.Game(name='.help'))
 		return
+		await self.change_presence(activity=discord.Game(name='.help'))
 
 		users = 0
 		for guild in filter(lambda guild: guild.id != 264445053596991498, self.guilds):
@@ -143,7 +149,7 @@ class AceBot(commands.Bot):
 
 	async def on_command_error(self, ctx, exc):
 		if hasattr(exc, 'original'):
-			if ctx.guild.id != 264445053596991498: # ignore errors in DBL guild
+			if ctx.guild.id != 264445053596991498:  # ignore errors in DBL guild
 				try:
 					raise exc.original
 				except Exception:
@@ -201,8 +207,8 @@ class AceBot(commands.Bot):
 
 		return e
 
-	async def log(self, msg):
-		await self.get_channel(log_channel).send(msg)
+	async def log(self, content=None, **kwargs):
+		await self.get_channel(log_channel).send(content=content, **kwargs)
 
 
 # monkey-patched Embed class to force embed color

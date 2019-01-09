@@ -122,6 +122,12 @@ class Owner:
 		await user.send(content)
 
 	@commands.command()
+	async def print(self, ctx, *, body: str):
+		'''Calls eval but wraps code in print()'''
+
+		await ctx.invoke(self.eval, body=f'print({body})')
+
+	@commands.command()
 	async def eval(self, ctx, *, body: str):
 		'''Evaluates some code.'''
 
