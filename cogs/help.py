@@ -191,12 +191,14 @@ class EmbedHelp:
 
 		self.embed.description = (
 			'Invoke a command by sending the prefix followed by a command name.\n\n'
-			'For example, the command signature `define <query>` can be invoked by doing `.define bot`\n\n'
+			'For example, the command signature `define <query>` can be invoked by doing `.define cake`\n\n'
 			'The different argument brackets mean:'
 		)
 
-		self.embed.add_field(name='<argument>', value='means the argument is required.', inline=False)
-		self.embed.add_field(name='[argument]', value='means the argument is optional.', inline=False)
+		self.embed.add_field(name='<argument>', value='the argument is required.', inline=False)
+		self.embed.add_field(name='[argument]', value='the argument is optional.\n\u200b', inline=False)
+
+		self.embed.add_field(name='Support Server', value='Join the support server!\n' + self.bot._support_link)
 
 		self.on_help_page = True
 

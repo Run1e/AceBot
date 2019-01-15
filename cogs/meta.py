@@ -25,7 +25,7 @@ class Meta:
 
 	@commands.command()
 	async def dbl(self, ctx):
-		'''Get link to discordbots.org'''
+		'''Get link to discordbots.org bot page.'''
 
 		await ctx.send('https://discordbots.org/bot/367977994486022146')
 	
