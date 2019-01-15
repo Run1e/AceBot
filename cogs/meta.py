@@ -22,6 +22,12 @@ class Meta:
 			'&scope=bot'
 			'&permissions=67497025'
 		)
+
+	@commands.command()
+	async def dbl(self, ctx):
+		'''Get link to discordbots.org'''
+
+		await ctx.send('https://discordbots.org/bot/367977994486022146')
 	
 	@commands.command(aliases=['source'])
 	async def code(self, ctx, *, command: str = None):

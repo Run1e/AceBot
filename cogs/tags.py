@@ -23,7 +23,7 @@ class TagName(commands.Converter):
 		if len(tag_name) > self._length_limit:
 			raise commands.CommandError(f'Tag name limit is {self._length_limit} characters.')
 		if len(tag_name) < 3:
-			raise commands.CommandError(f'Tag names have to at least {self._length_min} characters.')
+			raise commands.CommandError(f'Tag names must be at least {self._length_min} characters long.')
 		if tag_name in self._reserved:
 			raise commands.CommandError('Sorry, that tag name is reserved!')
 		if tag_name != strip_markdown(tag_name):
@@ -75,7 +75,7 @@ class Tags:
 			).gino.all()
 		return tags
 
-	async def tag_search(self, guild_id, tag_name):
+	async def tag_search(self, guild_id, search):
 		query = '''
 			SELECT name
 			FROM tag
@@ -85,7 +85,7 @@ class Tags:
 		'''
 
 		alts = []
-		for row in await db.all(query, guild_id, tag_name):
+		for row in await db.all(query, guild_id, search):
 			alts.append(row[0])
 
 		return alts
@@ -116,10 +116,10 @@ class Tags:
 			raise commands.CommandError('Tag not found. Did you mean any of these?\n\n' + '\n'.join(alts))
 
 	@tag.command()
-	async def search(self, ctx, *, tag_name: str):
+	async def search(self, ctx, *, query: str):
 		'''Search for a tag.'''
 
-		alts = await self.tag_search(ctx.guild.id, tag_name)
+		alts = await self.tag_search(ctx.guild.id, query)
 
 		if not len(alts):
 			raise commands.CommandError('Sorry, found no tags similar to that.')

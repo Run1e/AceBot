@@ -53,7 +53,7 @@ class Roles:
 					title = 'Added Role'
 
 		if action:
-			log.info(f'{title} {role.name} to {member.name}')
+			log.info('{} {} {} {}'.format(title, role.name, 'to' if title == 'Added Role' else 'from', member.name))
 			await channel.send(embed=discord.Embed(title=title, description=desc), delete_after=5)
 
 	@commands.command(hidden=True)

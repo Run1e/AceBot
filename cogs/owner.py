@@ -102,7 +102,7 @@ class Owner:
 
 	@commands.command()
 	async def notice(self, ctx, user: discord.User):
-		'''Make bot notice an ignore user.'''
+		'''Make bot notice an ignored user.'''
 
 		user = await IgnoredUser.get(user.id)
 

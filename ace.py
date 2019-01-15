@@ -165,7 +165,8 @@ class AceBot(commands.Bot):
 			extra = f'Usage: `{self.command_prefix}{ctx.command.signature}`'
 
 		elif isinstance(exc, commands.CommandOnCooldown):
-			title, extra = 'You are on cooldown.', f'Try again in {pretty_seconds(exc.retry_after)}.'
+			title = 'You are on cooldown.'
+			extra = f'Try again in {pretty_seconds(exc.retry_after)}.'
 
 		elif isinstance(exc, commands.BotMissingPermissions):
 			title = 'Bot is missing permissions to run command.'

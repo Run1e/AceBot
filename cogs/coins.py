@@ -58,7 +58,7 @@ class Coins(TogglableCogMixin):
 
 	@commands.command()
 	@commands.cooldown(rate=1, per=60 * 60, type=commands.BucketType.member)
-	async def bet(self, ctx, coins = None):
+	async def bet(self, ctx, coins=None):
 		'''Bet some coins.'''
 
 		try:

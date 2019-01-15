@@ -1,7 +1,11 @@
 import discord, asyncio
 from discord.ext import commands
+from discord.ext.commands.formatter import HelpFormatter
+from discord.ext.commands.bot import _default_help_command
 
 from cogs.base import TogglableCogMixin
+
+from types import MethodType
 
 NEXT_EMOJI = '⏩'
 PREV_EMOJI = '⏪'
@@ -10,6 +14,21 @@ FIRST_EMOJI = '⏮'
 LAST_EMOJI = '⏭'
 HELP_EMOJI = '❔'
 
+
+def get_new_ending_note(self):
+	command_name = self.context.invoked_with
+	ret = (
+		'Type {0}{1} command for more info on a command.\n'
+		'You can also type {0}{1} category for more info on a category.'.format(self.clean_prefix, command_name)
+	)
+
+	if not self.context.bot.pm_help:
+		ret += (
+			'\n\nFully featured help command didn\'t run because the bot is missing Manage Messages and/or Add Reactions '
+			'permissions.'
+		)
+
+	return ret
 
 # rip is just the signature command ripped from the lib, but with alias support removed.
 def get_signature(command):
@@ -55,6 +74,7 @@ class EmbedHelp:
 		self.pages = []
 		self.embed = discord.Embed()
 		self.index = 0
+		self.on_help_page = False
 
 	def add_page(self, cog_name, cog_desc, cmds):
 		'''Will split into several pages to accomodate the per_page limit.'''
@@ -160,7 +180,11 @@ class EmbedHelp:
 
 		return self.embed
 
-	def help(self):
+	async def help(self):
+		if self.on_help_page:
+			self.on_help_page = False
+			return await self.get_embed()
+
 		self.embed.clear_fields()
 		self.embed.set_footer()
 		self.embed.set_author(name='How do I use the bot?', icon_url=self.bot.user.avatar_url)
@@ -174,24 +198,30 @@ class EmbedHelp:
 		self.embed.add_field(name='<argument>', value='means the argument is required.', inline=False)
 		self.embed.add_field(name='[argument]', value='means the argument is optional.', inline=False)
 
+		self.on_help_page = True
+
 		return self.embed
 
 	async def next(self):
 		if len(self.pages) - 1 != self.index:
 			self.index += 1
+		self.on_help_page = False
 		return await self.get_embed()
 
 	async def prev(self):
 		if self.index != 0:
 			self.index -= 1
+		self.on_help_page = False
 		return await self.get_embed()
 
 	async def first(self):
 		self.index = 0
+		self.on_help_page = False
 		return await self.get_embed()
 
 	async def last(self):
 		self.index = len(self.pages) - 1
+		self.on_help_page = False
 		return await self.get_embed()
 
 
@@ -200,11 +230,36 @@ class Help:
 
 	def __init__(self, bot):
 		self.bot = bot
+		self.bot.formatter.get_ending_note = MethodType(get_new_ending_note, self.bot.formatter)
+
+	@commands.command(hidden=True, aliases=['oldhelp'])
+	async def simplehelp(self, ctx, *commands : str):
+		'''Oldschool/default help command.'''
+
+		self.bot.pm_help = not ctx.channel.permissions_for(ctx.guild.me).send_messages
+
+		if not len(commands):
+			await _default_help_command(ctx)
+		else:
+			await _default_help_command(ctx, *commands)
 
 	@commands.command(hidden=True)
-	@commands.bot_has_permissions(add_reactions=True)
 	async def help(self, ctx, *, command: str = None):
 		'''Help command.'''
+
+		must_have = ('send_messages', 'add_reactions', 'manage_messages')
+		perms = ctx.channel.permissions_for(ctx.guild.me)
+
+		if not all(getattr(perms, perm) for perm in must_have):
+			self.bot.pm_help = not perms.send_messages
+			try:
+				if command is None:
+					await _default_help_command(ctx)
+				else:
+					await _default_help_command(ctx, command)
+			except Exception:
+				pass
+			return
 
 		if command is not None:
 			command = command.lower()
@@ -262,7 +317,7 @@ class Help:
 				elif reaction.emoji == LAST_EMOJI:
 					e = await eh.last()
 				elif reaction.emoji == HELP_EMOJI:
-					await msg.edit(embed=eh.help())
+					await msg.edit(embed=await eh.help())
 					continue
 				else:
 					continue

@@ -48,7 +48,7 @@ class Moderator(TogglableCogMixin):
 		)
 
 		if len(user.roles) > 1:
-			e.add_field(name='Roles', value=', '.join(role.mention for role in reversed(user.roles[1:])))
+			e.add_field(name='Roles', value=' '.join(role.mention for role in reversed(user.roles[1:])))
 
 		e.set_footer(text='ID: ' + str(user.id))
 
