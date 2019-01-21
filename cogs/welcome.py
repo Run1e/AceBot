@@ -2,8 +2,8 @@ import discord, asyncio
 from discord.ext import commands
 
 from utils.database import WelcomeMsg
-from utils.strip_markdown import strip_markdown
-from utils.welcome import welcomify
+from utils.string_manip import strip_markdown
+from utils.string_manip import welcomify
 from utils.checks import is_manager
 from cogs.base import TogglableCogMixin
 

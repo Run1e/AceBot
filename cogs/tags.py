@@ -4,7 +4,7 @@ from sqlalchemy import and_, or_
 from datetime import datetime
 
 from utils.database import db, Tag
-from utils.strip_markdown import strip_markdown
+from utils.string_manip import strip_markdown
 
 
 def make_lower(s: str): return s.lower()

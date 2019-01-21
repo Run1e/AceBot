@@ -2,12 +2,17 @@ import discord, asyncio
 from discord.ext import commands
 
 from utils.docs_search import docs_search
-from utils.welcome import welcomify
+from utils.string_manip import welcomify, to_markdown
 from cogs.base import TogglableCogMixin
+
+from bs4 import BeautifulSoup
+from datetime import datetime, timedelta
 
 GENERAL_ID = 115993023636176902
 STAFF_ID = 311784919208558592
 MEMBER_ID = 509526426198999040
+
+FORUM_ID = 536785342959845386
 
 WELCOME_MSG = '''
 Welcome to our Discord community {user}!
@@ -18,6 +23,10 @@ A collection of useful tips are in <#407666416297443328> and recent announcement
 class AutoHotkey(TogglableCogMixin):
 	'''Commands for the AutoHotkey guild.'''
 
+	def __init__(self, bot):
+		super().__init__(bot)
+		self.bot.loop.create_task(self.rss())
+
 	async def __local_check(self, ctx):
 		return await self._is_used(ctx)
 
@@ -26,13 +35,73 @@ class AutoHotkey(TogglableCogMixin):
 			return
 
 		# command not found? docs search it. only if message string is not *only* dots though
-		if isinstance(error, commands.CommandNotFound) and len(ctx.message.content) > 3 and not ctx.message.content.startswith('..'):
+		if isinstance(error, commands.CommandNotFound) and len(
+				ctx.message.content) > 3 and not ctx.message.content.startswith('..'):
 			await ctx.invoke(self.docs, search=ctx.message.content[1:])
+
+	"""
+	{http://www.w3.org/2005/Atom}author
+	{http://www.w3.org/2005/Atom}updated
+	{http://www.w3.org/2005/Atom}published
+	{http://www.w3.org/2005/Atom}id
+	{http://www.w3.org/2005/Atom}link
+	{http://www.w3.org/2005/Atom}title
+	{http://www.w3.org/2005/Atom}category
+	{http://www.w3.org/2005/Atom}content
+	"""
+
+	async def rss(self):
+
+		url = 'https://www.autohotkey.com/boards/feed'
+
+		channel = self.bot.get_channel(FORUM_ID)
+
+		def parse_date(date_str):
+			date_str = date_str.strip()
+			return datetime.strptime(date_str[:-6], "%Y-%m-%dT%H:%M:%S") + timedelta(hours=6)
+
+		old_time = datetime.now() - timedelta(minutes=1)
+
+		while True:
+			xml_rss = ''
+
+			try:
+				async with self.bot.aiohttp.request('get', url) as resp:
+					if resp.status == 200:
+						xml_rss = await resp.text()
+			except asyncio.TimeoutError:
+				pass
+
+			if len(xml_rss):
+
+				xml = BeautifulSoup(xml_rss, 'xml')
+
+				for entry in xml.find_all('entry')[::-1]:
+					time = parse_date(entry.updated.text)
+
+					if time > old_time:
+						e = discord.Embed(
+							title=entry.title.text,
+							description=to_markdown(entry.content.text.split('Statistics: ')[0]),
+							url=entry.id.text
+						)
+
+						e.add_field(name='Author', value=entry.author.text)
+						e.add_field(name='Forum', value=entry.category['label'])
+						e.set_footer(text=str(time) + ' CEST')
+
+						await channel.send(embed=e)
+
+						old_time = time
+
+			await asyncio.sleep(2 * 60)
+
+
 
 	@commands.command()
 	async def docs(self, ctx, *, search):
 		'''Search the AutoHotkey documentation.'''
-		
+
 		embed = discord.Embed()
 		results = docs_search(search)
 
