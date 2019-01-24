@@ -59,7 +59,7 @@ class Configuration:
 		if module not in self.bot._toggleable:
 			raise commands.CommandError(f'Module `{module}` is not a valid module.')
 
-		if await self.bot.uses_module(ctx, module):
+		if await self.bot.uses_module(ctx.guild.id, module):
 			return await ctx.send(f'Module `{module}` already enabled.')
 
 		result = await GuildModule.create(
@@ -77,6 +77,7 @@ class Configuration:
 		'''Disable a module.'''
 
 		module = module.lower()
+
 		if module not in self.bot._toggleable:
 			raise commands.CommandError(f'{module} is not a valid module.')
 
@@ -90,7 +91,9 @@ class Configuration:
 		if mod is None:
 			return await ctx.send(f'Module `{module}` is not currently enabled.')
 
-		if await mod.delete() == 'DELETE 1':
+		res = await mod.delete()
+
+		if res == 'DELETE 1':
 			await ctx.send(f'Module `{module}` disabled.')
 		else:
 			raise commands.CommandError(f'Failed disabling module `{module}`')

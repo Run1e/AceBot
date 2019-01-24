@@ -6,4 +6,4 @@ class TogglableCogMixin:
 			self.bot._toggleable.append(mod_name)
 
 	async def _is_used(self, ctx):
-		return await self.bot.uses_module(ctx, self.__class__.__name__)
+		return await self.bot.uses_module(ctx.guild.id, self.__class__.__name__)

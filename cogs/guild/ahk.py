@@ -2,7 +2,7 @@ import discord, asyncio
 from discord.ext import commands
 
 from utils.docs_search import docs_search
-from utils.string_manip import welcomify, to_markdown
+from utils.string_manip import welcomify, to_markdown, shorten
 from cogs.base import TogglableCogMixin
 
 from bs4 import BeautifulSoup
@@ -12,12 +12,12 @@ GENERAL_ID = 115993023636176902
 STAFF_ID = 311784919208558592
 MEMBER_ID = 509526426198999040
 
-FORUM_ID = 536785342959845386
-
 WELCOME_MSG = '''
 Welcome to our Discord community {user}!
 A collection of useful tips are in <#407666416297443328> and recent announcements can be found in <#367301754729267202>.
 '''
+
+FORUM_ID = 536785342959845386
 
 
 class AutoHotkey(TogglableCogMixin):
@@ -38,17 +38,6 @@ class AutoHotkey(TogglableCogMixin):
 		if isinstance(error, commands.CommandNotFound) and len(
 				ctx.message.content) > 3 and not ctx.message.content.startswith('..'):
 			await ctx.invoke(self.docs, search=ctx.message.content[1:])
-
-	"""
-	{http://www.w3.org/2005/Atom}author
-	{http://www.w3.org/2005/Atom}updated
-	{http://www.w3.org/2005/Atom}published
-	{http://www.w3.org/2005/Atom}id
-	{http://www.w3.org/2005/Atom}link
-	{http://www.w3.org/2005/Atom}title
-	{http://www.w3.org/2005/Atom}category
-	{http://www.w3.org/2005/Atom}content
-	"""
 
 	async def rss(self):
 
@@ -78,11 +67,12 @@ class AutoHotkey(TogglableCogMixin):
 
 				for entry in xml.find_all('entry')[::-1]:
 					time = parse_date(entry.updated.text)
+					content = shorten(entry.content.text, 512, 8)
 
 					if time > old_time:
 						e = discord.Embed(
 							title=entry.title.text,
-							description=to_markdown(entry.content.text.split('Statistics: ')[0]),
+							description=to_markdown(content.split('Statistics: ')[0]),
 							url=entry.id.text
 						)
 
@@ -92,11 +82,9 @@ class AutoHotkey(TogglableCogMixin):
 
 						await channel.send(embed=e)
 
-						old_time = time
+					old_time = time
 
-			await asyncio.sleep(2 * 60)
-
-
+			await asyncio.sleep(4 * 60)
 
 	@commands.command()
 	async def docs(self, ctx, *, search):

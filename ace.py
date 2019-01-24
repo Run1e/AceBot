@@ -2,6 +2,7 @@ import discord, aiohttp, logging, dbl, asyncio, traceback
 from discord.ext import commands
 from datetime import datetime, timedelta
 from sqlalchemy import and_
+from functools import lru_cache
 
 from utils.time import pretty_seconds
 from utils.database import setup_db, GuildModule, IgnoredUser
@@ -92,13 +93,13 @@ class AceBot(commands.Bot):
 		except Exception as exc:
 			log.error(f'Failed updating DBL: {str(exc)}')
 
-	async def uses_module(self, ctx, mod):
+	async def uses_module(self, guild_id, module):
 		'''Checks if any context should allow a module to run.'''
 
 		return await GuildModule.query.where(
 			and_(
-				GuildModule.guild_id == ctx.guild.id,
-				GuildModule.module == mod.lower()
+				GuildModule.guild_id == guild_id,
+				GuildModule.module == module.lower()
 			)
 		).gino.scalar()
 

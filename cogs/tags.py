@@ -52,7 +52,10 @@ class Tags:
 		return await Tag.query.where(
 			and_(
 				Tag.guild_id == guild_id,
-				Tag.name == tag_name
+				or_(
+					Tag.name == tag_name,
+					Tag.alias == tag_name
+				)
 			)
 		).gino.scalar()
 
