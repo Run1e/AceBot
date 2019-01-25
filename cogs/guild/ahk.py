@@ -5,8 +5,13 @@ from utils.docs_search import docs_search
 from utils.string_manip import welcomify, to_markdown, shorten
 from cogs.base import TogglableCogMixin
 
+from aiohttp.client_exceptions import ClientError
+from html2text import HTML2Text
 from bs4 import BeautifulSoup
 from datetime import datetime, timedelta
+
+htt = HTML2Text()
+htt.body_width = 0
 
 GENERAL_ID = 115993023636176902
 STAFF_ID = 311784919208558592
@@ -17,8 +22,8 @@ Welcome to our Discord community {user}!
 A collection of useful tips are in <#407666416297443328> and recent announcements can be found in <#367301754729267202>.
 '''
 
+#FORUM_ID = 517692823621861409
 FORUM_ID = 536785342959845386
-
 
 class AutoHotkey(TogglableCogMixin):
 	'''Commands for the AutoHotkey guild.'''
@@ -52,26 +57,24 @@ class AutoHotkey(TogglableCogMixin):
 		old_time = datetime.now() - timedelta(minutes=1)
 
 		while True:
-			xml_rss = ''
+			await asyncio.sleep(5 * 60)
 
 			try:
 				async with self.bot.aiohttp.request('get', url) as resp:
-					if resp.status == 200:
-						xml_rss = await resp.text()
-			except asyncio.TimeoutError:
-				pass
-
-			if len(xml_rss):
+					if resp.status != 200:
+						continue
+					xml_rss = await resp.text()
 
 				xml = BeautifulSoup(xml_rss, 'xml')
 
 				for entry in xml.find_all('entry')[::-1]:
 					time = parse_date(entry.updated.text)
+					title = htt.handle(entry.title.text)
 					content = shorten(entry.content.text, 512, 8)
 
-					if time > old_time:
+					if time > old_time and '• Re: ' not in title:
 						e = discord.Embed(
-							title=entry.title.text,
+							title=title,
 							description=to_markdown(content.split('Statistics: ')[0]),
 							url=entry.id.text
 						)
@@ -80,11 +83,13 @@ class AutoHotkey(TogglableCogMixin):
 						e.add_field(name='Forum', value=entry.category['label'])
 						e.set_footer(text=str(time) + ' CEST')
 
-						await channel.send(embed=e)
+						if channel is not None:
+							await channel.send(embed=e)
 
-					old_time = time
+						old_time = time
 
-			await asyncio.sleep(4 * 60)
+			except (discord.HTTPException, UnicodeDecodeError, ClientError):
+				continue
 
 	@commands.command()
 	async def docs(self, ctx, *, search):
@@ -123,21 +128,20 @@ class AutoHotkey(TogglableCogMixin):
 		try:
 			member_role = ctx.guild.get_role(MEMBER_ID)
 			if member_role is None:
-				raise commands.CommandError('Couldn\'t find role.')
-			await member.add_roles(
-				member_role,
-				reason=f'Approved by {ctx.author.name}'
-			)
+				raise commands.CommandError('Couldn\'t find Member role.')
+
+			await member.add_roles(member_role, reason=f'Approved by {ctx.author.name}')
+
 		except Exception as exc:
 			raise commands.CommandError('Failed adding member role.\n\nError:\n' + str(exc))
 
-		await asyncio.sleep(3)
+		await ctx.send(f'{member.display_name} approved.')
 
 		general_channel = ctx.guild.get_channel(GENERAL_ID)
-
 		if general_channel is None:
 			raise commands.CommandError('Couldn\'t find the #general channel.')
 
+		await asyncio.sleep(3)
 		await general_channel.send(welcomify(member, ctx.guild, WELCOME_MSG))
 
 

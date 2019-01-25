@@ -164,7 +164,7 @@ class EmbedHelp:
 		author = page['cog_name'] + ' Commands'
 
 		if isinstance(self.bot.get_cog(page['cog_name']), TogglableCogMixin):
-			used = await self.bot.uses_module(self.ctx, page['cog_name'])
+			used = await self.bot.uses_module(self.ctx.guild.id, page['cog_name'])
 			author += f" ({'enabled' if used else 'disabled'})"
 
 		self.embed.set_author(name=author, icon_url=self.bot.user.avatar_url)
@@ -301,14 +301,15 @@ class Help:
 			except asyncio.TimeoutError:
 				break
 			else:
+				if user != ctx.author:
+					await msg.remove_reaction(reaction.emoji, user)
+					continue
+
 				if reaction.emoji == STOP_EMOJI:
 					await msg.delete()
 					return
 
 				await msg.remove_reaction(reaction.emoji, user)
-
-				if user != ctx.author:
-					continue
 
 				if reaction.emoji == NEXT_EMOJI:
 					e = await eh.next()

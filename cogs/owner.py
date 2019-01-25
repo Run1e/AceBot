@@ -2,7 +2,7 @@ import discord, io, textwrap, traceback, asyncio
 from discord.ext import commands
 from contextlib import redirect_stdout
 
-from utils.database import IgnoredUser, UniqueViolationError
+from utils.database import db, IgnoredUser, UniqueViolationError
 from utils.google import google_parse
 
 OK_EMOJI = '\U00002705'
