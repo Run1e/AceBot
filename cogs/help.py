@@ -1,6 +1,5 @@
 import discord, asyncio
 from discord.ext import commands
-from discord.ext.commands.formatter import HelpFormatter
 from discord.ext.commands.bot import _default_help_command
 
 from cogs.base import TogglableCogMixin

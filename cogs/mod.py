@@ -5,12 +5,31 @@ from datetime import datetime
 from cogs.base import TogglableCogMixin
 from utils.time import pretty_seconds
 
+
 class Moderator(TogglableCogMixin):
 	'''
 	Moderation commands.
 	
 	Only available for members with Ban Members permissions.
 	'''
+
+	# user in perms command
+	mod_perms = (
+		'administrator',
+		'kick_members',
+		'ban_members',
+		'manage_guild',
+		'manage_roles',
+		'manage_channels',
+		'manage_messages',
+		'manage_webhooks',
+		'manage_emojis',
+		'mention_everyone',
+		'mute_members',
+		'move_members',
+		'deafen_members',
+		'priority_speaker'
+	)
 
 	async def __local_check(self, ctx):
 		return await self._is_used(ctx) and ctx.author.permissions_in(ctx.channel).ban_members
@@ -26,15 +45,35 @@ class Moderator(TogglableCogMixin):
 			channel = ctx.channel
 
 		perms = user.permissions_in(channel)
-		all_perms = []
+
+		if perms.administrator:
+			await ctx.send('User is administrator.')
+			return
+
+		mod_perms = []
+		general_perms = []
 
 		for slot in dir(perms):
 			if slot.startswith('_'):
 				continue
 			if getattr(perms, slot) is True:
-				all_perms.append(slot)
+				if slot in self.mod_perms:
+					mod_perms.append(slot)
+				else:
+					general_perms.append(slot)
 
-		await ctx.send('```' + '\n'.join(all_perms) + '```')
+		content = ''
+
+		if len(mod_perms):
+			content += '```' + '\n'.join(mod_perms) + '```'
+
+		if len(general_perms):
+			content += '```' + '\n'.join(general_perms) + '```'
+
+		if not len(content):
+			content = f'No permissions in channel {channel.mention}'
+
+		await ctx.send(content)
 
 	@commands.command()
 	async def info(self, ctx, user: discord.Member = None):
@@ -63,12 +102,12 @@ class Moderator(TogglableCogMixin):
 
 		e.add_field(
 			name='Account age',
-			value=f'{pretty_seconds((now - created).total_seconds())}.\nCreated {created.day}/{created.month}/{created.year}'
+			value=f'{pretty_seconds((now - created).total_seconds())}\nCreated {created.day}/{created.month}/{created.year}'
 		)
 
 		e.add_field(
 			name='Member for',
-			value=f'{pretty_seconds((now - joined).total_seconds())}.\nJoined {joined.day}/{joined.month}/{joined.year}'
+			value=f'{pretty_seconds((now - joined).total_seconds())}\nJoined {joined.day}/{joined.month}/{joined.year}'
 		)
 
 		if len(user.roles) > 1:
@@ -80,7 +119,7 @@ class Moderator(TogglableCogMixin):
 
 	@commands.command()
 	@commands.bot_has_permissions(manage_messages=True)
-	async def clear(self, ctx, message_count: int = None, user: discord.User = None):
+	async def clear(self, ctx, message_count: int = None, user: discord.Member = None):
 		'''Clear messages, either from user or indiscriminately.'''
 
 		if message_count is None:

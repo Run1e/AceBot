@@ -145,5 +145,83 @@ class AutoHotkey(TogglableCogMixin):
 		await general_channel.send(welcomify(member, ctx.guild, WELCOME_MSG))
 
 
+	@commands.command(hidden=True)
+	@commands.is_owner()
+	async def ahkrules(self, ctx):
+		await ctx.message.delete()
+
+		e = discord.Embed()
+
+		e.set_author(name='AutoHotkey server rules!', icon_url=ctx.guild.icon_url)
+
+		e.add_field(
+			name='1. Be nice to each other.',
+			value=(
+				'Treat others like you want others to treat you. This includes not getting heated up and making '
+				'arguments unpleasant.'
+			)
+		)
+
+		e.add_field(
+			name='2. No NSFW or antagonizing content.',
+			value=(
+				'This includes but is not limited to nudity, sexual content, gore, personal information or otherwise '
+				'disruptive content.'
+			)
+		)
+
+		e.add_field(
+			name='3. No spamming/flooding of voice or text channels.',
+			value=(
+				'Repeated posting of text, links, images, videos or abusing the voice channels is not tolerated.'
+			)
+		)
+
+		e.add_field(
+			name='4. Scripting questions should *only* be asked in the channels grouped under the AutoHotkey category.',
+			value=(
+				'Pick the channel that makes most sense for your question. If you\'re unsure, just ask in #scripting!'
+			)
+		)
+
+		e.add_field(
+			name='5. Do not discuss the creation or usage of malicious scripts.',
+			value=(
+				'Discussing, distributing, or any attempt at creating a cheat, keylogger, virus, spam tool, '
+				'"joke" script, phishing script, or anything similar is not tolerated and will lead to a kick/ban. '
+				'If you are unsure whether your script can be seen as malicious, please ask @Staff.'
+			)
+		)
+
+		e.add_field(
+			name='6. Do not tag individuals for help.',
+			value=(
+				'If you\'re asking for help, use the @Helpers tag or the Crew tags. Do not tag or PM @Staff or '
+				'invididual users for help.'
+			)
+		)
+
+		e.add_field(
+			name='7. Only open-source.',
+			value=(
+				'Do not share compiled or obfuscated versions of your script.'
+			)
+		)
+
+		e.add_field(
+			name='Important notes',
+			value=(
+				'**A.** Being disrespectful to our volunteering @Helpers or @Staff because they won\'t help you with '
+				'your script will get you banned. Them being in the Helpers role does not make them obligated to '
+				'help you.\n'
+				'**B.** If your nick is unreadable/untaggable, you might be asked to change it. If you refuse it will '
+				'be changed for you.'
+			)
+		)
+
+		e.set_footer(text='Rules updated: 06/12/2018')
+
+		await ctx.send(embed=e)
+
 def setup(bot):
 	bot.add_cog(AutoHotkey(bot))

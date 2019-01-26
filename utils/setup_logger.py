@@ -2,7 +2,7 @@ import logging, logging.handlers, sys
 
 # setup logger
 
-fmt = logging.Formatter('%(asctime)s %(name)s.%(funcName)s %(levelname)s: %(message)s', datefmt='%Y-%m-%dT%H:%M:%S')
+fmt = logging.Formatter('%(asctime)s %(levelname)s: %(message)s', datefmt='%Y-%m-%dT%H:%M:%S')
 
 stream = logging.StreamHandler(sys.stdout)
 stream.setLevel(logging.INFO)
