@@ -3,7 +3,7 @@ from discord.ext import commands
 from datetime import datetime
 
 from cogs.base import TogglableCogMixin
-
+from utils.time import pretty_seconds
 
 class Moderator(TogglableCogMixin):
 	'''
@@ -16,20 +16,44 @@ class Moderator(TogglableCogMixin):
 		return await self._is_used(ctx) and ctx.author.permissions_in(ctx.channel).ban_members
 
 	@commands.command()
+	async def perms(self, ctx, user: discord.Member = None, channel: discord.TextChannel = None):
+		'''Lists a users permissions in a channel.'''
+
+		if user is None:
+			user = ctx.author
+
+		if channel is None:
+			channel = ctx.channel
+
+		perms = user.permissions_in(channel)
+		all_perms = []
+
+		for slot in dir(perms):
+			if slot.startswith('_'):
+				continue
+			if getattr(perms, slot) is True:
+				all_perms.append(slot)
+
+		await ctx.send('```' + '\n'.join(all_perms) + '```')
+
+	@commands.command()
 	async def info(self, ctx, user: discord.Member = None):
 		'''Display information about user or self.'''
 
 		if user is None:
 			user = ctx.author
 
-		e = discord.Embed(description='This account is a bot.' if user.bot else '')
+		e = discord.Embed(description='')
+
+		if user.bot:
+			e.description = 'This account is a bot.\n'
+
+		e.description += user.mention
 
 		e.add_field(name='Status', value=user.status)
 
 		if user.activity:
 			e.add_field(name='Activity', value=user.activity)
-		if user.nick:
-			e.add_field(name='Guild nickname', value=user.nick)
 
 		e.set_author(name=f'{user.name}#{user.discriminator}', icon_url=user.avatar_url)
 
@@ -39,12 +63,12 @@ class Moderator(TogglableCogMixin):
 
 		e.add_field(
 			name='Account age',
-			value=f'{(now - created).days} days.\nCreated {created.day}/{created.month}/{created.year}'
+			value=f'{pretty_seconds((now - created).total_seconds())}.\nCreated {created.day}/{created.month}/{created.year}'
 		)
 
 		e.add_field(
 			name='Member for',
-			value=f'{(now - joined).days} days.\nJoined {joined.day}/{joined.month}/{joined.year}'
+			value=f'{pretty_seconds((now - joined).total_seconds())}.\nJoined {joined.day}/{joined.month}/{joined.year}'
 		)
 
 		if len(user.roles) > 1:

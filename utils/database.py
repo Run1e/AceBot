@@ -76,6 +76,23 @@ class UserCoin(db.Model):
 	biggest_mult = db.Column(db.BigInteger, nullable=True)
 	coins = db.Column(db.BigInteger)
 
+class StarGuild(db.Model):
+	__tablename__ = 'starguild'
+
+	id = db.Column(db.Integer, primary_key=True)
+	guild_id = db.Column(db.BigInteger)
+	channel_id = db.Column(db.BigInteger)
+
+class StarMessage(db.Model):
+	__tablename__ = 'starmessage'
+
+	id = db.Column(db.Integer, primary_key=True)
+	message_id = db.Column(db.BigInteger)
+	star_id = db.Column(db.BigInteger)
+	stars = db.Column(db.Integer)
+	starrer = db.Column(db.BigInteger)
+
+
 """
 class GuildPlaylist(db.Model):
 	__tablename__ = 'playlist'

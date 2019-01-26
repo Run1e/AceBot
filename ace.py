@@ -28,6 +28,7 @@ extensions = (
 	'cogs.meta',
 	'cogs.mod',
 	'cogs.hl',
+	#'cogs.starboard',
 	'cogs.welcome',
 	'cogs.coins',
 	'cogs.roles',
