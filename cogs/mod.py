@@ -22,6 +22,7 @@ class Moderator(TogglableCogMixin):
 		'manage_roles',
 		'manage_channels',
 		'manage_messages',
+		'manage_nicknames',
 		'manage_webhooks',
 		'manage_emojis',
 		'mention_everyone',
@@ -136,7 +137,7 @@ class Moderator(TogglableCogMixin):
 		await ctx.message.delete()
 		deleted = await ctx.channel.purge(limit=message_count, check=check)
 
-		await ctx.send(f'\U0000274C Deleted {len(deleted)} messages.', delete_after=5)
+		await ctx.send(f'✅ Deleted {len(deleted)} messages.', delete_after=5)
 
 
 def setup(bot):

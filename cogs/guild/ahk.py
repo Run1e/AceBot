@@ -87,8 +87,9 @@ class AutoHotkey(TogglableCogMixin):
 							await channel.send(embed=e)
 
 						old_time = time
-
-			except (discord.HTTPException, UnicodeDecodeError, ClientError):
+			except (SyntaxError, ValueError, AttributeError) as exc:
+				raise exc
+			except Exception:
 				continue
 
 	@commands.command()

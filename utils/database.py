@@ -88,9 +88,17 @@ class StarMessage(db.Model):
 
 	id = db.Column(db.Integer, primary_key=True)
 	message_id = db.Column(db.BigInteger)
-	star_id = db.Column(db.BigInteger)
-	stars = db.Column(db.Integer)
-	starrer = db.Column(db.BigInteger)
+	channel_id = db.Column(db.BigInteger)
+	star_message_id = db.Column(db.BigInteger)
+	starrer_id = db.Column(db.BigInteger)
+	starred_at = db.Column(db.DateTime)
+
+class Starrers(db.Model):
+	__tablename__ = 'starrers'
+
+	id = db.Column(db.Integer, primary_key=True)
+	user_id = db.Column(db.BigInteger)
+	star_id = db.Column(None, db.ForeignKey('starmessage.id'))
 
 
 """

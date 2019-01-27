@@ -36,7 +36,7 @@ class Stats:
 	async def guild_stats(self, guild):
 		now = datetime.now() - timedelta(days=1)
 
-		uses = await db.first('SELECT COUNT(*) FROM log WHERE guild_id=$1', guild.id)
+		uses = await db.scalar('SELECT COUNT(*) FROM log WHERE guild_id=$1', guild.id)
 
 		query = """
 			SELECT COUNT(id), command
@@ -94,7 +94,7 @@ class Stats:
 			member = guild.get_member(row[1])
 			topt.append(member.mention if member else 'Unknown')
 
-		e = discord.Embed(description=f'{uses[0]} total commands issued.')
+		e = discord.Embed(description=f'{uses} total commands issued.')
 		e.set_author(name=guild.name, icon_url=guild.icon_url)
 
 		e.add_field(
@@ -120,7 +120,7 @@ class Stats:
 		return e
 
 	async def user_stats(self, member):
-		uses = await db.first('SELECT COUNT(*) FROM log WHERE author_id=$1', member.id)
+		uses = await db.scalar('SELECT COUNT(*) FROM log WHERE author_id=$1', member.id)
 
 		query = """
 			SELECT COUNT(id), command
@@ -145,7 +145,7 @@ class Stats:
 
 		all_time = await db.all(query, member.id)
 
-		e = discord.Embed(description=f'{uses[0]} total commands issued.')
+		e = discord.Embed(description=f'{uses} total commands issued.')
 		e.set_author(name=member.name, icon_url=member.avatar_url)
 
 		value = ''
