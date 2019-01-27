@@ -92,6 +92,7 @@ class StarMessage(db.Model):
 	star_message_id = db.Column(db.BigInteger)
 	starrer_id = db.Column(db.BigInteger)
 	starred_at = db.Column(db.DateTime)
+	#author_id = db.Column(db.BigInteger)
 
 class Starrers(db.Model):
 	__tablename__ = 'starrers'

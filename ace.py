@@ -31,7 +31,6 @@ extensions = (
 	'cogs.starboard',
 	'cogs.welcome',
 	'cogs.coins',
-	'cogs.roles',
 	'cogs.guild.ahk',
 	'cogs.owner',
 	'cogs.help',

@@ -1,7 +1,7 @@
 import discord, asyncio
 from discord.ext import commands
 
-from datetime import datetime, date, timedelta
+from datetime import datetime, timedelta
 from sqlalchemy import or_, and_
 
 from .base import TogglableCogMixin
@@ -9,9 +9,10 @@ from utils.checks import is_manager
 from utils.database import db, StarGuild, StarMessage, Starrers
 
 STAR_EMOJI = '⭐'
-MINIMUM_STARS = 3  # people (excluding starrer) must've starred within
-PURGE_DAYS = timedelta(days=7)  # days, to avoid message being purged.
-COOLDOWN_PERIOD = timedelta(minutes=5)
+MINIMUM_STARS = 4  # people (excluding starrer) must've starred within
+PURGE_TIME = timedelta(days=7)  # days, to avoid message being removed.
+PURGE_INTERVAL = 60 * 60  # check once an hour
+COOLDOWN_PERIOD = timedelta(minutes=10)
 
 
 class StarError(Exception):
@@ -21,8 +22,59 @@ class StarError(Exception):
 class Starboard(TogglableCogMixin):
 	'''Classic starboard.'''
 
+	def __init__(self, bot):
+		super().__init__(bot)
+		self.bot.loop.create_task(self.purge_stars())
+
 	async def __local_check(self, ctx):
 		return await self._is_used(ctx)
+
+	async def purge_stars(self):
+		while True:
+			await asyncio.sleep(PURGE_INTERVAL)
+
+			try:
+				query = '''
+					SELECT id, channel_id, star_message_id
+					FROM starmessage
+					WHERE (SELECT COUNT(id) from starrers where starrers.star_id=starmessage.id) < $1
+					AND starred_at < $2
+				'''
+
+				# gets all stars older than a week with less than 4 stars
+				star_list = await db.all(query, MINIMUM_STARS, datetime.now() - PURGE_TIME)
+
+				for star in star_list:
+					# delete discord starmessage, starrers and starmessage
+					await Starrers.delete.where(Starrers.star_id == star[0]).gino.status()
+					await StarMessage.delete.where(StarMessage.id == star[0]).gino.status()
+
+					# delete starred message in star channel
+					channel = self.bot.get_channel(star[1])
+					if channel is None:
+						continue
+
+					sg = await StarGuild.query.where(StarGuild.guild_id == channel.guild.id).gino.first()
+					if sg is None:
+						continue
+
+					star_channel = self.bot.get_channel(sg.channel_id)
+					if star_channel is None:
+						continue
+					try:
+						star_message = await star_channel.get_message(star[2])
+					except discord.NotFound:
+						continue
+
+					try:
+						await star_message.delete()
+					except discord.ClientException:
+						continue
+
+			except (SyntaxError, ValueError, AttributeError) as exc:
+				raise exc
+			except Exception:
+				pass
 
 	async def reaction_checks(self, pl):
 		if str(pl.emoji) != STAR_EMOJI or pl.user_id == self.bot.user.id:
@@ -102,9 +154,6 @@ class Starboard(TogglableCogMixin):
 			await star_message.delete()
 
 	async def _star(self, message, starrer_id):
-		if (datetime.now() - message.created_at).days >= 7:
-			return
-
 		star_channel = await self.get_star_channel(message)
 		if star_channel is None:
 			return
@@ -120,7 +169,12 @@ class Starboard(TogglableCogMixin):
 		if sm is None:
 			# new star. post it and store it
 
-			# though if the user has starred something the last (timedelta COOLDOWN) time ago, don't.
+			# unless it's a bot message
+			if message.author.bot:
+				await message.channel.send(f'Sorry <@{starrer_id}> - no starring of bot messages!')
+				return
+
+			# or if the user has starred something the last (timedelta COOLDOWN) time ago
 			test = await StarMessage.query.where(
 				and_(
 					StarMessage.starrer_id == starrer_id,
@@ -130,12 +184,16 @@ class Starboard(TogglableCogMixin):
 
 			if test is not None:
 				await message.channel.send(
-					embed=discord.Embed(description='Please wait a bit before starring another message.')
+					f'<@{starrer_id}> - please wait a bit before starring another message.',
+					delete_after=20
 				)
 				return
 
 			if message.author.id == starrer_id:
-				await message.channel.send(embed=discord.Embed(description='Sorry, you can\'t star your own message!'))
+				await message.channel.send(
+					f'Sorry <@{starrer_id}> - you can\'t star your own message!',
+					delete_after=20
+				)
 				return
 
 			star_message = await self.post_star(star_channel, message)
@@ -146,7 +204,7 @@ class Starboard(TogglableCogMixin):
 				channel_id=message.channel.id,
 				star_message_id=star_message.id,
 				starrer_id=starrer_id,
-				starred_at=datetime.now()
+				starred_at=datetime.now(),
 			)
 		else:
 			# original starrer can't re-star
@@ -178,9 +236,6 @@ class Starboard(TogglableCogMixin):
 			await self.update_star(message, star_message, stars)
 
 	async def _unstar(self, message, starrer_id):
-		if (datetime.now() - message.created_at).days >= 7:
-			return
-
 		sm = await StarMessage.query.where(
 			or_(
 				StarMessage.message_id == message.id,
@@ -223,13 +278,17 @@ class Starboard(TogglableCogMixin):
 
 			await self.update_star(message, star_message, stars)
 
-	@commands.command()
+	@commands.command(hidden=True)
 	async def star(self, ctx, message_id: int):
 		'''Star a message.'''
 
-	@commands.command()
+		raise commands.CommandError('Sorry! Not yet implemented.')
+
+	@commands.command(hidden=True)
 	async def unstar(self, ctx, message_id: int):
 		'''Unstar a message you previously starred.'''
+
+		raise commands.CommandError('Sorry! Not yet implemented.')
 
 	@commands.group(hidden=True, aliases=['sb'])
 	@is_manager()
@@ -304,7 +363,7 @@ class Starboard(TogglableCogMixin):
 
 		emoji = self.star_emoji(stars)
 
-		content = '' # f'**ID:** {message.id}'
+		content = ''  # f'**ID:** {message.id}'
 
 		embed = discord.Embed(description=message.content + '\n\u200b')
 		if message.embeds:
@@ -327,7 +386,7 @@ class Starboard(TogglableCogMixin):
 
 		embed.set_author(name=message.author.display_name, icon_url=message.author.avatar_url_as(format='png'))
 		embed.set_footer(text=f'ID: {message.id}')
-		#embed.set_footer(text=str(message.created_at + timedelta(hours=1)).split('.')[0] + ' CEST')
+		# embed.set_footer(text=str(message.created_at + timedelta(hours=1)).split('.')[0] + ' CEST')
 		embed.colour = self.star_gradient_colour(stars)
 		return content, embed
 
