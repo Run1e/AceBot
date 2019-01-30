@@ -87,12 +87,13 @@ class StarMessage(db.Model):
 	__tablename__ = 'starmessage'
 
 	id = db.Column(db.Integer, primary_key=True)
+	guild_id = db.Column(db.BigInteger)
+	author_id = db.Column(db.BigInteger)
 	message_id = db.Column(db.BigInteger)
 	channel_id = db.Column(db.BigInteger)
 	star_message_id = db.Column(db.BigInteger)
 	starrer_id = db.Column(db.BigInteger)
 	starred_at = db.Column(db.DateTime)
-	#author_id = db.Column(db.BigInteger)
 
 class Starrers(db.Model):
 	__tablename__ = 'starrers'

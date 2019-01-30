@@ -87,8 +87,9 @@ class Starboard(TogglableCogMixin):
 		if channel is None:
 			return None
 
-		message = await channel.get_message(pl.message_id)
-		if message is None:
+		try:
+			message = await channel.get_message(pl.message_id)
+		except discord.NotFound:
 			return None
 
 		if (datetime.now() - message.created_at).days > 6:
@@ -160,9 +161,12 @@ class Starboard(TogglableCogMixin):
 
 		# find out if it's adding a new star to an existingly starred message, or an original star
 		sm = await StarMessage.query.where(
-			or_(
-				StarMessage.message_id == message.id,
-				StarMessage.star_message_id == message.id
+			and_(
+				StarMessage.guild_id == message.guild.id,
+				or_(
+					StarMessage.message_id == message.id,
+					StarMessage.star_message_id == message.id
+				)
 			)
 		).gino.first()
 
@@ -174,11 +178,21 @@ class Starboard(TogglableCogMixin):
 				await message.channel.send(f'Sorry <@{starrer_id}> - no starring of bot messages!')
 				return
 
+			if message.author.id == starrer_id:
+				await message.channel.send(
+					f'Sorry <@{starrer_id}> - you can\'t star your own message!',
+					delete_after=20
+				)
+				return
+
 			# or if the user has starred something the last (timedelta COOLDOWN) time ago
 			test = await StarMessage.query.where(
 				and_(
-					StarMessage.starrer_id == starrer_id,
-					StarMessage.starred_at > (datetime.now() - COOLDOWN_PERIOD)
+					StarMessage.guild_id == message.guild.id,
+					and_(
+						StarMessage.starrer_id == starrer_id,
+						StarMessage.starred_at > (datetime.now() - COOLDOWN_PERIOD)
+					)
 				)
 			).gino.scalar()
 
@@ -189,23 +203,19 @@ class Starboard(TogglableCogMixin):
 				)
 				return
 
-			if message.author.id == starrer_id:
-				await message.channel.send(
-					f'Sorry <@{starrer_id}> - you can\'t star your own message!',
-					delete_after=20
-				)
-				return
-
 			star_message = await self.post_star(star_channel, message)
-			await star_message.add_reaction('\N{WHITE MEDIUM STAR}')
 
 			await StarMessage.create(
+				author_id=message.author.id,
+				guild_id=message.guild.id,
 				message_id=message.id,
 				channel_id=message.channel.id,
 				star_message_id=star_message.id,
 				starrer_id=starrer_id,
 				starred_at=datetime.now(),
 			)
+
+			await star_message.add_reaction('\N{WHITE MEDIUM STAR}')
 		else:
 			# original starrer can't re-star
 			if starrer_id == sm.starrer_id:
@@ -237,9 +247,12 @@ class Starboard(TogglableCogMixin):
 
 	async def _unstar(self, message, starrer_id):
 		sm = await StarMessage.query.where(
-			or_(
-				StarMessage.message_id == message.id,
-				StarMessage.star_message_id == message.id
+			and_(
+				StarMessage.guild_id == message.guild.id,
+				or_(
+					StarMessage.message_id == message.id,
+					StarMessage.star_message_id == message.id
+				)
 			)
 		).gino.first()
 
@@ -326,6 +339,46 @@ class Starboard(TogglableCogMixin):
 
 		await announce()
 
+	@starboard.command()
+	@is_manager()
+	async def delete(self, ctx, message_id: int):
+		'''Delete a starred message.'''
+
+		sm = await StarMessage.query.where(
+			and_(
+				StarMessage.guild_id == ctx.guild.id,
+				or_(
+					StarMessage.message_id == message_id,
+					StarMessage.star_message_id == message_id
+				)
+			)
+		).gino.first()
+
+		if sm is None:
+			raise commands.CommandError('Sorry, couldn\'t find that star.')
+
+		star_message_id = sm.star_message_id
+
+		await db.all('DELETE FROM starrers WHERE star_id=$1', sm.id)
+		await sm.delete()
+
+		star_channel = await self.get_star_channel(ctx.message)
+		if star_channel is None:
+			raise commands.CommandError(
+				'Database entries deleted but starred message was not, as the starboard channel was not found.'
+			)
+
+		try:
+			message = await star_channel.get_message(star_message_id)
+		except discord.NotFound:
+			raise commands.CommandError(
+				'Database entries deleted but starred message was not, as the starred message was not found.'
+			)
+
+		await message.delete()
+
+		await ctx.send('Star removed successfully.')
+
 	def star_emoji(self, stars):
 		'''
 		Stolen from Rapptz, thanks!
@@ -363,9 +416,11 @@ class Starboard(TogglableCogMixin):
 
 		emoji = self.star_emoji(stars)
 
-		content = ''  # f'**ID:** {message.id}'
+		msglink = f'https://discordapp.com/channels/{message.guild.id}/{message.channel.id}/{message.id}'
 
-		embed = discord.Embed(description=message.content + '\n\u200b')
+		content = f'{emoji} **{stars}**\tID: {message.id}'
+
+		embed = discord.Embed(description=message.content)
 		if message.embeds:
 			data = message.embeds[0]
 			if data.type == 'image':
@@ -378,15 +433,13 @@ class Starboard(TogglableCogMixin):
 			else:
 				embed.add_field(name='Attachment', value=f'[{file.filename}]({file.url})', inline=False)
 
-		embed.add_field(name='Stars', value='**None**' if stars == 0 else f'**{stars}** {emoji}')
-		embed.add_field(
-			name='Context',
-			value=f'[Click here](https://discordapp.com/channels/{message.guild.id}/{message.channel.id}/{message.id})'
+		embed.set_author(
+			name=message.author.display_name,
+			icon_url=message.author.avatar_url_as(format='png'),
+			url=msglink
 		)
 
-		embed.set_author(name=message.author.display_name, icon_url=message.author.avatar_url_as(format='png'))
-		embed.set_footer(text=f'ID: {message.id}')
-		# embed.set_footer(text=str(message.created_at + timedelta(hours=1)).split('.')[0] + ' CEST')
+		embed.timestamp = message.created_at
 		embed.colour = self.star_gradient_colour(stars)
 		return content, embed
 
