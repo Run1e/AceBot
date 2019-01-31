@@ -414,11 +414,7 @@ class Starboard(TogglableCogMixin):
 		https://github.com/Rapptz/RoboDanny/blob/rewrite/cogs/stars.py#L168-L193
 		'''
 
-		emoji = self.star_emoji(stars)
-
-		msglink = f'https://discordapp.com/channels/{message.guild.id}/{message.channel.id}/{message.id}'
-
-		content = f'{emoji} **{stars}**\tID: {message.id}'
+		content = f'{self.star_emoji(stars)} **{stars}**'  # \tID: {message.id}
 
 		embed = discord.Embed(description=message.content)
 		if message.embeds:
@@ -436,7 +432,7 @@ class Starboard(TogglableCogMixin):
 		embed.set_author(
 			name=message.author.display_name,
 			icon_url=message.author.avatar_url_as(format='png'),
-			url=msglink
+			url=f'https://discordapp.com/channels/{message.guild.id}/{message.channel.id}/{message.id}'
 		)
 
 		embed.timestamp = message.created_at
