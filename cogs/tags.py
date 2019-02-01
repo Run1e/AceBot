@@ -11,15 +11,16 @@ def make_lower(s: str): return s.lower()
 
 
 OK_EMOJI = '✅'
-MAX_EMBEDS_TAGS = 10
+MAX_EMBEDS_TAGS = 12
 
 
 class TagName(commands.Converter):
 	_length_limit = 32
-	_length_min = 3
+	_length_min = 2
 	_reserved = ['tag', 'create', 'edit', 'delete', 'info', 'list', 'top', 'raw', 'get', 'set', 'exec', 'search']
 
-	async def convert(self, ctx, tag_name: make_lower):
+	async def convert(self, ctx, tag_name: str):
+		tag_name = tag_name.lower()
 		if len(tag_name) > self._length_limit:
 			raise commands.CommandError(f'Tag name limit is {self._length_limit} characters.')
 		if len(tag_name) < 3:

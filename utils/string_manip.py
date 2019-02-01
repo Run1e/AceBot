@@ -4,7 +4,7 @@ from bs4 import BeautifulSoup
 
 def strip_markdown(content):
 	transformations = {
-		re.escape(c): '\\' + c for c in ('*', '`', '_', '~', '\\', '<', '\|')
+		re.escape(c): '\\' + c for c in ('*', '`', '_', '~', '\\', '<', '|')
 	}
 
 	def replace(obj):
