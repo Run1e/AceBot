@@ -152,7 +152,7 @@ class AutoHotkey(TogglableCogMixin):
 
 						e.add_field(name='Author', value=entry.author.text)
 						e.add_field(name='Forum', value=entry.category['label'])
-						e.timestamp = datetime.now()
+						e.timestamp = time
 
 						if channel is not None:
 							await channel.send(embed=e)
