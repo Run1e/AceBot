@@ -1,8 +1,7 @@
-import discord, aiohttp, logging, dbl, asyncio, traceback
+import discord, aiohttp, logging, dbl, asyncio, traceback, io
 from discord.ext import commands
-from datetime import datetime, timedelta
+from datetime import datetime
 from sqlalchemy import and_
-from functools import lru_cache
 
 from utils.time import pretty_seconds
 from utils.database import setup_db, GuildModule, IgnoredUser
@@ -155,8 +154,13 @@ class AceBot(commands.Bot):
 					raise exc.original
 				except Exception:
 					chan = self.get_channel(error_channel)
+					tb = traceback.format_exc()
 					await chan.send(embed=self.embed_from_ctx(ctx))
-					await chan.send(f'```{traceback.format_exc()}```')
+					if len(tb) > 1990:
+						fp = io.BytesIO(tb.encode('utf-8'))
+						await ctx.send('Traceback too large...', file=discord.File(fp, 'results.txt'))
+					else:
+						await chan.send(f'```{traceback.format_exc()}```')
 			raise exc.original
 
 		title = str(exc)

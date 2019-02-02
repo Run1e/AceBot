@@ -8,6 +8,8 @@ from .base import TogglableCogMixin
 from utils.checks import is_manager
 from utils.database import db, StarGuild, StarMessage, Starrers
 
+MEDALS = ['🥇', '🥈', '🥉', '🏅', '🏅']
+
 STAR_EMOJI = '⭐'
 MINIMUM_STARS = 4  # people (excluding starrer) must've starred within
 PURGE_TIME = timedelta(days=7)  # days, to avoid message being removed.
@@ -307,6 +309,73 @@ class Starboard(TogglableCogMixin):
 	@is_manager()
 	async def starboard(self, ctx):
 		pass
+
+
+	@starboard.command()
+	async def top(self, ctx):
+		'''Lists the most starred authors.'''
+
+		# I think this can be done more cleanly, though my SQL skills are lacking
+		# if you have improvements, join here and yell at me :D - https://discord.gg/X7abzRe
+		query = '''
+			SELECT COALESCE(sm.count + st.count, sm.count), sm.author_id
+			FROM
+				(SELECT COUNT(id), (SELECT author_id FROM starmessage WHERE starmessage.id=star_id)
+				FROM starrers GROUP BY author_id) AS st
+			RIGHT JOIN
+				(SELECT COUNT(id), author_id FROM starmessage WHERE guild_id=$1 GROUP BY author_id) AS sm
+			ON sm.author_id=st.author_id ORDER BY coalesce DESC LIMIT $2;
+		'''
+
+		res = await db.all(query, ctx.guild.id, 5)
+
+		e = discord.Embed()
+		e.set_author(name=ctx.guild.name, icon_url=ctx.guild.icon_url)
+
+		for idx, (stars, user_id) in enumerate(res):
+			e.add_field(
+				name=' '.join((MEDALS[idx], ctx.guild.get_member(user_id).display_name)),
+				value='\u200b ' * 7 + f'{stars} stars',
+				inline=False
+			)
+
+		await ctx.send(embed=e)
+
+	@starboard.command()
+	async def info(self, ctx, message_id: int):
+		'''Info about a starred message.'''
+
+		sm = await StarMessage.query.where(
+			and_(
+				StarMessage.guild_id == ctx.guild.id,
+				or_(
+					StarMessage.message_id == message_id,
+					StarMessage.star_message_id == message_id
+				)
+			)
+		).gino.first()
+
+		if sm is None:
+			raise commands.CommandError('Could not find that starred message.')
+
+		star_ret = await db.all('SELECT COUNT(id) FROM starrers WHERE star_id=$1', sm.id)
+
+		author = ctx.guild.get_member(sm.author_id)
+		starrer = ctx.guild.get_member(sm.starrer_id)
+		channel = self.bot.get_channel(sm.channel_id)
+		stars = star_ret[0][0] + 1
+
+		e = discord.Embed(description='ID: ' + str(sm.message_id))
+		e.set_author(name=author.display_name, icon_url=author.avatar_url)
+
+		e.add_field(name='Stars', value=self.star_emoji(stars) + ' ' + str(stars))
+		e.add_field(name='Starred in', value='[deleted channel]' if channel is None else channel.mention)
+		e.add_field(name='Author', value='[deleted user]' if author is None else author.mention)
+		e.add_field(name='Starrer', value='[deleted user]' if starrer is None else starrer.mention)
+
+		e.timestamp = sm.starred_at
+
+		await ctx.send(embed=e)
 
 	@starboard.command()
 	@is_manager()

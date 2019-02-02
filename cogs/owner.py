@@ -1,6 +1,7 @@
 import discord, io, textwrap, traceback, asyncio
 from discord.ext import commands
 from contextlib import redirect_stdout
+from tabulate import tabulate
 
 from utils.database import db, IgnoredUser, UniqueViolationError
 from utils.google import google_parse
@@ -29,6 +30,27 @@ class Owner:
 
 		# remove `foo`
 		return content.strip('` \n')
+
+	@commands.command()
+	async def sql(self, ctx, *, query: str):
+		'''Execute a SQL query.'''
+
+		try:
+			result = await db.all(query)
+		except Exception as exc:
+			raise commands.CommandError(str(exc))
+
+		if not len(result):
+			await ctx.send('No rows returned.')
+			return
+
+		table = tabulate(result, result[0].keys())
+
+		if len(table) > 1994:
+			fp = io.BytesIO(table.encode('utf-8'))
+			await ctx.send('Too many results...', file=discord.File(fp, 'results.txt'))
+		else:
+			await ctx.send('```' + table + '```')
 
 	@commands.command(name='reload', aliases=['rl'], hidden=True)
 	async def _reload(self, ctx, *, module: str):

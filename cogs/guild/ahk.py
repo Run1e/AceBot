@@ -123,9 +123,14 @@ class AutoHotkey(TogglableCogMixin):
 
 		def parse_date(date_str):
 			date_str = date_str.strip()
-			return datetime.strptime(date_str[:-6], "%Y-%m-%dT%H:%M:%S") + timedelta(hours=6)
+			return datetime.strptime(date_str[:-6], "%Y-%m-%dT%H:%M:%S") + timedelta(hours=5)
 
-		old_time = datetime.now() - timedelta(minutes=1)
+		# the RSS returns times in TZ-5, and I'm in TZ+1
+		# so, when starting I remove 61 minutes from my datetime, and when parsing times from
+		# the RSS, I add 5 hours, thus making up the 6 hour difference while meeting at greenwich
+		# this also works as it should when passing timestamp to discord embeds
+
+		old_time = datetime.now() - timedelta(minutes=61)
 
 		while True:
 			await asyncio.sleep(5 * 60)
@@ -134,7 +139,7 @@ class AutoHotkey(TogglableCogMixin):
 				async with self.bot.aiohttp.request('get', url) as resp:
 					if resp.status != 200:
 						continue
-					xml_rss = await resp.text()
+					xml_rss = await resp.text('UTF-8')
 
 				xml = BeautifulSoup(xml_rss, 'xml')
 

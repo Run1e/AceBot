@@ -6,3 +6,4 @@ lxml
 beautifulsoup4
 dblpy
 html2text
+tabulate
