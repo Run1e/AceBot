@@ -182,7 +182,7 @@ class Stats:
 		'''Time since last bot restart.'''
 
 		delta = datetime.now() - self.bot.startup_time
-		await ctx.send(f'The bot has been online for {pretty_seconds(delta.seconds)}.')
+		await ctx.send(f'It has been {pretty_seconds(delta.seconds)} since the last bot restart.')
 
 
 def setup(bot):

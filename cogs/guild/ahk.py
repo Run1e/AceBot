@@ -8,7 +8,7 @@ from cogs.base import TogglableCogMixin
 
 from html2text import HTML2Text
 from bs4 import BeautifulSoup
-from datetime import datetime, timedelta
+from datetime import datetime, timezone, timedelta
 
 htt = HTML2Text()
 htt.body_width = 0
@@ -123,14 +123,9 @@ class AutoHotkey(TogglableCogMixin):
 
 		def parse_date(date_str):
 			date_str = date_str.strip()
-			return datetime.strptime(date_str[:-6], "%Y-%m-%dT%H:%M:%S") + timedelta(hours=5)
+			return datetime.strptime(date_str[:-3] + date_str[-2:], "%Y-%m-%dT%H:%M:%S%z")
 
-		# the RSS returns times in TZ-5, and I'm in TZ+1
-		# so, when starting I remove 61 minutes from my datetime, and when parsing times from
-		# the RSS, I add 5 hours, thus making up the 6 hour difference while meeting at greenwich
-		# this also works as it should when passing timestamp to discord embeds
-
-		old_time = datetime.now() - timedelta(minutes=61)
+		old_time = datetime.now(tz=timezone(timedelta(hours=1))) - timedelta(minutes=1)
 
 		while True:
 			await asyncio.sleep(5 * 60)
@@ -157,6 +152,7 @@ class AutoHotkey(TogglableCogMixin):
 
 						e.add_field(name='Author', value=entry.author.text)
 						e.add_field(name='Forum', value=entry.category['label'])
+
 						e.timestamp = time
 
 						if channel is not None:

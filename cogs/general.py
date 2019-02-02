@@ -1,8 +1,8 @@
-import discord, asyncio, random, inspect
+import discord, asyncio, random
 from discord.ext import commands
 from datetime import datetime
 
-from config import wolfram_key, thecatapi_key, apixu_key, oxford_id, oxford_key
+from config import wolfram_key, apixu_key, oxford_id, oxford_key
 
 DISCORD_SIZE_LIMIT = 8 * 1024 * 1024  # 8MiB
 
