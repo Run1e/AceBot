@@ -54,7 +54,8 @@ class AutoHotkey(TogglableCogMixin):
 
 		# command not found? docs search it. only if message string is not *only* dots though
 		if isinstance(error, commands.CommandNotFound) and len(
-				ctx.message.content) > 3 and not ctx.message.content.startswith('..'):
+		ctx.message.content) > 3 and not ctx.message.content.startswith('..') and
+		ctx.message.content.lower() != ".help":
 			await ctx.invoke(self.docs, search=ctx.message.content[1:])
 
 	async def on_raw_reaction_add(self, payload):
