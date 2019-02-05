@@ -46,6 +46,24 @@ The tags module makes it easy to bring up text. The tags system works like this:
 
 To see a full list of tag related commands, do `.help tags`
 
+### Starboard
+
+Classic Starboard. Anyone can star any message, which gets copied to a #starboard channel by the bot. From there anyone
+can add more stars. After a week, starred messages with less than 5 stars get removed. It's essentially a way for anyone to pin messages.
+
+`.starboard top`
+Lists what users have the most popular/starred messages.
+
+`.starboard info <message_id>`
+Displays information about a starred message, such as who starred it, and in what channel the original message was posted in.
+`message_id` can be either the original or starred message id.
+
+`.starboard channel <channel>`
+What channel starred messages should be posted in. Make sure people can add reactions to messages, but can not *post* messages.
+
+`.starboard delete <message_id>`
+Delete a starred message.
+
 ### Welcome
 
 The welcome module makes it easy to welcome new server members with a welcoming message. Has to be enabled using `.enable`

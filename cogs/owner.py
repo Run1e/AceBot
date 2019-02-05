@@ -65,13 +65,13 @@ class Owner:
 		else:
 			await ctx.message.add_reaction('\N{OK HAND SIGN}')
 
-	@commands.command()
+	@commands.command(hidden=True)
 	async def gh(self, ctx, *, query: str):
 		'''Google search for GitHub pages.'''
 
 		await ctx.invoke(self.google, query='site:github.com ' + query)
 
-	@commands.command()
+	@commands.command(hidden=True)
 	async def f(self, ctx, *, query: str):
 		'''Google search for AutoHotkey pages.'''
 
@@ -138,12 +138,12 @@ class Owner:
 
 		await ctx.message.add_reaction(emoji)
 
-	@commands.command()
+	@commands.command(hidden=True)
 	async def pm(self, ctx, user: discord.User, *, content: str):
 		'''Private message a user.'''
 		await user.send(content)
 
-	@commands.command()
+	@commands.command(hidden=True)
 	async def print(self, ctx, *, body: str):
 		'''Calls eval but wraps code in print()'''
 
