@@ -49,7 +49,7 @@ class AutoHotkey(TogglableCogMixin):
 		return await self._is_used(ctx)
 
 	async def on_command_error(self, ctx, error):
-		if ctx.guild.id != 115993023636176902:
+		if not hasattr(ctx, 'guild') or ctx.guild.id != 115993023636176902:
 			return
 
 		# command not found? docs search it. only if message string is not *only* dots though

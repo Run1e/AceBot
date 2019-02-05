@@ -53,6 +53,9 @@ class AceBot(commands.Bot):
 		# do blacklist check before all commands
 		self.add_check(self.blacklist)
 
+		# remove the default help command
+		self.remove_command('help')
+
 	# run on successful connection
 	async def on_ready(self):
 		if not hasattr(self, 'startup_time'):
@@ -74,8 +77,6 @@ class AceBot(commands.Bot):
 				total=4
 			)
 		)
-
-		self.remove_command('help')
 
 		# load extensions
 		for extension in extensions:
