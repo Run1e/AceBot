@@ -16,6 +16,7 @@ class Pager:
 		self.ctx = ctx
 		self.bot = ctx.bot
 		self.author = ctx.author
+		self.guild = ctx.guild
 		self.channel = ctx.channel
 		self.entries = entries
 		self.embed = discord.Embed()
@@ -112,13 +113,14 @@ class Pager:
 
 		if self.static:
 			e.set_footer(text='Non-interactive! I\'m missing: ' + ', '.join(self.missing_perms))
+		elif self.on_help:
+			e.set_footer(text='')
 		else:
 			e.set_footer(text=f'Page {self.page}/{self.top_page}')
 
 	async def get_page(self, page):
 		self.clear_embed()
 		await self.craft_page(self.embed, page, self.get_page_entries(page))
-		return self.embed
 
 	async def craft_page(self, e, page, entries):
 		'''Crafts the actual embed.'''

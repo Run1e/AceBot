@@ -143,7 +143,7 @@ class Owner:
 	async def print(self, ctx, *, body: str):
 		'''Calls eval but wraps code in print()'''
 
-		await ctx.invoke(self.eval, body=f'print({body})')
+		await ctx.invoke(self.eval, body=f'pprint({body})')
 
 	@commands.command()
 	async def eval(self, ctx, *, body: str):
@@ -193,9 +193,11 @@ class Owner:
 
 			if ret is None:
 				if value:
-					await ctx.send(f'```py\n{value}\n```')
-			else:
-				await ctx.send(f'```py\n{value}{ret}\n```')
+					if len(value) > 1994:
+						fp = io.BytesIO(value.encode('utf-8'))
+						await ctx.send('Log too large...', file=discord.File(fp, 'results.txt'))
+					else:
+						await ctx.send(f'```py\n{value}\n```')
 
 
 def setup(bot):

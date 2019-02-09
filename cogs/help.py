@@ -66,7 +66,15 @@ class HelpPager(Pager):
 	async def craft_page(self, e, page, entries):
 		cog_name, cog_desc, commands = entries[0]
 
-		e.set_author(name=f'{cog_name} Commands', icon_url=self.bot.user.avatar_url)
+		name = f'{cog_name} Commands'
+
+		if cog_name.lower() in self.bot._toggleable:
+			if await self.bot.uses_module(self.guild.id, cog_name.lower()):
+				name += ' (enabled)'
+			else:
+				name += ' (disabled)'
+
+		e.set_author(name=name, icon_url=self.bot.user.avatar_url)
 		e.description = cog_desc
 
 		for name, value in commands:
@@ -105,6 +113,7 @@ class HelpPager(Pager):
 		self = cls(ctx, [], per_page=1)
 
 		cog_name = command.cog_name
+		cog_desc = ctx.bot.cogs[cog_name].__doc__
 
 		cmds = []
 
@@ -114,7 +123,7 @@ class HelpPager(Pager):
 			for cmd in sorted(command.commands, key=lambda cmd: cmd.name):
 				self.add_command(cmds, cmd, brief=False)
 
-		self.add_page(cog_name, None, cmds)
+		self.add_page(cog_name, cog_desc, cmds)
 
 		return self
 
