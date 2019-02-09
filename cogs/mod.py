@@ -138,7 +138,9 @@ class Moderator(TogglableCogMixin):
 		await ctx.message.delete()
 		deleted = await ctx.channel.purge(limit=message_count, check=check)
 
-		await ctx.send(f'✅ Deleted {len(deleted)} messages.', delete_after=5)
+		count = len(deleted)
+
+		await ctx.send(f'✅ Deleted {count} message{"s" if count > 1 else ""}.', delete_after=5)
 
 
 def setup(bot):

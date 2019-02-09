@@ -5,24 +5,45 @@ from datetime import datetime
 
 from utils.database import db, Tag
 from utils.string_manip import strip_markdown
-
-
-def make_lower(s: str): return s.lower()
-
+from utils.pager import Pager
 
 MAX_EMBEDS_TAGS = 12
+
+
+class TagPager(Pager):
+	async def craft_page(self, e, page, entries):
+		e.set_author(
+			name=self.member.display_name if self.member else self.ctx.guild.name,
+			icon_url=self.member.avatar_url if self.member else self.ctx.guild.icon_url
+		)
+
+		names, aliases, uses = zip(*entries)
+
+		tags = ''
+		for idx, name in enumerate(names):
+			tags += f'\n{name}'
+			if aliases[idx] is not None:
+				tags += f' ({aliases[idx]})'
+
+		e.add_field(name='Name', value=tags[1:])
+		e.add_field(name='Uses', value='\n'.join(str(use) for use in uses))
+
+		if self.top_page > 1:
+			e.set_footer(text=f'Page {page}/{self.top_page}')
 
 
 class TagName(commands.Converter):
 	_length_max = 32
 	_length_min = 2
-	_reserved = ['tag', 'create', 'edit', 'delete', 'info', 'list', 'top', 'raw', 'get', 'set', 'exec', 'search']
+	_reserved = (
+		'tag', 'create', 'edit', 'delete', 'info', 'list', 'top', 'raw', 'get', 'set', 'exec', 'search', 'browse'
+	)
 
 	async def convert(self, ctx, tag_name: str):
 		tag_name = tag_name.lower()
 		if len(tag_name) > self._length_max:
 			raise commands.CommandError(f'Tag name limit is {self._length_max} characters.')
-		if len(tag_name) < 3:
+		if len(tag_name) < self._length_min:
 			raise commands.CommandError(f'Tag names must be at least {self._length_min} characters long.')
 		if tag_name in self._reserved:
 			raise commands.CommandError('Sorry, that tag name is reserved!')
@@ -117,6 +138,26 @@ class Tags:
 			raise commands.CommandError('Tag not found.')
 		else:
 			raise commands.CommandError('Tag not found. Did you mean any of these?\n\n' + '\n'.join(alts))
+
+	@tag.command(aliases=['all', 'browse'])
+	async def list(self, ctx, *, member: discord.Member = None):
+		'''Browse server or user tags.'''
+
+		if member is not None:
+			tags = await db.all(
+				'SELECT name, alias, uses FROM tag WHERE guild_id=$1 AND owner_id=$2 ORDER BY uses DESC',
+				ctx.guild.id, ctx.author.id
+			)
+		else:
+			tags = await db.all('SELECT name, alias, uses FROM tag WHERE guild_id=$1 ORDER BY uses DESC', ctx.guild.id)
+
+		if not len(tags):
+			raise commands.CommandError('Couldn\'t find any tags!')
+
+		p = TagPager(ctx, tags)
+		p.member = member
+
+		await p.go()
 
 	@tag.command()
 	async def search(self, ctx, *, query: str):
@@ -270,40 +311,6 @@ class Tags:
 			footer += f' (edited: {edited_at})'
 
 		e.set_footer(text=footer)
-
-		await ctx.send(embed=e)
-
-	@tag.command()
-	@commands.bot_has_permissions(embed_links=True)
-	async def list(self, ctx, *, member: discord.Member = None):
-		'''List server or user tags.'''
-
-		tags = await self.get_tags(ctx.guild.id, None if member is None else member.id)
-
-		if not len(tags):
-			raise commands.CommandError('No tags found!')
-
-		names, uses, count = '', '', 0
-		for index, tg in enumerate(tags):
-			if (index > MAX_EMBEDS_TAGS):
-				break
-			count += 1
-			names += f'\n{tg.name}'
-			if tg.alias is not None:
-				names += f' ({tg.alias})'
-			uses += f'\n{tg.uses}'
-			if len(names) > 920:
-				break
-
-		e = discord.Embed()
-		e.add_field(name='Tag', value=names, inline=True)
-		e.add_field(name='Uses', value=uses, inline=True)
-		e.description = f'{count if count < MAX_EMBEDS_TAGS else MAX_EMBEDS_TAGS}/{len(tags)} tags'
-
-		e.set_author(
-			name=member.display_name if member else ctx.guild.name,
-			icon_url=member.avatar_url if member else ctx.guild.icon_url
-		)
 
 		await ctx.send(embed=e)
 
