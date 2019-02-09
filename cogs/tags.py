@@ -146,7 +146,7 @@ class Tags:
 		if member is not None:
 			tags = await db.all(
 				'SELECT name, alias, uses FROM tag WHERE guild_id=$1 AND owner_id=$2 ORDER BY uses DESC',
-				ctx.guild.id, ctx.author.id
+				ctx.guild.id, member.id
 			)
 		else:
 			tags = await db.all('SELECT name, alias, uses FROM tag WHERE guild_id=$1 ORDER BY uses DESC', ctx.guild.id)
