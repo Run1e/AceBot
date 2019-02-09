@@ -8,9 +8,15 @@ from .base import TogglableCogMixin
 from utils.checks import is_manager
 from utils.database import db, StarGuild, StarMessage, Starrers
 
-MEDALS = ['🥇', '🥈', '🥉', '🏅', '🏅']
+MEDALS = [
+	'\N{FIRST PLACE MEDAL}',
+	'\N{SECOND PLACE MEDAL}',
+	'\N{THIRD PLACE MEDAL}',
+	'\N{SPORTS MEDAL}',
+	'\N{SPORTS MEDAL}'
+]
 
-STAR_EMOJI = '⭐'
+STAR_EMOJI = '\N{WHITE MEDIUM STAR}'
 MINIMUM_STARS = 4  # people (excluding starrer) must've starred within
 PURGE_TIME = timedelta(days=7)  # days, to avoid message being removed.
 PURGE_INTERVAL = 60 * 60  # check once an hour
@@ -372,6 +378,7 @@ class Starboard(TogglableCogMixin):
 		e.add_field(name='Starred in', value='[deleted channel]' if channel is None else channel.mention)
 		e.add_field(name='Author', value='[deleted user]' if author is None else author.mention)
 		e.add_field(name='Starrer', value='[deleted user]' if starrer is None else starrer.mention)
+		e.add_field(name='Context', value=f'[Click here](https://discordapp.com/channels/{sm.guild_id}/{sm.channel_id}/{sm.message_id})')
 
 		e.timestamp = sm.starred_at
 
@@ -380,7 +387,11 @@ class Starboard(TogglableCogMixin):
 	@starboard.command()
 	@is_manager()
 	async def channel(self, ctx, channel: discord.TextChannel = None):
-		'''Set the starboard channel.'''
+		'''
+		Set the starboard channel.
+
+		Remember only the bot should be allowed to send messages in this channel!
+		'''
 
 		async def announce():
 			await ctx.send(f'Starboard channel set to {channel.mention}')

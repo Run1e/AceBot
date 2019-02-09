@@ -6,12 +6,14 @@ from cogs.base import TogglableCogMixin
 
 from types import MethodType
 
-NEXT_EMOJI = '⏩'
-PREV_EMOJI = '⏪'
-STOP_EMOJI = '⏹'
-FIRST_EMOJI = '⏮'
-LAST_EMOJI = '⏭'
-HELP_EMOJI = '❔'
+REQUIRED_PERMS = ('send_messages', 'add_reactions', 'manage_messages', 'embed_links')
+
+LAST_EMOJI = '\N{BLACK RIGHT-POINTING DOUBLE TRIANGLE WITH VERTICAL BAR}'
+FIRST_EMOJI = '\N{BLACK LEFT-POINTING DOUBLE TRIANGLE WITH VERTICAL BAR}'
+PREV_EMOJI = '\N{BLACK LEFT-POINTING DOUBLE TRIANGLE}'
+NEXT_EMOJI = '\N{BLACK RIGHT-POINTING DOUBLE TRIANGLE}'
+STOP_EMOJI = '\N{BLACK SQUARE FOR STOP}'
+HELP_EMOJI = '\N{WHITE QUESTION MARK ORNAMENT}'
 
 
 def get_new_ending_note(self):
@@ -23,8 +25,8 @@ def get_new_ending_note(self):
 
 	if not self.context.bot.pm_help:
 		ret += (
-			'\n\nFully featured help command didn\'t run because the bot is missing Manage Messages and/or Add Reactions '
-			'permissions.'
+			'\n\nFully featured help command might not have run because the bot is missing any of these permissions: '
+			+ ', '.join(temp.replace('_', ' ').title() for temp in REQUIRED_PERMS)
 		)
 
 	return ret
@@ -248,11 +250,11 @@ class Help:
 	async def help(self, ctx, *, command: str = None):
 		'''Help command.'''
 
-		must_have = ('send_messages', 'add_reactions', 'manage_messages')
 		perms = ctx.channel.permissions_for(ctx.guild.me)
 
-		if not all(getattr(perms, perm) for perm in must_have):
+		if not all(getattr(perms, perm) for perm in REQUIRED_PERMS):
 			self.bot.pm_help = not perms.send_messages
+
 			try:
 				if command is None:
 					await _default_help_command(ctx)
@@ -260,6 +262,7 @@ class Help:
 					await _default_help_command(ctx, command)
 			except Exception:
 				pass
+
 			return
 
 		if command is not None:

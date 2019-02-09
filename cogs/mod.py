@@ -9,8 +9,8 @@ from utils.time import pretty_seconds
 class Moderator(TogglableCogMixin):
 	'''
 	Moderation commands.
-	
-	Only available for members with Ban Members permissions.
+
+	Appropriate user permissions required to run these.
 	'''
 
 	# user in perms command
@@ -28,14 +28,16 @@ class Moderator(TogglableCogMixin):
 		'mention_everyone',
 		'mute_members',
 		'move_members',
+		'view_audit_log',
 		'deafen_members',
 		'priority_speaker'
 	)
 
 	async def __local_check(self, ctx):
-		return await self._is_used(ctx) and ctx.author.permissions_in(ctx.channel).ban_members
+		return await self._is_used(ctx)
 
 	@commands.command()
+	@commands.has_permissions(manage_guild=True)
 	async def perms(self, ctx, user: discord.Member = None, channel: discord.TextChannel = None):
 		'''Lists a users permissions in a channel.'''
 
@@ -46,10 +48,6 @@ class Moderator(TogglableCogMixin):
 			channel = ctx.channel
 
 		perms = user.permissions_in(channel)
-
-		if perms.administrator:
-			await ctx.send('User is administrator.')
-			return
 
 		mod_perms = []
 		general_perms = []
@@ -77,6 +75,8 @@ class Moderator(TogglableCogMixin):
 		await ctx.send(content)
 
 	@commands.command()
+	@commands.has_permissions(ban_members=True)
+	@commands.bot_has_permissions(embed_links=True)
 	async def info(self, ctx, user: discord.Member = None):
 		'''Display information about user or self.'''
 
@@ -119,6 +119,7 @@ class Moderator(TogglableCogMixin):
 		await ctx.send(embed=e)
 
 	@commands.command()
+	@commands.has_permissions(manage_messages=True)
 	@commands.bot_has_permissions(manage_messages=True)
 	async def clear(self, ctx, message_count: int = None, user: discord.Member = None):
 		'''Clear messages, either from user or indiscriminately.'''

@@ -1,4 +1,4 @@
-import discord, random, time
+import discord, random, time, re
 from discord.ext import commands
 
 from sqlalchemy import and_
@@ -7,11 +7,18 @@ from .base import TogglableCogMixin
 from utils.time import pretty_seconds
 from utils.database import UserCoin
 
-MEDALS = ['🥇', '🥈', '🥉', '🏅', '🏅']
+MEDALS = [
+	'\N{FIRST PLACE MEDAL}',
+	'\N{SECOND PLACE MEDAL}',
+	'\N{THIRD PLACE MEDAL}',
+	'\N{SPORTS MEDAL}',
+	'\N{SPORTS MEDAL}'
+]
 
 DEFAULT_AMOUNT = 100
 
 STD_MULT = 'You hit a {}x multiplier and won {} coins!'
+PERC_MULT = 'You hit a {}x multiplier on your {} coin bet and won {} coins!'
 
 BROKE_STRINGS = (
 	'You lost it all, you sell some of your child\'s belongings for {} coins.',
@@ -61,15 +68,27 @@ class Coins(TogglableCogMixin):
 	async def bet(self, ctx, coins=None):
 		'''Bet some coins.'''
 
+		# this thing is getting real fuckin messy TBH
+
 		try:
 			if coins is None:
 				raise ValueError
-			coins = int(coins)
+			m = re.match('^(\d{1,3})%$', coins)
+			if m is not None:
+				coin_percentage = int(m.group(1))
+				if not (1 <= coin_percentage <= 100):
+					raise ValueError
+			else:
+				coins = int(coins)
+				coin_percentage = None
 		except ValueError:
 			ctx.command.reset_cooldown(ctx)
-			raise commands.BadArgument('Converting to "int" failed for parameter "coins".')
+			raise commands.BadArgument('Wrong format for parameter "coins"')
 
 		cn = await self.get_user(ctx.guild.id, ctx.author.id)
+
+		if m is not None:
+			coins = int(cn.coins * coin_percentage / 100)
 
 		if coins < 1:
 			ctx.command.reset_cooldown(ctx)
@@ -132,9 +151,13 @@ class Coins(TogglableCogMixin):
 			biggest_mult=biggest_mult
 		).apply()
 
-		await ctx.send(fmt.format(simple_mult, self.fmt(won)))
+		if mult == 1000.0 or coin_percentage is None:
+			await ctx.send(fmt.format(simple_mult, self.fmt(won)))
+		else:
+			await ctx.send(PERC_MULT.format(simple_mult, self.fmt(coins), self.fmt(won)))
 
 	@commands.command()
+	@commands.bot_has_permissions(embed_links=True)
 	async def coins(self, ctx, member: discord.Member = None):
 		'''Get coin stats of yourself or someone else.'''
 
@@ -166,6 +189,7 @@ class Coins(TogglableCogMixin):
 		await ctx.send(embed=e)
 
 	@commands.command()
+	@commands.bot_has_permissions(embed_links=True)
 	async def topcoins(self, ctx):
 		'''List of pro betters.'''
 

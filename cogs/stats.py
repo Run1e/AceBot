@@ -5,7 +5,13 @@ from datetime import datetime, timedelta
 from utils.database import db, LogEntry
 from utils.time import pretty_seconds
 
-MEDALS = ['🥇', '🥈', '🥉', '🏅', '🏅']
+MEDALS = [
+	'\N{FIRST PLACE MEDAL}',
+	'\N{SECOND PLACE MEDAL}',
+	'\N{THIRD PLACE MEDAL}',
+	'\N{SPORTS MEDAL}',
+	'\N{SPORTS MEDAL}'
+]
 
 
 class Stats:
@@ -168,7 +174,7 @@ class Stats:
 
 	@commands.command()
 	async def stats(self, ctx, member: discord.Member = None):
-		'''Show command stats.'''
+		'''Show bot or user command stats.'''
 
 		if member is None:
 			embed = await self.guild_stats(ctx.guild)

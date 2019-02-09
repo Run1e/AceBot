@@ -31,11 +31,8 @@ class General:
 		await asyncio.sleep(3)
 		await msg.edit(content=random.choice(('Heads!', 'Tails!')))
 
-	@commands.command(hidden=True)
-	async def shrug(self, ctx):
-		await ctx.send('¯\_(ツ)_/¯')
-
 	@commands.command(aliases=['guild'])
+	@commands.bot_has_permissions(embed_links=True)
 	async def server(self, ctx):
 		"""Show various information about the server."""
 
@@ -89,6 +86,7 @@ class General:
 		await ctx.send(text)
 
 	@commands.command(aliases=['w'])
+	@commands.bot_has_permissions(embed_links=True)
 	@commands.cooldown(rate=3, per=10.0, type=commands.BucketType.user)
 	async def wolfram(self, ctx, *, query):
 		'''Queries wolfram.'''
@@ -110,8 +108,6 @@ class General:
 
 		embed = discord.Embed()
 
-		backtick = '`'
-
 		query = query.replace('`', '\u200b`')
 
 		embed.add_field(name='Query', value=f'```{query}```')
@@ -125,8 +121,9 @@ class General:
 
 		await ctx.send(embed=embed)
 
-	@commands.cooldown(rate=2, per=5.0, type=commands.BucketType.user)
 	@commands.command()
+	@commands.bot_has_permissions(embed_links=True)
+	@commands.cooldown(rate=2, per=5.0, type=commands.BucketType.user)
 	async def weather(self, ctx, *, location: str):
 		'''Check the weather at a location.'''
 
@@ -193,8 +190,9 @@ class General:
 		await asyncio.sleep(3)
 		await ctx.send(random.choice(responses))
 
-	@commands.cooldown(rate=2, per=5.0, type=commands.BucketType.user)
 	@commands.command(aliases=['def'])
+	@commands.bot_has_permissions(embed_links=True)
+	@commands.cooldown(rate=2, per=5.0, type=commands.BucketType.user)
 	async def define(self, ctx, *, word: str):
 		'''Define a word using Oxfords dictionary.'''
 

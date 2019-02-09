@@ -3,25 +3,22 @@ from discord.ext import commands
 from sqlalchemy import and_
 
 from utils.database import GuildModule
+from utils.checks import is_manager
 
 
 class Configuration:
 	'''
 	Manage modules and other settings.
 	
-	Only available to users with the Manage Server permission.
+	Only users with Manage Server permission can toggle modules.
 	'''
 
 	def __init__(self, bot):
 		self.bot = bot
 
-	async def __local_check(self, ctx):
-		return (
-			ctx.author.permissions_in(ctx.channel).manage_guild or
-			await self.bot.is_owner(ctx.author)
-		)
-
 	@commands.command(aliases=['mods'])
+	@is_manager()
+	@commands.bot_has_permissions(embed_links=True)
 	async def modules(self, ctx):
 		'''List modules.'''
 
@@ -52,6 +49,7 @@ class Configuration:
 		await ctx.send(embed=e)
 
 	@commands.command()
+	@is_manager()
 	async def enable(self, ctx, module: str):
 		'''Enable a module.'''
 
@@ -70,9 +68,10 @@ class Configuration:
 		if result is None:
 			raise commands.CommandError(f'Failed enabling module `{module}`')
 
-		await ctx.send(f'Module `{module}` successfully enabled.')
+		await ctx.send(f'Module `{module}` enabled.')
 
 	@commands.command()
+	@is_manager()
 	async def disable(self, ctx, module: str):
 		'''Disable a module.'''
 

@@ -1,10 +1,9 @@
-import discord, aiohttp, logging, dbl, asyncio, traceback, io
+import discord, aiohttp, logging, dbl, traceback, io
 from discord.ext import commands
 from datetime import datetime
-from sqlalchemy import and_
 
 from utils.time import pretty_seconds
-from utils.database import setup_db, GuildModule, IgnoredUser
+from utils.database import db, setup_db
 from utils.setup_logger import config_logger
 from config import *
 
@@ -96,12 +95,7 @@ class AceBot(commands.Bot):
 	async def uses_module(self, guild_id, module):
 		'''Checks if any context should allow a module to run.'''
 
-		return await GuildModule.query.where(
-			and_(
-				GuildModule.guild_id == guild_id,
-				GuildModule.module == module.lower()
-			)
-		).gino.scalar()
+		return await db.scalar('SELECT id FROM module WHERE guild_id=$1 AND module=$2', guild_id, module.lower())
 
 	async def blacklist(self, ctx):
 		'''Returns False if user is disallowed, otherwise True'''
@@ -115,10 +109,11 @@ class AceBot(commands.Bot):
 			return False
 
 		# ignore ignored users
-		if await IgnoredUser.query.where(IgnoredUser.user_id == ctx.author.id).gino.scalar():
+		if await db.scalar('SELECT user_id FROM ignore WHERE user_id=$1', ctx.author.id):
 			return False
 
 		# hardcoded for the autohotkey verification thing
+		# tldr for commands to work, they must have the Member role
 		if ctx.guild.id == 115993023636176902 and all(role.id != 509526426198999040 for role in ctx.author.roles):
 			return False
 
@@ -129,6 +124,7 @@ class AceBot(commands.Bot):
 
 		e = discord.Embed(description='Joined guild')
 		e.set_author(name=guild.name, icon_url=guild.icon_url)
+
 		await self.log(embed=e)
 
 	async def on_guild_remove(self, guild):
@@ -136,6 +132,7 @@ class AceBot(commands.Bot):
 
 		e = discord.Embed(description='Left guild')
 		e.set_author(name=guild.name, icon_url=guild.icon_url)
+
 		await self.log(embed=e)
 
 	async def update_status(self, *args, **kwargs):
@@ -150,18 +147,24 @@ class AceBot(commands.Bot):
 
 	async def on_command_error(self, ctx, exc):
 		if hasattr(exc, 'original'):
-			if ctx.guild.id != 264445053596991498:  # ignore errors in DBL guild
-				try:
-					raise exc.original
-				except Exception:
-					chan = self.get_channel(error_channel)
-					tb = traceback.format_exc()
-					await chan.send(embed=self.embed_from_ctx(ctx))
-					if len(tb) > 1990:
-						fp = io.BytesIO(tb.encode('utf-8'))
-						await ctx.send('Traceback too large...', file=discord.File(fp, 'results.txt'))
-					else:
-						await chan.send(f'```{traceback.format_exc()}```')
+			if isinstance(exc.original, discord.Forbidden):
+				return
+
+			try:
+				raise exc.original
+			except Exception:
+				chan = self.get_channel(error_channel)
+
+				tb = traceback.format_exc()
+
+				await chan.send(embed=self.embed_from_ctx(ctx))
+
+				if len(tb) > 1990:
+					fp = io.BytesIO(tb.encode('utf-8'))
+					await ctx.send('Traceback too large...', file=discord.File(fp, 'results.txt'))
+				else:
+					await chan.send(f'```{tb}```')
+
 			raise exc.original
 
 		title = str(exc)
@@ -175,12 +178,13 @@ class AceBot(commands.Bot):
 			extra = f'Try again in {pretty_seconds(exc.retry_after)}.'
 
 		elif isinstance(exc, commands.BotMissingPermissions):
-			title = 'Bot is missing permissions to run command.'
-			extra = '\n'.join(perm.replace('_', ' ').title() for perm in exc.missing_perms)
+			title = 'Bot is missing permissions.'
+			extra = str(exc)
 
 		elif isinstance(exc, commands.DisabledCommand):
 			title = 'This command has been disabled.'
 			extra = 'Check back later!'
+
 		elif isinstance(exc, (commands.CommandNotFound, commands.CheckFailure)):
 			return  # don't care about these
 
@@ -192,7 +196,13 @@ class AceBot(commands.Bot):
 			log.debug(f'Unhandled exception of type {type(exc)}: {str(exc)}')
 			return
 
-		await ctx.send(embed=discord.Embed(title=title, description=extra))
+		try:
+			if ctx.me.permissions_in(ctx.channel).embed_links:
+				await ctx.send(embed=discord.Embed(title=title, description=extra))
+			else:
+				await ctx.send(f'***{title}***\n\n{extra}')
+		except:
+			pass
 
 	def embed_from_ctx(self, ctx):
 		e = discord.Embed()

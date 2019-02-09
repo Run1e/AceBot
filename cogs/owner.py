@@ -6,15 +6,13 @@ from tabulate import tabulate
 from utils.database import db, IgnoredUser, UniqueViolationError
 from utils.google import google_parse
 
-OK_EMOJI = '\U00002705'
-NOTOK_EMOJI = '\U0000274C'
-ERROR_EMOJI = '\U0001F1E9'
-DUPE_EMOJI = '\U0001F1E9'
-NOTFOUND_EMOJI = '\U0001F1F3'
+OK_EMOJI = '\N{HEAVY CHECK MARK}'
+NOTOK_EMOJI = '\N{CROSS MARK}'
+DUPE_EMOJI = '\N{REGIONAL INDICATOR SYMBOL LETTER D}'
 
 
 class Owner:
-	'''Commands accessible to the bot owner.'''
+	'''Commands accessible only to the bot owner.'''
 
 	def __init__(self, bot):
 		self.bot = bot
@@ -78,6 +76,7 @@ class Owner:
 		await ctx.invoke(self.google, query='site:autohotkey.com ' + query)
 
 	@commands.command(aliases=['g'])
+	@commands.bot_has_permissions(embed_links=True)
 	async def google(self, ctx, *, query: str):
 		'''Get first result from google.'''
 
@@ -128,13 +127,10 @@ class Owner:
 
 		user = await IgnoredUser.get(user.id)
 
-		if user is None:
-			emoji = NOTFOUND_EMOJI
+		if await user.delete() != 'DELETE 1':
+			emoji = NOTOK_EMOJI
 		else:
-			if await user.delete() != 'DELETE 1':
-				emoji = NOTOK_EMOJI
-			else:
-				emoji = OK_EMOJI
+			emoji = OK_EMOJI
 
 		await ctx.message.add_reaction(emoji)
 
@@ -154,6 +150,7 @@ class Owner:
 		'''Evaluates some code.'''
 
 		from pprint import pprint
+		from tabulate import tabulate
 
 		env = {
 			'discord': discord,
@@ -163,7 +160,9 @@ class Owner:
 			'author': ctx.author,
 			'guild': ctx.guild,
 			'message': ctx.message,
-			'pprint': pprint
+			'pprint': pprint,
+			'tabulate': tabulate,
+			'db': db
 		}
 
 		env.update(globals())

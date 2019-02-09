@@ -100,7 +100,10 @@ class Highlighter(TogglableCogMixin):
 	@commands.command()
 	@is_manager()
 	async def guildlang(self, ctx, *, language: LangConverter):
-		'''Set the default guild highlighting language.'''
+		'''Set the default guild highlighting language.
+
+		Only changeable by users with Manage Server permission.
+		'''
 
 		server = await HighlightLang.query.where(
 			and_(
@@ -119,6 +122,7 @@ class Highlighter(TogglableCogMixin):
 		await ctx.send(f'Guild language preference set to `{language}`')
 
 	@commands.command()
+	@commands.bot_has_permissions(embed_links=True)
 	async def lang(self, ctx, *, language: LangConverter = None):
 		'''Set your preferred highlighting language.'''
 

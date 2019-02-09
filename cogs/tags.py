@@ -10,19 +10,18 @@ from utils.string_manip import strip_markdown
 def make_lower(s: str): return s.lower()
 
 
-OK_EMOJI = '✅'
 MAX_EMBEDS_TAGS = 12
 
 
 class TagName(commands.Converter):
-	_length_limit = 32
+	_length_max = 32
 	_length_min = 2
 	_reserved = ['tag', 'create', 'edit', 'delete', 'info', 'list', 'top', 'raw', 'get', 'set', 'exec', 'search']
 
 	async def convert(self, ctx, tag_name: str):
 		tag_name = tag_name.lower()
-		if len(tag_name) > self._length_limit:
-			raise commands.CommandError(f'Tag name limit is {self._length_limit} characters.')
+		if len(tag_name) > self._length_max:
+			raise commands.CommandError(f'Tag name limit is {self._length_max} characters.')
 		if len(tag_name) < 3:
 			raise commands.CommandError(f'Tag names must be at least {self._length_min} characters long.')
 		if tag_name in self._reserved:
@@ -230,6 +229,7 @@ class Tags:
 		await ctx.send(strip_markdown(tg.content))
 
 	@tag.command()
+	@commands.bot_has_permissions(embed_links=True)
 	async def info(self, ctx, *, tag_name: TagName):
 		'''Show info about a tag.'''
 
@@ -254,11 +254,16 @@ class Tags:
 
 		e = discord.Embed()
 		e.description = f'**{tg.name}**'
+
 		e.set_author(name=nick, icon_url=avatar)
 		e.add_field(name='Owner', value=member.mention if member else nick)
 		e.add_field(name='Uses', value=tg.uses)
+
 		if not tg.alias is None:
 			e.add_field(name='Alias', value=tg.alias)
+
+		rank = await db.scalar('SELECT COUNT(id) from tag where uses > $1', tg.uses) + 1
+		e.add_field(name='Rank', value=str(rank))
 
 		footer = f'Created at: {created_at}'
 		if edited_at is not None:
@@ -269,6 +274,7 @@ class Tags:
 		await ctx.send(embed=e)
 
 	@tag.command()
+	@commands.bot_has_permissions(embed_links=True)
 	async def list(self, ctx, *, member: discord.Member = None):
 		'''List server or user tags.'''
 
@@ -302,6 +308,7 @@ class Tags:
 		await ctx.send(embed=e)
 
 	@commands.command()
+	@commands.bot_has_permissions(embed_links=True)
 	async def tags(self, ctx, *, member: discord.Member = None):
 		'''List tags.'''
 

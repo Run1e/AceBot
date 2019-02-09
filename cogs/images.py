@@ -15,6 +15,7 @@ class Image:
 		self.bot = bot
 
 	@commands.command()
+	@commands.bot_has_permissions(attach_files=True)
 	@commands.cooldown(rate=3, per=10.0, type=commands.BucketType.user)
 	async def woof(self, ctx):
 		'''Get a random doggo!'''
@@ -43,6 +44,7 @@ class Image:
 			await ctx.send(file=discord.File(data, 'dog.' + resp.content_type.split('/')[-1]))
 
 	@commands.command()
+	@commands.bot_has_permissions(attach_files=True)
 	@commands.cooldown(rate=3, per=10.0, type=commands.BucketType.user)
 	async def meow(self, ctx):
 		'''Get a random cat image!'''
@@ -68,6 +70,7 @@ class Image:
 			await ctx.send(file=discord.File(data, 'cat.' + resp.content_type.split('/')[-1]))
 
 	@commands.command()
+	@commands.bot_has_permissions(attach_files=True)
 	@commands.cooldown(rate=3, per=10.0, type=commands.BucketType.user)
 	async def quack(self, ctx):
 		'''Get a random duck image!'''
@@ -95,6 +98,7 @@ class Image:
 			await ctx.send(file=discord.File(data, 'duck.' + resp.content_type.split('/')[-1]))
 
 	@commands.command()
+	@commands.bot_has_permissions(attach_files=True)
 	@commands.cooldown(rate=3, per=10.0, type=commands.BucketType.user)
 	async def floof(self, ctx):
 		'''~floooof~'''

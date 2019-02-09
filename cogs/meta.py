@@ -29,7 +29,7 @@ class Meta:
 
 	@commands.command(aliases=['source'])
 	async def code(self, ctx, *, command: str = None):
-		'''Show info about a command or get GitHub repo link.'''
+		'''Show command code or get GitHub repo link.'''
 
 		if command is None:
 			await ctx.send('https://github.com/Run1e/AceBot')
