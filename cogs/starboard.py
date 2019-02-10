@@ -322,7 +322,7 @@ class Starboard(TogglableCogMixin):
 		'''Lists the most starred authors.'''
 
 		# I think this can be done more cleanly, though my SQL skills are lacking
-		# if you have improvements, join here and yell at me :D - https://discord.gg/X7abzRe
+		# if you have improvements, join here and enlighten me pls! :D - https://discord.gg/X7abzRe
 		query = '''
 			SELECT COALESCE(sm.count + st.count, sm.count), sm.author_id
 			FROM
@@ -338,12 +338,10 @@ class Starboard(TogglableCogMixin):
 		e = discord.Embed()
 		e.set_author(name=ctx.guild.name, icon_url=ctx.guild.icon_url)
 
-		for idx, (stars, user_id) in enumerate(res):
-			e.add_field(
-				name=' '.join((MEDALS[idx], ctx.guild.get_member(user_id).display_name)),
-				value='\u200b ' * 7 + f'{stars} stars',
-				inline=False
-			)
+		e.description = '\n'.join(
+			f'{MEDALS[idx]} {ctx.guild.get_member(user).mention} ({stars} stars)'
+			for idx, (stars, user) in enumerate(res)
+		)
 
 		await ctx.send(embed=e)
 
@@ -490,7 +488,7 @@ class Starboard(TogglableCogMixin):
 
 	def get_emoji_message(self, message, stars):
 		'''
-		Stolen from Rapptz, thanks!
+		Stolen from Rapptz with minor tweaks, thanks!
 		https://github.com/Rapptz/RoboDanny/blob/rewrite/cogs/stars.py#L168-L193
 		'''
 

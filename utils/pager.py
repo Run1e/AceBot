@@ -12,7 +12,7 @@ HELP_EMOJI = '\N{WHITE QUESTION MARK ORNAMENT}'
 
 
 class Pager:
-	def __init__(self, ctx, entries, page=1, per_page=12, timeout=120.0):
+	def __init__(self, ctx, entries, page=1, per_page=12, timeout=120.0, separator=' '):
 		self.ctx = ctx
 		self.bot = ctx.bot
 		self.author = ctx.author
@@ -22,6 +22,7 @@ class Pager:
 		self.embed = discord.Embed()
 		self.page = page
 		self.timeout = timeout
+		self.separator = separator
 		self.per_page = per_page
 		self.on_help = False
 
@@ -115,8 +116,10 @@ class Pager:
 			e.set_footer(text='Non-interactive! I\'m missing: ' + ', '.join(self.missing_perms))
 		elif self.on_help:
 			e.set_footer(text='')
-		else:
+		elif self.top_page > 1:
 			e.set_footer(text=f'Page {self.page}/{self.top_page}')
+		else:
+			e.set_footer(text='')
 
 	async def get_page(self, page):
 		self.clear_embed()
@@ -125,9 +128,7 @@ class Pager:
 	async def craft_page(self, e, page, entries):
 		'''Crafts the actual embed.'''
 
-		self.embed.set_footer(text=f'Page {page}/{self.top_page}')
-
-		e.description = '\n'.join(str(entry) for entry in entries)
+		e.description = self.separator.join(str(entry) for entry in entries)
 
 	def get_page_entries(self, page):
 		'''Converts a page number to a range of entries.'''

@@ -11,25 +11,27 @@ MAX_EMBEDS_TAGS = 12
 
 
 class TagPager(Pager):
+	member = None
+
 	async def craft_page(self, e, page, entries):
 		e.set_author(
 			name=self.member.display_name if self.member else self.ctx.guild.name,
 			icon_url=self.member.avatar_url if self.member else self.ctx.guild.icon_url
 		)
 
+		e.description = f'{len(self.entries)} total tags.'
+
 		names, aliases, uses = zip(*entries)
 
 		tags = ''
 		for idx, name in enumerate(names):
 			tags += f'\n{name}'
-			if aliases[idx] is not None:
-				tags += f' ({aliases[idx]})'
+			alias = aliases[idx]
+			if alias is not None:
+				tags += f' ({alias})'
 
 		e.add_field(name='Name', value=tags[1:])
 		e.add_field(name='Uses', value='\n'.join(str(use) for use in uses))
-
-		if self.top_page > 1:
-			e.set_footer(text=f'Page {page}/{self.top_page}')
 
 
 class TagName(commands.Converter):
@@ -114,7 +116,7 @@ class Tags:
 
 		return alts
 
-	@commands.group()
+	@commands.group(hidden=True)
 	async def tag(self, ctx):
 		'''Create and manage tags.'''
 

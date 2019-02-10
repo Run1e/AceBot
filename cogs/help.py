@@ -3,11 +3,10 @@ from discord.ext import commands
 from discord.ext.commands.bot import _default_help_command
 
 from utils.pager import Pager, REQUIRED_PERMS
-from cogs.base import TogglableCogMixin
 
 from types import MethodType
 
-IGNORE_COGS = ('Verify', 'Roles', 'Help')
+IGNORE_COGS = ('Help')
 
 
 def get_new_ending_note(self):
@@ -61,7 +60,7 @@ def get_signature(command):
 
 
 class HelpPager(Pager):
-	commands_per_page = 9
+	commands_per_page = 8
 
 	async def craft_page(self, e, page, entries):
 		cog_name, cog_desc, commands = entries[0]
@@ -95,9 +94,6 @@ class HelpPager(Pager):
 			cmds = []
 
 			for command_or_group in sorted(bot.get_cog_commands(cog_name), key=lambda cmd: cmd.name):
-				if command_or_group.hidden:
-					continue
-
 				self.add_command(cmds, command_or_group)
 
 				if isinstance(command_or_group, commands.Group):
@@ -215,7 +211,7 @@ class Help:
 
 			return
 
-		if command is None: # all commands if none specified
+		if command is None:  # all commands if none specified
 			p = HelpPager.from_bot(ctx)
 		else:
 
@@ -227,9 +223,9 @@ class Help:
 				if cog_name.lower() == command and cog_name not in IGNORE_COGS:
 					p = HelpPager.from_cog(ctx, current_cog)
 					break
-			else: # if we didn't find one, try to find a matching command
+			else:  # if we didn't find one, try to find a matching command
 				command = ctx.bot.get_command(command)
-				if command is None: # throw error message if we didn't find a command either
+				if command is None:  # throw error message if we didn't find a command either
 					raise commands.CommandError('Couldn\'t find command/cog.')
 				p = HelpPager.from_command(ctx, command)
 
