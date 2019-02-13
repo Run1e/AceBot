@@ -140,6 +140,13 @@ class Owner:
 		await user.send(content)
 
 	@commands.command(hidden=True)
+	async def say(self, ctx, channel: discord.TextChannel, *, content: str):
+		'''Send a message in a channel.'''
+
+		await ctx.message.delete()
+		await channel.send(content)
+
+	@commands.command(hidden=True)
 	async def print(self, ctx, *, body: str):
 		'''Calls eval but wraps code in print()'''
 

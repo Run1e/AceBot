@@ -1,14 +1,28 @@
-import discord, aiohttp, logging, dbl, traceback, io
+import discord, aiohttp, dbl, traceback, io, logging, logging.handlers, sys
 from discord.ext import commands
 from datetime import datetime
 
 from utils.time import pretty_seconds
 from utils.database import db, setup_db
-from utils.setup_logger import config_logger
 from config import *
 
-log = logging.getLogger(__name__)
-log = config_logger(log)
+logging.getLogger('discord').setLevel(logging.WARN)
+logging.getLogger('gino').setLevel(logging.WARN)
+
+fmt = logging.Formatter('[{asctime}] [{levelname}] {name}: {message}', datefmt='%Y-%m-%d %H:%M:%S', style='{')
+
+stream = logging.StreamHandler(sys.stdout)
+stream.setLevel(logging.INFO)
+stream.setFormatter(fmt)
+
+file = logging.handlers.TimedRotatingFileHandler('logs/log.log', when='midnight', encoding='utf-8-sig')
+file.setLevel(logging.INFO)
+file.setFormatter(fmt)
+
+log = logging.getLogger()
+log.setLevel(logging.INFO)
+log.addHandler(stream)
+log.addHandler(file)
 
 description = '''
 A.C.E. - Autonomous Command Executor
@@ -41,7 +55,7 @@ class AceBot(commands.Bot):
 	_support_link = 'https://discord.gg/X7abzRe'
 
 	def __init__(self):
-		log.info('Launching')
+		log.info('Initializing...')
 
 		super().__init__(
 			command_prefix=command_prefix,
@@ -50,10 +64,13 @@ class AceBot(commands.Bot):
 		)
 
 		# do blacklist check before all commands
-		self.add_check(self.blacklist)
+		self.add_check(self.blacklist, call_once=True)
 
 		# remove the default help command
 		self.remove_command('help')
+
+	async def on_connect(self):
+		log.info('Connected to Discord...')
 
 	# run on successful connection
 	async def on_ready(self):
@@ -64,7 +81,7 @@ class AceBot(commands.Bot):
 			self.dblpy = dbl.Client(self, dbl_key)
 			await self.update_dbl()
 
-		log.info('Connected, starting setup')
+		log.info('Ready! - starting setup')
 
 		log.info('Connecting to database')
 		self.db = await setup_db(db_bind, loop=self.loop)
@@ -85,6 +102,12 @@ class AceBot(commands.Bot):
 		await self.change_presence(activity=discord.Game(name='.help'))
 
 		log.info('Finished!')
+
+	async def on_resumed(self):
+		log.info('Bot resumed...')
+
+	async def on_guild_unavailable(self, guild):
+		log.info(f'Guild "{guild.name}" unavailable')
 
 	async def update_dbl(self):
 		try:
@@ -122,16 +145,26 @@ class AceBot(commands.Bot):
 	async def on_guild_join(self, guild):
 		await self.update_dbl()
 
-		e = discord.Embed(description='Joined guild')
-		e.set_author(name=guild.name, icon_url=guild.icon_url)
+		e = discord.Embed(
+			title='Joined guild',
+			description=guild.name
+		)
+
+		e.set_thumbnail(url=guild.icon_url)
+		e.timestamp = datetime.now()
 
 		await self.log(embed=e)
 
 	async def on_guild_remove(self, guild):
 		await self.update_dbl()
 
-		e = discord.Embed(description='Left guild')
-		e.set_author(name=guild.name, icon_url=guild.icon_url)
+		e = discord.Embed(
+			title='Left guild',
+			description=guild.name
+		)
+
+		e.set_thumbnail(url=guild.icon_url)
+		e.timestamp = datetime.now()
 
 		await self.log(embed=e)
 

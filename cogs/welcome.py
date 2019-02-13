@@ -47,10 +47,10 @@ class Welcome(TogglableCogMixin):
 
 		await channel.send(welcomify(member, guild, welc.content))
 
-	@commands.group(hidden=True)
+	@commands.group(hidden=True, invoke_without_command=True)
 	@is_manager()
 	async def welcome(self, ctx):
-		'''Welcome your users with a message!'''
+		pass
 
 	@welcome.command()
 	async def msg(self, ctx, *, content: commands.clean_content):

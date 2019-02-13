@@ -8,12 +8,15 @@ from .base import TogglableCogMixin
 from utils.checks import is_manager
 from utils.database import db, StarGuild, StarMessage, Starrers
 
+import logging
+
+log = logging.getLogger(__name__)
+
 MEDALS = [
 	'\N{FIRST PLACE MEDAL}',
 	'\N{SECOND PLACE MEDAL}',
 	'\N{THIRD PLACE MEDAL}',
 	'\N{SPORTS MEDAL}',
-	'\N{SPORTS MEDAL}'
 ]
 
 STAR_EMOJI = '\N{WHITE MEDIUM STAR}'
@@ -213,7 +216,7 @@ class Starboard(TogglableCogMixin):
 
 			await self.update_star(star_message, stars + 1)
 
-	@commands.group(hidden=True, aliases=['sb'])
+	@commands.group(hidden=True, aliases=['sb'], invoke_without_command=True)
 	@is_manager()
 	async def starboard(self, ctx):
 		pass
@@ -249,9 +252,13 @@ class Starboard(TogglableCogMixin):
 		e = discord.Embed()
 		e.set_author(name=ctx.guild.name, icon_url=ctx.guild.icon_url)
 
+		def get_member(m_id):
+			member = ctx.guild.get_member(m_id)
+			return '[removed]' if member is None else member.mention
+
 		e.description = '\n'.join(
-			f'{MEDALS[idx]} {ctx.guild.get_member(user).mention} ({stars} stars)'
-			for idx, (stars, user) in enumerate(res)
+			f'{MEDALS[min(idx, 3)]} {get_member(member)} ({stars} stars)'
+			for idx, (stars, member) in enumerate(res)
 		)
 
 		await ctx.send(embed=e)
@@ -260,7 +267,7 @@ class Starboard(TogglableCogMixin):
 	async def info(self, ctx, message_id: int):
 		'''Info about a starred message.'''
 
-		sm = await self.get_sm(ctx.guild_id, message_id)
+		sm = await self.get_sm(ctx.guild.id, message_id)
 
 		if sm is None:
 			raise commands.CommandError('Could not find that starred message.')

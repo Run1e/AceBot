@@ -1,9 +1,11 @@
-import discord
+import discord, logging
 from discord.ext import commands
 from sqlalchemy import and_
 
 from utils.database import GuildModule
 from utils.checks import is_manager
+
+log = logging.getLogger(__name__)
 
 
 class Configuration:
@@ -68,6 +70,7 @@ class Configuration:
 		if result is None:
 			raise commands.CommandError(f'Failed enabling module `{module}`')
 
+		log.info(f'{ctx.author.name} enabled \'{module}\' in {ctx.guild.name}')
 		await ctx.send(f'Module `{module}` enabled.')
 
 	@commands.command()
@@ -93,6 +96,7 @@ class Configuration:
 		res = await mod.delete()
 
 		if res == 'DELETE 1':
+			log.info(f'{ctx.author.name} disabled \'{module}\' in {ctx.guild.name}')
 			await ctx.send(f'Module `{module}` disabled.')
 		else:
 			raise commands.CommandError(f'Failed disabling module `{module}`')
