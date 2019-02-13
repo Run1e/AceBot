@@ -4,7 +4,7 @@ from datetime import datetime
 
 from cogs.base import TogglableCogMixin
 from utils.time import pretty_seconds
-
+from utils.lol import push_message
 
 class Moderator(TogglableCogMixin):
 	'''
@@ -77,6 +77,14 @@ class Moderator(TogglableCogMixin):
 	@commands.command()
 	@commands.has_permissions(ban_members=True)
 	@commands.bot_has_permissions(embed_links=True)
+	async def getmention(self, ctx, member: discord.Member):
+		'''Get a clickable mention from a user id, name, etc.'''
+
+		await ctx.send(embed=discord.Embed(description=member.mention))
+
+	@commands.command()
+	@commands.has_permissions(ban_members=True)
+	@commands.bot_has_permissions(embed_links=True)
 	async def info(self, ctx, user: discord.Member = None):
 		'''Display information about user or self.'''
 
@@ -137,6 +145,9 @@ class Moderator(TogglableCogMixin):
 
 		await ctx.message.delete()
 		deleted = await ctx.channel.purge(limit=message_count, check=check)
+
+		for delet in deleted:
+			push_message(delet)
 
 		count = len(deleted)
 

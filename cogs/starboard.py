@@ -216,18 +216,18 @@ class Starboard(TogglableCogMixin):
 
 			await self.update_star(star_message, stars + 1)
 
-	@commands.group(hidden=True, aliases=['sb'], invoke_without_command=True)
+	@commands.group(hidden=True, aliases=['starboard', 'sb'], invoke_without_command=True)
 	@is_manager()
-	async def starboard(self, ctx):
+	async def star(self, ctx):
 		pass
 
-	@starboard.command()
+	@star.command()
 	@commands.has_permissions(manage_messages=True)
 	async def fix(self, ctx, message_id: int):
 		'''Fixes a starred message, re-fetching the original message and refreshing it.'''
 		raise commands.CommandError('Not yet implemented, sorry!')
 
-	@starboard.command()
+	@star.command()
 	async def top(self, ctx):
 		'''Lists the most starred authors.'''
 
@@ -263,7 +263,7 @@ class Starboard(TogglableCogMixin):
 
 		await ctx.send(embed=e)
 
-	@starboard.command()
+	@star.command()
 	async def info(self, ctx, message_id: int):
 		'''Info about a starred message.'''
 
@@ -296,7 +296,7 @@ class Starboard(TogglableCogMixin):
 
 		await ctx.send(embed=e)
 
-	@starboard.command()
+	@star.command()
 	@is_manager()
 	async def channel(self, ctx, channel: discord.TextChannel = None):
 		'''
@@ -330,7 +330,7 @@ class Starboard(TogglableCogMixin):
 
 			await announce()
 
-	@starboard.command()
+	@star.command()
 	@commands.has_permissions(manage_messages=True)
 	async def delete(self, ctx, message_id: int):
 		'''Delete a starred message. Manage Messages perms required.'''
@@ -351,6 +351,24 @@ class Starboard(TogglableCogMixin):
 		await self.remove_star(sm)
 
 		await ctx.send('Removed successfully.')
+
+	@star.command()
+	async def random(self, ctx):
+		'''View a random starred message.'''
+
+		sm = await db.first('SELECT * FROM starmessage WHERE guild_id=$1 ORDER BY random() LIMIT 1', ctx.guild.id)
+
+		if sm is None:
+			raise commands.CommandError('No starred messages in this server!')
+
+		star_channel = await self.get_star_channel(ctx.message)
+
+		try:
+			star_message = await star_channel.get_message(sm.star_message_id)
+		except discord.HTTPException as exc:
+			raise commands.CommandError(str(exc))
+
+		await ctx.send(content=star_message.content, embed=star_message.embeds[0])
 
 	async def update_star(self, star_message, stars):
 		'''Updates a previously starred message'''

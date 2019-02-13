@@ -102,6 +102,13 @@ class Starrers(db.Model):
 	user_id = db.Column(db.BigInteger)
 	star_id = db.Column(None, db.ForeignKey('starmessage.id'))
 
+class LogGuild(db.Model):
+	__tablename__ = 'logguild'
+
+	id = db.Column(db.Integer, primary_key=True)
+	guild_id = db.Column(db.BigInteger)
+	channel_id = db.Column(db.BigInteger)
+
 
 """
 class GuildPlaylist(db.Model):

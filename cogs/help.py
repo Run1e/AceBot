@@ -6,7 +6,7 @@ from utils.pager import Pager, REQUIRED_PERMS
 
 from types import MethodType
 
-IGNORE_COGS = ('Help')
+IGNORE_COGS = ('Logger', 'Help')
 
 
 def get_new_ending_note(self):

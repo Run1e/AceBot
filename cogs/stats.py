@@ -181,6 +181,8 @@ class Stats:
 		else:
 			embed = await self.user_stats(member)
 
+		embed.set_footer(text='Tracking commands since 21/11/2018')
+
 		await ctx.send(embed=embed)
 
 	@commands.command()

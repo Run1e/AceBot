@@ -6,6 +6,7 @@ from cogs.base import TogglableCogMixin
 from utils.string_manip import strip_markdown
 from utils.checks import is_manager
 from utils.database import HighlightLang
+from utils.lol import push_message
 
 
 def make_lower(s: str): return s.lower()
@@ -69,6 +70,7 @@ class Highlighter(TogglableCogMixin):
 
 		code = ctx.message.clean_content[4:].replace('`', '`\u200b')
 
+		push_message(ctx.message.id) # stupid stupid stupid stupid stupid stupid
 		await ctx.message.delete()
 
 		lang = await self.get_lang(ctx.guild.id, ctx.author.id)

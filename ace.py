@@ -43,6 +43,7 @@ extensions = (
 	'cogs.welcome',
 	'cogs.coins',
 	'cogs.hl',
+	'cogs.log',
 	'cogs.guild.ahk',
 	'cogs.owner',
 	'cogs.help',
