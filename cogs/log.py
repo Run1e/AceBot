@@ -47,12 +47,27 @@ class Logger(TogglableCogMixin):
 		embed.set_author(
 			name=message.author.display_name,
 			icon_url=message.author.avatar_url_as(format='png'),
-			# url=f'https://discordapp.com/channels/{message.guild.id}/{message.channel.id}/{message.id}'
 		)
 
 		embed.set_footer(text=f'ID: {message.id}')
 		embed.timestamp = message.created_at
+
 		return embed
+
+	def find_changes(self, before, after):
+
+		changed = {}
+
+		for attr in dir(before):
+			if attr.startswith('_'):
+				continue
+			b, a = getattr(before, attr), getattr(after, attr)
+			if not isinstance(b, (str, int, bool, float)):
+				continue
+			if b != a:
+				changed[attr.replace('_', ' ').title()] = str(a)
+
+		return changed
 
 	async def log(self, guild, content=None, embed=None):
 		if isinstance(guild, discord.Guild):
@@ -76,7 +91,7 @@ class Logger(TogglableCogMixin):
 		if not await self._check(message.guild.id):
 			return
 
-		if bot_deleted(message.id): # STUPID STUPID STUPID STUPID STUPIDDDDD
+		if bot_deleted(message.id):  # STUPID STUPID STUPID STUPID STUPIDDDDD
 			return
 
 		embed = self.get_message_embed(message)
@@ -128,18 +143,8 @@ class Logger(TogglableCogMixin):
 		if not await self._check(before.guild.id):
 			return
 
-		changed = {}
+		changed = self.find_changes(before, after)
 
-		for attr in dir(before):
-			if attr.startswith('_'):
-				continue
-			b, a = getattr(before, attr), getattr(after, attr)
-			if not isinstance(b, (str, int)):
-				continue
-			if b != a:
-				changed[attr.replace('_', ' ').title()] = str(a)
-
-		# should probably try to support more changes but cba for now
 		if not len(changed):
 			return
 
@@ -160,6 +165,35 @@ class Logger(TogglableCogMixin):
 
 		await self.log(
 			guild=before.guild,
+			embed=e
+		)
+
+	async def on_guild_update(self, before, after):
+		if not await self._check(before.id):
+			return
+
+		changed = self.find_changes(before, after)
+
+		if not len(changed):
+			return
+
+		e = discord.Embed(
+			title='Guild edited'
+		)
+
+		for attr, a in changed.items():
+			e.add_field(
+				name=attr,
+				value=a,
+				inline=False
+			)
+
+		e.set_author(name=after.name, icon_url=after.icon_url)
+		e.set_footer(text=f'ID: {before.id}')
+		e.timestamp = datetime.now()
+
+		await self.log(
+			guild=after,
 			embed=e
 		)
 
@@ -204,7 +238,6 @@ class Logger(TogglableCogMixin):
 			e.add_field(name=attr, value='yes' if a else 'no')
 
 		await self.log(guild=member.guild, embed=e)
-
 
 	async def on_member_ban(self, guild, user):
 		if not await self._check(guild.id):

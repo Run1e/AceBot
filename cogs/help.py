@@ -214,9 +214,7 @@ class Help:
 		if command is None:  # all commands if none specified
 			p = HelpPager.from_bot(ctx)
 		else:
-
 			command = command.lower()
-			cog = None
 
 			# search for matching cog
 			for cog_name, current_cog in ctx.bot.cogs.items():

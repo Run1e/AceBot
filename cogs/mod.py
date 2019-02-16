@@ -138,16 +138,19 @@ class Moderator(TogglableCogMixin):
 		if message_count > 100:
 			return await ctx.send('Please choose a message count below 100.')
 
-		if user is not None:
-			check = lambda msg: msg.author == user
-		else:
-			check = None
+		def user_check(msg):
+			if msg.author == user:
+				push_message(msg.id)
+				return True
+			return False
 
+		def all_check(msg):
+			push_message(msg.id)
+			return True
+
+		push_message(ctx.message.id)
 		await ctx.message.delete()
-		deleted = await ctx.channel.purge(limit=message_count, check=check)
-
-		for delet in deleted:
-			push_message(delet)
+		deleted = await ctx.channel.purge(limit=message_count, check=all_check if user is None else user_check)
 
 		count = len(deleted)
 

@@ -1,6 +1,8 @@
 import discord, asyncio
 from math import ceil
 
+from utils.lol import push_message
+
 REQUIRED_PERMS = ('send_messages', 'add_reactions', 'manage_messages', 'embed_links')
 
 FIRST_EMOJI = '\N{BLACK LEFT-POINTING DOUBLE TRIANGLE WITH VERTICAL BAR}'
@@ -71,6 +73,7 @@ class Pager:
 				# if it is, and it's a stop emoji, just stop
 				if reaction.emoji == STOP_EMOJI:
 					await msg.delete()
+					push_message(self.ctx.message.id)
 					await self.ctx.message.delete()
 					return
 

@@ -543,7 +543,7 @@ class Starboard(TogglableCogMixin):
 
 					try:
 						await star_message.delete()
-					except discord.ClientException:
+					except discord.HTTPException:
 						continue
 
 			except (SyntaxError, ValueError, AttributeError) as exc:
