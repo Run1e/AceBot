@@ -52,6 +52,7 @@ class Pager:
 			if self.top_page == 2:
 				emojis.remove(FIRST_EMOJI)
 				emojis.remove(LAST_EMOJI)
+
 			for emoji in emojis:
 				await msg.add_reaction(emoji)
 

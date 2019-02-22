@@ -209,25 +209,84 @@ class General:
 		try:
 			async with self.bot.aiohttp.get(url, headers=headers) as resp:
 				if resp.status != 200:
-					raise self.query_error
+					if resp.status == 404:
+						raise commands.CommandError('Couldn\'t find a definition for that word.')
+					else:
+						raise self.query_error
 				info = await resp.json()
 		except asyncio.TimeoutError:
 			raise self.query_error
 
 		result = info['results'][0]
-		entry = result['lexicalEntries'][0]
+
+		lexentry = None
+		for temp in result['lexicalEntries']:
+			if lexentry is None:
+				lexentry = temp
+			try:
+				temp['entries'][0]['senses'][0]['definitions']
+				lexentry = temp
+				break
+			except KeyError:
+				continue
 
 		word = result['word']
-		type = entry['lexicalCategory']
-		desc = entry['entries'][0]['senses'][0]['definitions'][0]
 
-		word = word[:1].upper() + word[1:]
-		desc = desc[:1].upper() + desc[1:]
+		entry = lexentry['entries'][0]
+		sense = entry['senses'][0]
 
-		embed = discord.Embed(title=f'{word} ({type})', description=f'```{desc}```')
-		embed.set_footer(text='Oxford University Press', icon_url='https://i.imgur.com/7GMY4dP.png')
+		category = lexentry['lexicalCategory']
 
-		await ctx.send(embed=embed)
+		e = discord.Embed(title=f'{word.title()} ({category})')
+
+		if 'definitions' in sense:
+			defin = sense['definitions'][0]
+		elif 'short_definitions' in sense:
+			defin = sense['short_definitions'][0]
+		else:
+			defin = 'No definition.'
+
+
+		e.description = defin
+
+		if 'examples' in sense:
+			e.add_field(name='Example', value=sense['examples'][0]['text'])
+
+		if 'grammaticalFeatures' in entry:
+			e.add_field(
+				name='Features',
+				value=', '.join(temp['text'] for temp in entry['grammaticalFeatures']),
+			)
+
+
+		if 'registers' in sense:
+			e.add_field(name='Registers', value=', '.join(sense['registers']))
+
+		if 'domains' in sense:
+			e.add_field(name='Domains', value=', '.join(sense['domains']))
+
+		if 'regions' in sense:
+			e.add_field(name='Regions', value=', '.join(sense['regions']))
+
+		if 'pronunciations' in sense:
+			pro = sense['pronunciations'][0]
+			spelling = None
+			if 'phoneticNotation' in pro:
+				spelling = pro['phoneticNotation']
+			elif 'proneticSpelling' in pro:
+				spelling = pro['phoneticSpelling']
+
+			if spelling is not None:
+				if 'audioFile' in pro:
+					spelling = f'[{spelling}]({pro["audioFile"]})'
+				e.add_field(name='Pronunciation', value=spelling)
+
+		if 'variantForms' in sense:
+			e.add_field(name='Variants', value=', '.join(temp['text'] for temp in sense['variantForms']), inline=True)
+
+		e.set_footer(text='Oxford University Press', icon_url='https://i.imgur.com/7GMY4dP.png')
+
+		await ctx.send(embed=e)
 
 
 def setup(bot):

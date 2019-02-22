@@ -225,7 +225,56 @@ class Starboard(TogglableCogMixin):
 	@commands.has_permissions(manage_messages=True)
 	async def fix(self, ctx, message_id: int):
 		'''Fixes a starred message, re-fetching the original message and refreshing it.'''
-		raise commands.CommandError('Not yet implemented, sorry!')
+
+		sm = await self.get_sm(ctx.guild.id, message_id)
+
+		if sm is None:
+			raise commands.CommandError('Couldn\'t find that starred message!')
+
+		star_channel = await self.get_star_channel(ctx.message)
+
+		try:
+			starred_message = await star_channel.get_message(sm.star_message_id)
+		except discord.HTTPException:
+			raise commands.CommandError('Couldn\'t find message on starboard!')
+
+		orig_channel = ctx.guild.get_channel(sm.channel_id)
+
+		if orig_channel is None:
+			raise commands.CommandError('Couldn\'t find original message channel!')
+
+		try:
+			orig_message = await orig_channel.get_message(sm.message_id)
+		except discord.HTTPException:
+			raise commands.CommandError('Couldn\'t find original message!')
+
+		extra = ''
+		if sm.starred_at > datetime.now() - PURGE_TIME:
+			extra = ' and star count'
+
+			await db.scalar('DELETE FROM starrers WHERE star_id=$1', sm.id)
+
+			for reaction in orig_message.reactions + starred_message.reactions:
+				if reaction.emoji == STAR_EMOJI:
+					async for user in reaction.users():
+						if user.id in (self.bot.user.id, sm.starrer_id):
+							continue
+						if not await db.scalar('SELECT id FROM starrers WHERE star_id=$1 AND user_id=$2', sm.id, user.id):
+							await Starrers.create(user_id=user.id, star_id=sm.id)
+
+		stars = await db.scalar('SELECT COUNT(id) FROM starrers WHERE star_id=$1', sm.id)
+
+		try:
+			await starred_message.edit(
+				content=self.get_header(stars + 1),
+				embed=self.get_embed(orig_message, stars + 1)
+			)
+		except discord.HTTPException:
+			raise commands.CommandError('Failed editing starred message.')
+
+		await ctx.send(f'Refreshed starboard message{extra}.')
+
+
 
 	@star.command()
 	async def top(self, ctx):

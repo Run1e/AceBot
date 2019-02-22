@@ -37,7 +37,7 @@ class Meta:
 
 		command = self.bot.get_command(command)
 
-		if command is None:
+		if command is None or command.hidden:
 			raise commands.CommandError('Couldn\'t find command.')
 
 		code = '\n'.join(line[1:] for line in inspect.getsource(command.callback).splitlines())

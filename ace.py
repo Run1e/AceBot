@@ -45,6 +45,7 @@ extensions = (
 	'cogs.hl',
 	'cogs.log',
 	'cogs.guild.ahk',
+	'cogs.guild.dwitter',
 	'cogs.owner',
 	'cogs.help',
 )

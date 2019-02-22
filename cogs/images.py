@@ -14,7 +14,7 @@ class Image:
 	def __init__(self, bot):
 		self.bot = bot
 
-	@commands.command()
+	@commands.command(aliases=['dog'])
 	@commands.bot_has_permissions(attach_files=True)
 	@commands.cooldown(rate=3, per=10.0, type=commands.BucketType.user)
 	async def woof(self, ctx):
@@ -43,7 +43,7 @@ class Image:
 		else:
 			await ctx.send(file=discord.File(data, 'dog.' + resp.content_type.split('/')[-1]))
 
-	@commands.command()
+	@commands.command(aliases=['cat'])
 	@commands.bot_has_permissions(attach_files=True)
 	@commands.cooldown(rate=3, per=10.0, type=commands.BucketType.user)
 	async def meow(self, ctx):
@@ -69,7 +69,7 @@ class Image:
 		else:
 			await ctx.send(file=discord.File(data, 'cat.' + resp.content_type.split('/')[-1]))
 
-	@commands.command()
+	@commands.command(aliases=['duck'])
 	@commands.bot_has_permissions(attach_files=True)
 	@commands.cooldown(rate=3, per=10.0, type=commands.BucketType.user)
 	async def quack(self, ctx):
@@ -97,7 +97,7 @@ class Image:
 		else:
 			await ctx.send(file=discord.File(data, 'duck.' + resp.content_type.split('/')[-1]))
 
-	@commands.command()
+	@commands.command(aliases=['fox'])
 	@commands.bot_has_permissions(attach_files=True)
 	@commands.cooldown(rate=3, per=10.0, type=commands.BucketType.user)
 	async def floof(self, ctx):

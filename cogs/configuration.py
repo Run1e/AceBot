@@ -34,13 +34,14 @@ class Configuration:
 			mod_list.append(modu.module)
 
 		e = discord.Embed(
-			title='Modules',
 			description=(
 				'`.enable <module>` to enable a module.\n'
 				'`.disable <module>` to disable.\n'
 				'`.help <module>` to see commands.'
 			)
 		)
+
+		e.set_author(name='Modules', icon_url=self.bot.user.avatar_url)
 
 		enabled = '\n'.join(mod_list)
 		disabled = '\n'.join(filter(lambda mod: mod not in mod_list, self.bot._toggleable))
