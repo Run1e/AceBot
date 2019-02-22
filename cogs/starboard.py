@@ -254,15 +254,20 @@ class Starboard(TogglableCogMixin):
 
 			await db.scalar('DELETE FROM starrers WHERE star_id=$1', sm.id)
 
+			star_list = []
+
 			for reaction in orig_message.reactions + starred_message.reactions:
 				if reaction.emoji == STAR_EMOJI:
 					async for user in reaction.users():
 						if user.id in (self.bot.user.id, sm.starrer_id):
 							continue
-						if not await db.scalar('SELECT id FROM starrers WHERE star_id=$1 AND user_id=$2', sm.id, user.id):
+						if user.id not in star_list:
 							await Starrers.create(user_id=user.id, star_id=sm.id)
+							star_list.append(user.id)
 
-		stars = await db.scalar('SELECT COUNT(id) FROM starrers WHERE star_id=$1', sm.id)
+			stars = len(star_list)
+		else:
+			stars = await db.scalar('SELECT COUNT(id) FROM starrers WHERE star_id=$1', sm.id)
 
 		try:
 			await starred_message.edit(
@@ -273,8 +278,6 @@ class Starboard(TogglableCogMixin):
 			raise commands.CommandError('Failed editing starred message.')
 
 		await ctx.send(f'Refreshed starboard message{extra}.')
-
-
 
 	@star.command()
 	async def top(self, ctx):
