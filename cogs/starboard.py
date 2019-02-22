@@ -280,6 +280,24 @@ class Starboard(TogglableCogMixin):
 		await ctx.send(f'Refreshed starboard message{extra}.')
 
 	@star.command()
+	async def show(self, ctx, message_id: int):
+		'''Bring up a specific starred message via ID.'''
+
+		sm = await self.get_sm(ctx.guild.id, message_id)
+
+		if sm is None:
+			raise commands.CommandError('Couldn\'t find that starred message!')
+
+		star_channel = await self.get_star_channel(ctx.message)
+
+		try:
+			starred_message = await star_channel.get_message(sm.star_message_id)
+		except discord.HTTPException:
+			raise commands.CommandError('Couldn\'t find message on starboard!')
+
+		await ctx.send(content=starred_message.content, embed=starred_message.embeds[0])
+
+	@star.command()
 	async def top(self, ctx):
 		'''Lists the most starred authors.'''
 
