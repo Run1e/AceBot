@@ -200,8 +200,9 @@ class Coins(TogglableCogMixin):
 		).order_by(UserCoin.coins.desc()).limit(5).gino.all()
 
 		for index, cn in enumerate(coins):
+			m = ctx.guild.get_member(cn.user_id)
 			e.add_field(
-				name=' '.join((MEDALS[index], ctx.guild.get_member(cn.user_id).display_name)),
+				name=' '.join((MEDALS[index], '[unknown user]' if m is None else m.display_name)),
 				value='\u200b ' * 7 + f'{self.fmt(cn.coins)} coins',
 				inline=False
 			)

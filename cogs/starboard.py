@@ -322,12 +322,8 @@ class Starboard(TogglableCogMixin):
 		e = discord.Embed()
 		e.set_author(name=ctx.guild.name, icon_url=ctx.guild.icon_url)
 
-		def get_member(m_id):
-			member = ctx.guild.get_member(m_id)
-			return '[removed]' if member is None else member.mention
-
 		e.description = '\n'.join(
-			f'{MEDALS[min(idx, 3)]} {get_member(member)} ({stars} stars)'
+			f'{MEDALS[min(idx, 3)]} <@{member}> ({stars} stars)'
 			for idx, (stars, member) in enumerate(res)
 		)
 
@@ -353,9 +349,9 @@ class Starboard(TogglableCogMixin):
 		e.set_author(name=author.display_name, icon_url=author.avatar_url)
 
 		e.add_field(name='Stars', value=self.star_emoji(stars) + ' ' + str(stars))
-		e.add_field(name='Starred in', value='[deleted channel]' if channel is None else channel.mention)
-		e.add_field(name='Author', value='[deleted user]' if author is None else author.mention)
-		e.add_field(name='Starrer', value='[deleted user]' if starrer is None else starrer.mention)
+		e.add_field(name='Starred in', value=f'<#{channel}>')
+		e.add_field(name='Author', value=f'<@{author}>')
+		e.add_field(name='Starrer', value=f'<@{starrer}>')
 		e.add_field(
 			name='Context',
 			value=f'[Click here](https://discordapp.com/channels/{sm.guild_id}/{sm.channel_id}/{sm.message_id})'

@@ -6,3 +6,4 @@ config.py
 notes
 test.py
 tempdata
+cogs/guild/ahk.py

@@ -1,7 +1,7 @@
 import discord, logging
 
 from discord.ext import commands
-from datetime import datetime
+from datetime import datetime, timedelta
 
 from utils.checks import is_manager
 from utils.database import db, LogGuild
@@ -12,6 +12,8 @@ log = logging.getLogger(__name__)
 
 CHANNEL_TYPES = {discord.TextChannel: 'Text', discord.VoiceChannel: 'Voice', discord.CategoryChannel: 'Category'}
 
+def get_dt():
+	return datetime.now() - timedelta(hours=1)
 
 class Logger(TogglableCogMixin):
 	'''Log interesting events like message deletion.'''
@@ -114,7 +116,7 @@ class Logger(TogglableCogMixin):
 		)
 
 		e.set_footer(text=f'ID: {channel.id}')
-		e.timestamp = channel.created_at
+		e.timestamp = get_dt()
 
 		await self.log(
 			guild=channel.guild,
@@ -131,7 +133,7 @@ class Logger(TogglableCogMixin):
 		)
 
 		e.set_footer(text=f'ID: {channel.id}')
-		e.timestamp = datetime.now()
+		e.timestamp = get_dt()
 		e.color = 0xFF4000
 
 		await self.log(
@@ -161,7 +163,7 @@ class Logger(TogglableCogMixin):
 			)
 
 		e.set_footer(text=f'ID: {before.id}')
-		e.timestamp = datetime.now()
+		e.timestamp = get_dt()
 
 		await self.log(
 			guild=before.guild,
@@ -190,12 +192,26 @@ class Logger(TogglableCogMixin):
 
 		e.set_author(name=after.name, icon_url=after.icon_url)
 		e.set_footer(text=f'ID: {before.id}')
-		e.timestamp = datetime.now()
+		e.timestamp = get_dt()
 
 		await self.log(
 			guild=after,
 			embed=e
 		)
+
+	async def on_member_join(self, member):
+		if not await self._check(member.guild.id):
+			return
+
+		e = discord.Embed(
+			title='Member joined'
+		)
+
+		e.set_author(name=member.name, icon_url=member.avatar_url)
+		e.timestamp = get_dt()
+		e.set_footer(text=f'ID: {member.id}')
+
+		await self.log(guild=member.guild, embed=e)
 
 	async def on_member_remove(self, member):
 		if not await self._check(member.guild.id):
@@ -206,7 +222,7 @@ class Logger(TogglableCogMixin):
 		)
 
 		e.set_author(name=member.name, icon_url=member.avatar_url)
-		e.timestamp = datetime.now()
+		e.timestamp = get_dt()
 		e.set_footer(text=f'ID: {member.id}')
 
 		await self.log(guild=member.guild, embed=e)
@@ -230,7 +246,7 @@ class Logger(TogglableCogMixin):
 		)
 
 		e.set_author(name=member.name, icon_url=member.avatar_url)
-		e.timestamp = datetime.now()
+		e.timestamp = get_dt()
 		e.set_footer(text=f'ID: {member.id}')
 		e.color = 0xFF4000
 
@@ -248,7 +264,7 @@ class Logger(TogglableCogMixin):
 		)
 
 		e.set_author(name=user.name, icon_url=user.avatar_url)
-		e.timestamp = datetime.now()
+		e.timestamp = get_dt()
 		e.set_footer(text=f'ID: {user.id}')
 		e.color = 0xFF4000
 
@@ -263,7 +279,7 @@ class Logger(TogglableCogMixin):
 		)
 
 		e.set_author(name=user.name, icon_url=user.avatar_url)
-		e.timestamp = datetime.now()
+		e.timestamp = get_dt()
 		e.set_footer(text=f'ID: {user.id}')
 		e.color = 0xFF4000
 

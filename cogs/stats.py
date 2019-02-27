@@ -90,16 +90,6 @@ class Stats:
 
 		top_users_today = await db.all(query, guild.id, now)
 
-		topu, topt = [], []
-
-		for row in top_users:
-			member = guild.get_member(row[1])
-			topu.append(member.mention if member else 'Unknown')
-
-		for row in top_users_today:
-			member = guild.get_member(row[1])
-			topt.append(member.mention if member else 'Unknown')
-
 		e = discord.Embed(description=f'{uses} total commands issued.')
 		e.set_author(name=guild.name, icon_url=guild.icon_url)
 
@@ -115,12 +105,12 @@ class Stats:
 
 		e.add_field(
 			name='Top Users',
-			value=self.create_list(top_users, topu),
+			value=self.create_list(top_users, [f'<@{user}>' for _, user in top_users]),
 		)
 
 		e.add_field(
 			name="Today's Top Users",
-			value=self.create_list(top_users_today, topt),
+			value=self.create_list(top_users_today, [f'<@{user}>' for _, user in top_users_today]),
 		)
 
 		return e
