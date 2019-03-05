@@ -48,6 +48,7 @@ extensions = (
 	'cogs.guild.dwitter',
 	'cogs.owner',
 	'cogs.help',
+	'cogs.reminder'
 )
 
 
