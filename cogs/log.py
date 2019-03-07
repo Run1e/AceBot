@@ -58,16 +58,22 @@ class Logger(TogglableCogMixin):
 
 	def find_changes(self, before, after):
 
+		# (str, int, bool, float)
+
 		changed = {}
 
 		for attr in dir(before):
 			if attr.startswith('_'):
 				continue
 			b, a = getattr(before, attr), getattr(after, attr)
-			if not isinstance(b, (str, int, bool, float)):
-				continue
 			if b != a:
-				changed[attr.replace('_', ' ').title()] = str(a)
+				if hasattr(a, 'mention'):
+					vis = a.mention
+				elif hasattr(a, 'name'):
+					vis = a.name
+				else:
+					vis = str(a)
+				changed[attr.replace('_', ' ').title()] = vis
 
 		return changed
 
@@ -227,16 +233,13 @@ class Logger(TogglableCogMixin):
 
 		await self.log(guild=member.guild, embed=e)
 
+
+
 	async def on_voice_state_update(self, member, before, after):
 		if not await self._check(member.guild.id):
 			return
 
-		changed = {}
-
-		for attr in ('deaf', 'mute'):
-			b, a = getattr(before, attr), getattr(after, attr)
-			if b != a:
-				changed[attr.title()] = a
+		changed = self.find_changes(before, after)
 
 		if not len(changed):
 			return
