@@ -110,10 +110,10 @@ class LogGuild(db.Model):
 	channel_id = db.Column(db.BigInteger)
 
 class Reminders(db.Model):
-    __tablename__ = 'reminders'
+    __tablename__ = 'reminder'
 
     id = db.Column(db.Integer, primary_key=True)
-    server_id = db.Column(db.BigInteger)
+    guild_id = db.Column(db.BigInteger)
     user_id= db.Column(db.BigInteger)
     remind_on = db.Column(db.DateTime)
     message = db.Column(db.Unicode)
