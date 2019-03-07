@@ -157,4 +157,4 @@ oxford_id, oxford_key = 'id', 'key'
 ## Acknowledgements
 
 Avatar artwork: Vinter Borge
-Contributors: Cap'n Odin #8812 and GeekDude #2532
+Contributors: CloakerSmoker #2459, Cap'n Odin #8812 and GeekDude #2532

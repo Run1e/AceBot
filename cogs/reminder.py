@@ -1,85 +1,161 @@
-import discord
+import discord, asyncio
 from discord.ext import commands
-import asyncio
 
 from utils.database import db, Reminders
+from utils.time import pretty_seconds
+from utils.pager import Pager
+from utils.string_manip import shorten
 from cogs.base import TogglableCogMixin
 from datetime import datetime, timedelta
 
+SUCCESS_EMOJI = '\U00002705'
+CHECK_EVERY = 60
+DEFAULT_REMINDER_MESSAGE = 'Hey, wake up!'
+MAX_DELTA = timedelta(days=365)
+MAX_REMINDERS = 16
+
+
 class TimeUnit(commands.Converter):
-    async def convert(self, ctx, unit: str):
-        unit = unit.lower()
+	async def convert(self, ctx, unit: str):
+		unit = unit.lower()
 
-        if unit is None:
-            unit = 'minute' # If a unit isn't passed, assume minutes
-        if unit[-1] == 's':
-            unit = unit[0:-1] # If a unit is passed, but plural, remove the "s" at the end
+		if unit.endswith('s'):
+			unit = unit[0:-1]  # If a unit is passed, but plural, remove the "s" at the end
 
-        units = {'minute':60, 'hour':60 * 60, 'day': 60 * 60 * 24}
+		units = dict(
+			minute=60,
+			hour=60 * 60,
+			day=60 * 60 * 24
+		)
 
-        try:
-            seconds = units[unit] # Try to get the mult for the unit, if it fails then an invalid unit was passed and we can throw a UnitError
-        except KeyError:
-            raise commands.BadArgument
+		try:
+			seconds = units[unit]
+		except KeyError:
+			raise commands.BadArgument('Unknown time type.')
 
-        return seconds
+		return seconds
+
+
+class RemindPager(Pager):
+	async def craft_page(self, e, page, entries):
+		now = datetime.now()
+
+		e.set_author(name=self.member.name, icon_url=self.member.avatar_url)
+		e.description = 'All your reminders for this server.'
+
+		for id, guild_id, channel_id, user_id, remind_on, made_on, message in entries:
+			e.add_field(
+				name=f'({id}): {str(pretty_seconds((remind_on - now).total_seconds()))}',
+				value=shorten(message, 256, 2) if message is not None else DEFAULT_REMINDER_MESSAGE,
+				inline=False
+			)
+
 
 class Reminder(TogglableCogMixin):
-    
-    SUCCESS_EMOJI = '\U00002705'
-    CHECK_EVERY = 60
-    DEFAULT_REMINDER_MESSAGE = 'Hey, wake up!'
-    REMINDER_PREFIX = 'Reminder:```'
-    REMINDER_SUFIX = '```'
+	def __init__(self, bot):
+		super().__init__(bot)
+		self.bot.loop.create_task(self.check_reminders())
 
-    def __init__(self, bot):
-        super().__init__(bot)
-        self.bot.loop.create_task(self.check_reminders())
+	async def __local_check(self, ctx):
+		return await self._is_used(ctx)
 
-    @commands.command(aliases=['reminder'])
-    async def remindme(self, ctx, amount: int, unit: TimeUnit, *, message = None):
-        seconds = amount * unit
-        
-        time = datetime.now() + timedelta(seconds=seconds) # Create a datetime object of the current time, and add how long to wait before reminding to it
-        
-        await Reminders.create(
-            guild_id = ctx.guild.id,
-            user_id = ctx.author.id,
-            remind_on = time,
-            message = message
-        )
-        # Add the reminder to the DB
+	@commands.command()
+	async def reminders(self, ctx):
+		'''List your reminders in this guild.'''
 
-        await ctx.message.add_reaction(self.SUCCESS_EMOJI)
+		res = await db.all(
+			'SELECT * FROM reminder WHERE guild_id=$1 AND user_id=$2 ORDER BY id DESC',
+			ctx.guild.id, ctx.author.id
+		)
 
-    async def check_reminders(self):
-        while True:
-            query = 'SELECT * FROM reminder'
-            res = await db.all(query)
+		if not len(res):
+			raise commands.CommandError('Couldn\'t find any reminders.')
 
-            # For each entry in the reminder table, check if now is greater than or equal to when that reminder needs to be sent by
-            now = datetime.now()
-            for id, guild_id, user_id, remind_on, message in res:
-                if now >= remind_on:
-                    # If it is time to send the reminder, then get the guild it was sent in so we can get the user to send it to
-                    guild = self.bot.get_guild(guild_id)
-                    user = guild.get_member(user_id)
-                    msg = message
+		p = RemindPager(ctx, res, per_page=6)
+		p.member = ctx.author
+		await p.go()
 
-                    # If there is no reminder message, use the default one
-                    if msg is None:
-                        msg = self.DEFAULT_REMINDER_MESSAGE
-                    
-                    msg = f'{self.REMINDER_PREFIX}{msg}{self.REMINDER_SUFIX}'
-                    # Encapsulate the reminder message in the prefix/sufix, and send it to the user
+	@commands.command()
+	async def delreminder(self, ctx, id: int):
+		'''Delete a reminder.'''
 
-                    await user.send(msg)
+		res = await db.first(
+			'SELECT * FROM reminder WHERE id=$1 AND user_id=$2 AND guild_id=$3',
+			id, ctx.author.id, ctx.guild.id
+		)
 
-                    # Get the record we just sent the message for, and delete it so it isn't sent again
-                    row = await Reminders.query.where(Reminders.id == id).gino.first()
-                    await row.delete()
-            
-            await asyncio.sleep(self.CHECK_EVERY)
+		if res is None:
+			raise commands.CommandError('Couldn\'t find reminder or you don\'t own it.')
+
+		await db.scalar('DELETE FROM reminder WHERE id=$1', res.id)
+		await ctx.send('Reminder deleted.')
+
+	@commands.command(aliases=['reminder', 'remind'])
+	async def remindme(self, ctx, amount: int, unit: TimeUnit, *, message=None):
+		'''Create a new reminder.'''
+
+		seconds = amount * unit
+
+		now = datetime.now()
+		delta = timedelta(seconds=seconds)
+
+		if delta > MAX_DELTA:
+			raise commands.CommandError('Sorry. Can\'t remind in more than a year!')
+
+		if message is not None and len(message) > 1024:
+			raise commands.CommandError('Sorry, keep the message below 1024 characters!')
+
+		count = await db.scalar('SELECT COUNT(id) FROM reminder WHERE user_id=$1', ctx.author.id)
+		if count > MAX_REMINDERS:
+			raise commands.CommandError(f'Sorry, you can\'t have more than {MAX_REMINDERS} active reminders at once.')
+
+		# Add the reminder to the DB
+		await Reminders.create(
+			guild_id=ctx.guild.id,
+			channel_id=ctx.channel.id,
+			user_id=ctx.author.id,
+			made_on=now,
+			remind_on=now + delta,
+			message=message
+		)
+
+		await ctx.send(f'You will be reminded in {pretty_seconds(delta.total_seconds())}.')
+
+	async def check_reminders(self):
+		while True:
+			await asyncio.sleep(CHECK_EVERY)
+
+			res = await db.all('SELECT * FROM reminder WHERE remind_on<=$1', datetime.now())
+
+			for id, guild_id, channel_id, user_id, remind_on, made_on, message in res:
+				# If it is time to send the reminder, then get the guild it was sent in so we can get the user to send it to
+
+				channel = self.bot.get_channel(channel_id)
+				user = self.bot.get_user(user_id)
+
+				# If there is no reminder message, use the default one
+				if message is None:
+					message = DEFAULT_REMINDER_MESSAGE
+
+				e = discord.Embed(
+					title='Reminder:',
+					description=message
+				)
+
+				e.timestamp = made_on
+
+				# Encapsulate the reminder message in the prefix/suffix, and send it to the user
+				try:
+					if channel is not None:
+						await channel.send(content=f'<@{user_id}>', embed=e)
+					elif user is not None:
+						await user.send(embed=e)
+				except discord.HTTPException:
+					pass
+
+				# Get the record we just sent the message for, and delete it so it isn't sent again
+				await db.scalar('DELETE FROM reminder WHERE id=$1', id)
+
 
 def setup(bot):
-    bot.add_cog(Reminder(bot))
+	bot.add_cog(Reminder(bot))

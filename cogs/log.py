@@ -244,6 +244,9 @@ class Logger(TogglableCogMixin):
 		if not len(changed):
 			return
 
+		if 'Self Mute' in changed or 'Self Deaf' in changed:
+			return
+
 		e = discord.Embed(
 			title='Member voice state update'
 		)
