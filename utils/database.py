@@ -109,6 +109,15 @@ class LogGuild(db.Model):
 	guild_id = db.Column(db.BigInteger)
 	channel_id = db.Column(db.BigInteger)
 
+class Reminders(db.Model):
+    __tablename__ = 'reminder'
+
+    id = db.Column(db.Integer, primary_key=True)
+    guild_id = db.Column(db.BigInteger)
+    user_id= db.Column(db.BigInteger)
+    remind_on = db.Column(db.DateTime)
+    message = db.Column(db.Unicode)
+
 
 """
 class GuildPlaylist(db.Model):
