@@ -95,6 +95,9 @@ class AutoHotkey(TogglableCogMixin):
 		if not hasattr(ctx, 'guild') or ctx.guild.id != AHK_GUILD_ID:
 			return
 
+		if not await self.bot.blacklist(ctx):
+			return
+
 		# command not found? docs search it. only if message string is not *only* dots though
 		if isinstance(error, commands.CommandNotFound) and len(
 				ctx.message.content) > 3 and not ctx.message.content.startswith('..'):
@@ -148,7 +151,7 @@ class AutoHotkey(TogglableCogMixin):
 		for role_id in ROLES:
 			roles.append(ctx.guild.get_role(role_id))
 
-		e = discord.Embed(description='Click the reactions to add yourselves to a role!')
+		e = discord.Embed(description='Click the reactions to give yourself a role!')
 
 		for role in roles:
 			e.add_field(name=ROLES[role.id], value=role.mention)

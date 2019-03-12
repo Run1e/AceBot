@@ -139,9 +139,9 @@ class AceBot(commands.Bot):
 		if await db.scalar('SELECT user_id FROM ignore WHERE user_id=$1', ctx.author.id):
 			return False
 
-		# hardcoded for the autohotkey verification thing
-		# tldr for commands to work, they must have the Member role
-		if ctx.guild.id == 115993023636176902 and all(role.id != 509526426198999040 for role in ctx.author.roles):
+
+		if ctx.guild.id == 115993023636176902 and ctx.command is not None and ctx.command.name != 'accept' \
+		and all(role.id != 509526426198999040 for role in ctx.author.roles):
 			return False
 
 		return True

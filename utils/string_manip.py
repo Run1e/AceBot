@@ -60,6 +60,6 @@ def welcomify(user, guild, string):
 	}
 
 	for key, val in repl.items():
-		string = string.replace('{' + key + '}', val)
+		string = string.replace('{' + key + '}', str(val))
 
 	return string

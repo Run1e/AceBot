@@ -2,6 +2,8 @@ import discord
 from discord.ext import commands
 from datetime import datetime
 
+from cogs.guild.ahk_security import RULES_MSG_ID
+
 from cogs.base import TogglableCogMixin
 from utils.time import pretty_seconds
 from utils.lol import push_message
@@ -145,6 +147,8 @@ class Moderator(TogglableCogMixin):
 			return False
 
 		def all_check(msg):
+			if msg.id == RULES_MSG_ID:
+				return False
 			push_message(msg.id)
 			return True
 
