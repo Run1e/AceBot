@@ -36,19 +36,20 @@ extensions = (
 	'cogs.images',
 	'cogs.tags',
 	'cogs.stats',
-	'cogs.configuration',
 	'cogs.meta',
-	'cogs.mod',
 	'cogs.starboard',
-	'cogs.welcome',
-	'cogs.coins',
+	'cogs.reminder',
 	'cogs.hl',
+	'cogs.coins',
+	'cogs.welcome',
+	'cogs.configuration',
+	'cogs.mod',
 	'cogs.log',
 	'cogs.guild.ahk',
+	'cogs.guild.ahk_security',
 	'cogs.guild.dwitter',
 	'cogs.owner',
-	'cogs.help',
-	'cogs.reminder'
+	'cogs.help'
 )
 
 

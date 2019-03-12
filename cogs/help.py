@@ -220,10 +220,12 @@ class Help:
 			for cog_name, current_cog in ctx.bot.cogs.items():
 				if cog_name.lower() == command and cog_name not in IGNORE_COGS:
 					p = HelpPager.from_cog(ctx, current_cog)
+					if not len(p.entries):
+						raise commands.CommandError('Couldn\'t find command/cog.')
 					break
 			else:  # if we didn't find one, try to find a matching command
 				command = ctx.bot.get_command(command)
-				if command is None:  # throw error message if we didn't find a command either
+				if command is None or command.hidden:  # throw error message if we didn't find a command either
 					raise commands.CommandError('Couldn\'t find command/cog.')
 				p = HelpPager.from_command(ctx, command)
 

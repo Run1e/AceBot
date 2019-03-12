@@ -1,30 +1,23 @@
-import discord, asyncio
+import discord, asyncio, logging, json, re
 from discord.ext import commands
 
-from ace import log
 from utils.docs_search import docs_search
-from utils.string_manip import welcomify, to_markdown, shorten
+from utils.string_manip import to_markdown, shorten
 from cogs.base import TogglableCogMixin
 
 from html2text import HTML2Text
 from bs4 import BeautifulSoup
 from datetime import datetime, timezone, timedelta
 
+log = logging.getLogger(__name__)
+
 htt = HTML2Text()
 htt.body_width = 0
 
-# for verification stuff
-GENERAL_ID = 115993023636176902
-STAFF_ID = 311784919208558592
-MEMBER_ID = 509526426198999040
-
-WELCOME_MSG = '''
-Welcome to our Discord community {user}!
-A collection of useful tips are in <#407666416297443328> and recent announcements can be found in <#367301754729267202>.
-'''
+AHK_GUILD_ID = 115993023636176902
 
 # for rss
-#FORUM_ID = 517692823621861409
+# FORUM_ID = 517692823621861409
 FORUM_ID = 536785342959845386
 
 # for roles
@@ -38,8 +31,9 @@ ROLES = {
 	513111591361970204: '🇷'  # regex crew
 }
 
+
 class AutoHotkey(TogglableCogMixin):
-	'''Commands for the AutoHotkey guild.'''
+	'''Commands for the AutoHotkey server.'''
 
 	def __init__(self, bot):
 		super().__init__(bot)
@@ -48,8 +42,57 @@ class AutoHotkey(TogglableCogMixin):
 	async def __local_check(self, ctx):
 		return await self._is_used(ctx)
 
+	async def rss(self):
+
+		url = 'https://www.autohotkey.com/boards/feed'
+
+		channel = self.bot.get_channel(FORUM_ID)
+
+		def parse_date(date_str):
+			date_str = date_str.strip()
+			return datetime.strptime(date_str[:-3] + date_str[-2:], "%Y-%m-%dT%H:%M:%S%z")
+
+		old_time = datetime.now(tz=timezone(timedelta(hours=1))) - timedelta(minutes=1)
+
+		while True:
+			await asyncio.sleep(10 * 60)
+
+			try:
+				async with self.bot.aiohttp.request('get', url) as resp:
+					if resp.status != 200:
+						continue
+					xml_rss = await resp.text('UTF-8')
+
+				xml = BeautifulSoup(xml_rss, 'xml')
+
+				for entry in xml.find_all('entry')[::-1]:
+					time = parse_date(entry.updated.text)
+					title = htt.handle(entry.title.text)
+					content = shorten(entry.content.text, 512, 8)
+
+					if time > old_time and '• Re: ' not in title:
+						e = discord.Embed(
+							title=title,
+							description=to_markdown(content.split('Statistics: ')[0]),
+							url=entry.id.text
+						)
+
+						e.add_field(name='Author', value=entry.author.text)
+						e.add_field(name='Forum', value=entry.category['label'])
+
+						e.timestamp = time
+
+						if channel is not None:
+							await channel.send(embed=e)
+
+						old_time = time
+			except (SyntaxError, ValueError, AttributeError) as exc:
+				raise exc
+			except Exception:
+				pass
+
 	async def on_command_error(self, ctx, error):
-		if not hasattr(ctx, 'guild') or ctx.guild.id != 115993023636176902:
+		if not hasattr(ctx, 'guild') or ctx.guild.id != AHK_GUILD_ID:
 			return
 
 		# command not found? docs search it. only if message string is not *only* dots though
@@ -115,60 +158,14 @@ class AutoHotkey(TogglableCogMixin):
 		for role in roles:
 			await msg.add_reaction(ROLES[role.id])
 
-	async def rss(self):
-
-		url = 'https://www.autohotkey.com/boards/feed'
-
-		channel = self.bot.get_channel(FORUM_ID)
-
-		def parse_date(date_str):
-			date_str = date_str.strip()
-			return datetime.strptime(date_str[:-3] + date_str[-2:], "%Y-%m-%dT%H:%M:%S%z")
-
-		old_time = datetime.now(tz=timezone(timedelta(hours=1))) - timedelta(minutes=1)
-
-		while True:
-			await asyncio.sleep(5 * 60)
-
-			try:
-				async with self.bot.aiohttp.request('get', url) as resp:
-					if resp.status != 200:
-						continue
-					xml_rss = await resp.text('UTF-8')
-
-				xml = BeautifulSoup(xml_rss, 'xml')
-
-				for entry in xml.find_all('entry')[::-1]:
-					time = parse_date(entry.updated.text)
-					title = htt.handle(entry.title.text)
-					content = shorten(entry.content.text, 512, 8)
-
-					if time > old_time and '• Re: ' not in title:
-						e = discord.Embed(
-							title=title,
-							description=to_markdown(content.split('Statistics: ')[0]),
-							url=entry.id.text
-						)
-
-						e.add_field(name='Author', value=entry.author.text)
-						e.add_field(name='Forum', value=entry.category['label'])
-
-						e.timestamp = time
-
-						if channel is not None:
-							await channel.send(embed=e)
-
-						old_time = time
-			except (SyntaxError, ValueError, AttributeError) as exc:
-				raise exc
-			except Exception:
-				pass
-
 	@commands.command()
+	@commands.bot_has_permissions(embed_links=True)
 	async def docs(self, ctx, *, search):
 		'''Search the AutoHotkey documentation.'''
 
 		embed = discord.Embed()
+		embed.color = 0x95CD95
+
 		results = docs_search(search)
 
 		if not len(results):
@@ -193,108 +190,6 @@ class AutoHotkey(TogglableCogMixin):
 
 		await ctx.send(embed=embed)
 
-	@commands.command(hidden=True, aliases=['app'])
-	@commands.has_role(STAFF_ID)
-	async def approve(self, ctx, member: discord.Member):
-		'''Approve member.'''
-
-		try:
-			member_role = ctx.guild.get_role(MEMBER_ID)
-			if member_role is None:
-				raise commands.CommandError('Couldn\'t find Member role.')
-
-			await member.add_roles(member_role, reason=f'Approved by {ctx.author.name}')
-
-		except Exception as exc:
-			raise commands.CommandError('Failed adding member role.\n\nError:\n' + str(exc))
-
-		await ctx.send(f'{member.display_name} approved.')
-
-		general_channel = ctx.guild.get_channel(GENERAL_ID)
-		if general_channel is None:
-			raise commands.CommandError('Couldn\'t find the #general channel.')
-
-		await asyncio.sleep(3)
-		await general_channel.send(welcomify(member, ctx.guild, WELCOME_MSG))
-
-
-	@commands.command(hidden=True)
-	@commands.is_owner()
-	async def ahkrules(self, ctx):
-		await ctx.message.delete()
-
-		e = discord.Embed()
-
-		e.set_author(name='AutoHotkey server rules!', icon_url=ctx.guild.icon_url)
-
-		e.add_field(
-			name='1. Be nice to each other.',
-			value=(
-				'Treat others like you want others to treat you. This includes not getting heated up and making '
-				'arguments unpleasant.'
-			)
-		)
-
-		e.add_field(
-			name='2. No NSFW or antagonizing content.',
-			value=(
-				'This includes but is not limited to nudity, sexual content, gore, personal information or otherwise '
-				'disruptive content.'
-			)
-		)
-
-		e.add_field(
-			name='3. No spamming/flooding of voice or text channels.',
-			value=(
-				'Repeated posting of text, links, images, videos or abusing the voice channels is not tolerated.'
-			)
-		)
-
-		e.add_field(
-			name='4. Scripting questions should *only* be asked in the channels grouped under the AutoHotkey category.',
-			value=(
-				'Pick the channel that makes most sense for your question. If you\'re unsure, just ask in #scripting!'
-			)
-		)
-
-		e.add_field(
-			name='5. Do not discuss the creation or usage of malicious scripts.',
-			value=(
-				'Discussing, distributing, or any attempt at creating a cheat, keylogger, virus, spam tool, '
-				'"joke" script, phishing script, or anything similar is not tolerated and will lead to a kick/ban. '
-				'If you are unsure whether your script can be seen as malicious, please ask @Staff.'
-			)
-		)
-
-		e.add_field(
-			name='6. Do not tag individuals for help.',
-			value=(
-				'If you\'re asking for help, use the @Helpers tag or the Crew tags. Do not tag or PM @Staff or '
-				'invididual users for help.'
-			)
-		)
-
-		e.add_field(
-			name='7. Only open-source.',
-			value=(
-				'Do not share compiled or obfuscated versions of your script.'
-			)
-		)
-
-		e.add_field(
-			name='Important notes',
-			value=(
-				'**A.** Being disrespectful to our volunteering @Helpers or @Staff because they won\'t help you with '
-				'your script will get you banned. Them being in the Helpers role does not make them obligated to '
-				'help you.\n'
-				'**B.** If your nick is unreadable/untaggable, you might be asked to change it. If you refuse it will '
-				'be changed for you.'
-			)
-		)
-
-		e.set_footer(text='Rules updated: 06/12/2018')
-
-		await ctx.send(embed=e)
 
 def setup(bot):
 	bot.add_cog(AutoHotkey(bot))

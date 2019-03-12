@@ -55,7 +55,8 @@ def find_nth(haystack, needle, n):
 def welcomify(user, guild, string):
 	repl = {
 		'guild': guild.name,
-		'user': user.mention
+		'user': user.mention,
+		'member_count': guild.member_count
 	}
 
 	for key, val in repl.items():

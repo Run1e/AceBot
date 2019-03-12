@@ -6,23 +6,24 @@ from datetime import datetime, timedelta
 from utils.checks import is_manager
 from utils.database import db, LogGuild
 from utils.lol import bot_deleted
-from cogs.base import TogglableCogMixin
 
 log = logging.getLogger(__name__)
 
 CHANNEL_TYPES = {discord.TextChannel: 'Text', discord.VoiceChannel: 'Voice', discord.CategoryChannel: 'Category'}
 
+
 def get_dt():
 	return datetime.now() - timedelta(hours=1)
 
-class Logger(TogglableCogMixin):
+
+class Logger:
 	'''Log interesting events like message deletion.'''
 
 	def __init__(self, bot):
-		super().__init__(bot)
+		self.bot = bot
 
 	async def __local_check(self, ctx):
-		return await self._is_used(ctx)
+		return await self._check(ctx.guild.id)
 
 	async def _check(self, guild_id):
 		return await self.bot.uses_module(guild_id, 'logger')
@@ -58,8 +59,6 @@ class Logger(TogglableCogMixin):
 
 	def find_changes(self, before, after):
 
-		# (str, int, bool, float)
-
 		changed = {}
 
 		for attr in dir(before):
@@ -71,8 +70,15 @@ class Logger(TogglableCogMixin):
 					vis = a.mention
 				elif hasattr(a, 'name'):
 					vis = a.name
-				else:
-					vis = str(a)
+				elif isinstance(a, bool):
+					vis = 'yes' if a else 'no'
+				elif isinstance(a, (int, float)):
+					vis = f'`{str(a)}`'
+				elif isinstance(a, str):
+					vis = f'```\n{a}```'
+				else:  # skip if no mention, name, or printable type
+					continue
+
 				changed[attr.replace('_', ' ').title()] = vis
 
 		return changed
@@ -103,7 +109,6 @@ class Logger(TogglableCogMixin):
 			return
 
 		embed = self.get_message_embed(message)
-
 		embed.color = 0xFF4000
 
 		await self.log(
@@ -123,6 +128,7 @@ class Logger(TogglableCogMixin):
 
 		e.set_footer(text=f'ID: {channel.id}')
 		e.timestamp = get_dt()
+		e.color = 0xFF4000
 
 		await self.log(
 			guild=channel.guild,
@@ -170,6 +176,7 @@ class Logger(TogglableCogMixin):
 
 		e.set_footer(text=f'ID: {before.id}')
 		e.timestamp = get_dt()
+		e.color = 0xFF4000
 
 		await self.log(
 			guild=before.guild,
@@ -199,6 +206,7 @@ class Logger(TogglableCogMixin):
 		e.set_author(name=after.name, icon_url=after.icon_url)
 		e.set_footer(text=f'ID: {before.id}')
 		e.timestamp = get_dt()
+		e.color = 0xFF4000
 
 		await self.log(
 			guild=after,
@@ -233,8 +241,6 @@ class Logger(TogglableCogMixin):
 
 		await self.log(guild=member.guild, embed=e)
 
-
-
 	async def on_voice_state_update(self, member, before, after):
 		if not await self._check(member.guild.id):
 			return
@@ -254,10 +260,13 @@ class Logger(TogglableCogMixin):
 		e.set_author(name=member.name, icon_url=member.avatar_url)
 		e.timestamp = get_dt()
 		e.set_footer(text=f'ID: {member.id}')
-		e.color = 0xFF4000
+
+		# change color to red if moderator action
+		if 'Mute' in changed or 'Deaf' in changed:
+			e.color = 0xFF4000
 
 		for attr, a in changed.items():
-			e.add_field(name=attr, value='yes' if a else 'no')
+			e.add_field(name=attr, value=a)
 
 		await self.log(guild=member.guild, embed=e)
 

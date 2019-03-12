@@ -341,17 +341,15 @@ class Starboard(TogglableCogMixin):
 		star_ret = await db.scalar('SELECT COUNT(id) FROM starrers WHERE star_id=$1', sm.id)
 
 		author = ctx.guild.get_member(sm.author_id)
-		starrer = ctx.guild.get_member(sm.starrer_id)
-		channel = self.bot.get_channel(sm.channel_id)
 		stars = star_ret + 1
 
 		e = discord.Embed()
 		e.set_author(name=author.display_name, icon_url=author.avatar_url)
 
 		e.add_field(name='Stars', value=self.star_emoji(stars) + ' ' + str(stars))
-		e.add_field(name='Starred in', value=f'<#{channel}>')
-		e.add_field(name='Author', value=f'<@{author}>')
-		e.add_field(name='Starrer', value=f'<@{starrer}>')
+		e.add_field(name='Starred in', value=f'<#{sm.channel_id}>')
+		e.add_field(name='Author', value=f'<@{author.id}>')
+		e.add_field(name='Starrer', value=f'<@{sm.starrer_id}>')
 		e.add_field(
 			name='Context',
 			value=f'[Click here](https://discordapp.com/channels/{sm.guild_id}/{sm.channel_id}/{sm.message_id})'

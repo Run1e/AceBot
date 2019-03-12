@@ -109,7 +109,7 @@ class LogGuild(db.Model):
 	guild_id = db.Column(db.BigInteger)
 	channel_id = db.Column(db.BigInteger)
 
-class Reminders(db.Model):
+class RemindMeEntry(db.Model):
 	__tablename__ = 'reminder'
 
 	id = db.Column(db.Integer, primary_key=True)

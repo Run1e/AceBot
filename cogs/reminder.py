@@ -1,7 +1,7 @@
 import discord, asyncio
 from discord.ext import commands
 
-from utils.database import db, Reminders
+from utils.database import db, RemindMeEntry
 from utils.time import pretty_seconds
 from utils.pager import Pager
 from utils.string_manip import shorten
@@ -19,18 +19,13 @@ class TimeUnit(commands.Converter):
 	async def convert(self, ctx, unit: str):
 		unit = unit.lower()
 
-		if unit.endswith('s'):
-			unit = unit[0:-1]  # If a unit is passed, but plural, remove the "s" at the end
-
-		units = dict(
-			minute=60,
-			hour=60 * 60,
-			day=60 * 60 * 24
-		)
-
-		try:
-			seconds = units[unit]
-		except KeyError:
+		if unit in ('min', 'mins', 'minute', 'minutes'):
+			seconds = 60
+		elif unit in('hr', 'hrs', 'hour', 'hours'):
+			seconds = 60 * 60
+		elif unit in ('day', 'days'):
+			seconds = 60 * 60 * 24
+		else:
 			raise commands.BadArgument('Unknown time type.')
 
 		return seconds
@@ -51,7 +46,9 @@ class RemindPager(Pager):
 			)
 
 
-class Reminder(TogglableCogMixin):
+class Reminders(TogglableCogMixin):
+	'''Set, view and delete reminders.'''
+
 	def __init__(self, bot):
 		super().__init__(bot)
 		self.bot.loop.create_task(self.check_reminders())
@@ -91,10 +88,13 @@ class Reminder(TogglableCogMixin):
 		await ctx.send('Reminder deleted.')
 
 	@commands.command(aliases=['reminder', 'remind'])
-	async def remindme(self, ctx, amount: int, unit: TimeUnit, *, message=None):
+	async def remindme(self, ctx, amount: float, unit: TimeUnit, *, message=None):
 		'''Create a new reminder.'''
 
-		seconds = amount * unit
+		if amount < 1.0:
+			raise commands.CommandError('Sorry, please use an amount more than 1.0')
+
+		seconds = int(amount * unit)
 
 		now = datetime.now()
 		delta = timedelta(seconds=seconds)
@@ -110,7 +110,7 @@ class Reminder(TogglableCogMixin):
 			raise commands.CommandError(f'Sorry, you can\'t have more than {MAX_REMINDERS} active reminders at once.')
 
 		# Add the reminder to the DB
-		await Reminders.create(
+		await RemindMeEntry.create(
 			guild_id=ctx.guild.id,
 			channel_id=ctx.channel.id,
 			user_id=ctx.author.id,
@@ -119,7 +119,7 @@ class Reminder(TogglableCogMixin):
 			message=message
 		)
 
-		await ctx.send(f'You will be reminded in {pretty_seconds(delta.total_seconds())}.')
+		await ctx.message.add_reaction(SUCCESS_EMOJI)
 
 	async def check_reminders(self):
 		while True:
@@ -142,7 +142,7 @@ class Reminder(TogglableCogMixin):
 					description=message
 				)
 
-				e.timestamp = made_on
+				e.timestamp = made_on - timedelta(hours=1)
 
 				# Encapsulate the reminder message in the prefix/suffix, and send it to the user
 				try:
@@ -158,4 +158,4 @@ class Reminder(TogglableCogMixin):
 
 
 def setup(bot):
-	bot.add_cog(Reminder(bot))
+	bot.add_cog(Reminders(bot))

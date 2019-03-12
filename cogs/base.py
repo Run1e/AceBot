@@ -7,4 +7,3 @@ class TogglableCogMixin:
 
 	async def _is_used(self, ctx):
 		return await self.bot.uses_module(ctx.guild.id, self.__class__.__name__)
-		
