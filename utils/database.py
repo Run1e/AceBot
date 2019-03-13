@@ -120,6 +120,15 @@ class RemindMeEntry(db.Model):
 	made_on = db.Column(db.DateTime)
 	message = db.Column(db.Unicode, nullable=True)
 
+class Warning(db.Model):
+	__tablename__ = 'warning'
+
+	id = db.Column(db.Integer, primary_key=True)
+	issuer_id = db.Column(db.BigInteger)
+	guild_id = db.Column(db.BigInteger)
+	user_id = db.Column(db.BigInteger)
+	issued_on = db.Column(db.DateTime)
+	reason = db.Column(db.Unicode)
 
 """
 class GuildPlaylist(db.Model):

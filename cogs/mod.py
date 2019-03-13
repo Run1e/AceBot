@@ -5,7 +5,7 @@ from datetime import datetime
 from cogs.guild.ahk_security import RULES_MSG_ID
 
 from cogs.base import TogglableCogMixin
-from utils.time import pretty_seconds
+from utils.time import pretty_timedelta
 from utils.lol import push_message
 
 class Moderator(TogglableCogMixin):
@@ -107,18 +107,18 @@ class Moderator(TogglableCogMixin):
 
 		e.set_author(name=f'{user.name}#{user.discriminator}', icon_url=user.avatar_url)
 
-		now = datetime.now()
+		now = datetime.utcnow()
 		created = user.created_at
 		joined = user.joined_at
 
 		e.add_field(
 			name='Account age',
-			value=f'{pretty_seconds((now - created).total_seconds())}\nCreated {created.day}/{created.month}/{created.year}'
+			value=f'{pretty_timedelta(now - created)}\nCreated {created.day}/{created.month}/{created.year}'
 		)
 
 		e.add_field(
 			name='Member for',
-			value=f'{pretty_seconds((now - joined).total_seconds())}\nJoined {joined.day}/{joined.month}/{joined.year}'
+			value=f'{pretty_timedelta(now - joined)}\nJoined {joined.day}/{joined.month}/{joined.year}'
 		)
 
 		if len(user.roles) > 1:

@@ -182,7 +182,7 @@ class Tags:
 			guild_id=ctx.guild.id,
 			owner_id=ctx.author.id,
 			uses=0,
-			created_at=datetime.now()
+			created_at=datetime.utcnow()
 		)
 
 		await ctx.send('Tag created.')
@@ -208,7 +208,7 @@ class Tags:
 		if tg is None or not self.can_edit(ctx.author.id, tg):
 			raise commands.CommandError('Tag doesn\'t exist, or you don\'t own it.')
 
-		await tg.update(content=content, edited_at=datetime.now()).apply()
+		await tg.update(content=content, edited_at=datetime.utcnow()).apply()
 
 		await ctx.send('Tag edited.')
 

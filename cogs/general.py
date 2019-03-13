@@ -246,7 +246,6 @@ class General:
 		else:
 			defin = 'No definition.'
 
-
 		e.description = defin
 
 		if 'examples' in sense:
@@ -257,7 +256,6 @@ class General:
 				name='Features',
 				value=', '.join(temp['text'] for temp in entry['grammaticalFeatures']),
 			)
-
 
 		if 'registers' in sense:
 			e.add_field(name='Registers', value=', '.join(sense['registers']))

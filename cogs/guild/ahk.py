@@ -1,4 +1,4 @@
-import discord, asyncio, logging, json, re
+import discord, asyncio, logging
 from discord.ext import commands
 
 from utils.docs_search import docs_search
@@ -7,7 +7,7 @@ from cogs.base import TogglableCogMixin
 
 from html2text import HTML2Text
 from bs4 import BeautifulSoup
-from datetime import datetime, timezone, timedelta
+from datetime import datetime, timedelta
 
 log = logging.getLogger(__name__)
 
@@ -52,7 +52,7 @@ class AutoHotkey(TogglableCogMixin):
 			date_str = date_str.strip()
 			return datetime.strptime(date_str[:-3] + date_str[-2:], "%Y-%m-%dT%H:%M:%S%z")
 
-		old_time = datetime.now(tz=timezone(timedelta(hours=1))) - timedelta(minutes=1)
+		old_time = datetime.utcnow() - timedelta(minutes=1)
 
 		while True:
 			await asyncio.sleep(10 * 60)

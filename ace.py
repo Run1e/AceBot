@@ -44,6 +44,7 @@ extensions = (
 	'cogs.welcome',
 	'cogs.configuration',
 	'cogs.mod',
+	#'cogs.warnings',
 	'cogs.log',
 	'cogs.guild.ahk',
 	'cogs.guild.ahk_security',
@@ -79,7 +80,7 @@ class AceBot(commands.Bot):
 	# run on successful connection
 	async def on_ready(self):
 		if not hasattr(self, 'startup_time'):
-			self.startup_time = datetime.now()
+			self.startup_time = datetime.utcnow()
 
 			# add dblpy updater
 			self.dblpy = dbl.Client(self, dbl_key)
@@ -155,7 +156,7 @@ class AceBot(commands.Bot):
 		)
 
 		e.set_thumbnail(url=guild.icon_url)
-		e.timestamp = datetime.now()
+		e.timestamp = datetime.utcnow()
 
 		await self.log(embed=e)
 
@@ -168,7 +169,7 @@ class AceBot(commands.Bot):
 		)
 
 		e.set_thumbnail(url=guild.icon_url)
-		e.timestamp = datetime.now()
+		e.timestamp = datetime.utcnow()
 
 		await self.log(embed=e)
 
@@ -257,7 +258,7 @@ class AceBot(commands.Bot):
 		if ctx.kwargs:
 			e.add_field(name='kwargs', value=ctx.kwargs)
 
-		e.timestamp = datetime.now()
+		e.timestamp = datetime.utcnow()
 
 		return e
 

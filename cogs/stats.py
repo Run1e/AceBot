@@ -3,7 +3,7 @@ from discord.ext import commands
 from datetime import datetime, timedelta
 
 from utils.database import db, LogEntry
-from utils.time import pretty_seconds
+from utils.time import pretty_timedelta
 
 MEDALS = [
 	'\N{FIRST PLACE MEDAL}',
@@ -25,7 +25,7 @@ class Stats:
 			guild_id=ctx.guild.id,
 			channel_id=ctx.channel.id,
 			author_id=ctx.author.id,
-			date=datetime.now(),
+			date=datetime.utcnow(),
 			command=ctx.command.qualified_name
 		)
 
@@ -40,7 +40,7 @@ class Stats:
 		return value[1:]
 
 	async def guild_stats(self, guild):
-		now = datetime.now() - timedelta(days=1)
+		now = datetime.utcnow() - timedelta(days=1)
 
 		uses = await db.scalar('SELECT COUNT(*) FROM log WHERE guild_id=$1', guild.id)
 
@@ -128,7 +128,7 @@ class Stats:
 			LIMIT 5
 		"""
 
-		today = await db.all(query, member.id, datetime.now() - timedelta(days=1))
+		today = await db.all(query, member.id, datetime.utcnow() - timedelta(days=1))
 
 		query = """
 			SELECT COUNT(id), command
@@ -179,8 +179,7 @@ class Stats:
 	async def uptime(self, ctx):
 		'''Time since last bot restart.'''
 
-		delta = datetime.now() - self.bot.startup_time
-		await ctx.send(f'It has been {pretty_seconds(delta.seconds)} since the last bot restart.')
+		await ctx.send(f'It has been {pretty_timedelta(datetime.utcnow() - self.bot.startup_time)} since the last bot restart.')
 
 
 def setup(bot):

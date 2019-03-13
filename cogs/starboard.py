@@ -52,7 +52,7 @@ class Starboard(TogglableCogMixin):
 		except discord.HTTPException:
 			return
 
-		if (datetime.now() - message.created_at).days > 6:
+		if (datetime.utcnow() - message.created_at).days > 6:
 			return
 
 		try:
@@ -115,7 +115,7 @@ class Starboard(TogglableCogMixin):
 					StarMessage.guild_id == message.guild.id,
 					and_(
 						StarMessage.starrer_id == starrer_id,
-						StarMessage.starred_at > (datetime.now() - COOLDOWN_PERIOD)
+						StarMessage.starred_at > (datetime.utcnow() - COOLDOWN_PERIOD)
 					)
 				)
 			).gino.scalar()
@@ -142,7 +142,7 @@ class Starboard(TogglableCogMixin):
 				channel_id=message.channel.id,
 				star_message_id=star_message.id,
 				starrer_id=starrer_id,
-				starred_at=datetime.now(),
+				starred_at=datetime.utcnow(),
 			)
 
 			await star_message.add_reaction('\N{WHITE MEDIUM STAR}')
@@ -249,7 +249,7 @@ class Starboard(TogglableCogMixin):
 			raise commands.CommandError('Couldn\'t find original message!')
 
 		extra = ''
-		if sm.starred_at > datetime.now() - PURGE_TIME:
+		if sm.starred_at > datetime.utcnow() - PURGE_TIME:
 			extra = ' and star count'
 
 			await db.scalar('DELETE FROM starrers WHERE star_id=$1', sm.id)
@@ -581,7 +581,7 @@ class Starboard(TogglableCogMixin):
 				'''
 
 				# gets all stars older than a week with less than 4 stars
-				star_list = await db.all(query, MINIMUM_STARS, datetime.now() - PURGE_TIME)
+				star_list = await db.all(query, MINIMUM_STARS, datetime.utcnow() - PURGE_TIME)
 
 				for star in star_list:
 					# delete discord starmessage, starrers and starmessage

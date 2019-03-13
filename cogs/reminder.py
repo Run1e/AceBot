@@ -16,7 +16,7 @@ MAX_REMINDERS = 16
 
 
 class TimeUnit(commands.Converter):
-	async def convert(self, ctx, unit: str):
+	async def convert(self, ctx, unit):
 		unit = unit.lower()
 
 		if unit in ('min', 'mins', 'minute', 'minutes'):
@@ -33,14 +33,16 @@ class TimeUnit(commands.Converter):
 
 class RemindPager(Pager):
 	async def craft_page(self, e, page, entries):
-		now = datetime.now()
+		now = datetime.utcnow()
 
 		e.set_author(name=self.member.name, icon_url=self.member.avatar_url)
 		e.description = 'All your reminders for this server.'
 
 		for id, guild_id, channel_id, user_id, remind_on, made_on, message in entries:
+			delta = (remind_on - now).total_seconds()
+			time_text = 'Soon...' if delta < 15 else pretty_seconds(delta)
 			e.add_field(
-				name=f'({id}): {str(pretty_seconds((remind_on - now).total_seconds()))}',
+				name=f'({id}): {time_text}',
 				value=shorten(message, 256, 2) if message is not None else DEFAULT_REMINDER_MESSAGE,
 				inline=False
 			)
@@ -96,7 +98,7 @@ class Reminders(TogglableCogMixin):
 
 		seconds = int(amount * unit)
 
-		now = datetime.now()
+		now = datetime.utcnow()
 		delta = timedelta(seconds=seconds)
 
 		if delta > MAX_DELTA:
@@ -125,7 +127,7 @@ class Reminders(TogglableCogMixin):
 		while True:
 			await asyncio.sleep(CHECK_EVERY)
 
-			res = await db.all('SELECT * FROM reminder WHERE remind_on<=$1', datetime.now())
+			res = await db.all('SELECT * FROM reminder WHERE remind_on<=$1', datetime.utcnow())
 
 			for id, guild_id, channel_id, user_id, remind_on, made_on, message in res:
 				# If it is time to send the reminder, then get the guild it was sent in so we can get the user to send it to
@@ -142,7 +144,7 @@ class Reminders(TogglableCogMixin):
 					description=message
 				)
 
-				e.timestamp = made_on - timedelta(hours=1)
+				e.timestamp = made_on
 
 				# Encapsulate the reminder message in the prefix/suffix, and send it to the user
 				try:

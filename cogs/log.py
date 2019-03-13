@@ -12,10 +12,6 @@ log = logging.getLogger(__name__)
 CHANNEL_TYPES = {discord.TextChannel: 'Text', discord.VoiceChannel: 'Voice', discord.CategoryChannel: 'Category'}
 
 
-def get_dt():
-	return datetime.now() - timedelta(hours=1)
-
-
 class Logger:
 	'''Log interesting events like message deletion.'''
 
@@ -98,6 +94,10 @@ class Logger:
 		except:
 			pass
 
+	async def on_message_edit(self, before, after):
+		# todo
+		return
+
 	async def on_message_delete(self, message):
 		if message.author.bot or message.channel.id in (509530286481080332, 378602386404409344):
 			return
@@ -127,7 +127,7 @@ class Logger:
 		)
 
 		e.set_footer(text=f'ID: {channel.id}')
-		e.timestamp = get_dt()
+		e.timestamp = datetime.utcnow()
 		e.color = 0xFF4000
 
 		await self.log(
@@ -145,7 +145,7 @@ class Logger:
 		)
 
 		e.set_footer(text=f'ID: {channel.id}')
-		e.timestamp = get_dt()
+		e.timestamp = datetime.utcnow()
 		e.color = 0xFF4000
 
 		await self.log(
@@ -175,7 +175,7 @@ class Logger:
 			)
 
 		e.set_footer(text=f'ID: {before.id}')
-		e.timestamp = get_dt()
+		e.timestamp = datetime.utcnow()
 		e.color = 0xFF4000
 
 		await self.log(
@@ -205,7 +205,7 @@ class Logger:
 
 		e.set_author(name=after.name, icon_url=after.icon_url)
 		e.set_footer(text=f'ID: {before.id}')
-		e.timestamp = get_dt()
+		e.timestamp = datetime.utcnow()
 		e.color = 0xFF4000
 
 		await self.log(
@@ -222,7 +222,7 @@ class Logger:
 		)
 
 		e.set_author(name=member.name, icon_url=member.avatar_url)
-		e.timestamp = get_dt()
+		e.timestamp = datetime.utcnow()
 		e.set_footer(text=f'ID: {member.id}')
 
 		await self.log(guild=member.guild, embed=e)
@@ -236,7 +236,7 @@ class Logger:
 		)
 
 		e.set_author(name=member.name, icon_url=member.avatar_url)
-		e.timestamp = get_dt()
+		e.timestamp = datetime.utcnow()
 		e.set_footer(text=f'ID: {member.id}')
 
 		await self.log(guild=member.guild, embed=e)
@@ -258,7 +258,7 @@ class Logger:
 		)
 
 		e.set_author(name=member.name, icon_url=member.avatar_url)
-		e.timestamp = get_dt()
+		e.timestamp = datetime.utcnow()
 		e.set_footer(text=f'ID: {member.id}')
 
 		# change color to red if moderator action
@@ -279,7 +279,7 @@ class Logger:
 		)
 
 		e.set_author(name=user.name, icon_url=user.avatar_url)
-		e.timestamp = get_dt()
+		e.timestamp = datetime.utcnow()
 		e.set_footer(text=f'ID: {user.id}')
 		e.color = 0xFF4000
 
@@ -294,8 +294,9 @@ class Logger:
 		)
 
 		e.set_author(name=user.name, icon_url=user.avatar_url)
-		e.timestamp = get_dt()
 		e.set_footer(text=f'ID: {user.id}')
+
+		e.timestamp = datetime.utcnow()
 		e.color = 0xFF4000
 
 		await self.log(guild=guild, embed=e)
