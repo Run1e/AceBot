@@ -90,7 +90,7 @@ class Reminders(TogglableCogMixin):
 		await ctx.send('Reminder deleted.')
 
 	@commands.command(aliases=['reminder', 'remind'])
-	async def remindme(self, ctx, amount: float, unit: TimeUnit, *, message=None):
+	async def remindme(self, ctx, amount: float, unit: TimeUnit, *, message = None):
 		'''Create a new reminder.'''
 
 		if amount < 1.0:
