@@ -44,10 +44,10 @@ extensions = (
 	'cogs.welcome',
 	'cogs.configuration',
 	'cogs.mod',
-	#'cogs.warnings',
 	'cogs.log',
-	'cogs.guild.ahk',
-	'cogs.guild.ahk_security',
+	'cogs.guild.ahk.ahk',
+	'cogs.guild.ahk.security',
+	'cogs.guild.ahk.antimention',
 	'cogs.guild.dwitter',
 	'cogs.owner',
 	'cogs.help'
@@ -139,7 +139,6 @@ class AceBot(commands.Bot):
 		# ignore ignored users
 		if await db.scalar('SELECT user_id FROM ignore WHERE user_id=$1', ctx.author.id):
 			return False
-
 
 		if ctx.guild.id == 115993023636176902 and ctx.command is not None and ctx.command.name != 'accept' \
 		and all(role.id != 509526426198999040 for role in ctx.author.roles):
