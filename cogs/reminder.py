@@ -1,4 +1,4 @@
-import discord, asyncio
+import discord, asyncio, logging
 from discord.ext import commands
 
 from utils.database import db, RemindMeEntry
@@ -8,27 +8,29 @@ from utils.string_manip import shorten
 from cogs.base import TogglableCogMixin
 from datetime import datetime, timedelta
 
+log = logging.getLogger(__name__)
+
 SUCCESS_EMOJI = '\U00002705'
 CHECK_EVERY = 60
 DEFAULT_REMINDER_MESSAGE = 'Hey, wake up!'
 MAX_DELTA = timedelta(days=365)
-MAX_REMINDERS = 16
+MAX_REMINDERS = 10
 
 
 class TimeUnit(commands.Converter):
 	async def convert(self, ctx, unit):
 		unit = unit.lower()
 
-		if unit in ('min', 'mins', 'minute', 'minutes'):
-			seconds = 60
-		elif unit in('hr', 'hrs', 'hour', 'hours'):
-			seconds = 60 * 60
-		elif unit in ('day', 'days'):
-			seconds = 60 * 60 * 24
+		if unit in ('m', 'min', 'mins', 'minute', 'minutes'):
+			return timedelta(minutes=1)
+		elif unit in ('h', 'hr', 'hrs', 'hour', 'hours'):
+			return timedelta(hours=1)
+		elif unit in ('d', 'day', 'days'):
+			return timedelta(days=1)
+		elif unit in ('w', 'wk', 'week', 'weeks'):
+			return timedelta(weeks=1)
 		else:
 			raise commands.BadArgument('Unknown time type.')
-
-		return seconds
 
 
 class RemindPager(Pager):
@@ -90,16 +92,14 @@ class Reminders(TogglableCogMixin):
 		await ctx.send('Reminder deleted.')
 
 	@commands.command(aliases=['reminder', 'remind'])
-	async def remindme(self, ctx, amount: float, unit: TimeUnit, *, message = None):
+	async def remindme(self, ctx, amount: float, unit: TimeUnit, *, message=None):
 		'''Create a new reminder.'''
 
 		if amount < 1.0:
 			raise commands.CommandError('Sorry, please use an amount more than 1.0')
 
-		seconds = int(amount * unit)
-
 		now = datetime.utcnow()
-		delta = timedelta(seconds=seconds)
+		delta = unit * amount
 
 		if delta > MAX_DELTA:
 			raise commands.CommandError('Sorry. Can\'t remind in more than a year!')
@@ -152,8 +152,8 @@ class Reminders(TogglableCogMixin):
 						await channel.send(content=f'<@{user_id}>', embed=e)
 					elif user is not None:
 						await user.send(embed=e)
-				except discord.HTTPException:
-					pass
+				except Exception as exc:
+					log.info(f'Failed sending reminder #{id} for {user.id} - {exc}')
 
 				# Get the record we just sent the message for, and delete it so it isn't sent again
 				await db.scalar('DELETE FROM reminder WHERE id=$1', id)
