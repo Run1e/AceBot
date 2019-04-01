@@ -6,6 +6,5 @@ config.py
 notes
 test.py
 tempdata
-cogs/guild/ahk
 cogs/guild/ahk/antimention.py
 cogs/guild/ahk/security.py
