@@ -21,6 +21,9 @@ class Stats:
 		self.bot = bot
 
 	async def on_command_completion(self, ctx):
+		if ctx.guild is None:
+			return
+
 		await LogEntry.create(
 			guild_id=ctx.guild.id,
 			channel_id=ctx.channel.id,

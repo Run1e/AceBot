@@ -545,6 +545,7 @@ class Starboard(TogglableCogMixin):
 		'''
 
 		embed = discord.Embed(description=message.content)
+
 		if message.embeds:
 			data = message.embeds[0]
 			if data.type == 'image':

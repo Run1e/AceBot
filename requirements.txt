@@ -1,7 +1,8 @@
-git+https://github.com/Rapptz/discord.py@rewrite#egg=discord.py
+git+https://github.com/Rapptz/discord.py@3f06f247c039a23948e7bb0014ea31db533b4ba2#egg=discord.py
 gino
 aiohttp
 fuzzywuzzy
+python-Levenshtein
 lxml
 beautifulsoup4
 dblpy

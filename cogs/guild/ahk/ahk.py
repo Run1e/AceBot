@@ -1,6 +1,7 @@
 import discord, asyncio, logging
 from discord.ext import commands
 
+from cogs.guild.ahk.ids import *
 from utils.docs_search import docs_search
 from utils.string_manip import to_markdown, shorten
 from cogs.base import TogglableCogMixin
@@ -14,14 +15,6 @@ log = logging.getLogger(__name__)
 htt = HTML2Text()
 htt.body_width = 0
 
-AHK_GUILD_ID = 115993023636176902
-
-# for rss
-# FORUM_ID = 517692823621861409
-FORUM_ID = 536785342959845386
-
-# for roles
-ROLES_CHANNEL = 513071256283906068
 ROLES = {
 	345652145267277836: '💻',  # helper
 	513078270581932033: '🕹',  # lounge
@@ -46,7 +39,7 @@ class AutoHotkey(TogglableCogMixin):
 
 		url = 'https://www.autohotkey.com/boards/feed'
 
-		channel = self.bot.get_channel(FORUM_ID)
+		channel = self.bot.get_channel(FORUM_CHAN_ID)
 
 		def parse_date(date_str):
 			date_str = date_str.strip()
@@ -99,12 +92,12 @@ class AutoHotkey(TogglableCogMixin):
 			return
 
 		# command not found? docs search it. only if message string is not *only* dots though
-		if isinstance(error, commands.CommandNotFound) and len(
-				ctx.message.content) > 3 and not ctx.message.content.startswith('..'):
+		if isinstance(error, commands.CommandNotFound) \
+				and len(ctx.message.content) > 3 and not ctx.message.content.startswith('..'):
 			await ctx.invoke(self.docs, search=ctx.message.content[1:])
 
 	async def on_raw_reaction_add(self, payload):
-		if payload.channel_id != ROLES_CHANNEL:
+		if payload.channel_id != ROLES_CHAN_ID:
 			return
 
 		channel = self.bot.get_channel(payload.channel_id)
@@ -141,7 +134,7 @@ class AutoHotkey(TogglableCogMixin):
 	@commands.command(hidden=True)
 	@commands.is_owner()
 	async def roles(self, ctx):
-		if ctx.channel.id != ROLES_CHANNEL:
+		if ctx.channel.id != ROLES_CHAN_ID:
 			return
 
 		await ctx.message.delete()

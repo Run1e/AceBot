@@ -2,6 +2,7 @@ import discord, aiohttp, dbl, traceback, io, logging, logging.handlers, sys
 from discord.ext import commands
 from datetime import datetime
 
+from cogs.guild.ahk.ids import AHK_GUILD_ID, MEMBER_ROLE_ID, MUTED_ROLE_ID, WELCOME_CHAN_ID, MUTED_CHAN_ID
 from utils.time import pretty_seconds
 from utils.database import db, setup_db
 from config import *
@@ -41,6 +42,7 @@ extensions = (
 	'cogs.reminder',
 	'cogs.hl',
 	'cogs.coins',
+	'cogs.quiz',
 	'cogs.welcome',
 	'cogs.configuration',
 	'cogs.mod',
@@ -55,6 +57,8 @@ extensions = (
 
 
 class AceBot(commands.Bot):
+	_module_cache = {}
+	_ignored = []
 	_toggleable = []
 
 	_support_link = 'https://discord.gg/X7abzRe'
@@ -101,12 +105,14 @@ class AceBot(commands.Bot):
 
 		# load extensions
 		for extension in extensions:
-			log.info(f'Loading extension: {extension}')
+			# log.info(f'Loading extension: {extension}')
 			self.load_extension(extension)
+
+		self._ignored = list(*await self.db.all('SELECT user_id FROM ignore'))
 
 		await self.change_presence(activity=discord.Game(name='.help'))
 
-		log.info('Finished!')
+		log.info(f'Finished! Connected to {len(self.guilds)} guilds.')
 
 	async def on_resumed(self):
 		log.info('Bot resumed...')
@@ -120,29 +126,40 @@ class AceBot(commands.Bot):
 		except Exception as exc:
 			log.error(f'Failed updating DBL: {str(exc)}')
 
+	def reset_module_cache(self, guild_id=None):
+		if guild_id is None:
+			self._module_cache.clear()
+		else:
+			self._module_cache.pop(guild_id, None)
+
 	async def uses_module(self, guild_id, module):
 		'''Checks if any context should allow a module to run.'''
 
-		return await db.scalar('SELECT id FROM module WHERE guild_id=$1 AND module=$2', guild_id, module.lower())
+		module = module.lower()
+
+		if guild_id not in self._module_cache:
+			self._module_cache[guild_id] = {}
+
+		if module not in self._module_cache[guild_id]:
+			self._module_cache[guild_id][module] = await self.uses_module_db(guild_id, module)
+
+		return self._module_cache[guild_id][module]
+
+	async def uses_module_db(self, guild_id, module):
+		return not not await db.scalar('SELECT id FROM module WHERE guild_id=$1 AND module=$2', guild_id,
+									   module.lower())
 
 	async def blacklist(self, ctx):
 		'''Returns False if user is disallowed, otherwise True'''
 
-		# ignore other bots
-		if ctx.author.bot:
+		# ignore other bots, ignore DMs, and ignore ignored users
+		if ctx.author.bot or ctx.guild is None or ctx.author.id in self._ignored:
 			return False
 
-		# ignore DMs
-		if ctx.guild is None:
-			return False
-
-		# ignore ignored users
-		if await db.scalar('SELECT user_id FROM ignore WHERE user_id=$1', ctx.author.id):
-			return False
-
-		if ctx.guild.id == 115993023636176902 and ctx.command is not None and ctx.command.name != 'accept' \
-		and all(role.id != 509526426198999040 for role in ctx.author.roles):
-			return False
+		# if we're in the ahk guild and the invoker doesn't have the member role, then ONLY
+		# allow the command to be run if the command is 'accept' (for #welcome)
+		if ctx.guild.id == AHK_GUILD_ID and not any(role.id == MEMBER_ROLE_ID for role in ctx.author.roles):
+			return ctx.command is not None and ctx.command.name == 'accept'
 
 		return True
 
@@ -157,6 +174,7 @@ class AceBot(commands.Bot):
 		e.set_thumbnail(url=guild.icon_url)
 		e.timestamp = datetime.utcnow()
 
+		log.info(f'Joined guild {guild.name} ({guild.id})')
 		await self.log(embed=e)
 
 	async def on_guild_remove(self, guild):
@@ -170,6 +188,7 @@ class AceBot(commands.Bot):
 		e.set_thumbnail(url=guild.icon_url)
 		e.timestamp = datetime.utcnow()
 
+		log.info(f'Left guild {guild.name} ({guild.id})')
 		await self.log(embed=e)
 
 	async def update_status(self, *args, **kwargs):

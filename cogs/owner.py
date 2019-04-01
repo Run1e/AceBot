@@ -6,7 +6,7 @@ from tabulate import tabulate
 from utils.database import db, IgnoredUser, UniqueViolationError
 from utils.google import google_parse
 
-OK_EMOJI = '\N{HEAVY CHECK MARK}'
+OK_EMOJI = '\N{WHITE HEAVY CHECK MARK}'
 NOTOK_EMOJI = '\N{CROSS MARK}'
 DUPE_EMOJI = '\N{REGIONAL INDICATOR SYMBOL LETTER D}'
 
@@ -112,6 +112,7 @@ class Owner:
 
 		try:
 			await IgnoredUser.create(user_id=user.id)
+			self.bot._ignored.append(user.id)
 		except UniqueViolationError:
 			emoji = DUPE_EMOJI
 		except:
@@ -125,9 +126,14 @@ class Owner:
 	async def notice(self, ctx, user: discord.User):
 		'''Make bot notice an ignored user.'''
 
-		user = await IgnoredUser.get(user.id)
+		user_db = await IgnoredUser.get(user.id)
 
-		if await user.delete() != 'DELETE 1':
+		try:
+			self.bot._ignored.remove(user.id)
+		except ValueError:
+			pass
+
+		if user_db is None or await user_db.delete() != 'DELETE 1':
 			emoji = NOTOK_EMOJI
 		else:
 			emoji = OK_EMOJI

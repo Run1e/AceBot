@@ -1,7 +1,8 @@
 import discord, logging
 
 from discord.ext import commands
-from datetime import datetime, timedelta
+from datetime import datetime
+from os.path import isfile
 
 from utils.checks import is_manager
 from utils.database import db, LogGuild
@@ -10,6 +11,10 @@ from utils.lol import bot_deleted
 log = logging.getLogger(__name__)
 
 CHANNEL_TYPES = {discord.TextChannel: 'Text', discord.VoiceChannel: 'Voice', discord.CategoryChannel: 'Category'}
+
+
+def present(string):
+	return string.replace('_', ' ').title()
 
 
 class Logger:
@@ -31,15 +36,21 @@ class Logger:
 		'''
 
 		embed = discord.Embed(description=message.content)
+
 		if message.embeds:
 			data = message.embeds[0]
 			if data.type == 'image':
 				embed.set_image(url=data.url)
 
+		img = None
 		if message.attachments:
 			file = message.attachments[0]
 			if file.url.lower().endswith(('png', 'jpeg', 'jpg', 'gif', 'webp')):
-				embed.set_image(url=file.url)
+				fn = f'images/{str(message.guild.id)}_{str(message.author.id)}_{str(message.id)}_{file.filename}'
+				if isfile(fn):
+					img = discord.File(open(fn, 'rb'))
+				else:
+					embed.set_image(url=file.url)
 			else:
 				embed.add_field(name='Attachment', value=f'[{file.filename}]({file.url})', inline=False)
 
@@ -51,9 +62,26 @@ class Logger:
 		embed.set_footer(text=f'ID: {message.id}')
 		embed.timestamp = message.created_at
 
-		return embed
+		return embed, img
 
 	def find_changes(self, before, after):
+
+		def formt(b, a):
+			if hasattr(a, 'mention'):
+				return a.mention
+			elif hasattr(a, 'name'):
+				return a.name
+			elif isinstance(a, bool):
+				return 'yes' if a else 'no'
+			elif isinstance(a, (int, float)):
+				return f'`{str(b)}` -> `{str(a)}`'
+			elif isinstance(a, str):
+				if b is None or b == '':
+					return f'```\n{a}````'
+				else:
+					return f'```\n{b}```changed to```\n{a}```'
+			else:
+				return None
 
 		changed = {}
 
@@ -62,24 +90,14 @@ class Logger:
 				continue
 			b, a = getattr(before, attr), getattr(after, attr)
 			if b != a:
-				if hasattr(a, 'mention'):
-					vis = a.mention
-				elif hasattr(a, 'name'):
-					vis = a.name
-				elif isinstance(a, bool):
-					vis = 'yes' if a else 'no'
-				elif isinstance(a, (int, float)):
-					vis = f'`{str(a)}`'
-				elif isinstance(a, str):
-					vis = f'```\n{a}```'
-				else:  # skip if no mention, name, or printable type
+				res = formt(b, a)
+				if res is None:
 					continue
-
-				changed[attr.replace('_', ' ').title()] = vis
+				changed[attr] = res
 
 		return changed
 
-	async def log(self, guild, content=None, embed=None):
+	async def log(self, guild, content=None, **kwargs):
 		if isinstance(guild, discord.Guild):
 			guild = guild.id
 
@@ -87,35 +105,13 @@ class Logger:
 
 		channel = self.bot.get_channel(channel_id)
 		if channel is None:
+			log.warning('Failed finding log channel for logger')
 			return
 
 		try:
-			await channel.send(content=content, embed=embed)
-		except:
-			pass
-
-	async def on_message_edit(self, before, after):
-		# todo
-		return
-
-	async def on_message_delete(self, message):
-		if message.author.bot or message.channel.id in (509530286481080332, 378602386404409344):
-			return
-
-		if not await self._check(message.guild.id):
-			return
-
-		if bot_deleted(message.id):  # STUPID STUPID STUPID STUPID STUPIDDDDD
-			return
-
-		embed = self.get_message_embed(message)
-		embed.color = 0xFF4000
-
-		await self.log(
-			guild=message.guild,
-			content=f'Message deleted in {message.channel.mention} (Author ID: {message.author.id})',
-			embed=embed
-		)
+			await channel.send(content=content, **kwargs)
+		except discord.HTTPException as exc:
+			log.warning(f'Failed to post in logger: {exc}')
 
 	async def on_guild_channel_create(self, channel):
 		if not await self._check(channel.guild.id):
@@ -159,6 +155,10 @@ class Logger:
 
 		changed = self.find_changes(before, after)
 
+		for attr in list(changed.keys()):
+			if attr in ('position',):
+				changed.pop(attr)
+
 		if not len(changed):
 			return
 
@@ -167,10 +167,10 @@ class Logger:
 			description=before.mention
 		)
 
-		for attr, a in changed.items():
+		for attr, res in changed.items():
 			e.add_field(
-				name=attr,
-				value=a,
+				name=present(attr),
+				value=res,
 				inline=False
 			)
 
@@ -196,10 +196,10 @@ class Logger:
 			title='Guild edited'
 		)
 
-		for attr, a in changed.items():
+		for attr, res in changed.items():
 			e.add_field(
-				name=attr,
-				value=a,
+				name=present(attr),
+				value=res,
 				inline=False
 			)
 
@@ -212,6 +212,69 @@ class Logger:
 			guild=after,
 			embed=e
 		)
+
+	async def on_message_edit(self, before, after):
+		if before.author.bot or before.content == after.content:
+			return
+
+		if not await self._check(before.guild.id):
+			return
+
+		split = False
+
+		if len(before.content) > 1024 or len(after.content) > 1024:
+			split = True
+			e, img = self.get_message_embed(before)
+			new_e, img = self.get_message_embed(after)
+			e.title = 'Old message'
+			new_e.title = 'New message'
+		else:
+			e, img = self.get_message_embed(before)
+			e.description = None
+			e.add_field(name='Old message', value=before.content, inline=False)
+			e.add_field(name='New message', value=after.content, inline=False)
+
+		await self.log(
+			guild=after.guild,
+			content=f'Message edited in {after.channel.mention} (Author ID: {after.author.id})',
+			embed=e
+		)
+
+		if split:
+			await self.log(guild=after.guild, embed=new_e)
+
+	async def on_message_delete(self, message):
+		if message.author.bot or message.channel.id in (509530286481080332, 378602386404409344):
+			return
+
+		if not await self._check(message.guild.id):
+			return
+
+		if bot_deleted(message.id):  # STUPID STUPID STUPID STUPID STUPIDDDDD
+			return
+
+		embed, img = self.get_message_embed(message)
+		embed.color = 0xFF4000
+
+		await self.log(
+			guild=message.guild,
+			content=f'Message deleted in {message.channel.mention} (Author ID: {message.author.id})',
+			embed=embed,
+			file=img
+		)
+
+	async def on_message(self, message):
+		if message.author.bot:
+			return
+
+		# only store images from the autohotkey guild
+		# TODO: delete images after 24hrs, cronjob mby?
+		if not await self._check(message.guild.id):
+			return
+
+		for attach in message.attachments:
+			if hasattr(attach, 'height'):
+				await attach.save(open(f'images/{str(message.guild.id)}_{str(message.author.id)}_{str(message.id)}_{attach.filename}', 'wb'))
 
 	async def on_member_join(self, member):
 		if not await self._check(member.guild.id):
@@ -250,7 +313,7 @@ class Logger:
 		if not len(changed):
 			return
 
-		if 'Self Mute' in changed or 'Self Deaf' in changed:
+		if 'self_mute' in changed or 'self_deaf' in changed:
 			return
 
 		e = discord.Embed(
@@ -262,11 +325,11 @@ class Logger:
 		e.set_footer(text=f'ID: {member.id}')
 
 		# change color to red if moderator action
-		if 'Mute' in changed or 'Deaf' in changed:
+		if 'mute' in changed or 'deaf' in changed:
 			e.color = 0xFF4000
 
-		for attr, a in changed.items():
-			e.add_field(name=attr, value=a)
+		for attr, res in changed.items():
+			e.add_field(name=present(attr), value=res)
 
 		await self.log(guild=member.guild, embed=e)
 

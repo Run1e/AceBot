@@ -57,6 +57,7 @@ class Configuration:
 		'''Enable a module.'''
 
 		module = module.lower()
+
 		if module not in self.bot._toggleable:
 			raise commands.CommandError(f'Module `{module}` is not a valid module.')
 
@@ -71,7 +72,9 @@ class Configuration:
 		if result is None:
 			raise commands.CommandError(f'Failed enabling module `{module}`')
 
-		log.info(f'{ctx.author.name} enabled \'{module}\' in {ctx.guild.name}')
+		self.bot.reset_module_cache(ctx.guild.id)
+
+		log.info(f'{ctx.author.name} enabled \'{module}\' in {ctx.guild.name} ({ctx.guild.id})')
 		await ctx.send(f'Module `{module}` enabled.')
 
 	@commands.command()
@@ -97,10 +100,12 @@ class Configuration:
 		res = await mod.delete()
 
 		if res == 'DELETE 1':
-			log.info(f'{ctx.author.name} disabled \'{module}\' in {ctx.guild.name}')
+			log.info(f'{ctx.author.name} disabled \'{module}\' in {ctx.guild.name} ({ctx.guild.id})')
 			await ctx.send(f'Module `{module}` disabled.')
 		else:
 			raise commands.CommandError(f'Failed disabling module `{module}`')
+
+		self.bot.reset_module_cache(ctx.guild.id)
 
 
 def setup(bot):

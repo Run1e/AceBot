@@ -131,14 +131,14 @@ class Moderator(TogglableCogMixin):
 	@commands.command()
 	@commands.has_permissions(manage_messages=True)
 	@commands.bot_has_permissions(manage_messages=True)
-	async def clear(self, ctx, message_count: int = None, user: discord.Member = None):
+	async def clear(self, ctx, message_count: int, user: discord.Member = None):
 		'''Clear messages, either from user or indiscriminately.'''
 
-		if message_count is None:
-			return await ctx.send('Please choose a message count.')
+		if message_count < 1:
+			raise commands.CommandError('Please choose a positive message amount to clear.')
 
 		if message_count > 100:
-			return await ctx.send('Please choose a message count below 100.')
+			raise commands.CommandError('Please choose a message count below 100.')
 
 		def user_check(msg):
 			if msg.author == user:
