@@ -26,6 +26,12 @@ PURGE_INTERVAL = 60 * 60  # check once an hour
 COOLDOWN_PERIOD = timedelta(minutes=10)
 
 
+class FakeContext:
+	def __init__(self, guild, author):
+		self.guild = guild
+		self.author = author
+
+
 class Starboard(TogglableCogMixin):
 	'''Classic starboard.'''
 
@@ -47,9 +53,16 @@ class Starboard(TogglableCogMixin):
 		if channel is None:
 			return
 
+		user = channel.guild.get_member(pl.user_id)
+		if user is None:
+			return
+
 		try:
 			message = await channel.get_message(pl.message_id)
 		except discord.HTTPException:
+			return
+
+		if not await self.bot.blacklist(FakeContext(author=user, guild=channel.guild)):
 			return
 
 		if (datetime.utcnow() - message.created_at).days > 6:

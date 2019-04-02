@@ -146,8 +146,7 @@ class AceBot(commands.Bot):
 		return self._module_cache[guild_id][module]
 
 	async def uses_module_db(self, guild_id, module):
-		return not not await db.scalar('SELECT id FROM module WHERE guild_id=$1 AND module=$2', guild_id,
-									   module.lower())
+		return not not await db.scalar('SELECT id FROM module WHERE guild_id=$1 AND module=$2', guild_id, module.lower())
 
 	async def blacklist(self, ctx):
 		'''Returns False if user is disallowed, otherwise True'''

@@ -1,6 +1,7 @@
 __pycache__
 .idea
 logs
+images
 old
 config.py
 notes
