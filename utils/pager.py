@@ -40,6 +40,9 @@ class Pager:
 				self.static = True
 
 	async def go(self):
+		if not len(self.entries):
+			return
+
 		await self.get_page(1)
 
 		msg = await self.ctx.send(embed=self.embed)

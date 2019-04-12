@@ -229,10 +229,12 @@ class Starboard(TogglableCogMixin):
 
 			await self.update_star(star_message, stars + 1)
 
-	@commands.group(hidden=True, aliases=['starboard', 'sb'], invoke_without_command=True)
+	@commands.group(aliases=['starboard'], invoke_without_command=True)
 	@is_manager()
 	async def star(self, ctx):
-		pass
+		'''Star and vote on messages.'''
+
+		await ctx.invoke(self.bot.get_command('help'), command='Starboard')
 
 	@star.command()
 	@commands.has_permissions(manage_messages=True)
@@ -377,9 +379,7 @@ class Starboard(TogglableCogMixin):
 	@is_manager()
 	async def channel(self, ctx, channel: discord.TextChannel = None):
 		'''
-		Set the starboard channel.
-
-		Remember only the bot should be allowed to send messages in this channel!
+		Set the starboard channel. Remember only the bot should be allowed to send messages in this channel!
 		'''
 
 		async def announce():

@@ -118,7 +118,7 @@ class Tags:
 
 	@commands.group(invoke_without_command=True)
 	async def tag(self, ctx):
-		'''Create, manage and retrieve tags.'''
+		'''Retrieve a tags content.'''
 
 		tag_name = await TagName().convert(ctx, ctx.message.content[5:])
 

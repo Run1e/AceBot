@@ -47,17 +47,17 @@ class Welcome(TogglableCogMixin):
 
 		await channel.send(welcomify(member, guild, welc.content))
 
-	@commands.group(hidden=True, invoke_without_command=True)
+	@commands.group(invoke_without_command=True)
 	@is_manager()
 	async def welcome(self, ctx):
-		pass
+		'''Manage welcome messages.'''
+
+		await ctx.invoke(self.bot.get_command('help'), command='Welcome')
 
 	@welcome.command()
-	async def msg(self, ctx, *, content: commands.clean_content):
+	async def msg(self, ctx, *, content: commands.clean_content = None):
 		'''
-		Set a new welcome message.
-
-		To insert a user mention, put {user} in your welcome message. {guild} does the same for the server name!
+		Set a new welcome message. To insert a user mention, put {user} in your welcome message. {guild} does the same for the server name!
 		'''
 
 		welc = await self.get_welcome(ctx.guild.id)

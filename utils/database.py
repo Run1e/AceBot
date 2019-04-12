@@ -66,7 +66,7 @@ class HighlightLang(db.Model):
 
 class UserCoin(db.Model):
 	__tablename__ = 'coin'
-	
+
 	id = db.Column(db.Integer, primary_key=True)
 	guild_id = db.Column(db.BigInteger)
 	user_id = db.Column(db.BigInteger)
@@ -76,12 +76,14 @@ class UserCoin(db.Model):
 	biggest_mult = db.Column(db.BigInteger, nullable=True)
 	coins = db.Column(db.BigInteger)
 
+
 class StarGuild(db.Model):
 	__tablename__ = 'starguild'
 
 	id = db.Column(db.Integer, primary_key=True)
 	guild_id = db.Column(db.BigInteger)
 	channel_id = db.Column(db.BigInteger)
+
 
 class StarMessage(db.Model):
 	__tablename__ = 'starmessage'
@@ -95,6 +97,7 @@ class StarMessage(db.Model):
 	starrer_id = db.Column(db.BigInteger)
 	starred_at = db.Column(db.DateTime)
 
+
 class Starrers(db.Model):
 	__tablename__ = 'starrers'
 
@@ -102,12 +105,15 @@ class Starrers(db.Model):
 	user_id = db.Column(db.BigInteger)
 	star_id = db.Column(None, db.ForeignKey('starmessage.id'))
 
+
 class LogGuild(db.Model):
 	__tablename__ = 'logguild'
 
 	id = db.Column(db.Integer, primary_key=True)
 	guild_id = db.Column(db.BigInteger)
-	channel_id = db.Column(db.BigInteger)
+	msg_chan_id = db.Column(db.BigInteger)
+	other_chan_id = db.Column(db.BigInteger, nullable=True)
+
 
 class RemindMeEntry(db.Model):
 	__tablename__ = 'reminder'
@@ -120,14 +126,42 @@ class RemindMeEntry(db.Model):
 	made_on = db.Column(db.DateTime)
 	message = db.Column(db.Unicode, nullable=True)
 
-"""
-class GuildPlaylist(db.Model):
-	__tablename__ = 'playlist'
-	
+
+class DocsEntry(db.Model):
+	__tablename__ = 'docs'
+
 	id = db.Column(db.Integer, primary_key=True)
-	guild_id = db.Column(db.BigInteger)
-	playlist_id = db.Column(db.String)
-"""
+
+	# required
+	desc = db.Column(db.Text)
+	page = db.Column(db.Text)
+
+
+class DocsNameEntry(db.Model):
+	__tablename__ = 'docs_name'
+
+	id = db.Column(db.Integer, primary_key=True)
+
+	docs_id = db.Column(None, db.ForeignKey('docs.id'))
+	name = db.Column(db.Text)
+
+
+class DocsSyntaxEntry(db.Model):
+	__tablename__ = 'docs_syntax'
+
+	id = db.Column(db.Integer, primary_key=True)
+
+	docs_id = db.Column(None, db.ForeignKey('docs.id'))
+	syntax = db.Column(db.Text)
+
+class DocsParamEntry(db.Model):
+	__tablename__ = 'docs_param'
+
+	id = db.Column(db.Integer, primary_key=True)
+
+	docs_id = db.Column(None, db.ForeignKey('docs.id'))
+	name = db.Column(db.Text)
+	value = db.Column(db.Text)
 
 
 async def setup_db(bind, loop):

@@ -1,8 +1,9 @@
 import discord, asyncio, logging
 from discord.ext import commands
 
+from docs_parser import parse_docs
+from utils.database import db, DocsEntry, DocsNameEntry, DocsSyntaxEntry, DocsParamEntry
 from cogs.guild.ahk.ids import *
-from utils.docs_search import docs_search
 from utils.string_manip import to_markdown, shorten
 from cogs.base import TogglableCogMixin
 
@@ -92,8 +93,8 @@ class AutoHotkey(TogglableCogMixin):
 			return
 
 		# command not found? docs search it. only if message string is not *only* dots though
-		if isinstance(error, commands.CommandNotFound) \
-				and len(ctx.message.content) > 3 and not ctx.message.content.startswith('..'):
+		if isinstance(error, commands.CommandNotFound) and len(
+				ctx.message.content) > 3 and not ctx.message.content.startswith('..'):
 			await ctx.invoke(self.docs, search=ctx.message.content[1:])
 
 	async def on_raw_reaction_add(self, payload):
@@ -159,32 +160,66 @@ class AutoHotkey(TogglableCogMixin):
 	async def docs(self, ctx, *, search):
 		'''Search the AutoHotkey documentation.'''
 
-		embed = discord.Embed()
-		embed.color = 0x95CD95
+		search = search.lower()
 
-		results = docs_search(search)
+		res = await db.first(
+			'SELECT docs_id, name FROM docs_name ORDER BY word_similarity(name, $1) DESC LIMIT 1',
+			search
+		)
 
-		if not len(results):
-			raise commands.CommandError('No documentation pages found.')
+		if res is None:
+			raise commands.CommandError('Sorry, couldn\'t find an entry similar to that.')
 
-		elif len(results) == 1:
-			for title, obj in results.items():
-				embed.title = obj.get('syntax', title)
-				embed.description = obj['desc']
-				if 'dir' in obj:
-					embed.url = f"https://autohotkey.com/docs/{obj['dir']}"
+		docs_id, name = res
 
-		else:
-			for title, obj in results.items():
-				value = obj['desc']
-				if 'dir' in obj:
-					value += f"\n[Documentation](https://autohotkey.com/docs/{obj['dir']})"
-				embed.add_field(
-					name=obj.get('syntax', title),
-					value=value
-				)
+		e = discord.Embed()
+		e.color = 0x95CD95
 
-		await ctx.send(embed=embed)
+		docs = await db.first('SELECT * FROM docs WHERE id=$1', docs_id)
+		syntaxes = await db.all('SELECT * FROM docs_syntax WHERE docs_id=$1', docs.id)
+
+		e.title = name
+		e.url = f'https://autohotkey.com/docs/{docs.page}'
+		e.description = docs.desc
+		e.set_footer(text='autohotkey.com', icon_url='https://www.autohotkey.com/favicon.ico')
+
+		if len(syntaxes):
+			e.add_field(
+				name='Syntax' if len(syntaxes) == 1 else 'Syntaxes',
+				value=''.join(f"```autoit\n{syntax.syntax}```" for syntax in syntaxes)
+			)
+
+		await ctx.send(embed=e)
+
+	@commands.command()
+	@commands.is_owner()
+	async def build(self, ctx):
+		async def on_update(text):
+			await ctx.send(text)
+
+		async def handler(names, page, desc, syntaxes=None, params=None):
+			doc = await DocsEntry.create(page=page, desc=desc)
+
+			for name in names:
+				await DocsNameEntry.create(docs_id=doc.id, name=name)
+
+			if syntaxes is not None:
+				for syntax in syntaxes:
+					await DocsSyntaxEntry.create(docs_id=doc.id, syntax=syntax)
+
+			if params is not None:
+				for name, value in params.items():
+					await DocsParamEntry.create(docs_id=doc.id, name=name, value=value)
+
+		await db.status('DELETE FROM docs_name')
+		await db.status('DELETE FROM docs_syntax')
+		await db.status('DELETE FROM docs_param')
+		await db.status('DELETE FROM docs')
+
+		try:
+			await parse_docs(handler, on_update, True)
+		except Exception as exc:
+			raise commands.CommandError(str(exc))
 
 
 def setup(bot):

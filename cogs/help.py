@@ -18,8 +18,8 @@ def get_new_ending_note(self):
 
 	if not self.context.bot.pm_help:
 		ret += (
-			'\n\nFully featured help command might not have run because the bot is missing any of these permissions: '
-			+ ', '.join(temp.replace('_', ' ').title() for temp in REQUIRED_PERMS)
+				'\n\nFully featured help command might not have run because the bot is missing any of these permissions: '
+				+ ', '.join(temp.replace('_', ' ').title() for temp in REQUIRED_PERMS)
 		)
 
 	return ret
@@ -80,7 +80,7 @@ class HelpPager(Pager):
 			e.add_field(name=name, value=value, inline=False)
 
 	@classmethod
-	def from_bot(cls, ctx):
+	async def from_bot(cls, ctx):
 		self = cls(ctx, [], per_page=1)
 
 		bot = self.bot
@@ -94,18 +94,18 @@ class HelpPager(Pager):
 			cmds = []
 
 			for command_or_group in sorted(bot.get_cog_commands(cog_name), key=lambda cmd: cmd.name):
-				self.add_command(cmds, command_or_group)
+				await self.add_command(cmds, command_or_group)
 
 				if isinstance(command_or_group, commands.Group):
 					for command in sorted(command_or_group.commands, key=lambda cmd: cmd.name):
-						self.add_command(cmds, command)
+						await self.add_command(cmds, command)
 
 			self.add_page(cog_name, cog_desc, cmds)
 
 		return self
 
 	@classmethod
-	def from_command(cls, ctx, command):
+	async def from_command(cls, ctx, command):
 		self = cls(ctx, [], per_page=1)
 
 		cog_name = command.cog_name
@@ -113,18 +113,18 @@ class HelpPager(Pager):
 
 		cmds = []
 
-		self.add_command(cmds, command, brief=False)
+		await self.add_command(cmds, command, brief=False, force=True)
 
 		if isinstance(command, commands.Group):
 			for cmd in sorted(command.commands, key=lambda cmd: cmd.name):
-				self.add_command(cmds, cmd, brief=False)
+				await self.add_command(cmds, cmd, brief=False, force=True)
 
 		self.add_page(cog_name, cog_desc, cmds)
 
 		return self
 
 	@classmethod
-	def from_cog(cls, ctx, cog):
+	async def from_cog(cls, ctx, cog):
 		self = cls(ctx, [], per_page=1)
 
 		cmds = []
@@ -132,11 +132,11 @@ class HelpPager(Pager):
 		cog_name = cog.__class__.__name__
 
 		for cmd in sorted(self.bot.get_cog_commands(cog_name), key=lambda cd: cd.name):
-			self.add_command(cmds, cmd, brief=False)
+			await self.add_command(cmds, cmd, brief=False, force=True)
 
 			if isinstance(cmd, commands.Group):
-				for group_cmd in sorted(cmd.commands, key=lambda cd: cd.name):
-					self.add_command(cmds, group_cmd, brief=False)
+				for group_cmd in cmd.walk_commands():
+					await self.add_command(cmds, group_cmd, brief=False, force=True)
 
 		self.add_page(cog_name, cog.__doc__, cmds)
 
@@ -145,21 +145,28 @@ class HelpPager(Pager):
 	def add_page(self, cog_name, cog_desc, cmds):
 		'''Will split into several pages to accomodate the per_page limit.'''
 
+		# will obviously not run if no commands are in the page
 		for cmnds in [cmds[i:i + self.commands_per_page] for i in range(0, len(cmds), self.commands_per_page)]:
 			self.entries.append((cog_name, cog_desc, cmnds))
 
-	def add_command(self, cmds, command, brief=True):
-		if not command.hidden:
+	async def add_command(self, cmds, command, brief=True, force=False):
+		if command.hidden:
+			return
 
-			hlp = command.brief or command.help
+		try:
+			if force is False and not await command.can_run(self.ctx):
+				return
+		except:
+			return
 
-			if hlp is None:
-				hlp = 'No description written.'
-			else:
-				hlp = hlp.split('\n')[0] if brief else hlp
+		hlp = command.brief or command.help
 
-			if not command.hidden:
-				cmds.append((get_signature(command), hlp))
+		if hlp is None:
+			hlp = 'No description written.'
+		else:
+			hlp = hlp.split('\n')[0] if brief else hlp
+
+		cmds.append(('.' + get_signature(command), hlp))
 
 	async def help_embed(self, e):
 		e.set_author(name='How do I use the bot?', icon_url=self.bot.user.avatar_url)
@@ -212,14 +219,14 @@ class Help:
 			return
 
 		if command is None:  # all commands if none specified
-			p = HelpPager.from_bot(ctx)
+			p = await HelpPager.from_bot(ctx)
 		else:
 			command = command.lower()
 
 			# search for matching cog
 			for cog_name, current_cog in ctx.bot.cogs.items():
 				if cog_name.lower() == command and cog_name not in IGNORE_COGS:
-					p = HelpPager.from_cog(ctx, current_cog)
+					p = await HelpPager.from_cog(ctx, current_cog)
 					if not len(p.entries):
 						raise commands.CommandError('Couldn\'t find command/cog.')
 					break
@@ -227,7 +234,7 @@ class Help:
 				command = ctx.bot.get_command(command)
 				if command is None or command.hidden:  # throw error message if we didn't find a command either
 					raise commands.CommandError('Couldn\'t find command/cog.')
-				p = HelpPager.from_command(ctx, command)
+				p = await HelpPager.from_command(ctx, command)
 
 		await p.go()
 
