@@ -4,17 +4,18 @@ from discord.ext import commands
 from docs_parser import parse_docs
 from utils.database import db, DocsEntry, DocsNameEntry, DocsSyntaxEntry, DocsParamEntry
 from cogs.guild.ahk.ids import *
-from utils.string_manip import to_markdown, shorten
+from utils.string_manip import html2markdown, shorten
 from cogs.base import TogglableCogMixin
 
 from html2text import HTML2Text
 from bs4 import BeautifulSoup
 from datetime import datetime, timedelta, timezone
 
-log = logging.getLogger(__name__)
 
 htt = HTML2Text()
 htt.body_width = 0
+
+log = logging.getLogger(__name__)
 
 ROLES = {
 	345652145267277836: '💻',  # helper
@@ -60,19 +61,19 @@ class AutoHotkey(TogglableCogMixin):
 				xml = BeautifulSoup(xml_rss, 'xml')
 
 				for entry in xml.find_all('entry')[::-1]:
-					time = parse_date(entry.updated.text)
-					title = htt.handle(entry.title.text)
-					content = shorten(entry.content.text, 512, 8)
+					time = parse_date(str(entry.updated.text))
+					title = htt.handle(str(entry.title.text))
+					content = shorten(str(entry.content.text), 512, 8)
 
 					if time > old_time and '• Re: ' not in title:
 						e = discord.Embed(
 							title=title,
-							description=to_markdown(content.split('Statistics: ')[0]),
+							description=html2markdown(content.split('Statistics: ')[0], big_box=True),
 							url=entry.id.text
 						)
 
-						e.add_field(name='Author', value=entry.author.text)
-						e.add_field(name='Forum', value=entry.category['label'])
+						e.add_field(name='Author', value=str(entry.author.text))
+						e.add_field(name='Forum', value=str(entry.category['label']))
 
 						e.timestamp = time
 
@@ -193,7 +194,7 @@ class AutoHotkey(TogglableCogMixin):
 
 	@commands.command()
 	@commands.is_owner()
-	async def build(self, ctx):
+	async def build(self, ctx, download : bool = True):
 		async def on_update(text):
 			await ctx.send(text)
 
@@ -211,13 +212,10 @@ class AutoHotkey(TogglableCogMixin):
 				for name, value in params.items():
 					await DocsParamEntry.create(docs_id=doc.id, name=name, value=value)
 
-		await db.status('DELETE FROM docs_name')
-		await db.status('DELETE FROM docs_syntax')
-		await db.status('DELETE FROM docs_param')
-		await db.status('DELETE FROM docs')
+		await db.status('TRUNCATE docs_name, docs_syntax, docs_param, docs RESTART IDENTITY')
 
 		try:
-			await parse_docs(handler, on_update, True)
+			await parse_docs(handler, on_update, download)
 		except Exception as exc:
 			raise commands.CommandError(str(exc))
 

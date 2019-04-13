@@ -14,17 +14,42 @@ def strip_markdown(content):
 	return pattern.sub(replace, content)
 
 
-def to_markdown(html):
-	html = BeautifulSoup(html, 'html.parser')
+def html2markdown(html, url='', big_box=False):
 
-	for thing in html.find_all('br'):
-		thing.replace_with('\n' + thing.text)
+	prepend = {'br': '\n', 'li': '\u200b\t- '}
+	wrap = {'b': '**', 'em': '*', 'i': '*', 'code': '```' if big_box else '`'}
 
-	for key, val in {'code': '```', 'blockquote': ' '}.items():
-		for thing in html.find_all(key):
-			thing.replace_with(val + thing.text + val)
+	# replace all text (not tags) with stripped markdown versions
+	res = re.finditer(r'>((\s|.)*?)<', str(html))
+	plain = html
 
-	return html.text
+	new = ''
+	prev = 0
+	for m in res:
+		start, stop = m.span()
+		stripped = strip_markdown(plain[start + 1:stop - 1])
+		new += plain[prev:start + 1] + stripped
+		prev = stop - 1
+
+	# create a bs4 instance of the html
+	bs = BeautifulSoup(new, 'html.parser')
+
+	for key, value in wrap.items():
+		for tag in reversed(bs.find_all(key, recursive=True)):
+			tag.replace_with(value + tag.text + value)
+
+	for key, value in prepend.items():
+		for tag in reversed(bs.find_all(key, recursive=True)):
+			tag.replace_with(value + tag.text)
+
+	if len(url) and not url.endswith('/'):
+		url += '/'
+
+	# replace hyperlinks with markdown hyperlinks
+	for a in bs.find_all('a', href=True, recursive=True):
+		a.replace_with(f'[{a.text}]({url}{a["href"]})')
+
+	return str(bs.text)
 
 
 def shorten(text, max_char, max_newline):

@@ -4,7 +4,7 @@ from docs_parser.handlers import *
 
 from bs4 import BeautifulSoup
 
-fetch = False
+url = 'https://www.autohotkey.com/docs'
 parser = 'html.parser'
 docs_base = 'temp/AutoHotkey_L-Docs-master/docs'
 download_file = 'temp/docs.zip'
@@ -17,6 +17,7 @@ directory_handlers = dict(
 )
 
 file_handlers = {
+	'Variables.htm': VariablesHandler,
 	'commands/Math.htm': CommandListHandler,
 	'commands/ListView.htm': CommandListHandler,
 	'commands/TreeView.htm': CommandListHandler
@@ -53,6 +54,9 @@ async def parse_docs(handler, on_update, fetch=True):
 		zip_ref.extractall('temp')
 		zip_ref.close()
 
+	# for embedded URLs, they need the URL base
+	BaseHandler.url = url
+
 	# parse object pages
 	await on_update('parsing directories...')
 
@@ -74,6 +78,6 @@ async def parse_docs(handler, on_update, fetch=True):
 	await on_update('adding custom stuff...')
 
 	for names, page, desc in customs:
-		await handler(names, page, desc)
+		pass # await handler(names, page, desc)
 
 	await on_update('finished!')
