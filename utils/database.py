@@ -133,8 +133,8 @@ class DocsEntry(db.Model):
 	id = db.Column(db.Integer, primary_key=True)
 
 	# required
-	desc = db.Column(db.Text)
-	page = db.Column(db.Text)
+	desc = db.Column(db.Text, nullable=True)
+	page = db.Column(db.Text, unique=True)
 
 
 class DocsNameEntry(db.Model):

@@ -2,6 +2,7 @@ import re
 
 from utils.string_manip import html2markdown
 
+
 class BaseHandler:
 	url = None
 
@@ -18,14 +19,6 @@ class BaseHandler:
 
 		return self.pretty_desc(p)
 
-	def pretty_syntax(self, syntax):
-		span_list = syntax.find_all('span', class_='optional')
-
-		for span in span_list:
-			span.replace_with(f'[{span.text}]')
-
-		return syntax.text.strip().split('\n')
-
 	def pretty_desc(self, desc):
 		return html2markdown(str(desc), self.url)
 
@@ -36,7 +29,7 @@ class CommandsHandler(BaseHandler):
 			self.get_names(),
 			self.file,
 			self.get_desc(),
-			self.get_syntaxes(),
+			self.get_syntax(),
 			self.get_params()
 		)
 
@@ -74,13 +67,13 @@ class CommandsHandler(BaseHandler):
 
 		return split
 
-	def get_syntaxes(self):
+	def get_syntax(self):
 		syntax = self.bs.find('pre', class_='Syntax')
 
 		if syntax is None:
 			return None
 
-		return self.pretty_syntax(syntax)
+		return str(syntax.text)
 
 	def get_params(self):
 		dl = self.bs.find('dl')
@@ -116,11 +109,13 @@ class CommandListHandler(BaseHandler):
 		for tag in self.bs.find_all('h3', id=True):
 			for span in tag.find_all('span'):
 				span.decompose()
+
 			name = tag.text.strip()
 			desc = tag.next_element.next_element.next_element
-
 			syntax = self.bs.find('span', class_='func', string=name)
-			syntax = None if syntax is None else [syntax.parent.text]
+
+			if syntax is not None:
+				syntax = str(syntax.text)
 
 			await self.handler([name], f'{self.file}#{name}', self.pretty_desc(desc), syntax)
 

@@ -1,4 +1,4 @@
-import os, aiohttp, zipfile
+import os, aiohttp, zipfile, json
 
 from docs_parser.handlers import *
 
@@ -59,7 +59,6 @@ async def parse_docs(handler, on_update, fetch=True):
 
 	# parse object pages
 	await on_update('parsing directories...')
-
 	for dir, handlr in directory_handlers.items():
 		for filename in filter(lambda fn: fn.endswith('.htm'), os.listdir(f'{docs_base}/{dir}')):
 			fn = f'{dir}/{filename}'
@@ -69,15 +68,21 @@ async def parse_docs(handler, on_update, fetch=True):
 				await handlr(BeautifulSoup(f.read(), parser), fn, handler).parse()
 
 	await on_update('parsing single files...')
-
 	for file, handlr in file_handlers.items():
 		with open(f'{docs_base}/{file}', 'r') as f:
 			await handlr(BeautifulSoup(f.read(), parser), file, handler).parse()
 
 	# customly added stuff
 	await on_update('adding custom stuff...')
-
 	for names, page, desc in customs:
-		pass # await handler(names, page, desc)
+		await handler(names, page, desc)
+
+	# parse the index list and add additional names for stuff
+	await on_update('parsing index list for additional name matches...')
+	with open(f'{docs_base}/static/source/data_index.js') as f:
+		j = json.loads(f.read()[12:-2])
+		for line in j:
+			name, page, *junk = line
+			await handler([name], page)
 
 	await on_update('finished!')

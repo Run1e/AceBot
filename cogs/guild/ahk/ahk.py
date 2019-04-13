@@ -156,7 +156,7 @@ class AutoHotkey(TogglableCogMixin):
 		for role in roles:
 			await msg.add_reaction(ROLES[role.id])
 
-	@commands.command()
+	@commands.command(aliases=['rtfm'])
 	@commands.bot_has_permissions(embed_links=True)
 	async def docs(self, ctx, *, search):
 		'''Search the AutoHotkey documentation.'''
@@ -177,17 +177,17 @@ class AutoHotkey(TogglableCogMixin):
 		e.color = 0x95CD95
 
 		docs = await db.first('SELECT * FROM docs WHERE id=$1', docs_id)
-		syntaxes = await db.all('SELECT * FROM docs_syntax WHERE docs_id=$1', docs.id)
+		syntax = await db.first('SELECT * FROM docs_syntax WHERE docs_id=$1', docs.id)
 
 		e.title = name
 		e.url = f'https://autohotkey.com/docs/{docs.page}'
-		e.description = docs.desc
+		e.description = docs.desc or 'None for this page.'
 		e.set_footer(text='autohotkey.com', icon_url='https://www.autohotkey.com/favicon.ico')
 
-		if len(syntaxes):
+		if syntax is not None:
 			e.add_field(
-				name='Syntax' if len(syntaxes) == 1 else 'Syntaxes',
-				value=''.join(f"```autoit\n{syntax.syntax}```" for syntax in syntaxes)
+				name='Syntax',
+				value=f'```autoit\n{syntax.syntax}```'
 			)
 
 		await ctx.send(embed=e)
@@ -198,19 +198,28 @@ class AutoHotkey(TogglableCogMixin):
 		async def on_update(text):
 			await ctx.send(text)
 
-		async def handler(names, page, desc, syntaxes=None, params=None):
-			doc = await DocsEntry.create(page=page, desc=desc)
+		async def handler(names, page, desc=None, syntax=None, params=None):
+
+			# ignore everything that has to do with examples
+			for name in names:
+				if 'example' in name.lower():
+					return
+
+			docs_id = await db.scalar('SELECT id FROM docs WHERE page=$1', page)
+
+			if docs_id is None:
+				doc = await DocsEntry.create(page=page, desc=desc)
+				docs_id = doc.id
 
 			for name in names:
-				await DocsNameEntry.create(docs_id=doc.id, name=name)
+				await DocsNameEntry.create(docs_id=docs_id, name=name)
 
-			if syntaxes is not None:
-				for syntax in syntaxes:
-					await DocsSyntaxEntry.create(docs_id=doc.id, syntax=syntax)
+			if syntax is not None:
+				await DocsSyntaxEntry.create(docs_id=docs_id, syntax=syntax)
 
 			if params is not None:
 				for name, value in params.items():
-					await DocsParamEntry.create(docs_id=doc.id, name=name, value=value)
+					await DocsParamEntry.create(docs_id=docs_id, name=name, value=value)
 
 		await db.status('TRUNCATE docs_name, docs_syntax, docs_param, docs RESTART IDENTITY')
 

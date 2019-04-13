@@ -8,11 +8,13 @@ async def main():
 	async def on_update(text):
 		print(text)
 
-	async def handler(names, page, desc, syntaxes=None, params=None):
+	async def handler(names, page, desc=None, syntax=None, params=None):
+		print(syntax)
+		return
 		print(names)
 		print(f'page: {page}')
 		print(desc)
-		print(syntaxes)
+		print(syntax)
 		print()
 		print()
 
