@@ -47,7 +47,10 @@ def html2markdown(html, url='', big_box=False):
 
 	# replace hyperlinks with markdown hyperlinks
 	for a in bs.find_all('a', href=True, recursive=True):
-		a.replace_with(f'[{a.text}]({url}{a["href"]})')
+		href = a["href"]
+		if href.startswith('../'):
+			href = href[3:]
+		a.replace_with(f'[{a.text}]({url}{href})')
 
 	return str(bs.text)
 

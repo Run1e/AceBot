@@ -143,7 +143,7 @@ class DocsNameEntry(db.Model):
 	id = db.Column(db.Integer, primary_key=True)
 
 	docs_id = db.Column(None, db.ForeignKey('docs.id'))
-	name = db.Column(db.Text)
+	name = db.Column(db.Text, unique=True)
 
 
 class DocsSyntaxEntry(db.Model):

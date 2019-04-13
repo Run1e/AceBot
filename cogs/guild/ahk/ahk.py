@@ -7,6 +7,7 @@ from cogs.guild.ahk.ids import *
 from utils.string_manip import html2markdown, shorten
 from cogs.base import TogglableCogMixin
 
+from asyncpg.exceptions import UniqueViolationError
 from html2text import HTML2Text
 from bs4 import BeautifulSoup
 from datetime import datetime, timedelta, timezone
@@ -181,14 +182,11 @@ class AutoHotkey(TogglableCogMixin):
 
 		e.title = name
 		e.url = f'https://autohotkey.com/docs/{docs.page}'
-		e.description = docs.desc or 'None for this page.'
+		e.description = docs.desc or 'No description for this page.'
 		e.set_footer(text='autohotkey.com', icon_url='https://www.autohotkey.com/favicon.ico')
 
 		if syntax is not None:
-			e.add_field(
-				name='Syntax',
-				value=f'```autoit\n{syntax.syntax}```'
-			)
+			e.add_field(name='Syntax', value=f'```autoit\n{syntax.syntax}```')
 
 		await ctx.send(embed=e)
 
@@ -212,7 +210,10 @@ class AutoHotkey(TogglableCogMixin):
 				docs_id = doc.id
 
 			for name in names:
-				await DocsNameEntry.create(docs_id=docs_id, name=name)
+				try:
+					await DocsNameEntry.create(docs_id=docs_id, name=name)
+				except UniqueViolationError:
+					continue
 
 			if syntax is not None:
 				await DocsSyntaxEntry.create(docs_id=docs_id, syntax=syntax)
