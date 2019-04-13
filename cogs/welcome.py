@@ -45,7 +45,10 @@ class Welcome(TogglableCogMixin):
 
 		await asyncio.sleep(self._sleep)
 
-		await channel.send(welcomify(member, guild, welc.content))
+		try:
+			await channel.send(welcomify(member, guild, welc.content))
+		except discord.HTTPException:
+			pass
 
 	@commands.group(invoke_without_command=True)
 	@is_manager()

@@ -14,10 +14,10 @@ def strip_markdown(content):
 	return pattern.sub(replace, content)
 
 
-def html2markdown(html, url='', big_box=False):
+def html2markdown(html, url='', big_box=False, language=None, parser='html.parser'):
 
-	prepend = {'br': '\n', 'li': '\u200b\t- '}
-	wrap = {'b': '**', 'em': '*', 'i': '*', 'code': '```' if big_box else '`'}
+	prepend = {'br': '\n', 'li': '\u200b\t- ', 'ul': '\n'}
+	wrap = {'b': '**', 'em': '*', 'i': '*', 'div': '\n'}
 
 	# replace all text (not tags) with stripped markdown versions
 	res = re.finditer(r'>((\s|.)*?)<', str(html))
@@ -32,11 +32,15 @@ def html2markdown(html, url='', big_box=False):
 		prev = stop - 1
 
 	# create a bs4 instance of the html
-	bs = BeautifulSoup(new, 'html.parser')
+	bs = BeautifulSoup(new, parser)
 
 	for key, value in wrap.items():
 		for tag in reversed(bs.find_all(key, recursive=True)):
 			tag.replace_with(value + tag.text + value)
+
+	code_wrap = '```' if big_box else '`'
+	for tag in reversed(bs.find_all('code', recursive=True)):
+		tag.replace_with(f"{code_wrap}{'' if language is None or not big_box else language}\n{tag.text}\n{code_wrap}")
 
 	for key, value in prepend.items():
 		for tag in reversed(bs.find_all(key, recursive=True)):
@@ -67,7 +71,7 @@ def shorten(text, max_char, max_newline):
 		shortened = True
 
 	if shortened:
-		text = text[0:len(text) - 4] + ' ...'
+		text = text[0:len(text) - 3] + '...'
 
 	return text
 

@@ -64,18 +64,22 @@ class AutoHotkey(TogglableCogMixin):
 				for entry in xml.find_all('entry')[::-1]:
 					time = parse_date(str(entry.updated.text))
 					title = htt.handle(str(entry.title.text))
-					content = shorten(str(entry.content.text), 512, 8)
 
 					if time > old_time and '• Re: ' not in title:
+						content = str(entry.content.text).split('Statistics: ')[0]
+
+						content = html2markdown(content, language='autoit', big_box=True)
+						content = shorten(content.replace('CODE:', ''), 256, 4)
+
 						e = discord.Embed(
 							title=title,
-							description=html2markdown(content.split('Statistics: ')[0], big_box=True),
-							url=entry.id.text
+							description=content,
+							url=str(entry.id.text)
 						)
 
 						e.add_field(name='Author', value=str(entry.author.text))
 						e.add_field(name='Forum', value=str(entry.category['label']))
-
+						e.set_footer(text='autohotkey.com', icon_url='https://www.autohotkey.com/favicon.ico')
 						e.timestamp = time
 
 						if channel is not None:
@@ -190,7 +194,7 @@ class AutoHotkey(TogglableCogMixin):
 
 		await ctx.send(embed=e)
 
-	@commands.command()
+	@commands.command(hidden=True)
 	@commands.is_owner()
 	async def build(self, ctx, download : bool = True):
 		async def on_update(text):
