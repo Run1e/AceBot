@@ -7,11 +7,10 @@ from cogs.guild.ahk.ids import *
 from utils.string_manip import html2markdown, shorten
 from cogs.base import TogglableCogMixin
 
-from asyncpg.exceptions import UniqueViolationError
+from fuzzywuzzy import fuzz, process
 from html2text import HTML2Text
 from bs4 import BeautifulSoup
 from datetime import datetime, timedelta, timezone
-
 
 htt = HTML2Text()
 htt.body_width = 0
@@ -101,7 +100,7 @@ class AutoHotkey(TogglableCogMixin):
 		# command not found? docs search it. only if message string is not *only* dots though
 		if isinstance(error, commands.CommandNotFound) and len(
 				ctx.message.content) > 3 and not ctx.message.content.startswith('..'):
-			await ctx.invoke(self.docs, search=ctx.message.content[1:])
+			await ctx.invoke(self.docs, query=ctx.message.content[1:])
 
 	async def on_raw_reaction_add(self, payload):
 		if payload.channel_id != ROLES_CHAN_ID:
@@ -135,7 +134,11 @@ class AutoHotkey(TogglableCogMixin):
 					title = 'Added Role'
 
 		if action:
-			log.info('{} {} {} {}'.format(title, role.name, 'to' if title == 'Added Role' else 'from', member.name))
+			log.info('{} {} {} {} ({})'.format(
+				title, role.name, 'to' if title == 'Added Role' else 'from',
+				member.name, member.id)
+			)
+
 			await channel.send(embed=discord.Embed(title=title, description=desc), delete_after=5)
 
 	@commands.command(hidden=True)
@@ -163,20 +166,33 @@ class AutoHotkey(TogglableCogMixin):
 
 	@commands.command(aliases=['rtfm'])
 	@commands.bot_has_permissions(embed_links=True)
-	async def docs(self, ctx, *, search):
+	async def docs(self, ctx, *, query):
 		'''Search the AutoHotkey documentation.'''
 
-		search = search.lower()
+		query = query.lower()
 
-		res = await db.first(
-			'SELECT docs_id, name FROM docs_name ORDER BY word_similarity(name, $1) DESC LIMIT 1',
-			search
+		# get five results from docs_name
+		matches = await db.all(
+			'SELECT docs_id, name FROM docs_name ORDER BY word_similarity(name, $1) DESC LIMIT 5',
+			query
 		)
 
-		if res is None:
+		result = process.extract(
+			query,
+			[tup[1] for tup in matches],
+			scorer=fuzz.ratio,
+			limit=1
+		)
+
+		name, score = result[0]
+
+		if score < 68:
 			raise commands.CommandError('Sorry, couldn\'t find an entry similar to that.')
 
-		docs_id, name = res
+		for match in matches:
+			if match[1] == name:
+				docs_id = match[0]
+				break
 
 		e = discord.Embed()
 		e.color = 0x95CD95
@@ -187,7 +203,7 @@ class AutoHotkey(TogglableCogMixin):
 		e.title = name
 		e.url = f'https://autohotkey.com/docs/{docs.page}'
 		e.description = docs.desc or 'No description for this page.'
-		e.set_footer(text='autohotkey.com', icon_url='https://www.autohotkey.com/favicon.ico')
+		e.set_footer(text=f'autohotkey.com', icon_url='https://www.autohotkey.com/favicon.ico')
 
 		if syntax is not None:
 			e.add_field(name='Syntax', value=f'```autoit\n{syntax.syntax}```')
@@ -196,7 +212,7 @@ class AutoHotkey(TogglableCogMixin):
 
 	@commands.command(hidden=True)
 	@commands.is_owner()
-	async def build(self, ctx, download : bool = True):
+	async def build(self, ctx, download: bool = True):
 		async def on_update(text):
 			await ctx.send(text)
 
@@ -214,10 +230,10 @@ class AutoHotkey(TogglableCogMixin):
 				docs_id = doc.id
 
 			for name in names:
-				try:
-					await DocsNameEntry.create(docs_id=docs_id, name=name)
-				except UniqueViolationError:
+				# don't add if item already exists (including case insensitive matches)
+				if await db.scalar('SELECT * FROM docs_name WHERE lower(name)=$1', name.lower()):
 					continue
+				await DocsNameEntry.create(docs_id=docs_id, name=name)
 
 			if syntax is not None:
 				await DocsSyntaxEntry.create(docs_id=docs_id, syntax=syntax)

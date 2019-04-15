@@ -1,4 +1,4 @@
-import discord
+import discord, logging
 from discord.ext import commands
 from datetime import datetime
 
@@ -7,6 +7,9 @@ from cogs.guild.ahk.security import RULES_MSG_ID
 from cogs.base import TogglableCogMixin
 from utils.time import pretty_timedelta
 from utils.lol import push_message
+
+log = logging.getLogger(__name__)
+
 
 class Moderator(TogglableCogMixin):
 	'''
@@ -158,6 +161,7 @@ class Moderator(TogglableCogMixin):
 
 		count = len(deleted)
 
+		log.info('{} ({}) deleted {} messages in #{} ({})'.format(ctx.author.name, ctx.author.id, count, ctx.channel.name, ctx.channel.id))
 		await ctx.send(f'✅ Deleted {count} message{"s" if count > 1 else ""}.', delete_after=5)
 
 

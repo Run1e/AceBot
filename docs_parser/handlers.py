@@ -11,6 +11,17 @@ class BaseHandler:
 		self.handler = handler
 		self.bs = bs
 
+	async def parse(self):
+		await self.handler([self.get_name()], self.file, self.get_desc())
+
+	def get_name(self):
+		h1 = self.bs.find('h1')
+
+		for span in h1.find_all('span'):
+			span.decompose()
+
+		return h1.text.strip()
+
 	def get_desc(self):
 		p = self.bs.find('p')
 
@@ -52,13 +63,9 @@ class CommandsHandler(BaseHandler):
 		return new_names
 
 	def get_names(self):
-		tag = self.bs.find('h1')
+		name = self.get_name()
 
-		# clear version tags
-		for t in tag.find_all('span'):
-			t.decompose()
-
-		split = tag.text.split(' / ')
+		split = name.split(' / ')
 
 		for idx, part in enumerate(split):
 			split[idx] = part.strip()
@@ -92,18 +99,6 @@ class CommandsHandler(BaseHandler):
 		return params
 
 
-class MiscHandler(BaseHandler):
-	async def parse(self):
-		await self.handler([self.get_name()], self.file, self.get_desc())
-
-	def get_name(self):
-		return self.bs.find('h1').text
-
-
-class ObjectHandler(MiscHandler):
-	pass
-
-
 class CommandListHandler(BaseHandler):
 	async def parse(self):
 		for tag in self.bs.find_all('h3', id=True):
@@ -115,7 +110,7 @@ class CommandListHandler(BaseHandler):
 			syntax = self.bs.find('span', class_='func', string=name)
 
 			if syntax is not None:
-				syntax = str(syntax.text)
+				syntax = str(syntax.parent.text)
 
 			await self.handler([name], f'{self.file}#{name}', self.pretty_desc(desc), syntax)
 

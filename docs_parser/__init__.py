@@ -12,8 +12,8 @@ download_link = 'https://github.com/Lexikos/AutoHotkey_L-Docs/archive/master.zip
 
 directory_handlers = dict(
 	commands=CommandsHandler,
-	misc=MiscHandler,
-	objects=ObjectHandler
+	misc=BaseHandler,
+	objects=BaseHandler
 )
 
 file_handlers = {
@@ -83,6 +83,6 @@ async def parse_docs(handler, on_update, fetch=True):
 		j = json.loads(f.read()[12:-2])
 		for line in j:
 			name, page, *junk = line
-			await handler([name], page)
+			await handler([name.capitalize()], page)
 
 	await on_update('finished!')

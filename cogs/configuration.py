@@ -74,7 +74,7 @@ class Configuration:
 
 		self.bot.reset_module_cache(ctx.guild.id)
 
-		log.info(f'{ctx.author.name} enabled \'{module}\' in {ctx.guild.name} ({ctx.guild.id})')
+		log.info(f'{ctx.author.name} ({ctx.author.id}) enabled \'{module}\' in {ctx.guild.name} ({ctx.guild.id})')
 		await ctx.send(f'Module `{module}` enabled.')
 
 	@commands.command()
@@ -100,7 +100,7 @@ class Configuration:
 		res = await mod.delete()
 
 		if res == 'DELETE 1':
-			log.info(f'{ctx.author.name} disabled \'{module}\' in {ctx.guild.name} ({ctx.guild.id})')
+			log.info(f'{ctx.author.name} ({ctx.author.id}) disabled \'{module}\' in {ctx.guild.name} ({ctx.guild.id})')
 			await ctx.send(f'Module `{module}` disabled.')
 		else:
 			raise commands.CommandError(f'Failed disabling module `{module}`')
