@@ -1,7 +1,8 @@
-import os, aiohttp, zipfile, json
+import os, aiohttp, json
 
 from docs_parser.handlers import *
 
+from zipfile import ZipFile
 from bs4 import BeautifulSoup
 
 url = 'https://www.autohotkey.com/docs'
@@ -19,6 +20,7 @@ directory_handlers = dict(
 file_handlers = {
 	'Variables.htm': VariablesHandler,
 	'commands/Math.htm': CommandListHandler,
+	'commands/GuiControls.htm': CommandListHandler, # contains SB_*() functions
 	'commands/ListView.htm': CommandListHandler,
 	'commands/TreeView.htm': CommandListHandler
 }
@@ -37,7 +39,7 @@ customs = (
 
 async def parse_docs(handler, on_update, fetch=True):
 	if fetch:
-		await on_update('downloading zip...')
+		await on_update('Downloading...')
 
 		async with aiohttp.ClientSession() as session:
 			async with session.get(download_link) as resp:
@@ -48,41 +50,35 @@ async def parse_docs(handler, on_update, fetch=True):
 				with open(download_file, 'wb') as f:
 					f.write(await resp.read())
 
-		await on_update('unzipping...')
-
-		zip_ref = zipfile.ZipFile(download_file, 'r')
+		zip_ref = ZipFile(download_file, 'r')
 		zip_ref.extractall('temp')
 		zip_ref.close()
 
 	# for embedded URLs, they need the URL base
-	BaseHandler.url = url
+	BaseHandler.url_base = url
+	BaseHandler.file_base = docs_base
 
 	# parse object pages
-	await on_update('parsing directories...')
+	await on_update('Building...')
 	for dir, handlr in directory_handlers.items():
 		for filename in filter(lambda fn: fn.endswith('.htm'), os.listdir(f'{docs_base}/{dir}')):
 			fn = f'{dir}/{filename}'
 			if fn in file_handlers:
 				continue
-			with open(f'{docs_base}/{fn}', 'r') as f:
-				await handlr(BeautifulSoup(f.read(), parser), fn, handler).parse()
+			await handlr(fn, handler).parse()
 
-	await on_update('parsing single files...')
 	for file, handlr in file_handlers.items():
-		with open(f'{docs_base}/{file}', 'r') as f:
-			await handlr(BeautifulSoup(f.read(), parser), file, handler).parse()
+		await handlr(file, handler).parse()
 
 	# customly added stuff
-	await on_update('adding custom stuff...')
 	for names, page, desc in customs:
 		await handler(names, page, desc)
 
 	# parse the index list and add additional names for stuff
-	await on_update('parsing index list for additional name matches...')
 	with open(f'{docs_base}/static/source/data_index.js') as f:
 		j = json.loads(f.read()[12:-2])
 		for line in j:
 			name, page, *junk = line
 			await handler([name.capitalize()], page)
 
-	await on_update('finished!')
+	await on_update('Build finished successfully.')

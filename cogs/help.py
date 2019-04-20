@@ -60,7 +60,7 @@ def get_signature(command):
 
 
 class HelpPager(Pager):
-	commands_per_page = 8
+	commands_per_page = 9
 
 	async def craft_page(self, e, page, entries):
 		cog_name, cog_desc, commands = entries[0]

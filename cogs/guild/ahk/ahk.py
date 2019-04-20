@@ -186,7 +186,7 @@ class AutoHotkey(TogglableCogMixin):
 
 		name, score = result[0]
 
-		if score < 68:
+		if score < 50:
 			raise commands.CommandError('Sorry, couldn\'t find an entry similar to that.')
 
 		for match in matches:
@@ -203,10 +203,10 @@ class AutoHotkey(TogglableCogMixin):
 		e.title = name
 		e.url = f'https://autohotkey.com/docs/{docs.page}'
 		e.description = docs.desc or 'No description for this page.'
-		e.set_footer(text=f'autohotkey.com', icon_url='https://www.autohotkey.com/favicon.ico')
+		e.set_footer(text='autohotkey.com', icon_url='https://www.autohotkey.com/favicon.ico')
 
 		if syntax is not None:
-			e.add_field(name='Syntax', value=f'```autoit\n{syntax.syntax}```')
+			e.description += f'\n```autoit\n{syntax.syntax}```'
 
 		await ctx.send(embed=e)
 
@@ -231,7 +231,9 @@ class AutoHotkey(TogglableCogMixin):
 
 			for name in names:
 				# don't add if item already exists (including case insensitive matches)
-				if await db.scalar('SELECT * FROM docs_name WHERE lower(name)=$1', name.lower()):
+				if await db.scalar('SELECT * FROM docs_name WHERE LOWER(name)=$1', name.lower()):
+					continue
+				if name.endswith('()') and await db.scalar('SELECT * FROM docs_name WHERE LOWER(name)=$1', name.lower()[:-2]):
 					continue
 				await DocsNameEntry.create(docs_id=docs_id, name=name)
 

@@ -68,7 +68,7 @@ class Highlighter(TogglableCogMixin):
 	async def hl(self, ctx, *, code):
 		'''Highlight some code.'''
 
-		code = ctx.message.clean_content[4:].replace('`', '`\u200b')
+		code = ctx.message.clean_content[4:].replace('```', '``\u200b`')
 
 		push_message(ctx.message.id) # stupid stupid stupid stupid stupid stupid
 		await ctx.message.delete()

@@ -27,9 +27,18 @@ class General:
 	@commands.command()
 	async def flip(self, ctx):
 		'''Flip a coin!'''
+
 		msg = await ctx.send('Flipping...')
 		await asyncio.sleep(3)
 		await msg.edit(content=random.choice(('Heads!', 'Tails!')))
+
+	@commands.command(alias=['choice'])
+	async def choose(self, ctx, *choices):
+		'''Give me a list and I'll choose an item.'''
+
+		msg = await ctx.send('Deciding...')
+		await asyncio.sleep(3)
+		await msg.edit(content=random.choice(choices))
 
 	@commands.command(aliases=['guild'])
 	@commands.bot_has_permissions(embed_links=True)

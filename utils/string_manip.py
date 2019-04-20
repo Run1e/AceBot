@@ -46,15 +46,14 @@ def html2markdown(html, url='', big_box=False, language=None, parser='html.parse
 		for tag in reversed(bs.find_all(key, recursive=True)):
 			tag.replace_with(value + tag.text)
 
-	if len(url) and not url.endswith('/'):
-		url += '/'
-
 	# replace hyperlinks with markdown hyperlinks
 	for a in bs.find_all('a', href=True, recursive=True):
 		href = a["href"]
-		if href.startswith('../'):
-			href = href[3:]
-		a.replace_with(f'[{a.text}]({url}{href})')
+		if not href.startswith('#'):
+			use_url = '/'.join(url.split('/')[:-1]) + '/' # nearly as ugly as me this line
+		else:
+			use_url = url
+		a.replace_with(f'[{a.text}]({use_url}{href})')
 
 	return str(bs.text)
 

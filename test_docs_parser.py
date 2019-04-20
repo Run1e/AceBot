@@ -9,7 +9,11 @@ async def main():
 		print(text)
 
 	async def handler(names, page, desc=None, syntax=None, params=None):
-		print(names)
+		#print(names)
+		#print(desc)
+		#print()
+		#print()
+		#print()
 		return
 		print(f'page: {page}')
 		print(desc)
