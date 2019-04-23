@@ -2,11 +2,12 @@ __pycache__
 .idea
 logs
 images
-old
 config.py
 notes
-test.py
 temp
+
+test.py
+test_docs_parser.py
 cogs/guild/ahk/security.py
 cogs/guild/ahk/antimention.py
 cogs/guild/ahk/log.py
