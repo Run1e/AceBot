@@ -14,12 +14,7 @@ class Meta:
 	async def invite(self, ctx):
 		'''Get bot invite link.'''
 
-		await ctx.send(
-			'https://discordapp.com/oauth2/authorize?'
-			f'&client_id={self.bot.user.id}'
-			'&scope=bot'
-			'&permissions=67497025'
-		)
+		await ctx.send(self.bot.invite_link)
 
 	@commands.command()
 	async def dbl(self, ctx):

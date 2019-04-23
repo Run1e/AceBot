@@ -40,6 +40,7 @@ extensions_if_exist = (
 	'cogs.guild.ahk.antimention',
 )
 
+
 class AceBot(commands.Bot):
 	_module_cache = {}
 	_ignored = []
@@ -100,7 +101,14 @@ class AceBot(commands.Bot):
 
 		await self.change_presence(activity=discord.Game(name='.help'))
 
+		log.info(f'Invite link: {self.invite_link}')
 		log.info(f'Finished! Connected to {len(self.guilds)} guilds.')
+
+	@property
+	def invite_link(self, perms=None):
+		if perms is None:
+			perms = 67497025
+		return f'https://discordapp.com/oauth2/authorize?&client_id={self.user.id}&scope=bot&permissions={perms}'
 
 	async def on_resumed(self):
 		log.info('Bot resumed...')
@@ -134,7 +142,8 @@ class AceBot(commands.Bot):
 		return self._module_cache[guild_id][module]
 
 	async def uses_module_db(self, guild_id, module):
-		return not not await db.scalar('SELECT id FROM module WHERE guild_id=$1 AND module=$2', guild_id, module.lower())
+		return not not await db.scalar('SELECT id FROM module WHERE guild_id=$1 AND module=$2', guild_id,
+									   module.lower())
 
 	async def blacklist(self, ctx):
 		'''Returns False if user is disallowed, otherwise True'''
