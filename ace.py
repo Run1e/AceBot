@@ -1,4 +1,4 @@
-import discord, aiohttp, dbl, traceback, io, logging, logging.handlers, sys
+import discord, aiohttp, dbl, traceback, io, logging, logging.handlers, sys, os
 from discord.ext import commands
 from datetime import datetime
 
@@ -46,15 +46,17 @@ extensions = (
 	'cogs.hl',
 	'cogs.coins',
 	'cogs.quiz',
-	'cogs.log',
 	'cogs.guild.ahk.ahk',
-	'cogs.guild.ahk.security',
-	'cogs.guild.ahk.antimention',
 	'cogs.guild.dwitter',
 	'cogs.owner',
 	'cogs.help'
 )
 
+extensions_if_exist = (
+	'cogs.guild.ahk.log',
+	'cogs.guild.ahk.security',
+	'cogs.guild.ahk.antimention',
+)
 
 class AceBot(commands.Bot):
 	_module_cache = {}
@@ -107,6 +109,10 @@ class AceBot(commands.Bot):
 		for extension in extensions:
 			# log.info(f'Loading extension: {extension}')
 			self.load_extension(extension)
+
+		for extension in extensions_if_exist:
+			if os.path.isfile(extension.replace('.', '/') + '.py'):
+				self.load_extension(extension)
 
 		self._ignored = list(*await self.db.all('SELECT user_id FROM ignore'))
 

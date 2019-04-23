@@ -1,11 +1,9 @@
 import discord, logging
 
-from discord.ext import commands
 from datetime import datetime
 from os.path import isfile
 
-from utils.checks import is_manager
-from utils.database import db, LogGuild
+from cogs.guild.ahk.ids import AHK_GUILD_ID
 from utils.lol import bot_deleted
 
 log = logging.getLogger(__name__)
@@ -14,7 +12,12 @@ CHANNEL_TYPES = {discord.TextChannel: 'Text', discord.VoiceChannel: 'Voice', dis
 
 LO_COLOR = discord.Embed().color
 MID_COLOR = 0xFF8C00
-HI_COLOR  = 0xFF4000
+HI_COLOR = 0xFF4000
+
+MISC_CHAN_ID = 545293618718703637
+EDITED_CHAN_ID = 565075423709626378
+DELETED_CHAN_ID = 570262921741991946
+
 
 def present(string):
 	return string.replace('_', ' ').title()
@@ -26,11 +29,8 @@ class Logger:
 	def __init__(self, bot):
 		self.bot = bot
 
-	async def __local_check(self, ctx):
-		return await self._check(ctx.guild.id)
-
-	async def _check(self, guild_id):
-		return await self.bot.uses_module(guild_id, 'logger')
+	def _check(self, guild_id):
+		return guild_id == AHK_GUILD_ID
 
 	def get_message_embed(self, message):
 		'''
@@ -100,14 +100,16 @@ class Logger:
 
 		return changed
 
-	async def log(self, guild, content=None, embed=None, is_msg=False, **kwargs):
+	async def log(self, guild, content=None, embed=None, type=0, **kwargs):
 		if isinstance(guild, discord.Guild):
 			guild = guild.id
 
-		if is_msg:
-			channel_id = await db.scalar('SELECT msg_chan_id FROM logguild WHERE guild_id=$1', guild)
+		if type == 0:
+			channel_id = MISC_CHAN_ID
+		elif type == 1:
+			channel_id = EDITED_CHAN_ID
 		else:
-			channel_id = await db.scalar('SELECT other_chan_id FROM logguild WHERE guild_id=$1', guild)
+			channel_id = DELETED_CHAN_ID
 
 		channel = self.bot.get_channel(channel_id)
 		if channel is None:
@@ -120,7 +122,7 @@ class Logger:
 			log.warning(f'Failed to post in logger: {exc}')
 
 	async def on_guild_channel_create(self, channel):
-		if not await self._check(channel.guild.id):
+		if not self._check(channel.guild.id):
 			return
 
 		e = discord.Embed(
@@ -138,7 +140,7 @@ class Logger:
 		)
 
 	async def on_guild_channel_delete(self, channel):
-		if not await self._check(channel.guild.id):
+		if not self._check(channel.guild.id):
 			return
 
 		e = discord.Embed(
@@ -156,7 +158,7 @@ class Logger:
 		)
 
 	async def on_guild_channel_update(self, before, after):
-		if not await self._check(before.guild.id):
+		if not self._check(before.guild.id):
 			return
 
 		changed = self.find_changes(before, after)
@@ -190,7 +192,7 @@ class Logger:
 		)
 
 	async def on_guild_update(self, before, after):
-		if not await self._check(before.id):
+		if not self._check(before.id):
 			return
 
 		changed = self.find_changes(before, after)
@@ -223,7 +225,7 @@ class Logger:
 		if before.author.bot or before.content == after.content:
 			return
 
-		if not await self._check(before.guild.id):
+		if not self._check(before.guild.id):
 			return
 
 		split = False
@@ -244,17 +246,17 @@ class Logger:
 			guild=after.guild,
 			content=f'Message edited in {after.channel.mention} (Author ID: {after.author.id})',
 			embed=e,
-			is_msg=True
+			type=1
 		)
 
 		if split:
-			await self.log(guild=after.guild, embed=new_e, is_msg=True)
+			await self.log(guild=after.guild, embed=new_e, type=1)
 
 	async def on_message_delete(self, message):
 		if message.author.bot or message.channel.id in (509530286481080332, 378602386404409344):
 			return
 
-		if not await self._check(message.guild.id):
+		if not self._check(message.guild.id):
 			return
 
 		if bot_deleted(message.id):  # STUPID STUPID STUPID STUPID STUPIDDDDD
@@ -268,7 +270,7 @@ class Logger:
 			content=f'Message deleted in {message.channel.mention} (Author ID: {message.author.id})',
 			embed=embed,
 			file=img,
-			is_msg=True
+			type=2
 		)
 
 	async def on_message(self, message):
@@ -277,15 +279,17 @@ class Logger:
 
 		# only store images from the autohotkey guild
 		# TODO: delete images after 24hrs, cronjob mby?
-		if not await self._check(message.guild.id):
+		if not self._check(message.guild.id):
 			return
 
 		for attach in message.attachments:
 			if hasattr(attach, 'height'):
-				await attach.save(open(f'images/{str(message.guild.id)}_{str(message.author.id)}_{str(message.id)}_{attach.filename}', 'wb'))
+				await attach.save(
+					open(f'images/{str(message.guild.id)}_{str(message.author.id)}_{str(message.id)}_{attach.filename}',
+						 'wb'))
 
 	async def on_member_join(self, member):
-		if not await self._check(member.guild.id):
+		if not self._check(member.guild.id):
 			return
 
 		e = discord.Embed(
@@ -300,7 +304,7 @@ class Logger:
 		await self.log(guild=member.guild, embed=e)
 
 	async def on_member_remove(self, member):
-		if not await self._check(member.guild.id):
+		if not self._check(member.guild.id):
 			return
 
 		e = discord.Embed(
@@ -315,7 +319,7 @@ class Logger:
 		await self.log(guild=member.guild, embed=e)
 
 	async def on_voice_state_update(self, member, before, after):
-		if not await self._check(member.guild.id):
+		if not self._check(member.guild.id):
 			return
 
 		changed = self.find_changes(before, after)
@@ -344,7 +348,7 @@ class Logger:
 		await self.log(guild=member.guild, embed=e)
 
 	async def on_member_ban(self, guild, user):
-		if not await self._check(guild.id):
+		if not self._check(guild.id):
 			return
 
 		e = discord.Embed(
@@ -359,7 +363,7 @@ class Logger:
 		await self.log(guild=guild, embed=e)
 
 	async def on_member_unban(self, guild, user):
-		if not await self._check(guild.id):
+		if not self._check(guild.id):
 			return
 
 		e = discord.Embed(
@@ -373,44 +377,6 @@ class Logger:
 		e.color = HI_COLOR
 
 		await self.log(guild=guild, embed=e)
-
-	@commands.group(name='log', hidden=True, invoke_without_command=True)
-	async def _log(self, ctx):
-		pass
-
-	@_log.command()
-	@is_manager()
-	async def channel(self, ctx, channel: discord.TextChannel = None):
-		'''
-		Set the starboard channel.
-
-		Remember only the bot should be allowed to send messages in this channel!
-		'''
-
-		async def announce():
-			await ctx.send(f'Log channel set to {channel.mention}')
-
-		lg = await LogGuild.query.where(LogGuild.guild_id == ctx.guild.id).gino.first()
-
-		if channel is None:
-			if lg is None:
-				await ctx.send('No log channel set.')
-			else:
-				channel = self.bot.get_channel(lg.channel_id)
-				if channel is None:
-					await ctx.send('Log channel is set, but I didn\'t manage to find the channel.')
-				else:
-					await announce()
-		else:
-			if lg is None:
-				await LogGuild.create(
-					guild_id=ctx.guild.id,
-					channel_id=channel.id
-				)
-			else:
-				await lg.update(channel_id=channel.id).apply()
-
-			await announce()
 
 
 def setup(bot):

@@ -106,15 +106,6 @@ class Starrers(db.Model):
 	star_id = db.Column(None, db.ForeignKey('starmessage.id'))
 
 
-class LogGuild(db.Model):
-	__tablename__ = 'logguild'
-
-	id = db.Column(db.Integer, primary_key=True)
-	guild_id = db.Column(db.BigInteger)
-	msg_chan_id = db.Column(db.BigInteger)
-	other_chan_id = db.Column(db.BigInteger, nullable=True)
-
-
 class RemindMeEntry(db.Model):
 	__tablename__ = 'reminder'
 
@@ -153,6 +144,7 @@ class DocsSyntaxEntry(db.Model):
 
 	docs_id = db.Column(None, db.ForeignKey('docs.id'))
 	syntax = db.Column(db.Text)
+
 
 class DocsParamEntry(db.Model):
 	__tablename__ = 'docs_param'

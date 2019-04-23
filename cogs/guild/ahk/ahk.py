@@ -1,4 +1,4 @@
-import discord, asyncio, logging
+import discord, asyncio, logging, re
 from discord.ext import commands
 
 from docs_parser import parse_docs
@@ -164,11 +164,7 @@ class AutoHotkey(TogglableCogMixin):
 		for role in roles:
 			await msg.add_reaction(ROLES[role.id])
 
-	@commands.command(aliases=['rtfm'])
-	@commands.bot_has_permissions(embed_links=True)
-	async def docs(self, ctx, *, query):
-		'''Search the AutoHotkey documentation.'''
-
+	async def get_docs(self, query):
 		query = query.lower()
 
 		# get five results from docs_name
@@ -194,6 +190,15 @@ class AutoHotkey(TogglableCogMixin):
 				docs_id = match[0]
 				break
 
+		return docs_id, name
+
+	@commands.command(aliases=['rtfm'])
+	@commands.bot_has_permissions(embed_links=True)
+	async def docs(self, ctx, *, query):
+		'''Search the AutoHotkey documentation.'''
+
+		docs_id, name = await self.get_docs(query)
+
 		e = discord.Embed()
 		e.color = 0x95CD95
 
@@ -209,6 +214,13 @@ class AutoHotkey(TogglableCogMixin):
 			e.description += f'\n```autoit\n{syntax.syntax}```'
 
 		await ctx.send(embed=e)
+
+	@commands.command(aliases=['param'])
+	@commands.bot_has_permissions(embed_links=True)
+	async def params(self, ctx, query):
+		'''See the parameters for a command or function.'''
+
+		docs_id, name = await self.get_docs(query)
 
 	@commands.command(hidden=True)
 	@commands.is_owner()
