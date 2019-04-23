@@ -2,7 +2,7 @@ import discord, logging
 from discord.ext import commands
 from datetime import datetime
 
-from cogs.guild.ahk.security import RULES_MSG_ID
+from cogs.guild.ahk.ids import RULES_MSG_ID
 
 from cogs.base import TogglableCogMixin
 from utils.time import pretty_timedelta

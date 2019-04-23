@@ -7,24 +7,6 @@ from utils.time import pretty_seconds
 from utils.database import db, setup_db
 from config import *
 
-logging.getLogger('discord').setLevel(logging.WARN)
-logging.getLogger('gino').setLevel(logging.WARN)
-
-fmt = logging.Formatter('[{asctime}] [{levelname}] {name}: {message}', datefmt='%Y-%m-%d %H:%M:%S', style='{')
-
-stream = logging.StreamHandler(sys.stdout)
-stream.setLevel(logging.INFO)
-stream.setFormatter(fmt)
-
-file = logging.handlers.TimedRotatingFileHandler('logs/log.log', when='midnight', encoding='utf-8-sig')
-file.setLevel(logging.INFO)
-file.setFormatter(fmt)
-
-log = logging.getLogger()
-log.setLevel(logging.INFO)
-log.addHandler(stream)
-log.addHandler(file)
-
 description = '''
 A.C.E. - Autonomous Command Executor
 
@@ -299,4 +281,40 @@ class Embed(discord.Embed):
 discord.Embed = Embed
 
 if __name__ == '__main__':
+
+	# create additional folders
+	for path in ('logs', 'temp'):
+		if not os.path.exists(path):
+			print(f'make {path}')
+			os.makedirs(path)
+
+	# init first log file
+	if not os.path.isfile('logs/log.log'):
+		print(f'make log.log')
+		open('logs/log.log', 'w+')
+
+	# set logging levels for discord and gino lib
+	logging.getLogger('discord').setLevel(logging.WARN)
+	logging.getLogger('gino').setLevel(logging.WARN)
+
+	# we want out logging formatted like this everywhere
+	fmt = logging.Formatter('[{asctime}] [{levelname}] {name}: {message}', datefmt='%Y-%m-%d %H:%M:%S', style='{')
+
+	# this is the standard output stream
+	stream = logging.StreamHandler(sys.stdout)
+	stream.setLevel(logging.INFO)
+	stream.setFormatter(fmt)
+
+	# this is the rotating file logger
+	file = logging.handlers.TimedRotatingFileHandler('logs/log.log', when='midnight', encoding='utf-8-sig')
+	file.setLevel(logging.INFO)
+	file.setFormatter(fmt)
+
+	# get the root logger and add handlers
+	log = logging.getLogger()
+	log.setLevel(logging.INFO)
+	log.addHandler(stream)
+	log.addHandler(file)
+
+	# start the bot
 	AceBot().run(token)
