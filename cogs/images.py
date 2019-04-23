@@ -1,7 +1,7 @@
 import discord, asyncio
 from discord.ext import commands
 
-from config import thecatapi_key
+from config import THECATAPI_KEY
 
 DISCORD_SIZE_LIMIT = 8 * 1024 * 1024  # 8MiB
 
@@ -49,10 +49,13 @@ class Image:
 	async def meow(self, ctx):
 		'''Get a random cat image!'''
 
+		if THECATAPI_KEY is None:
+			raise commands.CommandError('The host has not set up an API key.')
+
 		url = 'http://thecatapi.com/api/images/get'
 		params = {
 			'format': 'src',
-			'api_key': thecatapi_key
+			'api_key': THECATAPI_KEY
 		}
 
 		async with ctx.channel.typing():

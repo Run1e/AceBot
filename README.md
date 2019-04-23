@@ -142,17 +142,23 @@ CREATE DATABASE acebot OWNER ace;
 
 Then in the root folder, make a file called `config.py` and insert your bot token, api keys and miscellaneous:
 ```py
-token = 'your_bot_token'
-command_prefix = '.'
-owner_id = user_id
-db_bind = 'postgresql://ace:your_pw@host/acebot'
-log_level = 'INFO'
+BOT_TOKEN 		= 'your_bot_token'
+COMMAND_PREFIX 	= '.'
+OWNER_ID 		= your_user_id
+DB_BIND 		= 'postgresql://user:pass@host/database'
+LOG_LEVEL 		= 'INFO'
 
-dbl_key = 'key'
-thecatapi_key = 'key'
-wolfram_key = 'key'
-apixu_key = 'key'
-oxford_id, oxford_key = 'id', 'key'
+# leave as None to disable functionality
+LOG_CHANNEL		= None  # currently only logs guild joins and leaves
+FEEDBK_CHANNEL	= None  # where to log .feedback invocations
+ERROR_CHANNEL 	= None  # where to log errors that occur
+
+DBL_KEY 		= None
+THECATAPI_KEY 	= None
+WOLFRAM_KEY 	= None
+APIXU_KEY 		= None
+OXFORD_ID 		= None
+OXFORD_KEY 		= None
 ```
 ## Acknowledgements
 

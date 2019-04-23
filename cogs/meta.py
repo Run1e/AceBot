@@ -1,7 +1,7 @@
 import discord, inspect
 from discord.ext import commands
 
-from config import feedback_channel
+from config import FEEDBK_CHANNEL
 
 
 class Meta:
@@ -49,17 +49,17 @@ class Meta:
 	async def feedback(self, ctx, *, feedback: str):
 		'''Give me some feedback about the bot!'''
 
-		e = discord.Embed(
-			title='Feedback',
-			description=feedback
-		)
+		e = discord.Embed(title='Feedback', description=feedback)
 
 		e.set_author(name=ctx.author.name, icon_url=ctx.author.avatar_url)
 
 		e.add_field(name='Guild', value=f'{ctx.guild.name} ({ctx.guild.id})')
 		e.set_footer(text=f'Author ID: {ctx.author.id}')
 
-		dest = self.bot.get_channel(feedback_channel)
+		dest = self.bot.get_channel(FEEDBK_CHANNEL)
+
+		if dest is None:
+			raise commands.CommandError('Feedback not sent. Feedback channel was not found, or not set up.')
 
 		await dest.send(embed=e)
 		await ctx.send('Feedback sent. Thanks for helping improve the bot!')

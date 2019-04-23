@@ -2,7 +2,7 @@ import discord, aiohttp, dbl, traceback, io, logging, logging.handlers, sys, os
 from discord.ext import commands
 from datetime import datetime
 
-from cogs.guild.ahk.ids import AHK_GUILD_ID, MEMBER_ROLE_ID, MUTED_ROLE_ID, WELCOME_CHAN_ID, MUTED_CHAN_ID
+from cogs.guild.ahk.ids import AHK_GUILD_ID, MEMBER_ROLE_ID
 from utils.time import pretty_seconds
 from utils.database import db, setup_db
 from config import *
@@ -52,8 +52,8 @@ class AceBot(commands.Bot):
 		log.info('Initializing...')
 
 		super().__init__(
-			command_prefix=command_prefix,
-			owner_id=owner_id,
+			command_prefix=COMMAND_PREFIX,
+			owner_id=OWNER_ID,
 			description=description
 		)
 
@@ -72,13 +72,14 @@ class AceBot(commands.Bot):
 			self.startup_time = datetime.utcnow()
 
 			# add dblpy updater
-			self.dblpy = dbl.Client(self, dbl_key)
-			await self.update_dbl()
+			if DBL_KEY is not None:
+				self.dblpy = dbl.Client(self, DBL_KEY)
+				await self.update_dbl()
 
 		log.info('Ready! - starting setup')
 
 		log.info('Connecting to database')
-		self.db = await setup_db(db_bind, loop=self.loop)
+		self.db = await setup_db(DB_BIND, loop=self.loop)
 
 		log.info('Initializing aiohttp')
 		self.aiohttp = aiohttp.ClientSession(
@@ -142,8 +143,7 @@ class AceBot(commands.Bot):
 		return self._module_cache[guild_id][module]
 
 	async def uses_module_db(self, guild_id, module):
-		return not not await db.scalar('SELECT id FROM module WHERE guild_id=$1 AND module=$2', guild_id,
-									   module.lower())
+		return not not await db.scalar('SELECT id FROM module WHERE guild_id=$1 AND module=$2', guild_id, module.lower())
 
 	async def blacklist(self, ctx):
 		'''Returns False if user is disallowed, otherwise True'''
@@ -202,20 +202,21 @@ class AceBot(commands.Bot):
 			if isinstance(exc.original, discord.Forbidden):
 				return
 
-			try:
-				raise exc.original
-			except Exception:
-				chan = self.get_channel(error_channel)
+			chan = self.get_channel(ERROR_CHANNEL)
 
-				tb = traceback.format_exc()
+			if chan is not None:
+				try:
+					raise exc.original
+				except Exception:
+					tb = traceback.format_exc()
 
-				await chan.send(embed=self.embed_from_ctx(ctx))
+					await chan.send(embed=self.embed_from_ctx(ctx))
 
-				if len(tb) > 1990:
-					fp = io.BytesIO(tb.encode('utf-8'))
-					await ctx.send('Traceback too large...', file=discord.File(fp, 'results.txt'))
-				else:
-					await chan.send(f'```{tb}```')
+					if len(tb) > 1990:
+						fp = io.BytesIO(tb.encode('utf-8'))
+						await ctx.send('Traceback too large...', file=discord.File(fp, 'results.txt'))
+					else:
+						await chan.send(f'```{tb}```')
 
 			raise exc.original
 
@@ -277,7 +278,9 @@ class AceBot(commands.Bot):
 		return e
 
 	async def log(self, content=None, **kwargs):
-		await self.get_channel(log_channel).send(content=content, **kwargs)
+		chan = self.get_channel(LOG_CHANNEL)
+		if chan is not None:
+			await chan.send(content=content, **kwargs)
 
 
 # monkey-patched Embed class to force embed color
@@ -294,12 +297,10 @@ if __name__ == '__main__':
 	# create additional folders
 	for path in ('logs', 'temp'):
 		if not os.path.exists(path):
-			print(f'make {path}')
 			os.makedirs(path)
 
 	# init first log file
 	if not os.path.isfile('logs/log.log'):
-		print(f'make log.log')
 		open('logs/log.log', 'w+')
 
 	# set logging levels for discord and gino lib
@@ -309,21 +310,23 @@ if __name__ == '__main__':
 	# we want out logging formatted like this everywhere
 	fmt = logging.Formatter('[{asctime}] [{levelname}] {name}: {message}', datefmt='%Y-%m-%d %H:%M:%S', style='{')
 
+	level = getattr(logging, LOG_LEVEL)
+
 	# this is the standard output stream
 	stream = logging.StreamHandler(sys.stdout)
-	stream.setLevel(logging.INFO)
+	stream.setLevel(level)
 	stream.setFormatter(fmt)
 
 	# this is the rotating file logger
 	file = logging.handlers.TimedRotatingFileHandler('logs/log.log', when='midnight', encoding='utf-8-sig')
-	file.setLevel(logging.INFO)
+	file.setLevel(level)
 	file.setFormatter(fmt)
 
 	# get the root logger and add handlers
 	log = logging.getLogger()
-	log.setLevel(logging.INFO)
+	log.setLevel(level)
 	log.addHandler(stream)
 	log.addHandler(file)
 
 	# start the bot
-	AceBot().run(token)
+	AceBot().run(BOT_TOKEN)

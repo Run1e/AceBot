@@ -2,7 +2,7 @@ import discord, asyncio, random
 from discord.ext import commands
 from datetime import datetime
 
-from config import wolfram_key, apixu_key, oxford_id, oxford_key
+from config import WOLFRAM_KEY, APIXU_KEY, OXFORD_ID, OXFORD_KEY
 
 DISCORD_SIZE_LIMIT = 8 * 1024 * 1024  # 8MiB
 
@@ -100,8 +100,11 @@ class General:
 	async def wolfram(self, ctx, *, query):
 		'''Queries wolfram.'''
 
+		if WOLFRAM_KEY is None:
+			raise commands.CommandError('The host has not set up an API key.')
+
 		params = {
-			'appid': wolfram_key,
+			'appid': WOLFRAM_KEY,
 			'i': query
 		}
 
@@ -136,10 +139,13 @@ class General:
 	async def weather(self, ctx, *, location: str):
 		'''Check the weather at a location.'''
 
+		if APIXU_KEY is None:
+			raise commands.CommandError('The host has not set up an API key.')
+
 		url = 'http://api.apixu.com/v1/current.json'
 
 		params = {
-			'key': apixu_key,
+			'key': APIXU_KEY,
 			'q': location
 		}
 
@@ -205,14 +211,17 @@ class General:
 	async def define(self, ctx, *, word: str):
 		'''Define a word using Oxfords dictionary.'''
 
+		if OXFORD_ID is None or OXFORD_KEY is None:
+			raise commands.CommandError('The host has not set up an API key.')
+
 		await ctx.trigger_typing()
 
 		url = 'https://od-api.oxforddictionaries.com:443/api/v1/entries/en/' + word.split('\n')[0].lower()
 
 		headers = {
 			'Accept': 'application/json',
-			'app_id': oxford_id,
-			'app_key': oxford_key
+			'app_id': OXFORD_ID,
+			'app_key': OXFORD_KEY
 		}
 
 		try:
