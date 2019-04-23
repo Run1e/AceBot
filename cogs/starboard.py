@@ -408,9 +408,10 @@ class Starboard(TogglableCogMixin):
 			await announce()
 
 	@star.command()
-	@commands.has_permissions(manage_messages=True)
 	async def delete(self, ctx, message_id: int):
-		'''Delete a starred message. Manage Messages perms required.'''
+		'''Delete a starred message. Must have Manage Messages or be related to the starred message.'''
+
+		star_channel = await self.get_star_channel(ctx.message)
 
 		sm = await StarMessage.query.where(
 			and_(
@@ -424,6 +425,12 @@ class Starboard(TogglableCogMixin):
 
 		if sm is None:
 			raise commands.CommandError('Sorry, couldn\'t find a starred message with that ID.')
+
+		perms = ctx.author.permissions_in(star_channel)
+
+		# if author does not have manage permissions, or is the starrer, or is the star messages contents author, return
+		if not perms.manage_messages and ctx.author.id != sm.starrer_id and ctx.author.id != sm.author_id:
+			raise commands.CommandError('Sorry, you\'re not allowed to delete that starred message.')
 
 		await self.remove_star(sm)
 

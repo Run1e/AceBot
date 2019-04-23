@@ -33,7 +33,7 @@ A complete list of available commands can be browsed by doing `.help`
 
 ### Tags
 
-The tags module makes it easy to bring up text. The tags system works like this:
+The tags module makes it easy to bring up text. The tags system works as follows:
 
 ```py
 # this command creates a tag called 'test'
@@ -48,21 +48,21 @@ To see a full list of tag related commands, do `.help tags`
 
 ### Starboard
 
-Classic Starboard. Anyone can star any message, which gets copied to a #starboard channel by the bot. From there anyone
+Classic Starboard. Anyone can star any message, which gets copied to a #starboard channel by the bot. From there, anyone
 can add more stars. After a week, starred messages with less than 5 stars get removed. It's essentially a way for anyone to pin messages.
 
-`.starboard top`
+`.star top`
 Lists what users have the most popular/starred messages.
 
-`.starboard info <message_id>`
+`.star info <message_id>`
 Displays information about a starred message, such as who starred it, and in what channel the original message was posted in.
 `message_id` can be either the original or starred message id.
 
-`.starboard channel <channel>`
+`.star channel <channel>`
 What channel starred messages should be posted in. Make sure people can add reactions to messages, but can not *post* messages.
 
-`.starboard delete <message_id>`
-Delete a starred message.
+`.star delete <message_id>`
+Delete a starred message. Can only be done by starrer, the starred messages' owner, or someone with Manage Message perms.
 
 ### Welcome
 
@@ -140,25 +140,25 @@ CREATE ROLE ace WITH LOGIN PASSWORD 'your_pw';
 CREATE DATABASE acebot OWNER ace;
 ```
 
-Then in the root folder, make a file called `config.py` and insert your bot token, api keys and miscellaneous:
+Then in the root folder, make a file called `config.py` and insert, at minimum, your bot token and owner id:
 ```py
-BOT_TOKEN 		= 'your_bot_token'
+BOT_TOKEN 	= 'your_bot_token'
 COMMAND_PREFIX 	= '.'
-OWNER_ID 		= your_user_id
-DB_BIND 		= 'postgresql://user:pass@host/database'
-LOG_LEVEL 		= 'INFO'
+OWNER_ID 	= your_user_id
+DB_BIND 	= 'postgresql://user:pass@host/database'
+LOG_LEVEL 	= 'INFO'
 
 # leave as None to disable functionality
-LOG_CHANNEL		= None  # currently only logs guild joins and leaves
+LOG_CHANNEL	= None  # currently only logs guild joins and leaves
 FEEDBK_CHANNEL	= None  # where to log .feedback invocations
 ERROR_CHANNEL 	= None  # where to log errors that occur
 
-DBL_KEY 		= None
+DBL_KEY 	= None
 THECATAPI_KEY 	= None
 WOLFRAM_KEY 	= None
-APIXU_KEY 		= None
-OXFORD_ID 		= None
-OXFORD_KEY 		= None
+APIXU_KEY 	= None
+OXFORD_ID 	= None
+OXFORD_KEY 	= None
 ```
 ## Acknowledgements
 

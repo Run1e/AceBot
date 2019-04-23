@@ -215,13 +215,6 @@ class AutoHotkey(TogglableCogMixin):
 
 		await ctx.send(embed=e)
 
-	@commands.command(aliases=['param'])
-	@commands.bot_has_permissions(embed_links=True)
-	async def params(self, ctx, query):
-		'''See the parameters for a command or function.'''
-
-		docs_id, name = await self.get_docs(query)
-
 	@commands.command(hidden=True)
 	@commands.is_owner()
 	async def build(self, ctx, download: bool = True):
@@ -245,7 +238,8 @@ class AutoHotkey(TogglableCogMixin):
 				# don't add if item already exists (including case insensitive matches)
 				if await db.scalar('SELECT * FROM docs_name WHERE LOWER(name)=$1', name.lower()):
 					continue
-				if name.endswith('()') and await db.scalar('SELECT * FROM docs_name WHERE LOWER(name)=$1', name.lower()[:-2]):
+				if name.endswith('()') and await db.scalar('SELECT * FROM docs_name WHERE LOWER(name)=$1',
+														   name.lower()[:-2]):
 					continue
 				await DocsNameEntry.create(docs_id=docs_id, name=name)
 
