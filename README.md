@@ -140,7 +140,7 @@ CREATE ROLE ace WITH LOGIN PASSWORD 'your_pw';
 CREATE DATABASE acebot OWNER ace;
 ```
 
-Then in the root folder, make a file called `config.py` and insert, at minimum, your bot token and owner id:
+Then in the root folder, make a file called `config.py` and insert, at minimum, your bot token, postgresql bind and owner id:
 ```py
 BOT_TOKEN 	= 'your_bot_token'
 COMMAND_PREFIX 	= '.'

@@ -100,7 +100,10 @@ class AutoHotkey(TogglableCogMixin):
 		# command not found? docs search it. only if message string is not *only* dots though
 		if isinstance(error, commands.CommandNotFound) and len(
 				ctx.message.content) > 3 and not ctx.message.content.startswith('..'):
-			await ctx.invoke(self.docs, query=ctx.message.content[1:])
+			try:
+				await ctx.invoke(self.docs, query=ctx.message.content[1:])
+			except commands.CommandError as exc:
+				await self.bot.on_command_error(ctx=ctx, exc=exc)
 
 	async def on_raw_reaction_add(self, payload):
 		if payload.channel_id != ROLES_CHAN_ID:
