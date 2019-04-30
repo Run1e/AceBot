@@ -170,9 +170,14 @@ class AutoHotkey(TogglableCogMixin):
 	async def get_docs(self, query):
 		query = query.lower()
 
+		match = await db.first('SELECT docs_id, name FROM docs_name WHERE LOWER(name)=$1', query)
+
+		if match is not None:
+			return match.docs_id, match.name
+
 		# get five results from docs_name
 		matches = await db.all(
-			'SELECT docs_id, name FROM docs_name ORDER BY word_similarity(name, $1) DESC LIMIT 5',
+			"SELECT docs_id, name FROM docs_name ORDER BY word_similarity($1, name) DESC LIMIT 5",
 			query
 		)
 
@@ -185,7 +190,7 @@ class AutoHotkey(TogglableCogMixin):
 
 		name, score = result[0]
 
-		if score < 50:
+		if score < 30:
 			raise commands.CommandError('Sorry, couldn\'t find an entry similar to that.')
 
 		for match in matches:
@@ -241,8 +246,7 @@ class AutoHotkey(TogglableCogMixin):
 				# don't add if item already exists (including case insensitive matches)
 				if await db.scalar('SELECT * FROM docs_name WHERE LOWER(name)=$1', name.lower()):
 					continue
-				if name.endswith('()') and await db.scalar('SELECT * FROM docs_name WHERE LOWER(name)=$1',
-														   name.lower()[:-2]):
+				if name.endswith('()') and await db.scalar('SELECT * FROM docs_name WHERE LOWER(name)=$1', name.lower()[:-2]):
 					continue
 				await DocsNameEntry.create(docs_id=docs_id, name=name)
 
