@@ -1,7 +1,7 @@
 import re
 from bs4 import BeautifulSoup
 
-from utils.string_manip import html2markdown
+from utils.string_manip import html2markdown, find_nth
 
 
 class BaseHandler:
@@ -39,7 +39,10 @@ class BaseHandler:
 		return self.pretty_desc(p)
 
 	def pretty_desc(self, desc):
-		return html2markdown(str(desc), self.url)
+		md = html2markdown(str(desc), self.url)
+
+		sp = md.split('.\n')
+		return md[0:len(sp[0]) + 1] if len(sp) > 1 else md
 
 
 class CommandsHandler(BaseHandler):

@@ -16,7 +16,7 @@ def strip_markdown(content):
 
 def html2markdown(html, url='', big_box=False, language=None, parser='html.parser'):
 
-	prepend = {'br': '\n', 'li': '\u200b\t- ', 'ul': '\n'}
+	prepend = {'br': '\n', 'li': ' - ', 'ul': '\n'}
 	wrap = {'b': '**', 'em': '*', 'i': '*', 'div': '\n'}
 
 	# replace all text (not tags) with stripped markdown versions
@@ -39,8 +39,9 @@ def html2markdown(html, url='', big_box=False, language=None, parser='html.parse
 			tag.replace_with(value + tag.text + value)
 
 	code_wrap = '```' if big_box else '`'
+	nl = '\n' if big_box else ''
 	for tag in reversed(bs.find_all('code', recursive=True)):
-		tag.replace_with(f"{code_wrap}{'' if language is None or not big_box else language}\n{tag.text}\n{code_wrap}")
+		tag.replace_with(f"{code_wrap}{language or ''}{nl}{tag.text}{nl}{code_wrap}")
 
 	for key, value in prepend.items():
 		for tag in reversed(bs.find_all(key, recursive=True)):
@@ -49,11 +50,13 @@ def html2markdown(html, url='', big_box=False, language=None, parser='html.parse
 	# replace hyperlinks with markdown hyperlinks
 	for a in bs.find_all('a', href=True, recursive=True):
 		href = a["href"]
-		if not href.startswith('#'):
-			use_url = '/'.join(url.split('/')[:-1]) + '/' # nearly as ugly as me this line
+		if href.startswith('#'):
+			use_url = url + href
+		elif href.startswith(('http', 'ftp')):
+			use_url = href
 		else:
-			use_url = url
-		a.replace_with(f'[{a.text}]({use_url}{href})')
+			use_url = '/'.join(url.split('/')[:-1]) + '/' + href
+		a.replace_with(f'[{a.text}]({use_url})')
 
 	return str(bs.text)
 
@@ -61,11 +64,11 @@ def html2markdown(html, url='', big_box=False, language=None, parser='html.parse
 def shorten(text, max_char, max_newline):
 	shortened = False
 
-	if len(text) > max_char:
+	if max_char is not None and len(text) > max_char:
 		text = text[0:max_char]
 		shortened = True
 
-	if text.count('\n') > max_newline:
+	if max_newline is not None and text.count('\n') > max_newline:
 		text = text[0:find_nth(text, '\n', max_newline)]
 		shortened = True
 

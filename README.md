@@ -36,7 +36,7 @@ A complete list of available commands can be browsed by doing `.help`
 The tags module makes it easy to bring up text. The tags system works as follows:
 
 ```py
-# this command creates a tag called 'test'
+# this command creates a tag called 'supportserver'
 .tag create supportserver Hi there! Join my support server at https://discord.gg/X7abzRe
 
 # calling the tag will make the bot echo back the tag contents:
