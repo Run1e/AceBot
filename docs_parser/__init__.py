@@ -80,6 +80,30 @@ async def parse_docs(handler, on_update, fetch=True):
 		j = json.loads(f.read()[12:-2])
 		for line in j:
 			name, page, *junk = line
-			await handler([name.capitalize()], page)
+
+			if '#' in page:
+				page_base, offs = page.split('#')
+			else:
+				page_base = page
+				offs = None
+
+			with open(f'{docs_base}/{page_base}') as f:
+				cont = f.read()
+				bs = BeautifulSoup(cont, 'html.parser')
+
+				if offs is None:
+					p = bs.find('p')
+				else:
+					p = bs.find(True, id=offs)
+
+				if p is None:
+					desc = None
+				else:
+					md = html2markdown(str(p), url)
+
+					sp = md.split('.\n')
+					desc = md[0:len(sp[0]) + 1] if len(sp) > 1 else md
+
+			await handler([name], page, desc)
 
 	await on_update('Build finished successfully.')
