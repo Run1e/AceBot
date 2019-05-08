@@ -25,6 +25,9 @@ class BaseHandler:
 	def get_name(self):
 		h1 = self.bs.find('h1')
 
+		if h1 is None:
+			return None
+
 		for span in h1.find_all('span'):
 			span.decompose()
 
@@ -43,6 +46,43 @@ class BaseHandler:
 
 		sp = md.split('.\n')
 		return md[0:len(sp[0]) + 1] if len(sp) > 1 else md
+
+
+class SimpleHandler(BaseHandler):
+	def get_desc(self):
+		meta_desc = self.bs.find('meta', attrs=dict(name='description', content=True))
+		if meta_desc is None:
+			return None
+		return meta_desc['content']
+
+	async def parse(self):
+
+		proper_name = self.get_name()
+		if proper_name is None:
+			return
+
+		desc = self.get_desc()
+		if desc is None:
+			return
+
+		name = ''
+		for sect in re.split('([a-z][A-Z])', self.file.replace('_', ' ').split('.')[0]):
+			if re.match('^[a-z][A-Z]$', sect):
+				name += sect[0] + ' ' + sect[1]
+			else:
+				name += sect
+
+		# ew, but whatever
+		if name == 'Auto Hotkey':
+			name = 'AutoHotkey'
+
+		names = [name, proper_name]
+
+		await self.handler(
+			names,
+			self.file,
+			desc
+		)
 
 
 class CommandsHandler(BaseHandler):

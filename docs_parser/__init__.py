@@ -25,17 +25,14 @@ file_handlers = {
 	'commands/TreeView.htm': CommandListHandler
 }
 
+
 customs = (
-	(('FAQ',), 'FAQ.htm', 'Some frequently asked questions about the language.'),
-	(('Tutorial', 'Tutorial by tidbit'), 'Tutorial.htm', 'Learn the basics with tidbit!'),
-	(('Hotkeys',), 'Hotkeys.htm', 'Hotkeys, modifiers symbols and examples.'),
 	(('Symbols', 'Hotkey Modifier Symbols'), 'Hotkeys.htm#Symbols', 'List of Hotkey Modifier Symbols.'),
-	(('Hotstrings',), 'Hotstrings.htm', 'Hotstring how-to.'),
-	(('Key List',), 'KeyList.htm', 'List of keyboard, mouse and joystick buttons/keys.'),
-	(('Arrays', 'Simple Arrays'), 'Objects.htm#Usage_Simple_Arrays', 'Overview of simple, indexed arrays.'),
+	(('Simple Arrays',), 'Objects.htm#Usage_Simple_Arrays', 'Overview of simple, indexed arrays.'),
 	(('Associative arrays', 'Dictionary'), 'Objects.htm#Usage_Associative_Arrays', 'Overview of associative arrays (key/value).'),
 	(('Freeing Objects',), 'Objects.htm#Usage_Freeing_Objects', 'How to free objects from memory.')
 )
+
 
 async def parse_docs(handler, on_update, fetch=True):
 	if fetch:
@@ -69,6 +66,10 @@ async def parse_docs(handler, on_update, fetch=True):
 
 	for file, handlr in file_handlers.items():
 		await handlr(file, handler).parse()
+
+	# main pages
+	for filename in filter(lambda fn: fn.endswith('.htm'), os.listdir(f'{docs_base}')):
+		await SimpleHandler(filename, handler).parse()
 
 	# customly added stuff
 	for names, page, desc in customs:

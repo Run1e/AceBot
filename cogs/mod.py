@@ -162,7 +162,7 @@ class Moderator(TogglableCogMixin):
 		count = len(deleted)
 
 		log.info('{} ({}) deleted {} messages in #{} ({})'.format(ctx.author.name, ctx.author.id, count, ctx.channel.name, ctx.channel.id))
-		await ctx.send(f'✅ Deleted {count} message{"s" if count > 1 else ""}.', delete_after=5)
+		await ctx.send(f'Deleted {count} message{"s" if count > 1 else ""}.', delete_after=5)
 
 
 def setup(bot):
