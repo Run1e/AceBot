@@ -88,8 +88,7 @@ async def parse_docs(handler, on_update, fetch=True):
 				offs = None
 
 			with open(f'{docs_base}/{page_base}') as f:
-				cont = f.read()
-				bs = BeautifulSoup(cont, 'html.parser')
+				bs = BeautifulSoup(f.read(), 'html.parser')
 
 				if offs is None:
 					p = bs.find('p')

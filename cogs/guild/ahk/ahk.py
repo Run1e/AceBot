@@ -203,7 +203,20 @@ class AutoHotkey(TogglableCogMixin):
 	@commands.command(aliases=['rtfm'])
 	@commands.bot_has_permissions(embed_links=True)
 	async def docs(self, ctx, *, query):
-		'''Search the AutoHotkey documentation.'''
+		'''Search the AutoHotkey documentation. Enter multiple queries by separating with commas.'''
+
+		spl = query.split(',')
+
+		if len(spl) > 3:
+			raise commands.CommandError('Maximum three different queries.')
+		elif len(spl) > 1:
+			for query in spl:
+				query = query.strip()
+				try:
+					await ctx.invoke(self.docs, query=query)
+				except commands.CommandError:
+					pass
+			return
 
 		docs_id, name = await self.get_docs(query)
 
