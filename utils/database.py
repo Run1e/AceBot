@@ -156,6 +156,14 @@ class DocsParamEntry(db.Model):
 	value = db.Column(db.Text)
 
 
+class SeenEntry(db.Model):
+	__tablename__ ='seen'
+
+	guild_id = db.Column(db.BigInteger, primary_key=True)
+	user_id = db.Column(db.BigInteger, primary_key=True)
+	seen = db.Column(db.DateTime)
+
+
 async def setup_db(bind, loop):
 	# connect
 	await db.set_bind(bind, loop=loop)

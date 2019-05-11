@@ -24,6 +24,7 @@ extensions = (
 	'cogs.starboard',
 	'cogs.reminder',
 	'cogs.meta',
+	'cogs.seen',
 	'cogs.welcome',
 	'cogs.hl',
 	'cogs.coins',
