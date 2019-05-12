@@ -157,7 +157,7 @@ class DocsParamEntry(db.Model):
 
 
 class SeenEntry(db.Model):
-	__tablename__ ='seen'
+	__tablename__ = 'seen'
 
 	guild_id = db.Column(db.BigInteger, primary_key=True)
 	user_id = db.Column(db.BigInteger, primary_key=True)

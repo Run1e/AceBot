@@ -30,6 +30,8 @@ ROLES = {
 class AutoHotkey(TogglableCogMixin):
 	'''Commands for the AutoHotkey server.'''
 
+	log_cog = None
+
 	def __init__(self, bot):
 		super().__init__(bot)
 		self.bot.loop.create_task(self.rss())
@@ -97,11 +99,18 @@ class AutoHotkey(TogglableCogMixin):
 		if not await self.bot.blacklist(ctx):
 			return
 
+		if self.log_cog is None:
+			self.log_cog = self.bot.get_cog('Stats')
+
+		if self.log_cog is None:
+			raise ValueError('Failed to get log_cog for AHK command_error handler.')
+
 		# command not found? docs search it. only if message string is not *only* dots though
-		if isinstance(error, commands.CommandNotFound) and len(
-				ctx.message.content) > 3 and not ctx.message.content.startswith('..'):
+		if isinstance(error, commands.CommandNotFound) and len(ctx.message.content) > 3 and not ctx.message.content.startswith('..'):
 			try:
 				await ctx.invoke(self.docs, query=ctx.message.content[1:])
+				ctx.command = self.docs
+				await self.log_cog.on_command_completion(ctx)
 			except commands.CommandError as exc:
 				await self.bot.on_command_error(ctx=ctx, exc=exc)
 

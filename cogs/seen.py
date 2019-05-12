@@ -38,7 +38,6 @@ class Seen(TogglableCogMixin):
 			e.description = 'Member has not been seen by the bot yet.'
 		else:
 			now = datetime.now()
-
 			e.description = f'Seen {pretty_timedelta(now - entry.seen)} ago at {pretty_datetime(entry.seen)}'
 
 		await ctx.send(embed=e)
