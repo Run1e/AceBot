@@ -153,6 +153,36 @@ class AutoHotkey(TogglableCogMixin):
 
 			await channel.send(embed=discord.Embed(title=title, description=desc), delete_after=5)
 
+	@commands.command(aliases=['latest'])
+	async def version(self, ctx):
+		'''Get download link to the latest version of AutoHotkey_L.'''
+
+		url = 'https://api.github.com/repos/Lexikos/AutoHotkey_L/releases'
+
+		async with self.bot.aiohttp.request('get', url) as resp:
+			if resp.status != 200:
+				raise commands.CommandError('Query failed.')
+
+			js = await resp.json()
+
+		latest = js[0]
+		asset = latest['assets'][0]
+
+		e = discord.Embed(
+			description='Update notes:\n```\n' + latest['body'] + '\n```'
+		)
+
+		e.set_author(
+			name='AutoHotkey_L ' + latest['name'],
+			icon_url=latest['author']['avatar_url']
+		)
+
+		e.add_field(name='Release page', value=f"[Click here]({latest['html_url']})")
+		e.add_field(name='Installer download', value=f"[Click here]({asset['browser_download_url']})")
+		e.add_field(name='Downloads', value=asset['download_count'])
+
+		await ctx.send(embed=e)
+
 	@commands.command(hidden=True)
 	@commands.is_owner()
 	async def roles(self, ctx):
