@@ -1,9 +1,33 @@
-import discord, asyncio
+import discord, asyncio, os, logging
 from discord.ext import commands
 
 from config import THECATAPI_KEY
 
+log = logging.getLogger(__name__)
+
 DISCORD_SIZE_LIMIT = 8 * 1024 * 1024  # 8MiB
+
+BASE_DIR = 'data'
+
+
+async def put_image(type, file, data):
+	dir = f'{BASE_DIR}/{type}'
+
+	if not os.path.isdir(dir):
+		os.makedirs(dir)
+
+	with open(f'{dir}/{file}', 'wb') as f:
+		f.write(data)
+
+
+async def get_image(type, file):
+	file = f'{BASE_DIR}/{type}/{file}'
+
+	if not os.path.isfile(file):
+		return None
+
+	with open(file, 'rb') as f:
+		return f.read()
 
 
 class Image:
@@ -30,18 +54,25 @@ class Image:
 						raise self.query_error
 					id = await resp.text()
 
-				# fetch image using id
-				async with self.bot.aiohttp.get(url + id) as resp:
-					if resp.status != 200:
-						raise self.query_error
-					data = await resp.read()
+				data = await get_image('dogs', id)
+
+				if data is None:
+					# fetch image using id
+					async with self.bot.aiohttp.get(url + id) as resp:
+						if resp.status != 200:
+							raise self.query_error
+						data = await resp.read()
+						await put_image('dogs', id, data)
+				else:
+					log.info(f'Found {id} in dogs cache!')
+
 			except asyncio.TimeoutError:
 				raise self.query_error
 
 		if len(data) > DISCORD_SIZE_LIMIT:
 			await ctx.reinvoke()
 		else:
-			await ctx.send(file=discord.File(data, 'dog.' + resp.content_type.split('/')[-1]))
+			await ctx.send(file=discord.File(data, id))
 
 	@commands.command(aliases=['cat'])
 	@commands.bot_has_permissions(attach_files=True)
@@ -52,9 +83,8 @@ class Image:
 		if THECATAPI_KEY is None:
 			raise commands.CommandError('The host has not set up an API key.')
 
-		url = 'http://thecatapi.com/api/images/get'
+		url = 'https://api.thecatapi.com/v1/images/search'
 		params = {
-			'format': 'src',
 			'api_key': THECATAPI_KEY
 		}
 
@@ -63,14 +93,27 @@ class Image:
 				async with self.bot.aiohttp.get(url, params=params) as resp:
 					if resp.status != 200:
 						raise self.query_error
-					data = await resp.read()
+					js = await resp.json()
+					image_url = js[0]['url']
+
+				filename = image_url.split('/')[-1]
+
+				data = await get_image('cats', filename)
+
+				if data is None:
+					async with self.bot.aiohttp.get(image_url) as resp:
+						if resp.status != 200:
+							raise self.query_error
+						data = await resp.read()
+						await put_image('cats', filename, data)
+
 			except asyncio.TimeoutError:
 				raise self.query_error
 
 		if len(data) > DISCORD_SIZE_LIMIT:
 			await ctx.reinvoke()
 		else:
-			await ctx.send(file=discord.File(data, 'cat.' + resp.content_type.split('/')[-1]))
+			await ctx.send(file=discord.File(data, filename))
 
 	@commands.command(aliases=['duck'])
 	@commands.bot_has_permissions(attach_files=True)
@@ -88,17 +131,23 @@ class Image:
 					json = await resp.json()
 					image_url = json['url']
 
-				async with self.bot.aiohttp.get(image_url) as resp:
-					if resp.status != 200:
-						raise self.query_error
-					data = await resp.read()
+				filename = image_url.split('/')[-1]
+				data = await get_image('ducks', filename)
+
+				if data is None:
+					async with self.bot.aiohttp.get(image_url) as resp:
+						if resp.status != 200:
+							raise self.query_error
+						data = await resp.read()
+						await put_image('ducks', filename, data)
+
 			except asyncio.TimeoutError:
 				raise self.query_error
 
 		if len(data) > DISCORD_SIZE_LIMIT:
 			await ctx.reinvoke()
 		else:
-			await ctx.send(file=discord.File(data, 'duck.' + resp.content_type.split('/')[-1]))
+			await ctx.send(file=discord.File(data, filename))
 
 	@commands.command(aliases=['fox'])
 	@commands.bot_has_permissions(attach_files=True)
@@ -116,17 +165,24 @@ class Image:
 					json = await resp.json()
 					image_url = json['image']
 
-				async with self.bot.aiohttp.get(image_url) as resp:
-					if resp.status != 200:
-						raise self.query_error
-					data = await resp.read()
+				filename = image_url.split('/')[-1]
+
+				data = await get_image('foxes', filename)
+
+				if data is None:
+					async with self.bot.aiohttp.get(image_url) as resp:
+						if resp.status != 200:
+							raise self.query_error
+						data = await resp.read()
+						await put_image('foxes', filename, data)
+
 			except asyncio.TimeoutError:
 				raise self.query_error
 
 		if len(data) > DISCORD_SIZE_LIMIT:
 			await ctx.reinvoke()
 		else:
-			await ctx.send(file=discord.File(data, 'fox.' + resp.content_type.split('/')[-1]))
+			await ctx.send(file=discord.File(data, filename))
 
 
 def setup(bot):

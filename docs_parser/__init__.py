@@ -7,8 +7,8 @@ from bs4 import BeautifulSoup
 
 url = 'https://www.autohotkey.com/docs'
 parser = 'html.parser'
-docs_base = 'temp/AutoHotkey_L-Docs-master/docs'
-download_file = 'temp/docs.zip'
+docs_base = 'AutoHotkey_L-Docs-master/docs'
+download_file = 'docs.zip'
 download_link = 'https://github.com/Lexikos/AutoHotkey_L-Docs/archive/master.zip'
 
 directory_handlers = dict(
@@ -48,7 +48,7 @@ async def parse_docs(handler, on_update, fetch=True):
 					f.write(await resp.read())
 
 		zip_ref = ZipFile(download_file, 'r')
-		zip_ref.extractall('temp')
+		zip_ref.extractall()
 		zip_ref.close()
 
 	# for embedded URLs, they need the URL base
