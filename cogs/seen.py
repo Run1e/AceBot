@@ -32,7 +32,7 @@ class Seen(TogglableCogMixin):
 			icon_url=member.avatar_url
 		)
 
-		entry = await db.first('SELECT * FROM seen WHERE guild_id=$1 AND user_id=$2', ctx.guild.id, ctx.author.id)
+		entry = await db.first('SELECT * FROM seen WHERE guild_id=$1 AND user_id=$2', ctx.guild.id, member.id)
 
 		if entry is None:
 			e.description = 'Member has not been seen by the bot yet.'
