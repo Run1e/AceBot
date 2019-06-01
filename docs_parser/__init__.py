@@ -24,7 +24,9 @@ file_handlers = {
 	'commands/Math.htm': CommandListHandler,
 	'commands/GuiControls.htm': CommandListHandler, # contains SB_*() functions
 	'commands/ListView.htm': CommandListHandler,
-	'commands/TreeView.htm': CommandListHandler
+	'commands/TreeView.htm': CommandListHandler,
+	'commands/Gui.htm': CommandListHandler,
+	'commands/Menu.htm': CommandListHandler
 }
 
 

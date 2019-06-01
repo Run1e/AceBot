@@ -154,12 +154,25 @@ class CommandsHandler(BaseHandler):
 
 
 class CommandListHandler(BaseHandler):
+	_prepend = {
+		'commands/Gui.htm': 'Gui',
+		'commands/Menu.htm': 'Menu'
+	}
+
 	async def parse(self):
 		for tag in self.bs.find_all('h3', id=True):
 			for span in tag.find_all('span'):
 				span.decompose()
 
 			name = tag.text.strip()
+			names = name.split(' / ')
+
+			for file, prep in self._prepend.items():
+				if self.file == file and not name.startswith(prep):
+					for idx, nme in enumerate(names):
+						names[idx] = f'{prep}, {nme}'
+					break
+
 			desc = tag.next_element.next_element.next_element
 			syntax = self.bs.find('span', class_='func', string=name)
 
@@ -171,8 +184,7 @@ class CommandListHandler(BaseHandler):
 
 				syntax = str(syntax.text)
 
-			await self.handler([name], f'{self.file}#{name}', self.pretty_desc(desc), syntax)
-
+			await self.handler(names, f'{self.file}#{tag["id"]}', self.pretty_desc(desc), syntax)
 
 class VariablesHandler(BaseHandler):
 	async def parse(self):
