@@ -1,4 +1,94 @@
-﻿If you somehow found a way to extract all of the gold from the bubbling core of our lovely little planet, you would be able to cover all of the land in a layer of gold up to your knees.
+import asyncio
+import asyncpg
+
+from config import DB_BIND
+
+def log(connection, message):
+	print(message)
+
+async def main():
+
+	# connect db
+	db = await asyncpg.connect(DB_BIND)
+	db.add_log_listener(log)
+
+	# create meta tables
+
+	async with db.transaction():
+
+		# module table
+		await db.execute('''
+			CREATE TABLE IF NOT EXISTS module (
+				id 			SERIAL UNIQUE,
+				guild_id 	BIGINT NOT NULL,
+				module 		TEXT NOT NULL
+			)
+		''')
+
+		# prefix table
+		await db.execute('''
+			CREATE TABLE IF NOT EXISTS prefix (
+				id 			SERIAL UNIQUE,
+				guild_id 	BIGINT NOT NULL,
+				prefix 		VARCHAR(8) NOT NULL
+			)
+		''')
+
+		# seen table
+		await db.execute('''
+			CREATE TABLE IF NOT EXISTS seen (
+				id			SERIAL UNIQUE,
+				guild_id	BIGINT NOT NULL,
+				user_id		BIGINT NOT NULL,
+				seen		TIMESTAMP NOT NULL,
+				CONSTRAINT 	seen_pk PRIMARY KEY (guild_id, user_id)
+			)
+		''')
+
+		# starchannel
+		await db.execute('''
+			CREATE TABLE IF NOT EXISTS starconfig (
+				id			SERIAL UNIQUE,
+				guild_id	BIGINT NOT NULL,
+				channel_id	BIGINT NOT NULL,
+				star_limit	SMALLINT
+			)
+		''')
+
+		# starmessage
+		await db.execute('''
+			CREATE TABLE IF NOT EXISTS starmessage (
+				id				SERIAL UNIQUE,
+				guild_id		BIGINT NOT NULL,
+				channel_id		BIGINT NOT NULL,
+				author_id		BIGINT NOT NULL,
+				message_id		BIGINT NOT NULL,
+				star_message_id	BIGINT NOT NULL,
+				starred_at		TIMESTAMP NOT NULL,
+				starrer_id		BIGINT NOT NULL,
+				starrers		BIGINT[]
+			)
+		''')
+
+		# facts
+		await db.execute('''
+			CREATE TABLE IF NOT EXISTS facts (
+				id 		SERIAL UNIQUE,
+				content	TEXT NOT NULL
+			)
+		''')
+
+		# populate facts if empty
+		if await db.fetchval('SELECT COUNT(id) FROM facts') == 0:
+			for fact in facts.split('\n'):
+				await db.execute('INSERT INTO facts (content) VALUES ($1)', fact)
+
+
+	# module holder
+	# prefix holder
+
+facts = """
+If you somehow found a way to extract all of the gold from the bubbling core of our lovely little planet, you would be able to cover all of the land in a layer of gold up to your knees.
 McDonalds calls frequent buyers of their food “heavy users.”
 The average person spends 6 months of their lifetime waiting on a red light to turn green.
 The largest recorded snowflake was in Keogh, MT during year 1887, and was 15 inches wide.
@@ -298,3 +388,7 @@ A cat’s urine glows under a black light.
 Starfish have no brains.
 Polar bears are left-handed.
 Humans and dolphins are the only species that have sex for pleasure.
+"""
+
+if __name__ == '__main__':
+	asyncio.run(main())

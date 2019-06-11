@@ -3,26 +3,25 @@ from discord.ext import commands
 
 from datetime import datetime
 
-from .base import TogglableCogMixin
+from cogs.mixins import AceMixin
 from utils.time import pretty_timedelta, pretty_datetime
-from utils.database import db
 
 
-class Seen(TogglableCogMixin):
+class Seen(AceMixin, commands.Cog):
 	'''Keeps track of when members was last seen.'''
 
-	async def __local_check(self, ctx):
-		return await self._is_used(ctx)
-
+	@commands.Cog.listener()
 	async def on_message(self, ctx):
-		if ctx.author.bot or not await self.bot.uses_module(ctx.guild.id, 'seen'):
+		if ctx.author.bot:
 			return
-		await db.scalar(
+
+		await self.db.execute(
 			'INSERT INTO seen (guild_id, user_id, seen) VALUES ($1, $2, $3) ON CONFLICT (guild_id, user_id) DO UPDATE SET seen=$3',
-			ctx.guild.id, ctx.author.id, datetime.now())
+			ctx.guild.id, ctx.author.id, datetime.now()
+		)
 
 	@commands.command()
-	async def seen(self, ctx, member: discord.Member):
+	async def seen(self, ctx, member: discord.User):
 		'''Check when a member was last seen.'''
 
 		e = discord.Embed()
@@ -32,13 +31,16 @@ class Seen(TogglableCogMixin):
 			icon_url=member.avatar_url
 		)
 
-		entry = await db.first('SELECT * FROM seen WHERE guild_id=$1 AND user_id=$2', ctx.guild.id, member.id)
+		seen = await self.db.fetchval(
+			'SELECT seen FROM seen WHERE guild_id=$1 AND user_id=$2',
+			ctx.guild.id, member.id
+		)
 
-		if entry is None:
+		if seen is None:
 			e.description = 'Member has not been seen by the bot yet.'
 		else:
 			now = datetime.now()
-			e.description = f'Seen {pretty_timedelta(now - entry.seen)} ago at {pretty_datetime(entry.seen)}'
+			e.description = f'Seen {pretty_timedelta(now - seen)} ago at {pretty_datetime(seen)}'
 
 		await ctx.send(embed=e)
 

@@ -1,28 +1,19 @@
-import discord, asyncio, random
+import discord
 from discord.ext import commands
+
+import asyncio
+import random
+
 from datetime import datetime
 
 from config import WOLFRAM_KEY, APIXU_KEY, OXFORD_ID, OXFORD_KEY
+from cogs.mixins import AceMixin
 
-DISCORD_SIZE_LIMIT = 8 * 1024 * 1024  # 8MiB
 
-
-class General:
-	'''General command collection.'''
+class General(AceMixin, commands.Cog):
+	'''General commands.'''
 
 	query_error = commands.CommandError('Query failed. Try again later!')
-
-	def __init__(self, bot):
-		self.bot = bot
-
-		with open('data/facts.txt', 'r', encoding='utf-8-sig') as f:
-			self._facts = f.read().splitlines()
-
-	@commands.command()
-	async def fact(self, ctx):
-		'''Get a random fact!'''
-
-		await ctx.send(random.choice(self._facts))
 
 	@commands.command()
 	async def flip(self, ctx):
@@ -32,13 +23,62 @@ class General:
 		await asyncio.sleep(3)
 		await msg.edit(content=random.choice(('Heads!', 'Tails!')))
 
-	@commands.command(alias=['choice'])
+	@commands.command()
 	async def choose(self, ctx, *choices):
 		'''Give me a list and I'll choose an item.'''
+
+		if len(choices) < 2:
+			raise commands.CommandError('At least two choices are necessary.')
 
 		msg = await ctx.send('Deciding...')
 		await asyncio.sleep(3)
 		await msg.edit(content=random.choice(choices))
+
+	@commands.command()
+	@commands.cooldown(rate=3, per=10.0, type=commands.BucketType.user)
+	async def number(self, ctx, number: int):
+		'''Get a fact about a number!'''
+
+		url = f'http://numbersapi.com/{number}?notfound=floor'
+
+		async with ctx.channel.typing():
+			try:
+				async with self.bot.aiohttp.get(url) as resp:
+					if resp.status != 200:
+						raise self.query_error
+					text = await resp.text()
+			except asyncio.TimeoutError:
+				raise self.query_error
+
+		await ctx.send(text)
+
+	@commands.command()
+	async def fact(self, ctx):
+		'''Get a random fact.'''
+
+		fact = await self.db.fetchval('SELECT content FROM facts ORDER BY random() LIMIT 1')
+
+		print(fact)
+
+		await ctx.send(fact)
+
+	@commands.command(name='8', aliases=['8ball'])
+	async def ball(self, ctx, *, question):
+		'''Classic Magic 8 Ball!'''
+		responses = (
+			# yes
+			'It is certain', 'It is decidedly so', 'Without a doubt', 'Yes definitely', 'You may rely on it',
+			'As I see it, yes', 'Most likely', 'Outlook good', 'Yes',
+			# uncertain
+			'Signs point to yes', 'Reply hazy try again', 'Ask again later', 'Better not tell you now',
+			'Cannot predict now', 'Concentrate and ask again',
+			# no
+			"Don't count on it", 'My reply is no', 'My sources say no', 'Outlook not so good', 'Very doubtful'
+		)
+
+		await ctx.trigger_typing()
+		await asyncio.sleep(3)
+		await ctx.send(random.choice(responses))
 
 	@commands.command(aliases=['guild'])
 	@commands.bot_has_permissions(embed_links=True)
@@ -76,25 +116,7 @@ class General:
 
 		await ctx.send(embed=e)
 
-	@commands.command(aliases=['num'])
-	@commands.cooldown(rate=3, per=10.0, type=commands.BucketType.user)
-	async def number(self, ctx, number: int):
-		'''Get a fact about a number!'''
-
-		url = f'http://numbersapi.com/{number}?notfound=floor'
-
-		async with ctx.channel.typing():
-			try:
-				async with self.bot.aiohttp.get(url) as resp:
-					if resp.status != 200:
-						raise self.query_error
-					text = await resp.text()
-			except asyncio.TimeoutError:
-				raise self.query_error
-
-		await ctx.send(text)
-
-	@commands.command(aliases=['w'])
+	@commands.command(aliases=['w', 'wa'])
 	@commands.bot_has_permissions(embed_links=True)
 	@commands.cooldown(rate=3, per=10.0, type=commands.BucketType.user)
 	async def wolfram(self, ctx, *, query):
@@ -175,37 +197,8 @@ class General:
 
 			await ctx.send(embed=embed)
 
-	@commands.command(name='8')
-	async def ball(self, ctx, *, question):
-		'''Classic Magic 8 Ball!'''
-		responses = (
-			'It is certain',  # yes
-			'It is decidedly so',
-			'Without a doubt',
-			'Yes definitely',
-			'You may rely on it',
-			'As I see it, yes',
-			'Most likely',
-			'Outlook good',
-			'Yes',
-			'Signs point to yes',  # uncertain
-			'Reply hazy try again',
-			'Ask again later',
-			'Better not tell you now',
-			'Cannot predict now',
-			'Concentrate and ask again',
-			"Don't count on it",  # no
-			'My reply is no',
-			'My sources say no',
-			'Outlook not so good',
-			'Very doubtful'
-		)
-
-		await ctx.trigger_typing()
-		await asyncio.sleep(3)
-		await ctx.send(random.choice(responses))
-
-	@commands.command(aliases=['def'])
+	# TODO: rewrite this literal clusterfuck
+	@commands.command()
 	@commands.bot_has_permissions(embed_links=True)
 	@commands.cooldown(rate=2, per=5.0, type=commands.BucketType.user)
 	async def define(self, ctx, *, word: str):

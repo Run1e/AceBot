@@ -1,6 +1,7 @@
 __pycache__
 .idea
 logs
+venv
 config.py
 notes
 data/ahk.json

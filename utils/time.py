@@ -1,7 +1,7 @@
 from math import floor
 
 def pretty_datetime(dt):
-	return dt.__format__('%d/%m/%y %H:%M:%S')
+	return dt.__format__('%Y.%m.%d %H:%M:%S')
 
 def pretty_timedelta(td):
 	return pretty_seconds(td.total_seconds())

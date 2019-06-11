@@ -1,8 +1,15 @@
-from discord.ext.commands import check
+from discord.ext import commands
+
+
+async def check_perms(ctx, perms, check=all):
+	if await ctx.bot.is_owner(ctx.author):
+		return True
+	author_perms = ctx.channel.permissions_for(ctx.author)
+	return check(getattr(author_perms, name, None) == value for name, value in perms.items())
 
 
 # invoker is either bot owner or someone with manage guild permissions
-def is_manager():
-	def predicate(ctx):
-		return ctx.author.permissions_in(ctx.channel).manage_guild or ctx.author.id == ctx.bot.owner_id
-	return check(predicate)
+def is_mod(**perms):
+	async def pred(ctx):
+		pass
+	return commands.check(pred)
