@@ -25,7 +25,7 @@ class General(AceMixin, commands.Cog):
 
 	@commands.command()
 	async def choose(self, ctx, *choices):
-		'''Give me a list and I'll choose an item.'''
+		'''Pick a random item from a list.'''
 
 		if len(choices) < 2:
 			raise commands.CommandError('At least two choices are necessary.')

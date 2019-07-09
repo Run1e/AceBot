@@ -13,25 +13,22 @@ import os
 from datetime import datetime
 
 from config import *
+from cogs.help import Help
 from utils.time import pretty_seconds
-
-DESCRIPTION = '''
-A.C.E. - Autonomous Command Executor
-
-Written and maintained by RUNIE 🔥#9646
-Contributions: Vinter Borge, Cap'n Odin#8812, and GeekDude#2532
-'''
+from utils.guildconfig import GuildConfig
 
 EXTENSIONS = (
+	'cogs.owner',
 	'cogs.general',
+	'cogs.config',
 	'cogs.stars',
 	'cogs.seen',
+	'cogs.security',
+	'cogs.hl'
 )
 
 class AceBot(commands.Bot):
 	_support_link = 'https://discord.gg/X7abzRe'
-	_prefixes = dict()
-	_modules = dict()
 
 	def __init__(self):
 		log.info('Starting...')
@@ -50,13 +47,19 @@ class AceBot(commands.Bot):
 
 		log.info('Connected to Discord...')
 
+		await self.change_presence(activity=BOT_ACTIVITY)
+
 	async def on_ready(self):
 		'''Called when discord.py has finished connecting to the gateway.'''
+
+		self.help_command = Help()
 
 		if not hasattr(self, 'db'):
 			log.info('Creating database connection...')
 
 			self.db = await asyncpg.create_pool(DB_BIND)
+
+			GuildConfig.set_bot(self)
 
 		if not hasattr(self, 'aiohttp'):
 			log.info('Initializing aiohttp')
@@ -71,16 +74,10 @@ class AceBot(commands.Bot):
 
 
 	async def on_resumed(self):
-		log.info('Bot resumed...')
+		await self.on_connect()
 
 	async def on_guild_unavailable(self, guild):
 		log.info(f'Guild "{guild.name}" unavailable')
-
-	def invalidate_guild_modules(self, guild_id):
-		'''Remove a guilds modules from the module cache.'''
-
-		if guild_id in self._modules:
-			self._modules.pop(guild_id)
 
 	@property
 	def invite_link(self, perms=None):
@@ -88,34 +85,13 @@ class AceBot(commands.Bot):
 			perms = 67497025
 		return f'https://discordapp.com/oauth2/authorize?&client_id={self.user.id}&scope=bot&permissions={perms}'
 
-	def invalidate_guild_prefix(self, guild_id):
-		'''Remove a guilds prefix from the prefix cache.'''
-
-		if guild_id in self._prefixes:
-			self._prefixes.pop(guild_id)
-
 	async def guild_uses_module(self, guild_id, module):
-		if guild_id in self._modules and module in self._modules[guild_id]:
-			return True
-
-		if guild_id not in self._modules:
-			self._modules[guild_id] = dict()
-
-		value = await self.db.fetchval('SELECT id FROM module WHERE guild_id=$1 AND module=$2', guild_id, module)
-
-		self._modules[guild_id][module] = False if value is None else True
-
-		return self._modules[guild_id][module]
+		guild = await GuildConfig.get_guild(guild_id)
+		return await guild.uses_module(module)
 
 	async def prefix_resolver(self, bot, message):
-		if message.guild.id in self._prefixes:
-			return self._prefixes[message.guild.id]
-
-		prefix = await self.db.fetchval('SELECT prefix FROM prefix WHERE guild_id = $1', message.guild.id) or DEFAULT_PREFIX
-
-		self._prefixes[message.guild.id] = prefix
-
-		return prefix
+		guild = await GuildConfig.get_guild(message.guild.id)
+		return guild.prefix or DEFAULT_PREFIX
 
 	async def blacklist(self, ctx):
 		if ctx.guild is None:
@@ -136,6 +112,8 @@ class AceBot(commands.Bot):
 			e.description = 'An error occured. The exception has been logged and will hopefully be fixed. Thanks for using the bot!'
 			await ctx.send(embed=e)
 
+			raise exc
+
 			try:
 				raise exc
 			except Exception:
@@ -147,7 +125,9 @@ class AceBot(commands.Bot):
 			await log_and_raise()
 
 		if isinstance(exc, (commands.ConversionError, commands.UserInputError)):
-			e.description = f'Usage: `{self.command_prefix}{ctx.command.signature}`'
+			prefix = await self.prefix_resolver(self, ctx.message)
+			e.title = str(exc)
+			e.description = f'Usage: `{prefix}{ctx.command.qualified_name} {ctx.command.signature}`'
 
 		elif isinstance(exc, commands.DisabledCommand):
 			e.description = 'Sorry, command has been disabled by owner. Try again later!'
@@ -161,7 +141,7 @@ class AceBot(commands.Bot):
 			e.description = ', '.join(perm.replace('_', ' ').title() for perm in exc.missing_perms)
 
 		elif isinstance(exc, (commands.CheckFailure, commands.CommandNotFound)):
-			return # specifically do nothing on these
+			return # *specifically* do nothing on these
 
 		elif isinstance(exc, commands.CommandError):
 			e.description = str(exc)

@@ -3,89 +3,109 @@ import asyncpg
 
 from config import DB_BIND
 
+QUERIES = '''
+
+-- guild config
+CREATE TABLE IF NOT EXISTS guildconfig (
+	id 			SERIAL UNIQUE,
+	guild_id 	BIGINT NOT NULL,
+	prefix 		VARCHAR(8),
+	mod_role	BIGINT,
+	mute_role	BIGINT,
+	CONSTRAINT	guildconfig_pk PRIMARY KEY (guild_id)
+);
+
+-- guild module list
+CREATE TABLE IF NOT EXISTS module (
+	id 			SERIAL UNIQUE,
+	guild_id 	BIGINT NOT NULL,
+	module 		TEXT NOT NULL,
+	CONSTRAINT	module_pk PRIMARY KEY (guild_id, module)
+);
+
+-- ignore list
+CREATE TABLE IF NOT EXISTS ignore (
+	id			SERIAL UNIQUE,
+	user_id		BIGINT NOT NULL,
+	CONSTRAINT	ignore_pk PRIMARY KEY (user_id)
+);
+
+-- seen table
+CREATE TABLE IF NOT EXISTS seen (
+	id			SERIAL UNIQUE,
+	guild_id	BIGINT NOT NULL,
+	user_id		BIGINT NOT NULL,
+	seen		TIMESTAMP NOT NULL,
+	CONSTRAINT 	seen_pk PRIMARY KEY (guild_id, user_id)
+);
+
+-- highlighter languages
+CREATE TABLE IF NOT EXISTS highlightlang (
+	id			SERIAL UNIQUE,
+	guild_id	BIGINT NOT NULL,
+	user_id		BIGINT NOT NULL,
+	lang		VARCHAR(32) NOT NULL,
+	CONSTRAINT	highlight_pk PRIMARY KEY (guild_id, user_id)
+);
+
+-- highlighter messages
+CREATE TABLE IF NOT EXISTS highlightmessage (
+	id			SERIAL UNIQUE,
+	message_id	BIGINT NOT NULL,
+	author_id	BIGINT NOT NULL
+);
+
+-- starboard channel list
+CREATE TABLE IF NOT EXISTS starconfig (
+	id			SERIAL UNIQUE,
+	guild_id	BIGINT NOT NULL,
+	channel_id	BIGINT NOT NULL,
+	star_limit	SMALLINT,
+	CONSTRAINT	starconfig_pk PRIMARY KEY (guild_id)
+);
+
+-- starmessage
+CREATE TABLE IF NOT EXISTS starmessage (
+	id				SERIAL UNIQUE,
+	guild_id		BIGINT NOT NULL,
+	channel_id		BIGINT NOT NULL,
+	author_id		BIGINT NOT NULL,
+	message_id		BIGINT NOT NULL,
+	star_message_id	BIGINT NOT NULL,
+	starred_at		TIMESTAMP NOT NULL,
+	starrer_id		BIGINT NOT NULL
+);
+
+-- starrers
+CREATE TABLE IF NOT EXISTS starrers (
+	id 			SERIAL UNIQUE,
+	star_id		INTEGER REFERENCES starmessage(id),
+	user_id		BIGINT NOT NULL,
+	CONSTRAINT	starrers_pk PRIMARY KEY (star_id, user_id)
+);
+
+-- fact list
+CREATE TABLE IF NOT EXISTS facts (
+	id 		SERIAL UNIQUE,
+	content	TEXT NOT NULL
+);
+'''
+
 def log(connection, message):
 	print(message)
 
 async def main():
-
-	# connect db
 	db = await asyncpg.connect(DB_BIND)
 	db.add_log_listener(log)
 
-	# create meta tables
-
 	async with db.transaction():
-
-		# module table
-		await db.execute('''
-			CREATE TABLE IF NOT EXISTS module (
-				id 			SERIAL UNIQUE,
-				guild_id 	BIGINT NOT NULL,
-				module 		TEXT NOT NULL
-			)
-		''')
-
-		# prefix table
-		await db.execute('''
-			CREATE TABLE IF NOT EXISTS prefix (
-				id 			SERIAL UNIQUE,
-				guild_id 	BIGINT NOT NULL,
-				prefix 		VARCHAR(8) NOT NULL
-			)
-		''')
-
-		# seen table
-		await db.execute('''
-			CREATE TABLE IF NOT EXISTS seen (
-				id			SERIAL UNIQUE,
-				guild_id	BIGINT NOT NULL,
-				user_id		BIGINT NOT NULL,
-				seen		TIMESTAMP NOT NULL,
-				CONSTRAINT 	seen_pk PRIMARY KEY (guild_id, user_id)
-			)
-		''')
-
-		# starchannel
-		await db.execute('''
-			CREATE TABLE IF NOT EXISTS starconfig (
-				id			SERIAL UNIQUE,
-				guild_id	BIGINT NOT NULL,
-				channel_id	BIGINT NOT NULL,
-				star_limit	SMALLINT
-			)
-		''')
-
-		# starmessage
-		await db.execute('''
-			CREATE TABLE IF NOT EXISTS starmessage (
-				id				SERIAL UNIQUE,
-				guild_id		BIGINT NOT NULL,
-				channel_id		BIGINT NOT NULL,
-				author_id		BIGINT NOT NULL,
-				message_id		BIGINT NOT NULL,
-				star_message_id	BIGINT NOT NULL,
-				starred_at		TIMESTAMP NOT NULL,
-				starrer_id		BIGINT NOT NULL,
-				starrers		BIGINT[]
-			)
-		''')
-
-		# facts
-		await db.execute('''
-			CREATE TABLE IF NOT EXISTS facts (
-				id 		SERIAL UNIQUE,
-				content	TEXT NOT NULL
-			)
-		''')
+		await db.execute(QUERIES)
 
 		# populate facts if empty
 		if await db.fetchval('SELECT COUNT(id) FROM facts') == 0:
 			for fact in facts.split('\n'):
 				await db.execute('INSERT INTO facts (content) VALUES ($1)', fact)
 
-
-	# module holder
-	# prefix holder
 
 facts = """
 If you somehow found a way to extract all of the gold from the bubbling core of our lovely little planet, you would be able to cover all of the land in a layer of gold up to your knees.
@@ -99,7 +119,6 @@ In 1386 a pig in France was executed by public hanging for the murder of a child
 One in every five adults believe that aliens are hiding in our planet disguised as humans.
 If you believe that you’re truly one in a million, there are still approximately 7,184 more people out there just like you.
 A single cloud can weight more than 1 million pounds.
-A human will eat on average 70 assorted insects and 10 spiders while sleeping.
 James Buchanan, the 15th U.S. president continuously bought slaves with his own money in order to free them.
 There are more possible iterations of a game of chess than there are atoms in the observable universe.
 The average person walks the equivalent of three times around the world in a lifetime.
