@@ -20,7 +20,7 @@ from utils.guildconfig import GuildConfig
 EXTENSIONS = (
 	'cogs.owner',
 	'cogs.general',
-	'cogs.config',
+	'cogs.configuration',
 	'cogs.stars',
 	'cogs.seen',
 	'cogs.security',
