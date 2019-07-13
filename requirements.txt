@@ -2,7 +2,6 @@ discord.py
 asyncpg
 aiohttp
 fuzzywuzzy
-python-Levenshtein
 lxml
 beautifulsoup4
 tabulate

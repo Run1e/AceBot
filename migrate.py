@@ -8,11 +8,10 @@ QUERIES = '''
 -- guild config
 CREATE TABLE IF NOT EXISTS guildconfig (
 	id 			SERIAL UNIQUE,
-	guild_id 	BIGINT NOT NULL,
+	guild_id 	BIGINT UNIQUE NOT NULL,
 	prefix 		VARCHAR(8),
 	mod_role	BIGINT,
-	mute_role	BIGINT,
-	CONSTRAINT	guildconfig_pk PRIMARY KEY (guild_id)
+	mute_role	BIGINT
 );
 
 -- guild module list
@@ -20,14 +19,13 @@ CREATE TABLE IF NOT EXISTS module (
 	id 			SERIAL UNIQUE,
 	guild_id 	BIGINT NOT NULL,
 	module 		TEXT NOT NULL,
-	CONSTRAINT	module_pk PRIMARY KEY (guild_id, module)
+	UNIQUE (guild_id, module)
 );
 
 -- ignore list
 CREATE TABLE IF NOT EXISTS ignore (
 	id			SERIAL UNIQUE,
-	user_id		BIGINT NOT NULL,
-	CONSTRAINT	ignore_pk PRIMARY KEY (user_id)
+	user_id		BIGINT UNIQUE NOT NULL
 );
 
 -- seen table
@@ -36,7 +34,7 @@ CREATE TABLE IF NOT EXISTS seen (
 	guild_id	BIGINT NOT NULL,
 	user_id		BIGINT NOT NULL,
 	seen		TIMESTAMP NOT NULL,
-	CONSTRAINT 	seen_pk PRIMARY KEY (guild_id, user_id)
+	UNIQUE (guild_id, user_id)
 );
 
 -- nicks table
@@ -52,14 +50,16 @@ CREATE TABLE IF NOT EXISTS nick (
 CREATE TABLE IF NOT EXISTS hllang (
 	id			SERIAL UNIQUE,
 	guild_id	BIGINT NOT NULL,
-	user_id		BIGINT NOT NULL,
+	user_id		BIGINT NOT NULL DEFAULT 0,
 	lang		VARCHAR(32) NOT NULL,
-	CONSTRAINT	highlight_pk PRIMARY KEY (guild_id, user_id)
+	UNIQUE (guild_id, user_id)
 );
 
 -- highlighter messages
 CREATE TABLE IF NOT EXISTS hlmessage (
 	id			SERIAL UNIQUE,
+	guild_id	BIGINT NOT NULL,
+	channel_id	BIGINT NOT NULL,
 	user_id		BIGINT NOT NULL,
 	message_id	BIGINT NOT NULL
 );
@@ -67,10 +67,9 @@ CREATE TABLE IF NOT EXISTS hlmessage (
 -- starboard channel list
 CREATE TABLE IF NOT EXISTS starconfig (
 	id			SERIAL UNIQUE,
-	guild_id	BIGINT NOT NULL,
+	guild_id	BIGINT UNIQUE NOT NULL,
 	channel_id	BIGINT NOT NULL,
-	star_limit	SMALLINT,
-	CONSTRAINT	starconfig_pk PRIMARY KEY (guild_id)
+	star_limit	SMALLINT NULL
 );
 
 -- starmessage
@@ -79,7 +78,7 @@ CREATE TABLE IF NOT EXISTS starmessage (
 	guild_id		BIGINT NOT NULL,
 	channel_id		BIGINT NOT NULL,
 	user_id			BIGINT NOT NULL,
-	message_id		BIGINT NOT NULL,
+	message_id		BIGINT UNIQUE NOT NULL,
 	star_message_id	BIGINT NOT NULL,
 	starred_at		TIMESTAMP NOT NULL,
 	starrer_id		BIGINT NOT NULL
@@ -88,15 +87,37 @@ CREATE TABLE IF NOT EXISTS starmessage (
 -- starrers
 CREATE TABLE IF NOT EXISTS starrers (
 	id 			SERIAL UNIQUE,
-	star_id		INTEGER REFERENCES starmessage(id),
+	star_id		INTEGER REFERENCES starmessage (id),
 	user_id		BIGINT NOT NULL,
-	CONSTRAINT	starrers_pk PRIMARY KEY (star_id, user_id)
+	UNIQUE (star_id, user_id)
 );
 
 -- fact list
 CREATE TABLE IF NOT EXISTS facts (
 	id 		SERIAL UNIQUE,
 	content	TEXT NOT NULL
+);
+
+-- tag list
+CREATE TABLE IF NOT EXISTS tag (
+	id			SERIAL UNIQUE,
+	name		VARCHAR(32) NOT NULL,
+	alias		VARCHAR(32) NULL,
+	guild_id	BIGINT NOT NULL,
+	user_id		BIGINT NOT NULL,
+	uses		INT NOT NULL DEFAULT 0,
+	created_at	TIMESTAMP NOT NULL,
+	edited_at	TIMESTAMP NULL,
+	viewed_at	TIMESTAMP NULL,
+	content		VARCHAR(2000) NOT NULL
+);
+
+-- welcome messages
+CREATE TABLE IF NOT EXISTS welcome (
+	id			SERIAL UNIQUE,
+	guild_id	BIGINT UNIQUE NOT NULL,
+	channel_id	BIGINT NOT NULL,
+	content		VARCHAR(2000)
 );
 '''
 

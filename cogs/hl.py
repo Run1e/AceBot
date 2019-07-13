@@ -50,8 +50,8 @@ class Highlighter(AceMixin, ToggleMixin, commands.Cog):
 		)
 
 		await self.db.execute(
-			'INSERT INTO hlmessage (user_id, message_id) VALUES ($1, $2)',
-			ctx.author.id, message.id
+			'INSERT INTO hlmessage (guild_id, channel_id, user_id, message_id) VALUES ($1, $2, $3, $4)',
+			ctx.guild.id, ctx.channel.id, ctx.author.id, message.id
 		)
 
 		await message.add_reaction(DELETE_EMOJI)

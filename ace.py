@@ -24,7 +24,8 @@ EXTENSIONS = (
 	'cogs.stars',
 	'cogs.whois',
 	'cogs.security',
-	'cogs.hl'
+	'cogs.hl',
+	'cogs.tags'
 )
 
 class AceBot(commands.Bot):
@@ -69,7 +70,7 @@ class AceBot(commands.Bot):
 			)
 
 		for extension in EXTENSIONS:
-			print(f'loading {extension}')
+			log.info(f'loading {extension}')
 			self.load_extension(extension)
 
 

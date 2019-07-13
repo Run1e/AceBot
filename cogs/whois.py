@@ -10,6 +10,8 @@ from utils.time import pretty_timedelta, pretty_datetime
 class WhoIs(AceMixin, commands.Cog):
 	'''Keeps track of when members was last seen.'''
 
+	MAX_NICKS = 6
+
 	@commands.Cog.listener()
 	async def on_message(self, ctx):
 		if ctx.author.bot:
@@ -76,30 +78,36 @@ class WhoIs(AceMixin, commands.Cog):
 			ctx.guild.id, ctx.author.id
 		)
 
-		nicks = []
-
-		for nick in reversed(nicks_data):
-			nick_actual = nick.get('nick')
-
-			if nick_actual not in nicks:
-				nicks.append(nick_actual)
-
-				if len(nicks) > 9:
-					nicks.append('...')
-					break
-
-		e = discord.Embed(
-			title='Most recent known nicknames'
-		)
+		e = discord.Embed()
 
 		e.set_author(
 			name=member.display_name,
 			icon_url=member.avatar_url
 		)
 
-		e.description = (
-			'\n'.join(f'{discord.utils.escape_markdown(nick)}' for nick in nicks)
-		)
+		nicks = []
+
+		for nick in reversed(nicks_data[:-1]):
+			nick_actual = nick.get('nick')
+
+			if nick_actual not in nicks:
+
+				if len(nicks) >= self.MAX_NICKS:
+					e.description = f'{len(nicks_data) - self.MAX_NICKS - 1} more unlisted found...'
+					break
+
+				nicks.append(nick_actual)
+
+				e.add_field(
+					name=discord.utils.escape_markdown(nick_actual),
+					value='Stored at ' + pretty_datetime(nick.get('stored_at')),
+					inline=False
+				)
+
+
+		# else: doesn't work here for some reason, guess I just misunderstand what for: else: does lol
+		if not len(e.fields):
+			e.description = 'None stored yet.'
 
 		await ctx.send(embed=e)
 
