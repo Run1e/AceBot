@@ -39,12 +39,21 @@ CREATE TABLE IF NOT EXISTS seen (
 	CONSTRAINT 	seen_pk PRIMARY KEY (guild_id, user_id)
 );
 
+-- nicks table
+CREATE TABLE IF NOT EXISTS nick (
+	id			SERIAL UNIQUE,
+	guild_id	BIGINT NOT NULL,
+	user_id		BIGINT NOT NULL,
+	nick		VARCHAR(32) NOT NULL,
+	stored_at	TIMESTAMP NOT NULL
+);
+
 -- highlighter languages
 CREATE TABLE IF NOT EXISTS highlightlang (
 	id			SERIAL UNIQUE,
 	guild_id	BIGINT NOT NULL,
 	user_id		BIGINT NOT NULL,
-	lang		VARCHAR(32) NOT NULL,
+	lang		TEXT(32) NOT NULL,
 	CONSTRAINT	highlight_pk PRIMARY KEY (guild_id, user_id)
 );
 

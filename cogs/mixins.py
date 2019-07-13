@@ -5,8 +5,10 @@ from utils.guildconfig import GuildConfig
 class AceMixin:
 	def __init__(self, bot):
 		self.bot = bot
-		self.db = bot.db
 
+	@property
+	def db(self):
+		return self.bot.db
 
 class ToggleMixin:
 	'''Mixin for making a cog toggleable.'''

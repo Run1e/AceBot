@@ -22,7 +22,7 @@ EXTENSIONS = (
 	'cogs.general',
 	'cogs.configuration',
 	'cogs.stars',
-	'cogs.seen',
+	'cogs.whois',
 	'cogs.security',
 	'cogs.hl'
 )

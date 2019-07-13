@@ -1,16 +1,6 @@
 import re
+import discord.utils
 from bs4 import BeautifulSoup
-
-def strip_markdown(content):
-	transformations = {
-		re.escape(c): '\\' + c for c in ('*', '`', '_', '~', '\\', '<', '|')
-	}
-
-	def replace(obj):
-		return transformations.get(re.escape(obj.group(0)), '')
-
-	pattern = re.compile('|'.join(transformations.keys()))
-	return pattern.sub(replace, content)
 
 def html2markdown(html, url='', big_box=False, language=None, parser='html.parser'):
 
@@ -25,7 +15,7 @@ def html2markdown(html, url='', big_box=False, language=None, parser='html.parse
 	prev = 0
 	for m in res:
 		start, stop = m.span()
-		stripped = strip_markdown(plain[start + 1:stop - 1])
+		stripped = discord.utils.escape_markdown(plain[start + 1:stop - 1])
 		new += plain[prev:start + 1] + stripped
 		prev = stop - 1
 
