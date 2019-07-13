@@ -107,7 +107,7 @@ class Stars(AceMixin, ToggleMixin, commands.Cog):
 				return
 
 			# star message author can't star
-			if ctx.starrer.id == ctx.record.get('author_id'):
+			if ctx.starrer.id == ctx.record.get('user_id'):
 				return
 
 			# can't restar if already starred
@@ -151,7 +151,7 @@ class Stars(AceMixin, ToggleMixin, commands.Cog):
 			await self.db.execute(
 				'''
 				INSERT INTO starmessage
-				(guild_id, channel_id, author_id, message_id, star_message_id, starred_at, starrer_id)
+				(guild_id, channel_id, user_id, message_id, star_message_id, starred_at, starrer_id)
 				VALUES ($1, $2, $3, $4, $5, $6, $7)
 				''',
 				message.guild.id, message.channel.id, message.author.id, message.id, star_message.id,

@@ -16,7 +16,8 @@ class WhoIs(AceMixin, commands.Cog):
 			return
 
 		await self.db.execute(
-			'INSERT INTO seen (guild_id, user_id, seen) VALUES ($1, $2, $3) ON CONFLICT (guild_id, user_id) DO UPDATE SET seen=$3',
+			'INSERT INTO seen (guild_id, user_id, seen) VALUES ($1, $2, $3) ON CONFLICT (guild_id, user_id) '
+			'DO UPDATE SET seen=$3',
 			ctx.guild.id, ctx.author.id, datetime.now()
 		)
 
@@ -82,6 +83,10 @@ class WhoIs(AceMixin, commands.Cog):
 
 			if nick_actual not in nicks:
 				nicks.append(nick_actual)
+
+				if len(nicks) > 9:
+					nicks.append('...')
+					break
 
 		e = discord.Embed(
 			title='Most recent known nicknames'

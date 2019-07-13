@@ -49,19 +49,19 @@ CREATE TABLE IF NOT EXISTS nick (
 );
 
 -- highlighter languages
-CREATE TABLE IF NOT EXISTS highlightlang (
+CREATE TABLE IF NOT EXISTS hllang (
 	id			SERIAL UNIQUE,
 	guild_id	BIGINT NOT NULL,
 	user_id		BIGINT NOT NULL,
-	lang		TEXT(32) NOT NULL,
+	lang		VARCHAR(32) NOT NULL,
 	CONSTRAINT	highlight_pk PRIMARY KEY (guild_id, user_id)
 );
 
 -- highlighter messages
-CREATE TABLE IF NOT EXISTS highlightmessage (
+CREATE TABLE IF NOT EXISTS hlmessage (
 	id			SERIAL UNIQUE,
-	message_id	BIGINT NOT NULL,
-	author_id	BIGINT NOT NULL
+	user_id		BIGINT NOT NULL,
+	message_id	BIGINT NOT NULL
 );
 
 -- starboard channel list
@@ -78,7 +78,7 @@ CREATE TABLE IF NOT EXISTS starmessage (
 	id				SERIAL UNIQUE,
 	guild_id		BIGINT NOT NULL,
 	channel_id		BIGINT NOT NULL,
-	author_id		BIGINT NOT NULL,
+	user_id			BIGINT NOT NULL,
 	message_id		BIGINT NOT NULL,
 	star_message_id	BIGINT NOT NULL,
 	starred_at		TIMESTAMP NOT NULL,
