@@ -144,6 +144,8 @@ class TagPager(Pager):
 
 class Tags(AceMixin, commands.Cog):
 
+	# TODO: add tag search
+
 	@commands.group(invoke_without_command=True)
 	async def tag(self, ctx, tag_name: TagViewConverter):
 		'''Retrieve a tags content.'''

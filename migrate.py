@@ -119,6 +119,16 @@ CREATE TABLE IF NOT EXISTS welcome (
 	channel_id	BIGINT NOT NULL,
 	content		VARCHAR(2000)
 );
+
+-- command log
+CREATE TABLE IF NOT EXISTS log (
+	id			SERIAL UNIQUE,
+	guild_id	BIGINT NOT NULL,
+	channel_id	BIGINT NOT NULL,
+	user_id		BIGINT NOT NULL,
+	timestamp	TIMESTAMP NOT NULL,
+	command		TEXT NOT NULL
+);
 '''
 
 def log(connection, message):

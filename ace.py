@@ -25,7 +25,8 @@ EXTENSIONS = (
 	'cogs.whois',
 	'cogs.security',
 	'cogs.hl',
-	'cogs.tags'
+	'cogs.tags',
+	'cogs.meta'
 )
 
 class AceBot(commands.Bot):
@@ -39,6 +40,8 @@ class AceBot(commands.Bot):
 			owner_id=OWNER_ID,
 			description=DESCRIPTION
 		)
+
+		self.startup_time = datetime.utcnow()
 
 		# do blacklist check before all commands
 		self.add_check(self.blacklist, call_once=True)
@@ -79,6 +82,13 @@ class AceBot(commands.Bot):
 
 	async def on_guild_unavailable(self, guild):
 		log.info(f'Guild "{guild.name}" unavailable')
+
+	async def on_command_completion(self, ctx):
+		if ctx.guild is not None:
+			await self.db.execute(
+				'INSERT INTO log (guild_id, channel_id, user_id, timestamp, command) VALUES ($1, $2, $3, $4, $5)',
+				ctx.guild.id, ctx.channel.id, ctx.author.id, datetime.utcnow(), ctx.command.qualified_name
+			)
 
 	@property
 	def invite_link(self, perms=None):
