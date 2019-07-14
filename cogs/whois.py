@@ -33,7 +33,7 @@ class WhoIs(AceMixin, commands.Cog):
 		now = datetime.utcnow()
 
 		last_nick = await self.db.fetchval(
-			'SELECT nick FROM nick WHERE guild_id=$1 AND user_id=$2 ORDER BY id DESC LIMIT 1',
+			'SELECT nick FROM nick WHERE guild_id=$1 AND user_id=$2 ORDER BY id DESC',
 			before.guild.id, before.id
 		)
 
@@ -109,6 +109,50 @@ class WhoIs(AceMixin, commands.Cog):
 		# else: doesn't work here for some reason, guess I just misunderstand what for: else: does lol
 		if not len(e.fields):
 			e.description = 'None stored yet.'
+
+		await ctx.send(embed=e)
+
+
+	@commands.command()
+	@commands.bot_has_permissions(embed_links=True)
+	async def info(self, ctx, user: discord.Member = None):
+		'''Display information about user or self.'''
+
+		if user is None:
+			user = ctx.author
+
+		e = discord.Embed(description='')
+
+		if user.bot:
+			e.description = 'This account is a bot.\n\n'
+
+		e.description += user.mention
+
+		e.add_field(name='Status', value=user.status)
+
+		if user.activity:
+			e.add_field(name='Activity', value=user.activity)
+
+		e.set_author(name=f'{user.name}#{user.discriminator}', icon_url=user.avatar_url)
+
+		now = datetime.utcnow()
+		created = user.created_at
+		joined = user.joined_at
+
+		e.add_field(
+			name='Account age',
+			value=f'{pretty_timedelta(now - created)}\nCreated {created.day}/{created.month}/{created.year}'
+		)
+
+		e.add_field(
+			name='Member for',
+			value=f'{pretty_timedelta(now - joined)}\nJoined {joined.day}/{joined.month}/{joined.year}'
+		)
+
+		if len(user.roles) > 1:
+			e.add_field(name='Roles', value=' '.join(role.mention for role in reversed(user.roles[1:])))
+
+		e.set_footer(text='ID: ' + str(user.id))
 
 		await ctx.send(embed=e)
 

@@ -1,7 +1,7 @@
 import discord
 from discord.ext import commands
 
-from cogs.mixins import AceMixin, ToggleMixin
+from cogs.mixins import AceMixin
 from utils.pager import Pager
 
 class HelpPager(Pager):
@@ -19,12 +19,6 @@ class HelpPager(Pager):
 		cog_name, cog_desc, commands = entries[0]
 
 		name = f'{cog_name} Commands'
-
-		if isinstance(self.ctx.bot.cogs[cog_name], ToggleMixin):
-			if await self.bot.guild_uses_module(self.guild.id, cog_name.lower()):
-				name += ' (enabled)'
-			else:
-				name += ' (disabled)'
 
 		self.embed.set_author(name=name, icon_url=self.bot.user.avatar_url)
 		self.embed.description = cog_desc

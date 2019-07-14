@@ -7,11 +7,13 @@ QUERIES = '''
 
 -- guild config
 CREATE TABLE IF NOT EXISTS guildconfig (
-	id 			SERIAL UNIQUE,
-	guild_id 	BIGINT UNIQUE NOT NULL,
-	prefix 		VARCHAR(8),
-	mod_role	BIGINT,
-	mute_role	BIGINT
+	id 					SERIAL UNIQUE,
+	guild_id 			BIGINT UNIQUE NOT NULL,
+	prefix 				VARCHAR(8),
+	mod_role_id			BIGINT NULL,
+	mute_role_id		BIGINT NULL,
+	star_channel_id		BIGINT NULL,
+	star_limit			SMALLINT NULL
 );
 
 -- guild module list
@@ -62,14 +64,6 @@ CREATE TABLE IF NOT EXISTS hlmessage (
 	channel_id	BIGINT NOT NULL,
 	user_id		BIGINT NOT NULL,
 	message_id	BIGINT NOT NULL
-);
-
--- starboard channel list
-CREATE TABLE IF NOT EXISTS starconfig (
-	id			SERIAL UNIQUE,
-	guild_id	BIGINT UNIQUE NOT NULL,
-	channel_id	BIGINT NOT NULL,
-	star_limit	SMALLINT NULL
 );
 
 -- starmessage

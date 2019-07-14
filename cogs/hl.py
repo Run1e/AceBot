@@ -2,7 +2,7 @@ import discord
 from discord.ext import commands
 
 from cogs.ahk.ids import AHK_GUILD_ID
-from cogs.mixins import AceMixin, ToggleMixin
+from cogs.mixins import AceMixin
 
 DELETE_EMOJI = '\U0000274C'
 DEFAULT_LANG = 'python'
@@ -18,17 +18,7 @@ class LangConverter(commands.Converter):
 		return argument
 
 
-class Highlighter(AceMixin, ToggleMixin, commands.Cog):
-
-	async def get_lang(self, guild_id, user_id):
-		'''Gets a users chosen highlighting language.'''
-
-		lang = await self.db.fetchval(
-			'SELECT lang FROM hllang WHERE guild_id=$1 AND (user_id=$2 OR user_id=$3)',
-			guild_id, 0, user_id
-		)
-
-		return lang or DEFAULT_LANG
+class Highlighter(AceMixin, commands.Cog):
 
 	@commands.command(aliases=['h1'])
 	async def hl(self, ctx, *, code):
@@ -43,7 +33,10 @@ class Highlighter(AceMixin, ToggleMixin, commands.Cog):
 		code = code.replace('```', '`\u200b``')
 
 		# get the language this user should use
-		lang = await self.get_lang(ctx.guild.id, ctx.author.id)
+		lang = await self.db.fetchval(
+			'SELECT lang FROM hllang WHERE guild_id=$1 AND (user_id=$2 OR user_id=$3)',
+			ctx.guild.id, 0, ctx.author.id
+		) or DEFAULT_LANG
 
 		message = await ctx.send(
 			f'```{lang}\n{code}\n```Paste by {ctx.author.mention} - Click the {DELETE_EMOJI} to delete.'
@@ -150,11 +143,13 @@ class Highlighter(AceMixin, ToggleMixin, commands.Cog):
 		'''Legacy, not removed because some people still use it instead of the newer tags in the tag system.'''
 
 		msg = 'To paste code snippets directly into the chat, use the highlight command:\n```.hl *paste code here*```'
+
 		if ctx.guild.id == AHK_GUILD_ID:
 			msg += (
 				'If you have a larger script you want to share, paste it to the AutoHotkey pastebin instead:\n'
 				'http://p.ahkscript.org/'
 			)
+
 		await ctx.send(msg)
 
 

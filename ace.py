@@ -57,7 +57,6 @@ class AceBot(commands.Bot):
 	async def on_ready(self):
 		'''Called when discord.py has finished connecting to the gateway.'''
 
-		self.help_command = Help()
 
 		if not hasattr(self, 'db'):
 			log.info('Creating database connection...')
@@ -65,17 +64,17 @@ class AceBot(commands.Bot):
 			self.db = await asyncpg.create_pool(DB_BIND)
 
 			GuildConfig.set_bot(self)
+			self.help_command = Help()
 
-		if not hasattr(self, 'aiohttp'):
 			log.info('Initializing aiohttp')
 			self.aiohttp = aiohttp.ClientSession(
 				loop=self.loop,
 				timeout=aiohttp.ClientTimeout(total=5)
 			)
 
-		for extension in EXTENSIONS:
-			log.info(f'loading {extension}')
-			self.load_extension(extension)
+			for extension in EXTENSIONS:
+				log.info(f'loading {extension}')
+				self.load_extension(extension)
 
 
 	async def on_resumed(self):
@@ -107,13 +106,9 @@ class AceBot(commands.Bot):
 			perms = 67497025
 		return f'https://discordapp.com/oauth2/authorize?&client_id={self.user.id}&scope=bot&permissions={perms}'
 
-	async def guild_uses_module(self, guild_id, module):
-		guild = await GuildConfig.get_guild(guild_id)
-		return await guild.uses_module(module)
-
 	async def prefix_resolver(self, bot, message):
-		guild = await GuildConfig.get_guild(message.guild.id)
-		return guild.prefix or DEFAULT_PREFIX
+		gc = await GuildConfig.get_guild(message.guild.id)
+		return gc.prefix or DEFAULT_PREFIX
 
 	async def blacklist(self, ctx):
 		if ctx.guild is None:
@@ -132,15 +127,13 @@ class AceBot(commands.Bot):
 
 		async def log_and_raise():
 			e.description = 'An error occured. The exception has been logged and will hopefully be fixed. Thanks for using the bot!'
-			await ctx.send(embed=e)
-
-			raise exc
 
 			try:
-				raise exc
-			except Exception:
-				log.exception(f'Unhandled command error:')
-				raise exc
+				await ctx.send(embed=e)
+			except discord.HTTPException:
+				pass
+
+			raise exc
 
 		if isinstance(exc, commands.CommandInvokeError):
 			exc = exc.original
@@ -171,7 +164,10 @@ class AceBot(commands.Bot):
 		elif isinstance(exc, discord.DiscordException):
 			await log_and_raise()
 
-		await ctx.send(embed=e)
+		try:
+			await ctx.send(embed=e)
+		except discord.HTTPException:
+			pass
 
 # monkey-patched Embed class to force embed color
 class Embed(discord.Embed):

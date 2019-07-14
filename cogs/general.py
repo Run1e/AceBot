@@ -19,18 +19,18 @@ class General(AceMixin, commands.Cog):
 	async def flip(self, ctx):
 		'''Flip a coin!'''
 
-		msg = await ctx.send('Flipping...')
+		msg = await ctx.send('\*flip\*')
 		await asyncio.sleep(3)
 		await msg.edit(content=random.choice(('Heads!', 'Tails!')))
 
 	@commands.command()
-	async def choose(self, ctx, *choices):
+	async def choose(self, ctx, *choices: commands.clean_content):
 		'''Pick a random item from a list.'''
 
 		if len(choices) < 2:
 			raise commands.CommandError('At least two choices are necessary.')
 
-		msg = await ctx.send('Deciding...')
+		msg = await ctx.send(':thinking:...')
 		await asyncio.sleep(3)
 		await msg.edit(content=random.choice(choices))
 
@@ -56,7 +56,7 @@ class General(AceMixin, commands.Cog):
 	async def fact(self, ctx):
 		'''Get a random fact.'''
 
-		fact = await self.db.fetchval('SELECT content FROM facts ORDER BY random() LIMIT 1')
+		fact = await self.db.fetchval('SELECT content FROM facts ORDER BY random()')
 
 		print(fact)
 

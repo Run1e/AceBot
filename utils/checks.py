@@ -1,5 +1,6 @@
 from discord.ext import commands
 
+from utils.guildconfig import GuildConfig
 
 async def check_perms(ctx, perms, check=all):
 	if await ctx.bot.is_owner(ctx.author):
@@ -9,7 +10,7 @@ async def check_perms(ctx, perms, check=all):
 
 
 # invoker is either bot owner or someone with manage guild permissions
-def is_mod(**perms):
+def is_mod():
 	async def pred(ctx):
-		pass
+		gc = await ctx.bot.member_is_mod(ctx)
 	return commands.check(pred)

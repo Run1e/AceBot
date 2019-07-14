@@ -4,7 +4,8 @@ from discord.ext import commands
 from datetime import datetime, timedelta
 
 from utils.fakectx import FakeContext
-from cogs.mixins import AceMixin, ToggleMixin
+from utils.guildconfig import GuildConfig
+from cogs.mixins import AceMixin
 
 STAR_EMOJI = '\N{WHITE MEDIUM STAR}'
 STAR_TTL = timedelta(days=7)
@@ -58,7 +59,7 @@ class StarConverter(commands.Converter):
 	async def convert(self, ctx, argument):
 		pass
 
-class Stars(AceMixin, ToggleMixin, commands.Cog):
+class Stars(AceMixin, commands.Cog):
 	'''Classic Starboard.'''
 
 	SB_NOT_SET_ERROR = commands.CommandError('No starboard channel has been set yet.')
@@ -74,8 +75,10 @@ class Stars(AceMixin, ToggleMixin, commands.Cog):
 	async def channel(self, ctx, channel: discord.TextChannel = None):
 		'''Set the starboard channel. Remember only the bot should be allowed to send messages in this channel!'''
 
+		gc = await GuildConfig.get_guild(ctx.guild.id)
+
 		if channel is None:
-			channel_id = await self.db.fetchval('SELECT channel_id FROM starconfig WHERE guild_id=$1', ctx.guild.id)
+			channel_id = gc.star_channel_id
 			if channel_id is None:
 				raise self.SB_NOT_SET_ERROR
 
@@ -84,10 +87,7 @@ class Stars(AceMixin, ToggleMixin, commands.Cog):
 				raise self.SB_NOT_FOUND_ERROR
 
 		else:
-			await self.db.execute(
-				'INSERT INTO starconfig (guild_id, channel_id) VALUES ($1, $2) ON CONFLICT (guild_id) DO UPDATE SET channel_id=$2',
-				ctx.guild.id, channel.id
-			)
+			await gc.set('star_channel_id', channel.id)
 
 		await ctx.send(f'Starboard channel set to {channel.mention}')
 
@@ -148,6 +148,7 @@ class Stars(AceMixin, ToggleMixin, commands.Cog):
 			except discord.HTTPException:
 				raise commands.CommandError('Failed posting to starboard.\nMake sure the bot has permissions to post there.')
 
+			# TODO: clean this one up
 			await self.db.execute(
 				'''
 				INSERT INTO starmessage
@@ -198,9 +199,6 @@ class Stars(AceMixin, ToggleMixin, commands.Cog):
 
 		# run checks
 		fake_ctx = FakeContext(guild=channel.guild, author=starrer)
-
-		if not await self.cog_check(fake_ctx):
-			return
 
 		if not await self.bot.blacklist(fake_ctx):
 			return

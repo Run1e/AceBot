@@ -46,7 +46,7 @@ class TagCreateConverter(commands.Converter):
 			raise commands.CommandError('Markdown not allowed in tag names.')
 
 		exist_id = await ctx.bot.db.fetchval(
-			'SELECT id FROM tag WHERE guild_id=$1 AND (name=$2 OR alias=$2) LIMIT 1',
+			'SELECT id FROM tag WHERE guild_id=$1 AND (name=$2 OR alias=$2)',
 			ctx.guild.id, tag_name
 		)
 
@@ -96,24 +96,20 @@ class TagViewConverter(commands.Converter):
 class TagFetcher:
 	@classmethod
 	async def as_viewer(cls, ctx, tag_name):
-		rec = await ctx.bot.db.fetch(
-			'SELECT * FROM tag WHERE guild_id=$1 AND (name=$2 OR alias=$2) LIMIT 1',
+		return await ctx.bot.db.fetchrow(
+			'SELECT * FROM tag WHERE guild_id=$1 AND (name=$2 OR alias=$2)',
 			ctx.guild.id, tag_name
 		)
-
-		return rec[0] if rec else None
 
 	@classmethod
 	async def as_manager(cls, ctx, tag_name):
 		if await ctx.bot.is_owner(ctx.author):
 			return await cls.as_viewer(ctx, tag_name)
 
-		rec = await ctx.bot.db.fetch(
-			'SELECT * FROM tag WHERE guild_id=$1 AND user_id=$2 AND (name=$3 OR alias=$3) LIMIT 1',
+		return await ctx.bot.db.fetchrow(
+			'SELECT * FROM tag WHERE guild_id=$1 AND user_id=$2 AND (name=$3 OR alias=$3)',
 			ctx.guild.id, ctx.author.id, tag_name
 		)
-
-		return rec[0] if rec else None
 
 
 class TagPager(Pager):
@@ -272,10 +268,11 @@ class Tags(AceMixin, commands.Cog):
 		)
 
 		e.set_author(name=nick, icon_url=avatar)
+		e.set_footer(text='Created')
 		e.add_field(name='Owner', value=owner.mention if owner else nick)
 
 		rank = await self.db.fetchval('SELECT COUNT(id) FROM tag WHERE uses > $1', record.get('uses') + 1)
-		e.add_field(name='Rank', value=f'#{str(rank + 1)}')
+		e.add_field(name='Rank', value=f'#{rank + 1}')
 
 		e.add_field(name='Uses', value=record.get('uses'))
 

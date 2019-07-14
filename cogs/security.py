@@ -2,7 +2,7 @@
 import discord
 from discord.ext import commands
 
-from cogs.mixins import AceMixin, ToggleMixin
+from cogs.mixins import AceMixin
 
 """
 
@@ -16,7 +16,7 @@ commands:
 .muteopt
 """
 
-class Security(AceMixin, ToggleMixin, commands.Cog):
+class Security(AceMixin, commands.Cog):
 
 	_mentions = {}
 
@@ -35,10 +35,6 @@ class Security(AceMixin, ToggleMixin, commands.Cog):
 	@commands.Cog.listener()
 	async def on_message(self, message):
 		if message.guild.id not in self._mentions:
-			return
-
-		# make sure cog is in use
-		if not await self.cog_check(message):
 			return
 
 		for mention in message.mentions:
