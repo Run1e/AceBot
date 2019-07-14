@@ -79,7 +79,7 @@ class ImagePersister:
 		with open(file, 'rb') as f:
 			return f.read()
 
-	def store_image(self, name, data)
+	def store_image(self, name, data):
 		with open(f'{self.path}/{name}', 'wb') as f:
 			f.write(data)
 
@@ -105,7 +105,7 @@ class Images(AceMixin, commands.Cog):
 		params = {'filter': 'mp4'}
 
 		async with ctx.typing():
-			for attempt in range(3):
+			for attempt in range(MAX_ATTEMPTS):
 				try:
 					id = await self.woof_persister.request_text(url + 'woof', params)
 					data = self.woof_persister.fetch_if_exist(id)
@@ -136,7 +136,7 @@ class Images(AceMixin, commands.Cog):
 		}
 
 		async with ctx.typing():
-			for attempt in range(3):
+			for attempt in range(MAX_ATTEMPTS):
 				try:
 					json = await self.meow_persister.request_json(url, params)
 
@@ -165,7 +165,7 @@ class Images(AceMixin, commands.Cog):
 		url = 'https://random-d.uk/api/v1/random'
 
 		async with ctx.typing():
-			for attempt in range(3):
+			for attempt in range(MAX_ATTEMPTS):
 				try:
 					json = await self.quack_persister.request_json(url)
 
@@ -195,7 +195,7 @@ class Images(AceMixin, commands.Cog):
 		url = 'https://randomfox.ca/floof/'
 
 		async with ctx.typing():
-			for attempt in range(3):
+			for attempt in range(MAX_ATTEMPTS):
 				try:
 					json = await self.floof_persister.request_json(url)
 
