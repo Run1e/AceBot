@@ -23,6 +23,7 @@ EXTENSIONS = (
 	'cogs.configuration',
 	'cogs.stars',
 	'cogs.whois',
+	'cogs.images',
 	'cogs.security',
 	'cogs.hl',
 	'cogs.tags',
@@ -174,7 +175,7 @@ discord.Embed = Embed
 if __name__ == '__main__':
 
 	# create additional folders
-	for path in ('logs', 'temp'):
+	for path in ('data', 'logs'):
 		if not os.path.exists(path):
 			os.makedirs(path)
 

@@ -1,6 +1,5 @@
 import discord
 import logging
-import asyncpg
 
 from discord.ext import commands
 from datetime import datetime
@@ -85,9 +84,7 @@ class TagViewConverter(commands.Converter):
 		)
 
 		if similars:
-			tag_list = '\n'.join(
-				build_tag_name(record) for record in similars
-			)
+			tag_list = '\n'.join(build_tag_name(record) for record in similars)
 
 			raise commands.CommandError(f'Tag not found. Did you mean any of these?\n\n{tag_list}')
 

@@ -26,7 +26,9 @@ class Meta(AceMixin, commands.Cog):
 		'''Time since last bot restart.'''
 
 		await ctx.send(
-			f'It has been {pretty_timedelta(datetime.utcnow() - self.bot.startup_time)} since the last bot restart.')
+			f'It has been {pretty_timedelta(datetime.utcnow() - self.bot.startup_time)} '
+			'since the last bot restart.'
+		)
 
 	@commands.command(aliases=['join'])
 	async def invite(self, ctx):
