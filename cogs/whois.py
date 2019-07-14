@@ -26,6 +26,7 @@ class WhoIs(AceMixin, commands.Cog):
 	@commands.Cog.listener()
 	async def on_member_update(self, before, after):
 		nicks = [before.display_name]
+
 		if before.display_name != after.display_name:
 			nicks.append(after.display_name)
 
@@ -70,12 +71,14 @@ class WhoIs(AceMixin, commands.Cog):
 		await ctx.send(embed=e)
 
 	@commands.command()
-	async def nicks(self, ctx, member: discord.Member):
+	async def nicks(self, ctx, member: discord.Member = None):
 		'''Lists all known usernames of a member.'''
+
+		member = member or ctx.author
 
 		nicks_data = await self.db.fetch(
 			'SELECT nick, stored_at FROM nick WHERE guild_id=$1 AND user_id=$2',
-			ctx.guild.id, ctx.author.id
+			ctx.guild.id, member.id
 		)
 
 		e = discord.Embed()
@@ -91,7 +94,6 @@ class WhoIs(AceMixin, commands.Cog):
 			nick_actual = nick.get('nick')
 
 			if nick_actual not in nicks:
-
 				if len(nicks) >= self.MAX_NICKS:
 					e.description = f'{len(nicks_data) - self.MAX_NICKS - 1} more unlisted found...'
 					break
@@ -103,7 +105,6 @@ class WhoIs(AceMixin, commands.Cog):
 					value='Stored at ' + pretty_datetime(nick.get('stored_at')),
 					inline=False
 				)
-
 
 		# else: doesn't work here for some reason, guess I just misunderstand what for: else: does lol
 		if not len(e.fields):

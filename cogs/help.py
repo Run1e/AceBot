@@ -1,7 +1,7 @@
 import discord
 from discord.ext import commands
 
-from cogs.mixins import ToggleMixin
+from cogs.mixins import AceMixin, ToggleMixin
 from utils.pager import Pager
 
 class HelpPager(Pager):
@@ -66,7 +66,8 @@ class Help(commands.HelpCommand):
 		cmds.append((self.context.prefix + get_signature(command), help_message))
 
 	async def prepare_help_command(self, ctx, command=None):
-		self.pager = HelpPager(self.context, [], per_page=1)
+		self.context = ctx
+		self.pager = HelpPager(ctx, [], per_page=1)
 
 	async def add_cog(self, cog):
 		cog_name = cog.__class__.__name__
@@ -80,6 +81,7 @@ class Help(commands.HelpCommand):
 		self.pager.add_page(cog_name, cog_desc, cmds)
 
 	async def send_bot_help(self, mapping):
+		# TODO: figure out why the fuck im enumerating here
 		for idx, cog in enumerate(mapping):
 			if cog is not None:
 				await self.add_cog(cog)
@@ -104,6 +106,7 @@ class Help(commands.HelpCommand):
 		self.pager.add_page(cog_name, cog_desc, cmds)
 
 		await self.pager.go()
+
 
 # rip is just the signature command ripped from the lib, but with alias support removed.
 def get_signature(command):

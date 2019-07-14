@@ -9,7 +9,7 @@ from discord.ext import commands
 from config import THECATAPI_KEY
 from cogs.mixins import AceMixin
 
-DISCORD_SIZE_LIMIT = 8 * 1024 #* 1024 # 8MiB
+DISCORD_SIZE_LIMIT = 8 * 1024 * 1024 # 8MiB
 QUERY_ERROR = commands.CommandError('Query failed, try again later.')
 MAX_ATTEMPTS = 3
 

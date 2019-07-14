@@ -91,6 +91,16 @@ class AceBot(commands.Bot):
 				ctx.guild.id, ctx.channel.id, ctx.author.id, datetime.utcnow(), ctx.command.qualified_name
 			)
 
+	async def on_message(self, message):
+		if message.content.startswith(f'<@{self.user.id}>'):
+			ctx = await self.get_context(message)
+			ctx.bot = self
+			ctx.prefix = await self.prefix_resolver(self, message)
+			ctx.command = self.get_command('help')
+			await ctx.reinvoke()
+		else:
+			await self.process_commands(message)
+
 	@property
 	def invite_link(self, perms=None):
 		if perms is None:

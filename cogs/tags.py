@@ -8,6 +8,7 @@ from cogs.mixins import AceMixin
 from utils.time import pretty_datetime
 from utils.pager import Pager
 
+
 log = logging.getLogger(__name__)
 
 
@@ -59,7 +60,7 @@ class TagEditConverter(commands.Converter):
 	async def convert(self, ctx, tag_name: str):
 		tag_name = tag_name.lower()
 
-		rec = await TagFetcher.as_manager(ctx, tag_name.lower())
+		rec = await TagFetcher.as_manager(ctx, tag_name)
 
 		if rec is not None:
 			return tag_name, rec
@@ -71,7 +72,7 @@ class TagViewConverter(commands.Converter):
 	async def convert(self, ctx, tag_name: str):
 		tag_name = tag_name.lower()
 
-		rec = await TagFetcher.as_viewer(ctx, tag_name.lower())
+		rec = await TagFetcher.as_viewer(ctx, tag_name)
 
 		if rec is not None:
 			return tag_name, rec

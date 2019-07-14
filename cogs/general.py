@@ -13,7 +13,7 @@ from cogs.mixins import AceMixin
 class General(AceMixin, commands.Cog):
 	'''General commands.'''
 
-	query_error = commands.CommandError('Query failed. Try again later!')
+	query_error = commands.CommandError('Query failed. Try again later.')
 
 	@commands.command()
 	async def flip(self, ctx):
