@@ -79,7 +79,7 @@ class ImagePersister:
 		with open(file, 'rb') as f:
 			return f.read()
 
-	def store_image(self, name, data):
+	def store_image(self, name, data)
 		with open(f'{self.path}/{name}', 'wb') as f:
 			f.write(data)
 
@@ -214,6 +214,7 @@ class Images(AceMixin, commands.Cog):
 					continue
 
 		raise QUERY_ERROR
+
 
 def setup(bot):
 	bot.add_cog(Images(bot))

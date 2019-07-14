@@ -1,17 +1,10 @@
 __pycache__
 .idea
+data
 logs
 venv
 config.py
 notes
-data/ahk.json
-data/dogs
-data/cats
-data/ducks
-data/foxes
-
-AutoHotkey_L-Docs-master
-docs.zip
 
 test.py
 test_docs_parser.py
