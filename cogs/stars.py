@@ -9,7 +9,7 @@ from cogs.mixins import AceMixin
 
 STAR_EMOJI = '\N{WHITE MEDIUM STAR}'
 STAR_TTL = timedelta(days=7)
-STAR_MINIMUM = 4 # total of 5 stars needed to survive a week
+STAR_LIMIT = 4 # total of 5 stars needed to survive a week
 
 
 class StarContext:
@@ -91,13 +91,18 @@ class Stars(AceMixin, commands.Cog):
 
 		await ctx.send(f'Starboard channel set to {channel.mention}')
 
-	@_star.command()
-	async def threshold(self, ctx, limit: int = None):
+	@_star.command(aliases=['threshold'])
+	async def limit(self, ctx, limit: int = None):
 		'''Set the minimum amount of stars needed for a starred message to remain on the starboard after a week has passed'''
 
-		# TODO: finish this
+		gc = await GuildConfig.get_guild(ctx.guild.id)
 
-		raise NotImplementedError()
+		if limit is None:
+			limit = gc.star_limit or STAR_LIMIT
+		else:
+			await gc.set('star_limit', limit)
+
+		await ctx.send(f'Starboard star limit set to `{limit}`')
 
 	async def _on_star(self, ctx):
 		if ctx.record:
@@ -222,8 +227,10 @@ class Stars(AceMixin, commands.Cog):
 				else:
 					ctx = StarContext(starrer, star_message=message, record=sm)
 
+
 			# insert star_channel
-			star_channel_id = await self.db.fetchval('SELECT channel_id FROM starconfig WHERE guild_id=$1', message.guild.id)
+			gc = GuildConfig.get_guild(payload.guild_id)
+			star_channel_id = gc.star_channel_id
 			if star_channel_id is None:
 				raise self.SB_NOT_SET_ERROR
 
@@ -268,7 +275,8 @@ class Stars(AceMixin, commands.Cog):
 		if guild is None:
 			return
 
-		star_channel_id = await self.db.fetchval('SELECT channel_id FROM starconfig WHERE guild_id=$1', guild.id)
+		gc = GuildConfig.get_guild(guild.id)
+		star_channel_id = gc.star_channel_id
 		if star_channel_id is None:
 			return
 
@@ -306,7 +314,8 @@ class Stars(AceMixin, commands.Cog):
 		if guild is None:
 			return
 
-		star_channel_id = await self.db.fetchval('SELECT channel_id FROM starconfig WHERE guild_id=$1', guild.id)
+		gc = GuildConfig.get_guild(payload.guild_id)
+		star_channel_id = gc.star_channel_id
 		if star_channel_id is None:
 			return
 

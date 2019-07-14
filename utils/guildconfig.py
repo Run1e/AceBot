@@ -57,3 +57,7 @@ class GuildConfig:
 	@property
 	def star_channel_id(self):
 		return self._star_channel_id
+
+	@property
+	def star_limit(self):
+		return self._star_limit

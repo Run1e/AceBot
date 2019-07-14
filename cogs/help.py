@@ -69,8 +69,15 @@ class Help(commands.HelpCommand):
 
 		cmds = []
 
+
+		# TODO: this fix is pretty retarded
+		added = []
 		for command in cog.walk_commands():
+			if command in added:
+				continue
+
 			await self.add_command(cmds, command)
+			added.append(command)
 
 		self.pager.add_page(cog_name, cog_desc, cmds)
 
@@ -84,7 +91,6 @@ class Help(commands.HelpCommand):
 
 	async def send_cog_help(self, cog):
 		await self.add_cog(cog)
-
 		await self.pager.go()
 
 	async def send_group_help(self, group):

@@ -10,6 +10,7 @@ from utils.time import pretty_timedelta, pretty_datetime
 class WhoIs(AceMixin, commands.Cog):
 	'''Keeps track of when members was last seen.'''
 
+	# TODO: move this
 	MAX_NICKS = 6
 
 	@commands.Cog.listener()
@@ -48,7 +49,7 @@ class WhoIs(AceMixin, commands.Cog):
 
 	@commands.command()
 	async def seen(self, ctx, member: discord.Member):
-		'''Check when a member was last seen.'''
+		'''Check when a member last sent a message.'''
 
 		e = discord.Embed()
 
