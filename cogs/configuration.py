@@ -2,8 +2,8 @@ import discord
 from discord.ext import commands
 
 from cogs.mixins import AceMixin
+from utils.checks import is_mod_pred
 from utils.guildconfig import GuildConfig
-
 
 """
 guild config menu:
@@ -18,9 +18,11 @@ db:
 
 """
 
+
 class MemberID(commands.MemberConverter):
 	async def convert(self, ctx, argument):
-		pass # TODO
+		pass  # TODO
+
 
 class PrefixConverter(commands.Converter):
 	async def convert(self, ctx, prefix):
@@ -31,19 +33,28 @@ class PrefixConverter(commands.Converter):
 
 		return prefix
 
+
 class SettingConverter(commands.Converter):
 	async def convert(self, ctx, argument):
 		pass
 
+
 class GuildConfigurer(AceMixin, commands.Cog):
 
 	async def cog_check(self, ctx):
-		# TODO: add checks for configers
-
-		return True
+		return await is_mod_pred(ctx)
 
 	@commands.command()
-	async def prefix(self, ctx, prefix: PrefixConverter):
+	@commands.has_permissions(administrator=True)  # only allow administrators to change the moderator role
+	async def modrole(self, ctx, *, role: discord.Role = None):
+		'''Set the moderator role. Only editable by server administrators.'''
+
+		gc = await GuildConfig.get_guild(ctx.guild.id)
+
+
+
+	@commands.command()
+	async def prefix(self, ctx, *, prefix: PrefixConverter):
 		'''Set a guild-specific prefix.'''
 
 		guild = await GuildConfig.get_guild(ctx.guild.id)

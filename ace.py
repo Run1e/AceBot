@@ -30,6 +30,7 @@ EXTENSIONS = (
 	'cogs.meta'
 )
 
+
 class AceBot(commands.Bot):
 	_support_link = 'https://discord.gg/X7abzRe'
 
@@ -52,16 +53,11 @@ class AceBot(commands.Bot):
 
 		log.info('Connected to Discord...')
 
-		await self.change_presence(activity=BOT_ACTIVITY)
-
 	async def on_ready(self):
 		'''Called when discord.py has finished connecting to the gateway.'''
 
-
 		if not hasattr(self, 'db'):
 			log.info('Creating database connection...')
-
-			self.db = await asyncpg.create_pool(DB_BIND)
 
 			GuildConfig.set_bot(self)
 			self.help_command = Help()
@@ -76,9 +72,13 @@ class AceBot(commands.Bot):
 				log.info(f'loading {extension}')
 				self.load_extension(extension)
 
+			self.db = await asyncpg.create_pool(DB_BIND)
+
+		await self.change_presence(activity=BOT_ACTIVITY)
 
 	async def on_resumed(self):
-		await self.on_connect()
+		log.info('Resumed...')
+		await self.change_presence(activity=BOT_ACTIVITY)
 
 	async def on_guild_unavailable(self, guild):
 		log.info(f'Guild "{guild.name}" unavailable')
@@ -97,7 +97,7 @@ class AceBot(commands.Bot):
 			ctx.prefix = await self.prefix_resolver(self, message)
 			ctx.command = self.get_command('help')
 			await ctx.reinvoke()
-		else:
+		elif hasattr(self, 'db') and self.db._initialized: # only process commands if db is initialized
 			await self.process_commands(message)
 
 	@property

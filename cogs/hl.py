@@ -34,7 +34,7 @@ class Highlighter(AceMixin, commands.Cog):
 
 		# get the language this user should use
 		lang = await self.db.fetchval(
-			'SELECT lang FROM hllang WHERE guild_id=$1 AND (user_id=$2 OR user_id=$3)',
+			'SELECT lang FROM highlight_lang WHERE guild_id=$1 AND (user_id=$2 OR user_id=$3)',
 			ctx.guild.id, 0, ctx.author.id
 		) or DEFAULT_LANG
 
@@ -43,7 +43,7 @@ class Highlighter(AceMixin, commands.Cog):
 		)
 
 		await self.db.execute(
-			'INSERT INTO hlmessage (guild_id, channel_id, user_id, message_id) VALUES ($1, $2, $3, $4)',
+			'INSERT INTO highlight_message (guild_id, channel_id, user_id, message_id) VALUES ($1, $2, $3, $4)',
 			ctx.guild.id, ctx.channel.id, ctx.author.id, message.id
 		)
 
@@ -57,7 +57,7 @@ class Highlighter(AceMixin, commands.Cog):
 			return
 
 		if await self.db.execute(
-			'DELETE FROM hlmessage WHERE user_id=$1 AND message_id=$2',
+			'DELETE FROM highlight_message WHERE user_id=$1 AND message_id=$2',
 			payload.user_id, payload.message_id
 		) == 'DELETE 0':
 			return
@@ -78,12 +78,12 @@ class Highlighter(AceMixin, commands.Cog):
 
 		if language is None:
 			server_lang = await self.db.fetchval(
-				'SELECT lang FROM hllang WHERE guild_id=$1 AND user_id=$2',
+				'SELECT lang FROM highlight_lang WHERE guild_id=$1 AND user_id=$2',
 				ctx.guild.id, 0
 			)
 
 			user_lang = await self.db.fetchval(
-				'SELECT lang FROM hllang WHERE guild_id=$1 AND user_id=$2',
+				'SELECT lang FROM highlight_lang WHERE guild_id=$1 AND user_id=$2',
 				ctx.guild.id, ctx.author.id
 			)
 
@@ -104,14 +104,14 @@ class Highlighter(AceMixin, commands.Cog):
 
 		if language == 'clear':
 			ret = await self.db.execute(
-				'DELETE FROM hllang WHERE guild_id=$1 AND user_id=$2',
+				'DELETE FROM highlight_lang WHERE guild_id=$1 AND user_id=$2',
 				ctx.guild.id, ctx.author.id
 			)
 
 			await ctx.send('No preference previously set' if ret == 'DELETE 0' else 'Preference cleared.')
 		else:
 			await self.db.execute(
-				'INSERT INTO hllang (guild_id, user_id, lang) VALUES ($1, $2, $3) ON CONFLICT '
+				'INSERT INTO highlight_lang (guild_id, user_id, lang) VALUES ($1, $2, $3) ON CONFLICT '
 				'(guild_id, user_id) DO UPDATE SET lang=$3',
 				ctx.guild.id, ctx.author.id, language
 			)
@@ -124,14 +124,14 @@ class Highlighter(AceMixin, commands.Cog):
 
 		if language == 'clear':
 			ret = await self.db.execute(
-				'DELETE FROM hllang WHERE guild_id=$1 AND user_id=$2',
+				'DELETE FROM highlight_lang WHERE guild_id=$1 AND user_id=$2',
 				ctx.guild.id, 0
 			)
 
 			await ctx.send('No preference previously set' if ret == 'DELETE 0' else 'Preference cleared.')
 		else:
 			await self.db.execute(
-				'INSERT INTO hllang (guild_id, user_id, lang) VALUES ($1, $2, $3) ON CONFLICT '
+				'INSERT INTO highlight_lang (guild_id, user_id, lang) VALUES ($1, $2, $3) ON CONFLICT '
 				'(guild_id, user_id) DO UPDATE SET lang=$3',
 				ctx.guild.id, 0, language
 			)

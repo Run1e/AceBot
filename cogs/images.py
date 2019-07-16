@@ -102,7 +102,7 @@ class Images(AceMixin, commands.Cog):
 		'''Get a random doggo!'''
 
 		url = 'https://random.dog/'
-		params = {'filter': 'mp4'}
+		params = dict(filter='mp4')
 
 		async with ctx.typing():
 			for attempt in range(MAX_ATTEMPTS):
@@ -131,9 +131,7 @@ class Images(AceMixin, commands.Cog):
 			raise commands.CommandError('The host has not set up an API key.')
 
 		url = 'https://api.thecatapi.com/v1/images/search'
-		params = {
-			'api_key': THECATAPI_KEY
-		}
+		params = dict(api_key=THECATAPI_KEY)
 
 		async with ctx.typing():
 			for attempt in range(MAX_ATTEMPTS):

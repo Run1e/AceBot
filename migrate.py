@@ -6,23 +6,25 @@ from config import DB_BIND
 QUERIES = '''
 
 -- guild config
-CREATE TABLE IF NOT EXISTS guildconfig (
+CREATE TABLE IF NOT EXISTS config (
 	id 					SERIAL UNIQUE,
 	guild_id 			BIGINT UNIQUE NOT NULL,
 	prefix 				VARCHAR(8),
 	mod_role_id			BIGINT NULL,
 	mute_role_id		BIGINT NULL,
 	star_channel_id		BIGINT NULL,
-	star_limit			SMALLINT NULL
+	star_limit			SMALLINT NULL,
+	security			BOOLEAN NOT NULL DEFAULT FALSE,
 );
 
--- guild module list
-CREATE TABLE IF NOT EXISTS module (
-	id 			SERIAL UNIQUE,
-	guild_id 	BIGINT NOT NULL,
-	module 		TEXT NOT NULL,
-	UNIQUE (guild_id, module)
-);
+-- security settings
+CREATE TABLE IF NOT EXISTS security (
+	id				SERIAL UNIQUE,
+	guild_id		BIGINT NOT NULL,
+	join			BOOLEAN NOT NULL DEFAULT FALSE,
+	mention			BOOLEAN NOT NULL DEFAULT FALSE,
+	
+)
 
 -- ignore list
 CREATE TABLE IF NOT EXISTS ignore (
@@ -49,7 +51,7 @@ CREATE TABLE IF NOT EXISTS nick (
 );
 
 -- highlighter languages
-CREATE TABLE IF NOT EXISTS hllang (
+CREATE TABLE IF NOT EXISTS highlight_lang (
 	id			SERIAL UNIQUE,
 	guild_id	BIGINT NOT NULL,
 	user_id		BIGINT NOT NULL DEFAULT 0,
@@ -58,7 +60,7 @@ CREATE TABLE IF NOT EXISTS hllang (
 );
 
 -- highlighter messages
-CREATE TABLE IF NOT EXISTS hlmessage (
+CREATE TABLE IF NOT EXISTS highlight_message (
 	id			SERIAL UNIQUE,
 	guild_id	BIGINT NOT NULL,
 	channel_id	BIGINT NOT NULL,
@@ -67,7 +69,7 @@ CREATE TABLE IF NOT EXISTS hlmessage (
 );
 
 -- starmessage
-CREATE TABLE IF NOT EXISTS starmessage (
+CREATE TABLE IF NOT EXISTS star_message (
 	id				SERIAL UNIQUE,
 	guild_id		BIGINT NOT NULL,
 	channel_id		BIGINT NOT NULL,
@@ -81,7 +83,7 @@ CREATE TABLE IF NOT EXISTS starmessage (
 -- starrers
 CREATE TABLE IF NOT EXISTS starrers (
 	id 			SERIAL UNIQUE,
-	star_id		INTEGER REFERENCES starmessage (id),
+	star_id		INTEGER REFERENCES star_message (id),
 	user_id		BIGINT NOT NULL,
 	UNIQUE (star_id, user_id)
 );
@@ -123,6 +125,41 @@ CREATE TABLE IF NOT EXISTS log (
 	timestamp	TIMESTAMP NOT NULL,
 	command		TEXT NOT NULL
 );
+
+-- docs stuff
+CREATE TABLE IF NOT EXISTS docs (
+	id			SERIAL UNIQUE,
+	content		TEXT NULL,
+	page		TEXT UNIQUE
+);
+
+CREATE TABLE IF NOT EXISTS docs_name (
+	id			SERIAL UNIQUE,
+	docs_id		INT REFERENCES docs (id) NOT NULL,
+	syntax		TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS docs_syntax (
+	id			SERIAL UNIQUE,
+	docs_id		INT REFERENCES docs (id) NOT NULL,
+	syntax		TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS docs_param (
+	id			SERIAL UNIQUE,
+	docs_id		INT REFERENCES docs (id) NOT NULL,
+	name		TEXT NOT NULL,
+	value		TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS kick_pattern (
+	id			SERIAL UNIQUE,
+	guild_id	BIGINT NOT NULL,
+	pattern		TEXT NOT NULL,
+	disabled	BOOLEAN NOT NULL DEFAULT FALSE
+);
+
+
 '''
 
 def log(connection, message):
