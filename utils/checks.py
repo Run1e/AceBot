@@ -12,10 +12,17 @@ async def check_perms(ctx, perms, check=all):
 
 # invoker is either bot owner or someone with manage guild permissions
 async def is_mod_pred(ctx):
-	# allow guild and bot owner
-	if ctx.guild.owner == ctx.author or await ctx.bot.is_owner(ctx.author):
+	# allow guild owner
+	if ctx.guild.owner == ctx.author:
 		return True
 
+	# TODO: allow administrators
+
+	# allow bot owner
+	if await ctx.bot.is_owner(ctx.author):
+		return True
+
+	# last to check is mod_role
 	gc = await GuildConfig.get_guild(ctx.guild.id)
 
 	# if no mod role is set, no one else should have mod perms

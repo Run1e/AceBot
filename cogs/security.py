@@ -41,6 +41,17 @@ class SubmoduleConverter(commands.Converter):
 			raise commands.CommandError(f'\'{module}\' is not a valid module.')
 		return module
 
+
+class ActionConverter(commands.Converter):
+	async def convert(self, ctx, action):
+		action = action.lower()
+
+		for key, value in SecurityMode.__members__.items():
+			if action == key.lower():
+				return int(value)
+
+		raise commands.CommandError(f'\'{action}\' is not a valid action.')
+
 class SecurityMode(IntEnum):
 	MUTE = 0
 	KICK = 1
@@ -91,6 +102,14 @@ class ModConfig:
 		self._guilds[guild_id] = self
 		return self
 
+	async def set(self, key, value):
+		await self.bot.db.execute(
+			f'UPDATE mod SET {key}=$1 WHERE guild_id=$2',
+			value, self.guild_id
+		)
+
+		setattr(self, f'_{key}' if key in self._defaults.keys() else key, value)
+
 	def __getattr__(self, item):
 		attr = f'_{item}'
 		if item in self._defaults.keys():
@@ -122,81 +141,44 @@ class Security(AceMixin, commands.Cog):
 				'Currently unavailable. Contact dev directly to have security features enabled.'
 			)
 
-	@commands.group(aliases=['sec'], invoke_without_command=False)
+	@commands.group(aliases=['sec'], invoke_without_command=True)
 	async def security(self, ctx):
 		'''View and edit security settings.'''
 
 		mc = await ModConfig.get_guild(self, ctx.guild.id)
-
-		pat_count = await self.db.fetchval(
-			'SELECT COUNT(*) FROM kick_pattern WHERE guild_id=$1 AND disabled=FALSE',
-			ctx.guild.id
-		)
 
 		e = discord.Embed(
 			description=f'VERIFICATION LEVEL: **{str(ctx.guild.verification_level).upper()}**'
 		)
 
 		e.set_author(name='Security', icon_url=self.bot.user.avatar_url)
-
-		mention_status = 'STATUS: **{}**\nACTION: **{}**\nCOUNT: **{} MESSAGES**\nPER: **{} SECONDS**'.format(
-			self._print_status(mc.mention_enabled),
-			self._print_securitymode(mc.mention_action),
-			mc.mention_count,
-			mc.mention_per
-		)
-
-		spam_status = 'STATUS: **{}**\nACTION: **{}**\nCOUNT: **{} MESSAGES**\nPER: **{} SECONDS**'.format(
-			self._print_status(mc.spam_enabled),
-			self._print_securitymode(mc.spam_action),
-			mc.spam_count,
-			mc.spam_per
-		)
-
-		join_status = 'STATUS: **{}**\nACTION: **{}**\nACTIVE PATTERNS: **{}**\nMINIMUM AGE: **{}**'.format(
-			self._print_status(mc.join_enabled),
-			self._print_securitymode(mc.join_action),
-			pat_count,
-			'NOT SET' if mc.join_age is None else ('\n' + pretty_timedelta(mc.join_age).upper())
-		)
-
-		e.add_field(
-			name='MENTION',
-			value=mention_status
-		)
-
-		e.add_field(
-			name='SPAM',
-			value=spam_status
-		)
-
-		e.add_field(
-			name='JOIN',
-			value=join_status,
-			inline=False
-		)
+		e.add_field(name='MENTION', value=await self._mention_status(mc))
+		e.add_field(name='SPAM', value=await self._spam_status(mc))
+		e.add_field(name='JOIN', value=await self._join_status(mc), inline=False)
 
 		await ctx.send(embed=e)
 
 	@security.command()
-	async def enable(self, ctx, module: SubmoduleConverter):
+	async def enable(self, ctx, *, module: SubmoduleConverter):
 		'''Enable a submodule.'''
 
-		print(f'self: {self}\nctx: {ctx}\nmodule: {module}')
+		mc = await ModConfig.get_guild(self.bot, ctx.guild.id)
+		await mc.set(f'{module}_enabled', True)
 
-		mc = await ModConfig.get_guild(ctx.guild.id)
-		mc.set(f'{module}_enabled', True)
+		await ctx.send(f'\'{module.upper()}\' enabled.')
 
 	@security.command()
-	async def disable(self, ctx, module: SubmoduleConverter):
+	async def disable(self, ctx, *, module: SubmoduleConverter):
 		'''Disable a submodule.'''
 
-		mc = await ModConfig.get_guild(ctx.guild.id)
-		mc.set(f'{module}_enabled', False)
+		mc = await ModConfig.get_guild(self.bot, ctx.guild.id)
+		await mc.set(f'{module}_enabled', False)
+
+		await ctx.send(f'\'{module.upper()}\' disabled.')
 
 	@security.group(invoke_without_command=True)
 	async def join(self, ctx):
-		'''Regex patterns that kicks new members if matching their nickname.'''
+		'''Configure security settings related to members joining.'''
 
 		patterns = await self.db.fetch(
 			'SELECT id, pattern, disabled FROM kick_pattern WHERE guild_id=$1',
@@ -213,16 +195,35 @@ class Security(AceMixin, commands.Cog):
 			else:
 				enabled_pats.append(pat_name)
 
-		e = discord.Embed()
+		e = discord.Embed(description=await self._join_status(await ModConfig.get_guild(self.bot, ctx.guild.id)))
 
 		e.add_field(name='Enabled patterns', value='\n'.join(enabled_pats) if enabled_pats else 'None')
 
 		if disabled_pats:
 			e.add_field(name='Disabled patterns', value='\n'.join(disabled_pats))
 
-		e.set_author(name=f'Join Settings', icon_url=self.bot.user.avatar_url)
+		e.set_author(name=f'JOIN', icon_url=self.bot.user.avatar_url)
 
 		await ctx.send(embed=e)
+
+	@join.command(name='action')
+	async def join_action(self, ctx, action: ActionConverter):
+		'''Set an action upon mention spam.'''
+
+		mc = await ModConfig.get_guild(self.bot, ctx.guild.id)
+		await mc.set('join_action', action)
+
+		await ctx.send(f'\'JOIN\' action set to \'{self._print_securitymode(action)}\'')
+
+	async def _join_status(self, mc):
+		return 'STATUS: **{}**\nACTION: **{}**\nACTIVE PATTERNS: **{}**\nMINIMUM AGE: **{}**'.format(
+			self._print_status(mc.join_enabled),
+			self._print_securitymode(mc.join_action),
+			await self.db.fetchval(
+				'SELECT COUNT(*) FROM kick_pattern WHERE guild_id=$1 AND disabled=FALSE', mc.guild_id
+			),
+			'NOT SET' if mc.join_age is None else ('\n' + pretty_timedelta(mc.join_age).upper())
+		)
 
 	@join.command()
 	async def add(self, ctx, *, pattern: PatternConverter):
@@ -249,8 +250,8 @@ class Security(AceMixin, commands.Cog):
 
 		await ctx.send('Pattern deleted.')
 
-	@join.command()
-	async def enable(self, ctx, *, pattern_id: int):
+	@join.command(name='enable')
+	async def pattern_enable(self, ctx, *, pattern_id: int):
 		'''Enable a pattern by id.'''
 
 		res = await self.db.execute(
@@ -263,8 +264,8 @@ class Security(AceMixin, commands.Cog):
 
 		await ctx.send('Pattern enabled.')
 
-	@join.command()
-	async def disable(self, ctx, *, pattern_id: int):
+	@join.command(name='disable')
+	async def pattern_disable(self, ctx, *, pattern_id: int):
 		'''Disable a pattern by id.'''
 
 		res = await self.db.execute(
@@ -277,6 +278,54 @@ class Security(AceMixin, commands.Cog):
 
 		await ctx.send('Pattern disabled.')
 
+	@security.group(invoke_without_command=True)
+	async def mention(self, ctx):
+		'''Configure security settings related to mentions.'''
+
+		mc = await ModConfig.get_guild(self.bot, ctx.guild.id)
+
+		e = discord.Embed(description=await self._mention_status(mc))
+		e.set_author(name=f'MENTION', icon_url=self.bot.user.avatar_url)
+
+		await ctx.send(embed=e)
+
+	@mention.command(name='action')
+	async def mention_action(self, ctx, action: ActionConverter):
+		'''Set an action upon mention spam.'''
+
+		mc = await ModConfig.get_guild(self.bot, ctx.guild.id)
+		await mc.set('mention_action', action)
+
+		await ctx.send(f'\'MENTION\' action set to \'{self._print_securitymode(action)}\'')
+
+	async def _mention_status(self, mc):
+		return 'STATUS: **{}**\nACTION: **{}**\nCOUNT: **{} MENTIONS**\nPER: **{} SECONDS**'.format(
+			self._print_status(mc.mention_enabled),
+			self._print_securitymode(mc.mention_action),
+			mc.mention_count,
+			mc.mention_per
+		)
+
+	@security.group(invoke_without_command=True)
+	async def spam(self, ctx):
+		'''Configure security settings related to message spam.'''
+
+	@spam.command(name='action')
+	async def spam_action(self, ctx, action: ActionConverter):
+		'''Set an action upon mention spam.'''
+
+		mc = await ModConfig.get_guild(self.bot, ctx.guild.id)
+		await mc.set('spam_action', action)
+
+		await ctx.send(f'\'SPAM\' action set to \'{self._print_securitymode(action)}\'')
+
+	async def _spam_status(self, mc):
+		return 'STATUS: **{}**\nACTION: **{}**\nCOUNT: **{} MESSAGES**\nPER: **{} SECONDS**'.format(
+			self._print_status(mc.spam_enabled),
+			self._print_securitymode(mc.spam_action),
+			mc.spam_count,
+			mc.spam_per
+		)
 
 	@commands.Cog.listener()
 	async def on_member_join(self, member):
