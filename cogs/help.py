@@ -69,6 +69,7 @@ class Help(commands.HelpCommand):
 
 		cmds = []
 
+		# TODO: do can_run on cogs/commands
 
 		# TODO: this fix is pretty retarded
 		added = []

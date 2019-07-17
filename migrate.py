@@ -11,25 +11,43 @@ CREATE TABLE IF NOT EXISTS config (
 	guild_id 			BIGINT UNIQUE NOT NULL,
 	prefix 				VARCHAR(8),
 	mod_role_id			BIGINT NULL,
-	mute_role_id		BIGINT NULL,
 	star_channel_id		BIGINT NULL,
-	star_limit			SMALLINT NULL,
-	security			BOOLEAN NOT NULL DEFAULT FALSE,
+	star_limit			SMALLINT NULL
 );
 
--- security settings
-CREATE TABLE IF NOT EXISTS security (
-	id				SERIAL UNIQUE,
-	guild_id		BIGINT NOT NULL,
-	join			BOOLEAN NOT NULL DEFAULT FALSE,
-	mention			BOOLEAN NOT NULL DEFAULT FALSE,
+-- moderation values
+CREATE TABLE IF NOT EXISTS mod (
+	id 					SERIAL UNIQUE,
+	guild_id 			BIGINT UNIQUE NOT NULL,
+	mute_role_id		BIGINT NULL,
 	
-)
+	join_enabled		BOOLEAN NOT NULL DEFAULT FALSE,
+	join_action			SMALLINT NOT NULL DEFAULT 0 CHECK (join_action >= 0 AND join_action <= 2),
+	join_age			INTERVAL NULL,
+	
+	spam_enabled		BOOLEAN NOT NULL DEFAULT FALSE,
+	spam_action			SMALLINT NOT NULL DEFAULT 0 CHECK (spam_action >= 0 AND spam_action <= 2),
+	spam_count			SMALLINT NULL,
+	spam_per			FLOAT NULL,
+	
+	mention_enabled		BOOLEAN NOT NULL DEFAULT FALSE,
+	mention_action		SMALLINT NOT NULL DEFAULT 0 CHECK (mention_action >= 0 AND mention_action <= 2),
+	mention_count		SMALLINT NULL,
+	mention_per			FLOAT NULL
+);
+
+-- join kick patterns
+CREATE TABLE IF NOT EXISTS kick_pattern (
+	id			SERIAL UNIQUE,
+	guild_id	BIGINT NOT NULL,
+	pattern		TEXT NOT NULL,
+	disabled	BOOLEAN NOT NULL DEFAULT FALSE
+);
 
 -- ignore list
 CREATE TABLE IF NOT EXISTS ignore (
 	id			SERIAL UNIQUE,
-	user_id		BIGINT UNIQUE NOT NULL
+	object_id	BIGINT UNIQUE NOT NULL
 );
 
 -- seen table
@@ -151,14 +169,6 @@ CREATE TABLE IF NOT EXISTS docs_param (
 	name		TEXT NOT NULL,
 	value		TEXT NOT NULL
 );
-
-CREATE TABLE IF NOT EXISTS kick_pattern (
-	id			SERIAL UNIQUE,
-	guild_id	BIGINT NOT NULL,
-	pattern		TEXT NOT NULL,
-	disabled	BOOLEAN NOT NULL DEFAULT FALSE
-);
-
 
 '''
 

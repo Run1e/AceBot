@@ -3,21 +3,23 @@ import logging
 
 log = logging.getLogger(__name__)
 
+
 class GuildConfig:
 	bot = None
 	guilds = dict()
 	lock = asyncio.Lock()
 
-	_settings = (
-		'id', 'prefix', 'mod_role_id', 'mute_role_id', 'star_channel_id', 'star_limit', 'security',
-		'sec_join', 'sec_mention'
-	)
-
 	def __init__(self, guild_id, record):
-		self._guild_id = guild_id
+		self.id = guild_id
+		self.guild_id = guild_id
+		self.prefix = record.get('prefix')
+		self.mod_role_id = record.get('mod_role_prefix')
+		self.star_channel_id = record.get('star_channel_id')
+		self.star_limit = record.get('star_limit')
 
-		for setting in self._settings:
-			setattr(self, f'_{setting}', record.get(setting))
+	async def set(self, key, value):
+		await self.bot.db.execute(f'UPDATE config SET {key}=$1 WHERE id=$2', value, self.settings['id'])
+		setattr(self, key, value)
 
 	@classmethod
 	async def get_guild(cls, guild_id):
@@ -39,46 +41,3 @@ class GuildConfig:
 	@classmethod
 	def set_bot(cls, bot):
 		cls.bot = bot
-
-	@property
-	def guild(self):
-		return self.bot.get_guild(self._guild_id)
-
-	async def set(self, field, value):
-		if field not in self._settings:
-			raise ValueError('Not a valid GuildConfig setting.')
-
-		await self.bot.db.execute(f'UPDATE config SET {field}=$1 WHERE id=$2', value, self._id)
-		setattr(self, f'_{field}', value)
-
-	@property
-	def prefix(self):
-		return self._prefix
-
-	@property
-	def mod_role_id(self):
-		return self._mod_role_id
-
-	@property
-	def mute_role_id(self):
-		return self._mute_role_id
-
-	@property
-	def star_channel_id(self):
-		return self._star_channel_id
-
-	@property
-	def star_limit(self):
-		return self._star_limit
-
-	@property
-	def security(self):
-		return self._security
-
-	@property
-	def sec_join(self):
-		return self._sec_join
-
-	@property
-	def sec_mention(self):
-		return self._sec_mention

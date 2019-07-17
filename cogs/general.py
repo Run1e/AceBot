@@ -30,7 +30,7 @@ class General(AceMixin, commands.Cog):
 		if len(choices) < 2:
 			raise commands.CommandError('At least two choices are necessary.')
 
-		msg = await ctx.send(':thinking:...')
+		msg = await ctx.send(':thinking:')
 		await asyncio.sleep(3)
 		await msg.edit(content=random.choice(choices))
 
