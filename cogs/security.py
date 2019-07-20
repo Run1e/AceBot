@@ -52,6 +52,12 @@ class ActionConverter(commands.Converter):
 
 		raise commands.CommandError(f'\'{action}\' is not a valid action.')
 
+class CountConverter(commands.Converter):
+	async def convert(self, ctx, count):
+
+
+		pass
+
 class SecurityMode(IntEnum):
 	MUTE = 0
 	KICK = 1
@@ -297,6 +303,10 @@ class Security(AceMixin, commands.Cog):
 		await mc.set('mention_action', action)
 
 		await ctx.send(f'\'MENTION\' action set to \'{self._print_securitymode(action)}\'')
+
+	@mention.command(name='count')
+	async def mention_count(self, ctx, count: CountConverter):
+		pass
 
 	async def _mention_status(self, mc):
 		return 'STATUS: **{}**\nACTION: **{}**\nCOUNT: **{} MENTIONS**\nPER: **{} SECONDS**'.format(
