@@ -60,7 +60,11 @@ class TagEditConverter(commands.Converter):
 	async def convert(self, ctx, tag_name: str):
 		tag_name = tag_name.lower()
 
-		rec = await TagFetcher.as_manager(ctx, tag_name)
+		# TODO: use is_mod_pred to allow admins to edit others' tags, with a warning in the command
+		rec = await ctx.bot.db.fetchrow(
+			'SELECT * FROM tag WHERE guild_id=$1 AND user_id=$2 AND (name=$3 OR alias=$3)',
+			ctx.guild.id, ctx.author.id, tag_name
+		)
 
 		if rec is not None:
 			return tag_name, rec
@@ -72,7 +76,10 @@ class TagViewConverter(commands.Converter):
 	async def convert(self, ctx, tag_name: str):
 		tag_name = tag_name.lower()
 
-		rec = await TagFetcher.as_viewer(ctx, tag_name)
+		rec = await ctx.bot.db.fetchrow(
+			'SELECT * FROM tag WHERE guild_id=$1 AND (name=$2 OR alias=$2)',
+			ctx.guild.id, tag_name
+		)
 
 		if rec is not None:
 			return tag_name, rec
@@ -92,24 +99,6 @@ class TagViewConverter(commands.Converter):
 		# and if none found, just raise the not found error
 		raise commands.CommandError('Tag not found.')
 
-
-class TagFetcher:
-	@classmethod
-	async def as_viewer(cls, ctx, tag_name):
-		return await ctx.bot.db.fetchrow(
-			'SELECT * FROM tag WHERE guild_id=$1 AND (name=$2 OR alias=$2)',
-			ctx.guild.id, tag_name
-		)
-
-	@classmethod
-	async def as_manager(cls, ctx, tag_name):
-		if await ctx.bot.is_owner(ctx.author):
-			return await cls.as_viewer(ctx, tag_name)
-
-		return await ctx.bot.db.fetchrow(
-			'SELECT * FROM tag WHERE guild_id=$1 AND user_id=$2 AND (name=$3 OR alias=$3)',
-			ctx.guild.id, ctx.author.id, tag_name
-		)
 
 
 class TagPager(Pager):

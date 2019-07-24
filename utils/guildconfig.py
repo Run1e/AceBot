@@ -13,7 +13,8 @@ class GuildConfig:
 		self.id = guild_id
 		self.guild_id = guild_id
 		self.prefix = record.get('prefix')
-		self.mod_role_id = record.get('mod_role_prefix')
+		self.mod_role_id = record.get('mod_role_id')
+		self.mute_role_id = record.get('mute_role_id')
 		self.star_channel_id = record.get('star_channel_id')
 		self.star_limit = record.get('star_limit')
 

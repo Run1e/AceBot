@@ -1,6 +1,7 @@
 import discord.utils
 from discord.ext import commands
 
+from config import OWNER_ID
 from utils.guildconfig import GuildConfig
 
 async def check_perms(ctx, perms, check=all):
@@ -12,25 +13,24 @@ async def check_perms(ctx, perms, check=all):
 
 # invoker is either bot owner or someone with manage guild permissions
 async def is_mod_pred(ctx):
-	# allow guild owner
-	if ctx.guild.owner == ctx.author:
+	# allow guild administrators (this includes guild owner)
+	if ctx.author.permissions_in(ctx.channel).administrator:
 		return True
 
-	# TODO: allow administrators
-
-	# allow bot owner
-	if await ctx.bot.is_owner(ctx.author):
+	# allow bot owner. this is a stupid way of doing it but it makes this function
+	# also work with messages instead of contexts.
+	if ctx.author.id == OWNER_ID:
 		return True
 
-	# last to check is mod_role
+	# check against mod_role
 	gc = await GuildConfig.get_guild(ctx.guild.id)
 
-	# if no mod role is set, no one else should have mod perms
+	# false if not set
 	if gc.mod_role_id is None:
 		return False
 
 	# if set, see if author has this role
-	return not not discord.utils.find(lambda role: role.id == gc.mod_role_id, ctx.author.roles)
+	return not not discord.utils.get(ctx.author.roles, id=gc.mod_role_id)
 
 def is_mod():
 	return commands.check(is_mod_pred)

@@ -2,7 +2,7 @@ import discord
 import re
 
 from enum import Enum, IntEnum
-from discord.ext import commands
+from discord.ext import commands, tasks
 
 from cogs.mixins import AceMixin
 from cogs.ahk.ids import AHK_GUILD_ID
@@ -20,6 +20,7 @@ security
 
 """
 
+ALLOWED_GUILDS = (115993023636176902, 517692823621861407)
 SUBMODULES = ('join', 'mention', 'spam')
 
 class PatternConverter(commands.Converter):
@@ -46,19 +47,34 @@ class ActionConverter(commands.Converter):
 	async def convert(self, ctx, action):
 		action = action.lower()
 
-		for key, value in SecurityMode.__members__.items():
+		for key, value in SecurityAction.__members__.items():
 			if action == key.lower():
 				return int(value)
 
 		raise commands.CommandError(f'\'{action}\' is not a valid action.')
 
+
 class CountConverter(commands.Converter):
 	async def convert(self, ctx, count):
+		count = int(count)
+
+		if count < 3:
+			raise commands.CommandError('Setting count less than 3 is not recommended.')
+
+		return count
 
 
-		pass
+class PerConverter(commands.Converter):
+	async def convert(self, ctx, per):
+		per = int(per)
 
-class SecurityMode(IntEnum):
+		if per < 3:
+			raise commands.CommandError('Setting count less than 3 is not recommended.')
+
+		return per
+
+
+class SecurityAction(IntEnum):
 	MUTE = 0
 	KICK = 1
 	BAN = 2
@@ -125,17 +141,78 @@ class ModConfig:
 
 
 class Security(AceMixin, commands.Cog):
-	'''Various security features.'''
+	'''Security features.
+
+	Valid actions are: `MUTE`, `KICK` and `BAN`
+
+	Actions are triggered when an event happens more than `COUNT` times per `PER` seconds.
+	'''
+
+	def __init__(self, bot):
+		super().__init__(bot)
+		self.setup_cooldowns.start()
+		self.checkers = dict()
+
+	@tasks.loop(count=1)
+	async def setup_cooldowns(self):
+		recs = await self.db.fetch('SELECT guild_id FROM mod')
+
+		for rec in recs:
+			guild_id = rec.get('guild_id')
+			mc = await ModConfig.get_guild(self, guild_id)
+
+			mention_cooldown = commands.CooldownMapping.from_cooldown(
+				mc.mention_count, mc.mention_per, commands.BucketType.user
+			)
+
+			spam_cooldown = commands.CooldownMapping.from_cooldown(
+				mc.spam_count, mc.spam_per, commands.BucketType.user
+			)
+
+			self.checkers[guild_id] = dict(
+				mention=mention_cooldown,
+				spam=spam_cooldown
+			)
 
 	async def cog_check(self, ctx):
-		return await is_mod_pred(ctx)
+		return ctx.guild.id in ALLOWED_GUILDS and await is_mod_pred(ctx)
+
+	@commands.Cog.listener()
+	async def on_member_join(self, member):
+		if member.guild.id not in ALLOWED_GUILDS:
+			return
+
+		# check acc age
+		# check against all kick patterns
+
+	@commands.Cog.listener()
+	async def on_message(self, message):
+		if message.guild is None:
+			return
+
+		if message.author.bot:
+			return
+
+		if message.guild.id not in self.checkers:
+			return
+
+		if await is_mod_pred(message):
+			return
+
+		if message.mentions:
+			checker = self.checkers[message.guild.id]['mention']
+			for mention in message.mentions:
+				if checker.update_rate_limit(message):
+					pass
+
+
 
 	def _print_securitymode(self, mode):
-		if mode == SecurityMode.MUTE:
+		if mode == SecurityAction.MUTE:
 			return 'MUTE'
-		if mode == SecurityMode.KICK:
+		if mode == SecurityAction.KICK:
 			return 'KICK'
-		if mode == SecurityMode.BAN:
+		if mode == SecurityAction.BAN:
 			return 'BAN'
 
 	def _print_status(self, boolean):
@@ -214,7 +291,7 @@ class Security(AceMixin, commands.Cog):
 
 	@join.command(name='action')
 	async def join_action(self, ctx, action: ActionConverter):
-		'''Set an action upon mention spam.'''
+		'''Set an action upon disallowed member join.'''
 
 		mc = await ModConfig.get_guild(self.bot, ctx.guild.id)
 		await mc.set('join_action', action)
@@ -231,8 +308,8 @@ class Security(AceMixin, commands.Cog):
 			'NOT SET' if mc.join_age is None else ('\n' + pretty_timedelta(mc.join_age).upper())
 		)
 
-	@join.command()
-	async def add(self, ctx, *, pattern: PatternConverter):
+	@join.command(name='add')
+	async def join_add(self, ctx, *, pattern: PatternConverter):
 		'''Add a regex pattern to the kick pattern list.'''
 
 		await self.db.execute(
@@ -242,8 +319,8 @@ class Security(AceMixin, commands.Cog):
 
 		await ctx.send('Pattern added.')
 
-	@join.command(aliases=['rm'])
-	async def remove(self, ctx, *, pattern_id: int):
+	@join.command(name='remove', aliases=['rm'])
+	async def join_remove(self, ctx, *, pattern_id: int):
 		'''Remove a pattern by id.'''
 
 		res = await self.db.fetch(
@@ -257,7 +334,7 @@ class Security(AceMixin, commands.Cog):
 		await ctx.send('Pattern deleted.')
 
 	@join.command(name='enable')
-	async def pattern_enable(self, ctx, *, pattern_id: int):
+	async def join_enable(self, ctx, *, pattern_id: int):
 		'''Enable a pattern by id.'''
 
 		res = await self.db.execute(
@@ -271,7 +348,7 @@ class Security(AceMixin, commands.Cog):
 		await ctx.send('Pattern enabled.')
 
 	@join.command(name='disable')
-	async def pattern_disable(self, ctx, *, pattern_id: int):
+	async def join_disable(self, ctx, *, pattern_id: int):
 		'''Disable a pattern by id.'''
 
 		res = await self.db.execute(
@@ -302,11 +379,18 @@ class Security(AceMixin, commands.Cog):
 		mc = await ModConfig.get_guild(self.bot, ctx.guild.id)
 		await mc.set('mention_action', action)
 
-		await ctx.send(f'\'MENTION\' action set to \'{self._print_securitymode(action)}\'')
+		await ctx.invoke(self.mention)
 
-	@mention.command(name='count')
-	async def mention_count(self, ctx, count: CountConverter):
-		pass
+
+	@mention.command(name='limit')
+	async def mention_limit(self, ctx, count: CountConverter, per: PerConverter):
+		'''Maximum mentions allowed within the time span.'''
+
+		mc = await ModConfig.get_guild(self.bot, ctx.guild.id)
+		await mc.set('mention_count', count)
+		await mc.set('mention_per', per)
+
+		await ctx.invoke(self.mention)
 
 	async def _mention_status(self, mc):
 		return 'STATUS: **{}**\nACTION: **{}**\nCOUNT: **{} MENTIONS**\nPER: **{} SECONDS**'.format(
@@ -320,6 +404,13 @@ class Security(AceMixin, commands.Cog):
 	async def spam(self, ctx):
 		'''Configure security settings related to message spam.'''
 
+		mc = await ModConfig.get_guild(self.bot, ctx.guild.id)
+
+		e = discord.Embed(description=await self._spam_status(mc))
+		e.set_author(name=f'SPAM', icon_url=self.bot.user.avatar_url)
+
+		await ctx.send(embed=e)
+
 	@spam.command(name='action')
 	async def spam_action(self, ctx, action: ActionConverter):
 		'''Set an action upon mention spam.'''
@@ -327,7 +418,17 @@ class Security(AceMixin, commands.Cog):
 		mc = await ModConfig.get_guild(self.bot, ctx.guild.id)
 		await mc.set('spam_action', action)
 
-		await ctx.send(f'\'SPAM\' action set to \'{self._print_securitymode(action)}\'')
+		await ctx.invoke(self.spam)
+
+	@spam.command(name='limit')
+	async def spam_limit(self, ctx, count: CountConverter, per: PerConverter):
+		'''Maximum mentions allowed within the time span.'''
+
+		mc = await ModConfig.get_guild(self.bot, ctx.guild.id)
+		await mc.set('spam_count', count)
+		await mc.set('spam_per', per)
+
+		await ctx.invoke(self.spam)
 
 	async def _spam_status(self, mc):
 		return 'STATUS: **{}**\nACTION: **{}**\nCOUNT: **{} MESSAGES**\nPER: **{} SECONDS**'.format(
@@ -336,34 +437,6 @@ class Security(AceMixin, commands.Cog):
 			mc.spam_count,
 			mc.spam_per
 		)
-
-	@commands.Cog.listener()
-	async def on_member_join(self, member):
-
-		gc = await GuildConfig.get_guild(member.guild.id)
-
-		if not gc.security:
-			return
-
-
-
-
-	def create_cooldown(self, count, per, type=commands.BucketType.member):
-		return commands.CooldownMapping.from_cooldown(count, per, type)
-
-	@commands.Cog.listener()
-	async def on_message(self, message):
-		return
-		if message.guild.id not in self._mentions:
-			return
-
-		for mention in message.mentions:
-			if self._mentions[message.guild.id].update_rate_limit(message) is not None:
-				await self.mention_handler(message)
-			# TODO: also loop over role mentions??
-
-	async def mention_handler(self, message):
-		print(message)
 
 
 def setup(bot):

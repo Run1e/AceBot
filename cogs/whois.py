@@ -91,7 +91,10 @@ class WhoIs(AceMixin, commands.Cog):
 
 		nicks = []
 
-		for nick in reversed(nicks_data[:-1]):
+		# TODO: make paginated, low pri
+		# also, will actually fail on too many nicks. like 9?
+
+		for nick in reversed(nicks_data):
 			nick_actual = nick.get('nick')
 
 			if nick_actual not in nicks:

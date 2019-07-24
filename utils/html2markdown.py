@@ -62,6 +62,9 @@ def html2markdown(html, escaper=None, url=None, big_box=False, language=None, pa
 	if language is not None and big_box is False:
 		raise ValueError('Cannot have code box language with small boxes. Set big_box=True')
 
+	if not callable(escaper):
+		raise ValueError('No callable escaper set. use \'discord.utils.escape_markdown\' if using discord.py')
+
 	# tags that only prepends something
 	prepend = dict(
 		br='\n',  	# linebreak

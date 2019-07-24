@@ -27,7 +27,9 @@ EXTENSIONS = (
 	'cogs.security',
 	'cogs.hl',
 	'cogs.tags',
-	'cogs.meta'
+	'cogs.meta',
+	'cogs.remind',
+	'cogs.welcome'
 )
 
 
@@ -68,11 +70,11 @@ class AceBot(commands.Bot):
 				timeout=aiohttp.ClientTimeout(total=5)
 			)
 
+			self.db = await asyncpg.create_pool(DB_BIND)
+
 			for extension in EXTENSIONS:
 				log.info(f'loading {extension}')
 				self.load_extension(extension)
-
-			self.db = await asyncpg.create_pool(DB_BIND)
 
 		await self.change_presence(activity=BOT_ACTIVITY)
 

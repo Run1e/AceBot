@@ -11,6 +11,7 @@ CREATE TABLE IF NOT EXISTS config (
 	guild_id 			BIGINT UNIQUE NOT NULL,
 	prefix 				VARCHAR(8),
 	mod_role_id			BIGINT NULL,
+	mute_role_id		BIGINT NULL,
 	star_channel_id		BIGINT NULL,
 	star_limit			SMALLINT NULL
 );
@@ -19,7 +20,6 @@ CREATE TABLE IF NOT EXISTS config (
 CREATE TABLE IF NOT EXISTS mod (
 	id 					SERIAL UNIQUE,
 	guild_id 			BIGINT UNIQUE NOT NULL,
-	mute_role_id		BIGINT NULL,
 	
 	join_enabled		BOOLEAN NOT NULL DEFAULT FALSE,
 	join_action			SMALLINT NOT NULL DEFAULT 0 CHECK (join_action >= 0 AND join_action <= 2),
@@ -126,14 +126,6 @@ CREATE TABLE IF NOT EXISTS tag (
 	content		VARCHAR(2000) NOT NULL
 );
 
--- welcome messages
-CREATE TABLE IF NOT EXISTS welcome (
-	id			SERIAL UNIQUE,
-	guild_id	BIGINT UNIQUE NOT NULL,
-	channel_id	BIGINT NOT NULL,
-	content		VARCHAR(2000)
-);
-
 -- command log
 CREATE TABLE IF NOT EXISTS log (
 	id			SERIAL UNIQUE,
@@ -170,7 +162,37 @@ CREATE TABLE IF NOT EXISTS docs_param (
 	value		TEXT NOT NULL
 );
 
+CREATE TABLE IF NOT EXISTS remind (
+	id			SERIAL UNIQUE,
+	guild_id	BIGINT NOT NULL,
+	channel_id	BIGINT NOT NULL,
+	user_id		BIGINT NOT NULL,
+	made_on		TIMESTAMP NOT NULL,
+	remind_on	TIMESTAMP NOT NULL,
+	message		TEXT
+);
+
+CREATE TABLE IF NOT EXISTS welcome (
+	id			SERIAL UNIQUE,
+	guild_id	BIGINT UNIQUE NOT NULL,
+	channel_id	BIGINT,
+	enabled		BOOLEAN NOT NULL DEFAULT TRUE,
+	content		VARCHAR(1024)
+);
+
 '''
+
+'''
+		await RemindMeEntry.create(
+			guild_id=ctx.guild.id,
+			channel_id=ctx.channel.id,
+			user_id=ctx.author.id,
+			made_on=now,
+			remind_on=now + delta,
+			message=message
+		)
+'''
+
 
 def log(connection, message):
 	print(message)
