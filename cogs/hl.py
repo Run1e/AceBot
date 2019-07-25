@@ -43,7 +43,7 @@ class Highlighter(AceMixin, commands.Cog):
 		)
 
 		await self.db.execute(
-			'INSERT INTO highlight_message (guild_id, channel_id, user_id, message_id) VALUES ($1, $2, $3, $4)',
+			'INSERT INTO highlight_msg (guild_id, channel_id, user_id, message_id) VALUES ($1, $2, $3, $4)',
 			ctx.guild.id, ctx.channel.id, ctx.author.id, message.id
 		)
 
@@ -57,7 +57,7 @@ class Highlighter(AceMixin, commands.Cog):
 			return
 
 		if await self.db.execute(
-			'DELETE FROM highlight_message WHERE user_id=$1 AND message_id=$2',
+			'DELETE FROM highlight_msg WHERE user_id=$1 AND message_id=$2',
 			payload.user_id, payload.message_id
 		) == 'DELETE 0':
 			return

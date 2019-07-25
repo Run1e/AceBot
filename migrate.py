@@ -78,7 +78,7 @@ CREATE TABLE IF NOT EXISTS highlight_lang (
 );
 
 -- highlighter messages
-CREATE TABLE IF NOT EXISTS highlight_message (
+CREATE TABLE IF NOT EXISTS highlight_msg (
 	id			SERIAL UNIQUE,
 	guild_id	BIGINT NOT NULL,
 	channel_id	BIGINT NOT NULL,
@@ -87,7 +87,7 @@ CREATE TABLE IF NOT EXISTS highlight_message (
 );
 
 -- starmessage
-CREATE TABLE IF NOT EXISTS star_message (
+CREATE TABLE IF NOT EXISTS star_msg (
 	id				SERIAL UNIQUE,
 	guild_id		BIGINT NOT NULL,
 	channel_id		BIGINT NOT NULL,
@@ -101,7 +101,7 @@ CREATE TABLE IF NOT EXISTS star_message (
 -- starrers
 CREATE TABLE IF NOT EXISTS starrers (
 	id 			SERIAL UNIQUE,
-	star_id		INTEGER REFERENCES star_message (id),
+	star_id		INTEGER REFERENCES star_msg (id),
 	user_id		BIGINT NOT NULL,
 	UNIQUE (star_id, user_id)
 );
@@ -137,7 +137,7 @@ CREATE TABLE IF NOT EXISTS log (
 );
 
 -- docs stuff
-CREATE TABLE IF NOT EXISTS docs (
+CREATE TABLE IF NOT EXISTS docs_entry (
 	id			SERIAL UNIQUE,
 	content		TEXT NULL,
 	page		TEXT UNIQUE
@@ -145,19 +145,19 @@ CREATE TABLE IF NOT EXISTS docs (
 
 CREATE TABLE IF NOT EXISTS docs_name (
 	id			SERIAL UNIQUE,
-	docs_id		INT REFERENCES docs (id) NOT NULL,
-	syntax		TEXT NOT NULL
+	docs_id		INT REFERENCES docs_entry (id) NOT NULL,
+	name		TEXT NOT NULL
 );
 
 CREATE TABLE IF NOT EXISTS docs_syntax (
 	id			SERIAL UNIQUE,
-	docs_id		INT REFERENCES docs (id) NOT NULL,
+	docs_id		INT REFERENCES docs_entry (id) NOT NULL,
 	syntax		TEXT NOT NULL
 );
 
 CREATE TABLE IF NOT EXISTS docs_param (
 	id			SERIAL UNIQUE,
-	docs_id		INT REFERENCES docs (id) NOT NULL,
+	docs_id		INT REFERENCES docs_entry (id) NOT NULL,
 	name		TEXT NOT NULL,
 	value		TEXT NOT NULL
 );
@@ -180,17 +180,22 @@ CREATE TABLE IF NOT EXISTS welcome (
 	content		VARCHAR(1024)
 );
 
-'''
+CREATE TABLE IF NOT EXISTS role_entry (
+	id			SERIAL UNIQUE,
+	role_id		BIGINT UNIQUE NOT NULL,
+	emoji		VARCHAR(8) NOT NULL,
+	name		VARCHAR(248) NOT NULL,
+	description	VARCHAR(1024) NOT NULL
+);
 
-'''
-		await RemindMeEntry.create(
-			guild_id=ctx.guild.id,
-			channel_id=ctx.channel.id,
-			user_id=ctx.author.id,
-			made_on=now,
-			remind_on=now + delta,
-			message=message
-		)
+CREATE TABLE IF NOT EXISTS role (
+	id			SERIAL UNIQUE,
+	guild_id	BIGINT UNIQUE NOT NULL,
+	channel_id	BIGINT,
+	message_id	BIGINT,
+	roles		INTEGER[25] NOT NULL DEFAULT ARRAY[]::INTEGER[25]
+);
+
 '''
 
 

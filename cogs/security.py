@@ -206,7 +206,7 @@ class Security(AceMixin, commands.Cog):
 					pass
 
 
-
+	# TODO just use mode.name dingus
 	def _print_securitymode(self, mode):
 		if mode == SecurityAction.MUTE:
 			return 'MUTE'

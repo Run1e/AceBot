@@ -1,6 +1,7 @@
 import os, aiohttp, json, shutil
 
-from docs_parser.handlers import *
+from utils.docs_parser.handlers import *
+from utils.html2markdown import html2markdown
 
 from zipfile import ZipFile
 from bs4 import BeautifulSoup
@@ -112,7 +113,7 @@ async def parse_docs(handler, on_update, fetch=True):
 				if p is None:
 					desc = None
 				else:
-					md = html2markdown(str(p), URL)
+					md = html2markdown(str(p), escaper=discord.utils.escape_markdown, url=URL)
 
 					sp = md.split('.\n')
 					desc = md[0:len(sp[0]) + 1] if len(sp) > 1 else md

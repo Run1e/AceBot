@@ -29,7 +29,9 @@ EXTENSIONS = (
 	'cogs.tags',
 	'cogs.meta',
 	'cogs.remind',
-	'cogs.welcome'
+	'cogs.welcome',
+	'cogs.ahk.ahk',
+	'cogs.roles'
 )
 
 

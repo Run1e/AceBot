@@ -156,7 +156,7 @@ class Stars(AceMixin, commands.Cog):
 			# TODO: clean this one up
 			await self.db.execute(
 				'''
-				INSERT INTO star_message
+				INSERT INTO star_msg
 				(guild_id, channel_id, user_id, message_id, star_message_id, starred_at, starrer_id)
 				VALUES ($1, $2, $3, $4, $5, $6, $7)
 				''',
@@ -213,7 +213,7 @@ class Stars(AceMixin, commands.Cog):
 			return
 
 		# craft StarContext
-		sm = await self.db.fetchrow('SELECT * FROM star_message WHERE message_id=$1 OR star_message_id=$1', message.id)
+		sm = await self.db.fetchrow('SELECT * FROM star_msg WHERE message_id=$1 OR star_message_id=$1', message.id)
 
 		try:
 			if sm is None:
@@ -227,9 +227,8 @@ class Stars(AceMixin, commands.Cog):
 				else:
 					ctx = StarContext(starrer, star_message=message, record=sm)
 
-
 			# insert star_channel
-			gc = GuildConfig.get_guild(payload.guild_id)
+			gc = await GuildConfig.get_guild(payload.guild_id)
 			star_channel_id = gc.star_channel_id
 			if star_channel_id is None:
 				raise self.SB_NOT_SET_ERROR
@@ -256,15 +255,18 @@ class Stars(AceMixin, commands.Cog):
 	@commands.Cog.listener()
 	async def on_raw_message_delete(self, payload):
 		sm = await self.db.fetchrow(
-			'SELECT * FROM star_message WHERE message_id=$1 OR star_message_id=$1',
+			'SELECT * FROM star_msg WHERE message_id=$1 OR star_message_id=$1',
 			payload.message_id
 		)
 
 		if sm is None:
 			return
 
+		# delete starrers
+		await self.db.execute('DELETE from starrers WHERE star_id=$1', sm.get('id'))
+
 		# delete from db
-		await self.db.execute('DELETE FROM star_message WHERE id=$1', sm.get('id'))
+		await self.db.execute('DELETE FROM star_msg WHERE id=$1', sm.get('id'))
 
 		if payload.message_id == sm.get('star_message_id'):
 			return
@@ -275,7 +277,7 @@ class Stars(AceMixin, commands.Cog):
 		if guild is None:
 			return
 
-		gc = GuildConfig.get_guild(guild.id)
+		gc = await GuildConfig.get_guild(guild.id)
 		star_channel_id = gc.star_channel_id
 		if star_channel_id is None:
 			return
@@ -296,7 +298,7 @@ class Stars(AceMixin, commands.Cog):
 		# TODO: finish this
 
 		sms = await self.db.fetch(
-			'SELECT * FROM star_message WHERE message_id=ANY($1::bigint[]) OR star_message_id=ANY($1::bigint[])',
+			'SELECT * FROM star_msg WHERE message_id=ANY($1::bigint[]) OR star_message_id=ANY($1::bigint[])',
 			list(payload.message_id)
 		)
 
@@ -308,13 +310,13 @@ class Stars(AceMixin, commands.Cog):
 		print(ids)
 
 		# delete from db
-		await self.db.execute('DELETE FROM star_message WHERE id=ANY($1::integer[])', )
+		await self.db.execute('DELETE FROM star_msg WHERE id=ANY($1::integer[])', )
 
 		guild = self.bot.get_guild(payload.guild_id)
 		if guild is None:
 			return
 
-		gc = GuildConfig.get_guild(payload.guild_id)
+		gc = await GuildConfig.get_guild(payload.guild_id)
 		star_channel_id = gc.star_channel_id
 		if star_channel_id is None:
 			return

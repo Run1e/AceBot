@@ -1,6 +1,7 @@
 __pycache__
 .idea
 data
+temp
 logs
 venv
 config.py

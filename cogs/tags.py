@@ -12,6 +12,7 @@ from utils.pager import Pager
 log = logging.getLogger(__name__)
 
 
+# TODO maybe remove
 def build_tag_name(record):
 	name = record.get('name')
 	if record.get('alias') is not None:
@@ -126,6 +127,7 @@ class TagPager(Pager):
 
 
 class Tags(AceMixin, commands.Cog):
+	'''Store and bring up text using tags.'''
 
 	# TODO: add tag search
 
@@ -201,7 +203,7 @@ class Tags(AceMixin, commands.Cog):
 		await p.go()
 
 	@tag.command()
-	async def raw(self, ctx, tag_name: TagViewConverter):
+	async def raw(self, ctx, *, tag_name: TagViewConverter):
 		'''View raw contents of a tag. Useful when editing tags.'''
 
 		tag_name, record = tag_name
@@ -280,7 +282,7 @@ class Tags(AceMixin, commands.Cog):
 	async def tags(self, ctx, member: discord.Member = None):
 		'''View your or someone elses tags.'''
 
-		await ctx.invoke(self._list, member=ctx.author or member)
+		await ctx.invoke(self._list, member=member or ctx.author)
 
 
 def setup(bot):

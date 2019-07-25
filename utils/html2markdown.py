@@ -39,7 +39,9 @@ class UrlTagHandler:
 
 		greedy_chars = 3
 
-		if credit > len(full):
+		if credit is None:
+			return text
+		elif credit > len(full):
 			return full
 		elif credit >= len(use_url) + 4 + greedy_chars:
 			return fmt.format(text[0:credit - len(use_url) - 4], use_url)
@@ -116,25 +118,30 @@ def html2markdown(html, escaper=None, url=None, big_box=False, language=None, pa
 				if entry == '\n':
 					continue
 
+				# remove reference...
+				entry = str(entry)
+
 				if tag.name in specials:
 					to_add = specials[tag.name].convert(tag, entry, credit)
-					if len(to_add) > credit:
+					if credit and len(to_add) > credit:
 						raise MaxLengthReached()
 				else:
 					to_add = escaper(entry)
-					if len(to_add) > credit:
+					if credit and len(to_add) > credit:
 						raise MaxLengthReached(result + to_add[0:credit])
 
 				result += to_add
-				credit -= len(to_add)
+				if credit is not None:
+					credit -= len(to_add)
 			else:
 				front, back = get_wrapper(entry.name)
 
-				if credit <= len(front + back):
+				if credit and credit <= len(front + back):
 					raise MaxLengthReached(result)
 
 				result += front
-				credit -= len(front + back)
+				if credit is not None:
+					credit -= len(front + back)
 
 				try:
 					to_add, credit = traverse(entry, credit)
@@ -148,9 +155,8 @@ def html2markdown(html, escaper=None, url=None, big_box=False, language=None, pa
 
 		return result, credit
 
-
 	try:
-		r, c = traverse(bs, max_length - 3)
+		r, c = traverse(bs, None if max_length is None else max_length - 3)
 	except MaxLengthReached as exc:
 		r = exc.message.strip() + '...'
 

@@ -10,7 +10,7 @@ class GuildConfig:
 	lock = asyncio.Lock()
 
 	def __init__(self, guild_id, record):
-		self.id = guild_id
+		self.id = record.get('id')
 		self.guild_id = guild_id
 		self.prefix = record.get('prefix')
 		self.mod_role_id = record.get('mod_role_id')
@@ -19,7 +19,7 @@ class GuildConfig:
 		self.star_limit = record.get('star_limit')
 
 	async def set(self, key, value):
-		await self.bot.db.execute(f'UPDATE config SET {key}=$1 WHERE id=$2', value, self.settings['id'])
+		await self.bot.db.execute(f'UPDATE config SET {key}=$1 WHERE id=$2', value, self.id)
 		setattr(self, key, value)
 
 	@classmethod
