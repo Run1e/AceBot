@@ -2,14 +2,14 @@ import discord
 import logging
 import emoji
 
-from asyncpg.exceptions import UniqueViolationError
 from discord.ext import commands
+from asyncpg.exceptions import UniqueViolationError
 
 from cogs.mixins import AceMixin
 from utils.checks import is_mod_pred
 from utils.pager import Pager
 
-# TODO: role add rate limiting
+# TODO: role add rate limiting?
 
 
 class RolePager(Pager):
@@ -30,7 +30,6 @@ class EmojiConverter(commands.Converter):
 	async def convert(self, ctx, emoj):
 		if emoj not in emoji.UNICODE_EMOJI:
 			raise commands.CommandError('Unknown emoji.')
-
 		return emoj
 
 
@@ -39,7 +38,7 @@ class RoleIDConverter(commands.Converter):
 		try:
 			role = await commands.RoleConverter().convert(ctx, id)
 			return role.id
-		except TypeError as exc:
+		except TypeError:
 			try:
 				ret = int(id)
 				return ret
@@ -137,7 +136,7 @@ class Roles(AceMixin, commands.Cog):
 		)
 
 		e.set_author(
-			name='{} Role Selector'.format(ctx.guild.name),
+			name='{} Roles'.format(ctx.guild.name),
 			icon_url=ctx.guild.icon_url
 		)
 
@@ -156,9 +155,16 @@ class Roles(AceMixin, commands.Cog):
 		if conf.get('message_id') is not None:
 			old_channel = ctx.guild.get_channel(conf.get('channel_id'))
 			if old_channel is not None:
-				old_message = await old_channel.fetch_message(conf.get('message_id'))
-				if old_message is not None:
+				try:
+					old_message = await old_channel.fetch_message(conf.get('message_id'))
 					await old_message.delete()
+				except discord.HTTPException:
+					pass
+
+		try:
+			await ctx.message.delete()
+		except discord.HTTPException:
+			pass
 
 		msg = await ctx.send(embed=e)
 

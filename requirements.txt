@@ -5,3 +5,4 @@ fuzzywuzzy
 lxml
 beautifulsoup4
 tabulate
+emoji

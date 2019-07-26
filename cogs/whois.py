@@ -119,29 +119,29 @@ class WhoIs(AceMixin, commands.Cog):
 
 	@commands.command()
 	@commands.bot_has_permissions(embed_links=True)
-	async def info(self, ctx, user: discord.Member = None):
+	async def info(self, ctx, member: discord.Member = None):
 		'''Display information about user or self.'''
 
-		if user is None:
-			user = ctx.author
+		if member is None:
+			member = ctx.author
 
 		e = discord.Embed(description='')
 
-		if user.bot:
+		if member.bot:
 			e.description = 'This account is a bot.\n\n'
 
-		e.description += user.mention
+		e.description += member.mention
 
-		e.add_field(name='Status', value=user.status)
+		e.add_field(name='Status', value=member.status)
 
-		if user.activity:
-			e.add_field(name='Activity', value=user.activity)
+		if member.activity:
+			e.add_field(name='Activity', value=member.activity)
 
-		e.set_author(name=f'{user.name}#{user.discriminator}', icon_url=user.avatar_url)
+		e.set_author(name=f'{member.name}#{member.discriminator}', icon_url=member.avatar_url)
 
 		now = datetime.utcnow()
-		created = user.created_at
-		joined = user.joined_at
+		created = member.created_at
+		joined = member.joined_at
 
 		e.add_field(
 			name='Account age',
@@ -153,10 +153,10 @@ class WhoIs(AceMixin, commands.Cog):
 			value=f'{pretty_timedelta(now - joined)}\nJoined {joined.day}/{joined.month}/{joined.year}'
 		)
 
-		if len(user.roles) > 1:
-			e.add_field(name='Roles', value=' '.join(role.mention for role in reversed(user.roles[1:])))
+		if len(member.roles) > 1:
+			e.add_field(name='Roles', value=' '.join(role.mention for role in reversed(member.roles[1:])))
 
-		e.set_footer(text='ID: ' + str(user.id))
+		e.set_footer(text='ID: ' + str(member.id))
 
 		await ctx.send(embed=e)
 

@@ -11,6 +11,31 @@ to have others test:
 - more with the starboard, probably
 
 
+ahk commands:
+- docs
+- params
+
+
+moderator commands:
+- clear
+- info
+- perms
+
+
+tags todo:
+- tag search
+- tag transfer
+
+
+starboard todo:
+- star delete
+- star fix
+- star info
+- star random
+- star show
+- star top
+
+
 todo:
 - write data migrator (fuck I wanna die)
 - command order decides help menu order. go through and re-order by importance. also groups can be hidden

@@ -22,9 +22,9 @@ class Welcome(AceMixin, commands.Cog):
 	'''Show welcome messages to new members.
 
 	Welcome message replacements:
-	`{user}` -> member mention
-	`{guild}` -> server name
-	`{member_count}` -> server member count
+	`{user}` - member mention
+	`{guild}` - server name
+	`{member_count}` - server member count
 	'''
 
 	async def get_welcome(self, guild_id, construct=True):
