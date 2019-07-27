@@ -37,5 +37,6 @@ starboard todo:
 
 
 todo:
+- fix define
 - write data migrator (fuck I wanna die)
 - command order decides help menu order. go through and re-order by importance. also groups can be hidden

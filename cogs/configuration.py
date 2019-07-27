@@ -2,21 +2,8 @@ import discord
 from discord.ext import commands
 
 from cogs.mixins import AceMixin
-from utils.checks import is_mod_pred
+from utils.checks import is_mod
 from utils.guildconfig import GuildConfig
-
-"""
-guild config menu:
-- prefix
-- module disable/enable
-- role that can moderate the bot
-"""
-
-"""
-db:
-
-
-"""
 
 
 class MemberID(commands.MemberConverter):
@@ -41,9 +28,6 @@ class SettingConverter(commands.Converter):
 
 class GuildConfigurer(AceMixin, commands.Cog):
 
-	async def cog_check(self, ctx):
-		return await is_mod_pred(ctx)
-
 	@commands.command()
 	@commands.has_permissions(administrator=True)  # only allow administrators to change the moderator role
 	async def modrole(self, ctx, *, role: discord.Role = None):
@@ -51,9 +35,23 @@ class GuildConfigurer(AceMixin, commands.Cog):
 
 		gc = await GuildConfig.get_guild(ctx.guild.id)
 
+		if role is None:
+			role_id = gc.mod_role_id
+			if role_id is None:
+				raise commands.CommandError('Mod role not set.')
 
+			role = ctx.guild.get_role(role_id)
+			if role is None:
+				raise commands.CommandError('Mod role set but not found. Try setting it again.')
+		else:
+			await gc.set('mod_role_id', role.id)
+
+		await ctx.send(
+			f'Mod role has been set to `{role.name}`. Members with this role can configure and manage the bot.'
+		)
 
 	@commands.command()
+	@is_mod()
 	async def prefix(self, ctx, *, prefix: PrefixConverter):
 		'''Set a guild-specific prefix.'''
 

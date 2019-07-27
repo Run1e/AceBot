@@ -47,6 +47,8 @@ class AceBot(commands.Bot):
 			description=DESCRIPTION
 		)
 
+		self.aiohttp = None
+		self.db = None
 		self.startup_time = datetime.utcnow()
 
 		# do blacklist check before all commands
@@ -60,7 +62,7 @@ class AceBot(commands.Bot):
 	async def on_ready(self):
 		'''Called when discord.py has finished connecting to the gateway.'''
 
-		if not hasattr(self, 'db'):
+		if self.db is None:
 			log.info('Creating database connection...')
 
 			GuildConfig.set_bot(self)
@@ -101,7 +103,7 @@ class AceBot(commands.Bot):
 			ctx.prefix = await self.prefix_resolver(self, message)
 			ctx.command = self.get_command('help')
 			await ctx.reinvoke()
-		elif hasattr(self, 'db') and self.db._initialized: # only process commands if db is initialized
+		elif self.db is not None and self.db._initialized: # only process commands if db is initialized
 			await self.process_commands(message)
 
 	@property

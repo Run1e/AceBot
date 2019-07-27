@@ -27,13 +27,13 @@ CREATE TABLE IF NOT EXISTS mod (
 	
 	spam_enabled		BOOLEAN NOT NULL DEFAULT FALSE,
 	spam_action			SMALLINT NOT NULL DEFAULT 0 CHECK (spam_action >= 0 AND spam_action <= 2),
-	spam_count			SMALLINT NULL,
-	spam_per			FLOAT NULL,
+	spam_count			SMALLINT NOT NULL DEFAULT 8,
+	spam_per			FLOAT NOT NULL DEFAULT 10.0,
 	
 	mention_enabled		BOOLEAN NOT NULL DEFAULT FALSE,
 	mention_action		SMALLINT NOT NULL DEFAULT 0 CHECK (mention_action >= 0 AND mention_action <= 2),
-	mention_count		SMALLINT NULL,
-	mention_per			FLOAT NULL
+	mention_count		SMALLINT NOT NULL DEFAULT 8,
+	mention_per			FLOAT NOT NULL DEFAULT 16.0
 );
 
 -- join kick patterns

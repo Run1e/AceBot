@@ -57,9 +57,6 @@ class General(AceMixin, commands.Cog):
 		'''Get a random fact.'''
 
 		fact = await self.db.fetchval('SELECT content FROM facts ORDER BY random()')
-
-		print(fact)
-
 		await ctx.send(fact)
 
 	@commands.command(name='8', aliases=['8ball'])

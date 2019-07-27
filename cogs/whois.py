@@ -116,7 +116,6 @@ class WhoIs(AceMixin, commands.Cog):
 
 		await ctx.send(embed=e)
 
-
 	@commands.command()
 	@commands.bot_has_permissions(embed_links=True)
 	async def info(self, ctx, member: discord.Member = None):

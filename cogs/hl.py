@@ -2,6 +2,7 @@ import discord
 from discord.ext import commands
 
 from cogs.ahk.ids import AHK_GUILD_ID
+from utils.checks import is_mod
 from cogs.mixins import AceMixin
 
 DELETE_EMOJI = '\U0000274C'
@@ -119,6 +120,7 @@ class Highlighter(AceMixin, commands.Cog):
 			await ctx.send(f'Set your specific highlighting language to \'{language}\'.')
 
 	@commands.command(aliases=['guildlang'])
+	@is_mod()
 	async def serverlang(self, ctx, *, language: LangConverter):
 		'''Set a guild-specific highlighting language. Can be overridden individually by users.'''
 

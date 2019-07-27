@@ -5,6 +5,7 @@ from discord.ext import commands, tasks
 from datetime import datetime, timedelta
 
 from cogs.mixins import AceMixin
+from utils.converters import TimeMultConverter, TimeDeltaConverter
 from utils.string_helpers import shorten
 from utils.time import pretty_seconds
 from utils.pager import Pager
@@ -17,33 +18,6 @@ CHECK_EVERY = 60
 DEFAULT_REMINDER_MESSAGE = 'Hey, wake up!'
 MAX_DELTA = timedelta(days=365)
 MAX_REMINDERS = 12
-
-
-class TimeMultConverter(commands.Converter):
-	async def convert(self, ctx, mult):
-		# TODO: try/catch this
-		mult = float(mult)
-
-		if mult < 0.0:
-			raise commands.CommandError('Unit has to be more than 0.')
-
-		return mult
-
-
-class TimeDeltaConverter(commands.Converter):
-	async def convert(self, ctx, unit):
-		unit = unit.lower()
-
-		if unit in ('m', 'min', 'mins', 'minute', 'minutes'):
-			return timedelta(minutes=1)
-		elif unit in ('h', 'hr', 'hrs', 'hour', 'hours'):
-			return timedelta(hours=1)
-		elif unit in ('d', 'day', 'days'):
-			return timedelta(days=1)
-		elif unit in ('w', 'wk', 'week', 'weeks'):
-			return timedelta(weeks=1)
-		else:
-			raise commands.BadArgument('Unknown time type.')
 
 
 class RemindPager(Pager):
