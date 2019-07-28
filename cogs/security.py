@@ -1,6 +1,7 @@
 import discord
 import asyncio
 import re
+import logging
 
 from discord.ext import commands, tasks
 from enum import IntEnum
@@ -12,19 +13,12 @@ from utils.converters import TimeMultConverter, TimeDeltaConverter
 from utils.time import pretty_timedelta
 from utils.checks import is_mod_pred
 
-"""
-
-security
-	overview of security settings
-
-	enable join|mention|spam
-	disable join|mention|spam
-
-"""
 
 ALLOWED_GUILDS = (115993023636176902, 517692823621861407)
 SUBMODULES = ('join', 'mention', 'spam')
 LOCK = asyncio.Lock()
+
+log = logging.getLogger(__name__)
 
 
 class PatternConverter(commands.Converter):
@@ -207,15 +201,19 @@ class Security(AceMixin, commands.Cog):
 			return
 
 		if mc.join_age is not None and member.created_at is not None:
-			if mc.join_age > datetime.utcnow() - mc.created_at:
+			if mc.join_age > datetime.utcnow() - member.created_at:
 				await self._do_action(member, SecurityAction(mc.join_action))
+				return
 
 		pats = await self.db.fetch(
 			'SELECT * FROM kick_pattern WHERE guild_id=$1 AND disabled=$2',
 			member.guild.id, False
 		)
 
-		print(pats)
+		for pat in pats:
+			if re.fullmatch(pat.get('pattern'), member.name):
+				await self._do_action(member, SecurityAction(mc.join_action))
+				return
 
 	async def cog_check(self, ctx):
 		return ctx.guild.id in ALLOWED_GUILDS and await is_mod_pred(ctx)
@@ -223,11 +221,9 @@ class Security(AceMixin, commands.Cog):
 	def _print_status(self, boolean):
 		return 'ENABLED' if boolean else 'DISABLED'
 
-	async def _enable_feature(self, ctx, module):
-		if ctx.guild.id not in (AHK_GUILD_ID, 517692823621861407):
-			raise commands.CommandError(
-				'Currently unavailable. Contact dev directly to have security features enabled.'
-			)
+	@commands.command()
+	async def jt(self, ctx, member: discord.Member):
+		await self.on_member_join(member)
 
 	@commands.group(aliases=['sec'], invoke_without_command=True)
 	async def security(self, ctx):
