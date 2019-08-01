@@ -4,7 +4,7 @@ import re
 import logging
 
 from discord.ext import commands, tasks
-from enum import IntEnum
+from enum import Enum, IntEnum
 from datetime import datetime
 
 from cogs.mixins import AceMixin
@@ -12,6 +12,7 @@ from cogs.ahk.ids import AHK_GUILD_ID
 from utils.converters import TimeMultConverter, TimeDeltaConverter
 from utils.time import pretty_timedelta
 from utils.checks import is_mod_pred
+from utils.severity import SeverityColors
 
 
 ALLOWED_GUILDS = (115993023636176902, 517692823621861407)
@@ -82,7 +83,7 @@ class ModConfig:
 	_guilds = dict()
 
 	@classmethod
-	async def get_guild(cls, bot, guild_id):
+	async def from_guild(cls, bot, guild_id):
 		if guild_id in cls._guilds:
 			return cls._guilds[guild_id]
 
@@ -99,13 +100,16 @@ class ModConfig:
 		self.bot = bot
 		self.id = record.get('id')
 		self.guild_id = record.get('guild_id')
+
 		self.mute_role_id = record.get('mute_role_id')
+		self.log_channel_id = record.get('log_channel_id')
 
 		self.join_enabled = record.get('join_enabled')
 		self.mention_enabled = record.get('mention_enabled')
 		self.spam_enabled = record.get('spam_enabled')
 
 		self.join_age = record.get('join_age')
+		self.join_ignore_age = record.get('join_ignore_age')
 
 		self.join_action = record.get('join_action')
 		self.mention_action = record.get('mention_action')
@@ -123,6 +127,32 @@ class ModConfig:
 
 		self._guilds[guild_id] = self
 		return self
+
+	@property
+	def guild(self):
+		return self.bot.get_guild(self.guild_id)
+
+	@property
+	def mute_role(self):
+		if self.mute_role_id is None:
+			return None
+
+		guild = self.bot.get_guild(self.guild_id)
+		if guild is None:
+			return None
+
+		return guild.get_role(self.mute_role_id)
+
+	@property
+	def log_channel(self):
+		if self.log_channel_id is None:
+			return None
+
+		guild = self.bot.get_guild(self.guild_id)
+		if guild is None:
+			return None
+
+		return guild.get_channel(self.log_channel_id)
 
 	def create_spam_cooldown(self):
 		self.spam_cooldown = commands.CooldownMapping.from_cooldown(
@@ -163,36 +193,93 @@ class Security(AceMixin, commands.Cog):
 		if guild_id not in ALLOWED_GUILDS:
 			raise commands.CommandError('This feature is current reserved for selected guilds, sorry.')
 
-		return await ModConfig.get_guild(self.bot, guild_id)
+		return await ModConfig.from_guild(self.bot, guild_id)
 
-	async def _do_action(self, member, action, reason=None):
-		print('{} {}'.format(action, member))
+	async def log(self, action=None, reason=None, severity=None, author=None, channel=None):
+		if channel is None:
+			return
+
+		severity = severity or SeverityColors.LOW
+
+		e = discord.Embed(
+			title=action,
+			description=reason,
+			color=severity.value,
+			timestamp=datetime.utcnow()
+		)
+
+		e.set_author(name=author.display_name, icon_url=author.avatar_url)
+		e.set_footer(text='{} - ID: {}'.format(severity.name, author.id))
+
+		await channel.send(embed=e)
+
+	async def _do_action(self, mc, member, action, reason=None):
+		'''Called when an event happens.'''
+		try:
+			if action is SecurityAction.MUTE:
+				if mc.mute_role is None:
+					raise ValueError('No mute role set.')
+				await member.add_roles(mc.mute_role, reason=reason)
+
+			elif action is SecurityAction.KICK:
+				await member.kick(reason=reason)
+
+			elif action is SecurityAction.BAN:
+				await member.ban(reason=reason)
+
+		except Exception as exc:
+			await self.log(
+				channel=mc.log_channel,
+				author=member,
+				action='{} FAILED'.format(action.name),
+				reason=str(exc),
+				severity=SeverityColors.HIGH
+			)
+
+			return
+
+		await self.log(
+			channel=mc.log_channel,
+			author=member,
+			action=action.name,
+			reason=reason,
+			severity=dict(MUTE=SeverityColors.LOW, KICK=SeverityColors.MEDIUM, BAN=SeverityColors.HIGH)[action.name]
+		)
 
 	@commands.Cog.listener()
 	async def on_message(self, message):
 		if message.guild is None:
 			return
 
+		if message.guild.id not in ALLOWED_GUILDS:
+			return
+
 		if message.author.bot:
 			return
 
-		#if await is_mod_pred(message):
-		#	return
+		if await is_mod_pred(message):
+			return
 
 		mc = await self.get_config(message.guild.id)
 
 		if mc.spam_enabled:
 			if mc.spam_cooldown.update_rate_limit(message) is not None:
-				await self._do_action(message.author, SecurityAction(mc.spam_action))
+				await self._do_action(
+					mc, message.author, SecurityAction(mc.spam_action),
+					reason='Member is spamming'
+				)
 
 		if mc.mention_enabled:
 			for mention in message.mentions:
 				if mc.mention_cooldown.update_rate_limit(message) is not None:
-					await self._do_action(message.author, SecurityAction(mc.mention_action))
+					await self._do_action(
+						mc, message.author, SecurityAction(mc.mention_action),
+						reason='Member is mention spamming'
+					)
 
 	@commands.Cog.listener()
 	async def on_member_join(self, member):
-		if member.guild.id not in ModConfig._guilds:
+		if member.guild.id not in ALLOWED_GUILDS:
 			return
 
 		mc = await self.get_config(member.guild.id)
@@ -200,9 +287,23 @@ class Security(AceMixin, commands.Cog):
 		if not mc.join_enabled:
 			return
 
+		age = datetime.utcnow() - member.created_at
+
+		# ignore user if ignore_age is set and passed
+		if mc.join_ignore_age is not None:
+			if age > mc.join_ignore_age:
+				return
+
+		# do action if below minimum account age
 		if mc.join_age is not None and member.created_at is not None:
-			if mc.join_age > datetime.utcnow() - member.created_at:
-				await self._do_action(member, SecurityAction(mc.join_action))
+			if mc.join_age > age:
+				await self._do_action(
+					mc, member, SecurityAction(mc.join_action),
+					reason='Account age {}, which is younger than the limit of {}'.format(
+						pretty_timedelta(age), pretty_timedelta(mc.join_age)
+					)
+				)
+
 				return
 
 		pats = await self.db.fetch(
@@ -210,9 +311,14 @@ class Security(AceMixin, commands.Cog):
 			member.guild.id, False
 		)
 
+		# do action if matching any patterns
 		for pat in pats:
 			if re.fullmatch(pat.get('pattern'), member.name):
-				await self._do_action(member, SecurityAction(mc.join_action))
+				await self._do_action(
+					mc, member, SecurityAction(mc.join_action),
+					reason='Member name matched pattern: `{}`'.format(pat.get('pattern'))
+				)
+
 				return
 
 	async def cog_check(self, ctx):
@@ -222,8 +328,56 @@ class Security(AceMixin, commands.Cog):
 		return 'ENABLED' if boolean else 'DISABLED'
 
 	@commands.command()
-	async def jt(self, ctx, member: discord.Member):
-		await self.on_member_join(member)
+	async def mute(self, ctx, *, member: discord.Member):
+		'''Mute a member.'''
+
+		mc = await self.get_config(ctx.guild.id)
+
+		if mc.mute_role is None:
+			raise commands.CommandError('No mute role set.')
+
+		if mc.mute_role in member.roles:
+			raise commands.CommandError('Member already muted.')
+
+		reason = 'Muted by {} (ID: {})'.format(ctx.author.name, ctx.author.id)
+
+		await member.add_roles(mc.mute_role, reason=reason)
+		await ctx.send('{} muted.'.format(member.name))
+
+		await self.log(
+			guild=ctx.guild,
+			action='MUTE',
+			reason=reason,
+			severity=SeverityColors.LOW,
+			author=member,
+			channel=mc.log_channel
+		)
+
+	@commands.command()
+	async def unmute(self, ctx, *, member: discord.Member):
+		'''Unmute a member.'''
+
+		mc = await self.get_config(ctx.guild.id)
+
+		if mc.mute_role is None:
+			raise commands.CommandError('No mute role set.')
+
+		if mc.mute_role not in member.roles:
+			raise commands.CommandError('Member not previously muted.')
+
+		reason = 'Unmuted by {} (ID: {})'.format(ctx.author.name, ctx.author.id)
+
+		await member.remove_roles(mc.mute_role, reason=reason)
+		await ctx.send('{} unmuted.'.format(member.name))
+
+		await self.log(
+			guild=ctx.guild,
+			action='UNMUTE',
+			reason=reason,
+			severity=SeverityColors.LOW,
+			author=member,
+			channel=mc.log_channel
+		)
 
 	@commands.group(aliases=['sec'], invoke_without_command=True)
 	async def security(self, ctx):
@@ -231,9 +385,13 @@ class Security(AceMixin, commands.Cog):
 
 		mc = await self.get_config(ctx.guild.id)
 
-		e = discord.Embed(
-			description=f'VERIFICATION LEVEL: **{str(ctx.guild.verification_level).upper()}**'
+		desc = 'VERIFICATION LEVEL: **{}**''\nMUTE ROLE: {}\nLOG CHANNEL: {}'.format(
+			str(ctx.guild.verification_level).upper(),
+			mc.mute_role.mention if mc.mute_role else '**NOT SET**',
+			mc.log_channel.mention if mc.log_channel else '**NOT SET**',
 		)
+
+		e = discord.Embed(description=desc)
 
 		e.set_author(name='Security', icon_url=self.bot.user.avatar_url)
 		e.add_field(name='SPAM', value=await self._spam_status(mc))
@@ -241,6 +399,24 @@ class Security(AceMixin, commands.Cog):
 		e.add_field(name='JOIN', value=await self._join_status(mc), inline=False)
 
 		await ctx.send(embed=e)
+
+	@security.command()
+	async def muterole(self, ctx, *, role: discord.Role):
+		'''Set a role that will be given to muted members.'''
+
+		mc = await self.get_config(ctx.guild.id)
+
+		await mc.set('mute_role_id', role.id)
+		await ctx.send('Mute role set to {} (ID: {})'.format(role.name, role.id))
+
+	@security.command()
+	async def logchannel(self, ctx, *, channel: discord.TextChannel):
+		'''Set a text channel for logging incidents.'''
+
+		mc = await self.get_config(ctx.guild.id)
+
+		await mc.set('log_channel_id', channel.id)
+		await ctx.send('Log channel set to {} (ID: {})'.format(channel.mention, channel.id))
 
 	@security.command()
 	async def enable(self, ctx, *, module: SubmoduleConverter):
@@ -386,13 +562,14 @@ class Security(AceMixin, commands.Cog):
 		await ctx.invoke(self.join)
 
 	async def _join_status(self, mc):
-		return 'STATUS: **{}**\nACTION: **{}**\nACTIVE PATTERNS: **{}**\nMINIMUM AGE: **{}**'.format(
+		return 'STATUS: **{}**\nACTION: **{}**\nACTIVE PATTERNS: **{}**\nMINIMUM AGE: **{}**\nIGNORE AFTER AGE: **{}**'.format(
 			self._print_status(mc.join_enabled),
 			SecurityAction(mc.join_action).name,
 			await self.db.fetchval(
 				'SELECT COUNT(*) FROM kick_pattern WHERE guild_id=$1 AND disabled=FALSE', mc.guild_id
 			),
-			'NOT SET' if mc.join_age is None else (pretty_timedelta(mc.join_age).upper())
+			'NOT SET' if mc.join_age is None else (pretty_timedelta(mc.join_age).upper()),
+			'NOT SET' if mc.join_ignore_age is None else (pretty_timedelta(mc.join_ignore_age).upper()),
 		)
 
 	@join.command(name='age')
@@ -413,6 +590,25 @@ class Security(AceMixin, commands.Cog):
 
 		await mc.set('join_age', delta)
 		await ctx.send('New account age limit set: {}'.format(pretty_timedelta(delta)))
+
+	@join.command(name='ignoreage')
+	async def join_ignore_age(self, ctx, amount: TimeMultConverter = None, unit: TimeDeltaConverter = None):
+		'''Set a minimum age for new accounts. Clear/disable by doing `security join age`.'''
+
+		if amount is not None and unit is None:
+			raise commands.CommandError('Malformed input.')
+
+		mc = await self.get_config(ctx.guild.id)
+
+		if amount is None:
+			await mc.set('join_ignore_age', None)
+			await ctx.send('Ignore account age limit disabled.')
+			return
+
+		delta = amount * unit
+
+		await mc.set('join_ignore_age', delta)
+		await ctx.send('New ignore account age limit set: {}'.format(pretty_timedelta(delta)))
 
 	@join.command(name='add')
 	async def pattern_add(self, ctx, *, pattern: PatternConverter):

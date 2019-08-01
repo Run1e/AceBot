@@ -34,10 +34,10 @@ class GuildConfig:
 				await cls.bot.db.execute('INSERT INTO config (guild_id) VALUES ($1)', guild_id)
 				record = await cls.bot.db.fetchrow('SELECT * FROM config WHERE guild_id=$1', guild_id)
 
-			ins = cls(guild_id, record)
-			cls.guilds[guild_id] = ins
+		ins = cls(guild_id, record)
+		cls.guilds[guild_id] = ins
 
-			return ins
+		return ins
 
 	@classmethod
 	def set_bot(cls, bot):

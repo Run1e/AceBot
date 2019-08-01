@@ -18,20 +18,21 @@ from utils.time import pretty_seconds
 from utils.guildconfig import GuildConfig
 
 EXTENSIONS = (
-	'cogs.owner',
 	'cogs.general',
-	'cogs.configuration',
-	'cogs.stars',
-	'cogs.whois',
 	'cogs.images',
-	'cogs.security',
-	'cogs.hl',
+	'cogs.configuration',
+	'cogs.whois',
 	'cogs.tags',
+	'cogs.stars',
 	'cogs.meta',
 	'cogs.remind',
+	'cogs.hl',
 	'cogs.welcome',
+	'cogs.roles',
 	'cogs.ahk.ahk',
-	'cogs.roles'
+	'cogs.security',
+	'cogs.ahk.security',
+	'cogs.owner',
 )
 
 

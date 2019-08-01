@@ -11,7 +11,6 @@ CREATE TABLE IF NOT EXISTS config (
 	guild_id 			BIGINT UNIQUE NOT NULL,
 	prefix 				VARCHAR(8),
 	mod_role_id			BIGINT NULL,
-	mute_role_id		BIGINT NULL,
 	star_channel_id		BIGINT NULL,
 	star_limit			SMALLINT NULL
 );
@@ -21,9 +20,13 @@ CREATE TABLE IF NOT EXISTS mod (
 	id 					SERIAL UNIQUE,
 	guild_id 			BIGINT UNIQUE NOT NULL,
 	
+	mute_role_id		BIGINT NULL,
+	log_channel_id		BIGINT NULL,
+	
 	join_enabled		BOOLEAN NOT NULL DEFAULT FALSE,
 	join_action			SMALLINT NOT NULL DEFAULT 0 CHECK (join_action >= 0 AND join_action <= 2),
 	join_age			INTERVAL NULL,
+	join_ignore_age		INTERVAL NULL,
 	
 	spam_enabled		BOOLEAN NOT NULL DEFAULT FALSE,
 	spam_action			SMALLINT NOT NULL DEFAULT 0 CHECK (spam_action >= 0 AND spam_action <= 2),

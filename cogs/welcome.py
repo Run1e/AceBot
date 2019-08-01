@@ -8,15 +8,6 @@ from cogs.mixins import AceMixin
 from utils.checks import is_mod
 from utils.string_helpers import craft_welcome
 
-"""
-CREATE TABLE IF NOT EXISTS welcome (
-	id			SERIAL UNIQUE,
-	guild_id	BIGINT UNIQUE NOT NULL,
-	channel_id	BIGINT,
-	enabled		BOOLEAN NOT NULL DEFAULT TRUE,
-	content		VARCHAR(1024)
-);
-"""
 
 class Welcome(AceMixin, commands.Cog):
 	'''Show welcome messages to new members.
