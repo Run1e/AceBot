@@ -1,41 +1,42 @@
-from math import floor
+from datetime import datetime, timedelta
 
-def pretty_datetime(dt):
-	return dt.__format__('%Y/%m/%d %H:%M:%S')
+steps = dict(
+	year=timedelta(days=365),
+	week=timedelta(days=7),
+	day=timedelta(days=1),
+	hour=timedelta(hours=1),
+	minute=timedelta(minutes=1),
+	second=timedelta(seconds=1)
+)
+
 
 def pretty_timedelta(td):
-	return pretty_seconds(td.total_seconds())
+	'''Returns a pretty string of a timedelta'''
 
-def pretty_seconds(s):
-	years, remainder = divmod(s, 31536000)
-	days, remainder = divmod(remainder, 86400)
-	hours, remainder = divmod(remainder, 3600)
-	minutes, seconds = divmod(remainder, 60)
-
-	seconds = floor(seconds)
-	minutes = floor(minutes)
-	hours = floor(hours)
-	days = floor(days)
-	years = floor(years)
+	if not isinstance(td, timedelta):
+		raise ValueError('timedelta expected, \'{}\' given'.format(type(td)))
 
 	parts = []
 
-	def add_part(type, value):
-		parts.append('{} {}{}'.format(str(value), type, 's' if value > 1 else ''))
-
-	if years > 0:
-		add_part('year', years)
-
-	if days > 0:
-		add_part('day', days)
-
-	if hours > 0 and len(parts) != 2:
-		add_part('hour', hours)
-
-	if minutes > 0 and len(parts) != 2:
-		add_part('minute', minutes)
-
-	if not len(parts):
-		add_part('second', seconds)
+	for name, span in steps.items():
+		if td > span:
+			count = int(td / span)
+			td -= count * span
+			parts.append('{} {}{}'.format(count, name, 's' if count > 1 else ''))
+		elif len(parts):
+			break
 
 	return ', '.join(parts)
+
+
+def pretty_seconds(s):
+	return pretty_timedelta(timedelta(seconds=s))
+
+
+def pretty_datetime(dt):
+	'''Simply removes the microseconds from the timedelta string.'''
+
+	if not isinstance(dt, datetime):
+		raise ValueError('datetime expected, \'{}\' given'.format(type(dt)))
+
+	return str(dt).split('.')[0]

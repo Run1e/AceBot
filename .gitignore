@@ -9,6 +9,4 @@ config.py
 test.py
 notes.md
 test_docs_parser.py
-cogs/guild/ahk/security.py
-cogs/guild/ahk/antimention.py
-cogs/guild/ahk/log.py
+cogs/ahk/security.py
