@@ -10,7 +10,6 @@ from utils.string_helpers import shorten
 from utils.time import pretty_seconds
 from utils.pager import Pager
 
-
 log = logging.getLogger(__name__)
 
 SUCCESS_EMOJI = '\U00002705'
@@ -32,7 +31,7 @@ class RemindPager(Pager):
 			time_text = 'Soon...' if delta < 15 else pretty_seconds(delta)
 			e.add_field(
 				name=f'{id}: {time_text}',
-				value=shorten(message, 256, 2) if message is not None else DEFAULT_REMINDER_MESSAGE,
+				value=shorten(message, 256) if message is not None else DEFAULT_REMINDER_MESSAGE,
 				inline=False
 			)
 

@@ -295,7 +295,7 @@ class Stars(AceMixin, commands.Cog):
 
 	@commands.Cog.listener()
 	async def on_raw_bulk_message_delete(self, payload):
-		# TODO: finish this
+		# TODO: finish and test this
 
 		sms = await self.db.fetch(
 			'SELECT * FROM star_msg WHERE message_id=ANY($1::bigint[]) OR star_message_id=ANY($1::bigint[])',

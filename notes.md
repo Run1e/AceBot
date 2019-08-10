@@ -16,17 +16,6 @@ ahk commands:
 - params
 
 
-moderator commands:
-- clear
-- info
-- perms
-
-
-tags todo:
-- tag search
-- tag transfer
-
-
 starboard todo:
 - star delete
 - star fix

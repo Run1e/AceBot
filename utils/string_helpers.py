@@ -1,28 +1,20 @@
 
-# TODO: make a smarter version of this
-def shorten(text, max_char, max_newline):
-	shortened = False
+def shorten(text, max_char=2000):
+	'''Shortens text to fit within max_chars and max_newline.'''
 
-	if max_char is not None and len(text) > max_char:
-		text = text[0:max_char]
-		shortened = True
+	if max_char < 16:
+		raise ValueError('Only shortens down to 16 characters')
 
-	if max_newline is not None and text.count('\n') > max_newline:
-		text = text[0:find_nth(text, '\n', max_newline)]
-		shortened = True
+	if max_char >= len(text):
+		return text
 
-	if shortened:
-		text = text[0:len(text) - 3] + '...'
+	text = text[0:max_char - 4]
 
-	return text
+	for i in range(1, 16):
+		if text[-i] in (' ', '\n'):
+			return text[0:len(text) - i + 1] + '...'
 
-
-def find_nth(haystack, needle, n):
-	start = haystack.find(needle)
-	while start >= 0 and n > 1:
-		start = haystack.find(needle, start + len(needle))
-		n -= 1
-	return start
+	return text + ' ...'
 
 
 def craft_welcome(member, string):

@@ -23,6 +23,8 @@ def pretty_timedelta(td):
 			count = int(td / span)
 			td -= count * span
 			parts.append('{} {}{}'.format(count, name, 's' if count > 1 else ''))
+			if len(parts) >= 2:
+				break
 		elif len(parts):
 			break
 

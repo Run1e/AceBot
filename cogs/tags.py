@@ -7,12 +7,13 @@ from datetime import datetime
 from cogs.mixins import AceMixin
 from utils.time import pretty_datetime
 from utils.pager import Pager
+from utils.prompter import admin_prompter
+from utils.checks import is_mod_pred
 
 
 log = logging.getLogger(__name__)
 
 
-# TODO maybe remove
 def build_tag_name(record):
 	name = record.get('name')
 	if record.get('alias') is not None:
@@ -58,19 +59,26 @@ class TagCreateConverter(commands.Converter):
 
 
 class TagEditConverter(commands.Converter):
+	access_error = commands.CommandError('Tag not found or you do not have edit permissions for it.')
+
 	async def convert(self, ctx, tag_name: str):
 		tag_name = tag_name.lower()
 
-		# TODO: use is_mod_pred to allow admins to edit others' tags, with a warning in the command
 		rec = await ctx.bot.db.fetchrow(
-			'SELECT * FROM tag WHERE guild_id=$1 AND user_id=$2 AND (name=$3 OR alias=$3)',
-			ctx.guild.id, ctx.author.id, tag_name
+			'SELECT * FROM tag WHERE guild_id=$1 AND (name=$2 OR alias=$2)',
+			ctx.guild.id, tag_name
 		)
 
-		if rec is not None:
-			return tag_name, rec
-		else:
-			raise commands.CommandError('Tag not found or you do not have edit permissions for it.')
+		if rec is None:
+			raise self.access_error
+
+		if rec.get('user_id') != ctx.author.id:
+			if await is_mod_pred(ctx) and await admin_prompter(ctx):
+				return tag_name, rec
+			else:
+				raise self.access_error
+
+		return tag_name, rec
 
 
 class TagViewConverter(commands.Converter):
@@ -94,12 +102,10 @@ class TagViewConverter(commands.Converter):
 
 		if similars:
 			tag_list = '\n'.join(build_tag_name(record) for record in similars)
-
 			raise commands.CommandError(f'Tag not found. Did you mean any of these?\n\n{tag_list}')
 
 		# and if none found, just raise the not found error
 		raise commands.CommandError('Tag not found.')
-
 
 
 class TagPager(Pager):
@@ -238,8 +244,40 @@ class Tags(AceMixin, commands.Cog):
 		else:
 			await ctx.send(f"Alias for \'{record.get('name')}\' set to \'{alias}\'")
 
+	@tag.command()
+	async def transfer(self, ctx, tag_name: TagEditConverter, *, new_owner: discord.Member):
+		'''Transfer a tag to another member.'''
+
+		tag_name, record = tag_name
+
+		if record.get('user_id') == new_owner.id:
+			raise commands.CommandError('User already owns tag.')
+
+		res = await self.db.execute('UPDATE tag SET user_id=$1 WHERE id=$2', new_owner.id, record.get('id'))
+
+		if res == 'UPDATE 1':
+			await ctx.send('Tag \'{}\' transferred to \'{}\''.format(record.get('name'), new_owner.display_name))
+		else:
+			raise commands.CommandError('Unknown error occured.')
+
+	@tag.command()
+	async def search(self, ctx, *, query: str):
+		'''Search for a tag.'''
+
+		similars = await ctx.bot.db.fetch(
+			'SELECT name, alias FROM tag WHERE guild_id=$1 AND (name % $2 OR alias % $2) LIMIT 5',
+			ctx.guild.id, query
+		)
+
+		if not similars:
+			raise commands.CommandError('No approximate matches found.')
+
+		tag_list = '\n'.join(build_tag_name(record) for record in similars)
+
+		await ctx.send(embed=discord.Embed(description=tag_list))
+
 	@tag.command(aliases=['stat', 'stats'])
-	async def info(self, ctx, tag_name: TagViewConverter):
+	async def info(self, ctx, *, tag_name: TagViewConverter):
 		'''See stats about a tag.'''
 
 		tag_name, record = tag_name

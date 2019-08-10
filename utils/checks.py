@@ -4,6 +4,7 @@ from discord.ext import commands
 from config import OWNER_ID
 from utils.guildconfig import GuildConfig
 
+
 async def check_perms(ctx, perms, check=all):
 	if await ctx.bot.is_owner(ctx.author):
 		return True
@@ -31,6 +32,7 @@ async def is_mod_pred(ctx):
 
 	# if set, see if author has this role
 	return not not discord.utils.get(ctx.author.roles, id=gc.mod_role_id)
+
 
 def is_mod():
 	return commands.check(is_mod_pred)

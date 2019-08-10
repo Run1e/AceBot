@@ -41,10 +41,16 @@ async def prompter(ctx, title=None, prompt=None):
 
 
 async def admin_prompter(ctx):
-	return await prompter(
+	res = await prompter(
 		ctx, title='Warning!',
 		prompt=(
 			'You are about to do an administrative action on an item you do not own.\n\n'
 			'Are you sure you want to continue?'
 		)
 	)
+
+	if res is False:
+		raise commands.CommandError('Administrative action aborted.')
+
+	return True
+

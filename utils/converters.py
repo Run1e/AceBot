@@ -4,7 +4,6 @@ from datetime import timedelta
 
 class TimeMultConverter(commands.Converter):
 	async def convert(self, ctx, mult):
-		# TODO: try/catch this
 		try:
 			mult = float(mult)
 		except ValueError:

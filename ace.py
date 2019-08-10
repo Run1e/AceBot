@@ -21,6 +21,7 @@ EXTENSIONS = (
 	'cogs.general',
 	'cogs.images',
 	'cogs.configuration',
+	'cogs.mod',
 	'cogs.whois',
 	'cogs.tags',
 	'cogs.stars',

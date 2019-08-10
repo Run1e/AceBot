@@ -7,12 +7,11 @@ from cogs.mixins import AceMixin
 from utils.time import pretty_timedelta, pretty_datetime
 from utils.prompter import prompter, admin_prompter
 
+MAX_NICKS = 6
+
 
 class WhoIs(AceMixin, commands.Cog):
 	'''Keeps track of when members was last seen.'''
-
-	# TODO: move this
-	MAX_NICKS = 6
 
 	@commands.Cog.listener()
 	async def on_message(self, ctx):
@@ -35,7 +34,7 @@ class WhoIs(AceMixin, commands.Cog):
 		now = datetime.utcnow()
 
 		last_nick = await self.db.fetchval(
-			'SELECT nick FROM nick WHERE guild_id=$1 AND user_id=$2 ORDER BY id DESC',
+			'SELECT nick FROM nick WHERE guild_id=$1 AND user_id=$2 ORDER BY id DESC LIMIT 1',
 			before.guild.id, before.id
 		)
 
@@ -99,8 +98,8 @@ class WhoIs(AceMixin, commands.Cog):
 			nick_actual = nick.get('nick')
 
 			if nick_actual not in nicks:
-				if len(nicks) >= self.MAX_NICKS:
-					e.description = f'{len(nicks_data) - self.MAX_NICKS - 1} more unlisted found...'
+				if len(nicks) >= MAX_NICKS:
+					e.description = f'{len(nicks_data) - MAX_NICKS - 1} more unlisted found...'
 					break
 
 				nicks.append(nick_actual)
@@ -159,7 +158,6 @@ class WhoIs(AceMixin, commands.Cog):
 		e.set_footer(text='ID: ' + str(member.id))
 
 		await ctx.send(embed=e)
-
 
 
 def setup(bot):
