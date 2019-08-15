@@ -6,17 +6,13 @@ from utils.checks import is_mod
 from utils.guildconfig import GuildConfig
 
 
-class MemberID(commands.MemberConverter):
-	async def convert(self, ctx, argument):
-		pass  # TODO
-
-
 class PrefixConverter(commands.Converter):
 	async def convert(self, ctx, prefix):
 		if len(prefix) > 8 or len(prefix) < 1:
 			raise commands.CommandError('Prefix must be between 1 and 8 characters.')
 
-		# TODO: add checks for no markdown?
+		if prefix != discord.utils.escape_markdown(prefix):
+			raise commands.CommandError('No markdown allowed in prefix.')
 
 		return prefix
 
@@ -26,12 +22,13 @@ class SettingConverter(commands.Converter):
 		pass
 
 
-class GuildConfigurer(AceMixin, commands.Cog):
+class Configuration(AceMixin, commands.Cog):
+	'''Bot configuration available to administrators and people in the moderator role.'''
 
 	@commands.command()
 	@commands.has_permissions(administrator=True)  # only allow administrators to change the moderator role
 	async def modrole(self, ctx, *, role: discord.Role = None):
-		'''Set the moderator role. Only editable by server administrators.'''
+		'''Set the moderator role. Only modifiable by server administrators.'''
 
 		gc = await GuildConfig.get_guild(ctx.guild.id)
 
@@ -47,7 +44,7 @@ class GuildConfigurer(AceMixin, commands.Cog):
 			await gc.set('mod_role_id', role.id)
 
 		await ctx.send(
-			f'Mod role has been set to `{role.name}`. Members with this role can configure and manage the bot.'
+			f'Mod role has been set to `{role.name}` ({role.id}). Members with this role can configure and manage the bot.'
 		)
 
 	@commands.command()
@@ -59,9 +56,9 @@ class GuildConfigurer(AceMixin, commands.Cog):
 		await guild.set('prefix', prefix)
 
 		await ctx.send(
-			f'Prefix set to `{prefix}`\nIf you forget your prefix, simply mention the bot to open up the help menu.'
+			f'Prefix set to `{prefix}` - if you forget your prefix, simply mention the bot to open up the help menu.'
 		)
 
 
 def setup(bot):
-	bot.add_cog(GuildConfigurer(bot))
+	bot.add_cog(Configuration(bot))

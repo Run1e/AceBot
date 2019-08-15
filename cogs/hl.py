@@ -6,7 +6,7 @@ from utils.checks import is_mod
 from cogs.mixins import AceMixin
 
 DELETE_EMOJI = '\U0000274C'
-DEFAULT_LANG = 'python'
+DEFAULT_LANG = 'py'
 
 
 class LangConverter(commands.Converter):
@@ -20,6 +20,7 @@ class LangConverter(commands.Converter):
 
 
 class Highlighter(AceMixin, commands.Cog):
+	'''Create highlighted code-boxes with one command.'''
 
 	@commands.command(aliases=['h1'])
 	async def hl(self, ctx, *, code):

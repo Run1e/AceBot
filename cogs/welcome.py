@@ -47,8 +47,6 @@ class Welcome(AceMixin, commands.Cog):
 	async def message(self, ctx, *, message: str):
 		'''Set a new welcome message.'''
 
-		# TODO escape mentions in the message string?
-
 		if len(message) > 1024:
 			raise commands.CommandError('Welcome message has to be shorter than 1024 characters.')
 

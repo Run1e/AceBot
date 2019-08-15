@@ -9,10 +9,8 @@ QUERIES = '''
 CREATE TABLE IF NOT EXISTS config (
 	id 					SERIAL UNIQUE,
 	guild_id 			BIGINT UNIQUE NOT NULL,
-	prefix 				VARCHAR(8),
-	mod_role_id			BIGINT NULL,
-	star_channel_id		BIGINT NULL,
-	star_limit			SMALLINT NULL
+	prefix 				VARCHAR(8) NULL,
+	mod_role_id			BIGINT NULL
 );
 
 -- moderation values
@@ -37,6 +35,16 @@ CREATE TABLE IF NOT EXISTS mod (
 	mention_action		SMALLINT NOT NULL DEFAULT 0 CHECK (mention_action >= 0 AND mention_action <= 2),
 	mention_count		SMALLINT NOT NULL DEFAULT 8,
 	mention_per			FLOAT NOT NULL DEFAULT 16.0
+);
+
+-- starboard config
+CREATE TABLE IF NOT EXISTS starboard (
+	id			SERIAL UNIQUE,
+	guild_id	BIGINT NOT NULL,
+	channel_id	BIGINT NULL,
+	locked		BOOLEAN NOT NULL DEFAULT FALSE,
+	threshold	SMALLINT NOT NULL DEFAULT '3',
+	max_age		INTERVAL NOT NULL DEFAULT '7 days'
 );
 
 -- join kick patterns

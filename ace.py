@@ -157,7 +157,7 @@ class AceBot(commands.Bot):
 
 		elif isinstance(exc, commands.CommandOnCooldown):
 			e.title = 'You are on cooldown.'
-			e.description = f'Try again in {pretty_seconds(exc.retry_after)}'
+			e.description = f'Try again in {pretty_seconds(exc.retry_after)}.'
 
 		elif isinstance(exc, commands.BotMissingPermissions):
 			e.title = 'Bot is missing permissions to run command:'
@@ -176,6 +176,7 @@ class AceBot(commands.Bot):
 			await ctx.send(embed=e)
 		except discord.HTTPException:
 			pass
+
 
 # monkey-patched Embed class to force embed color
 class Embed(discord.Embed):

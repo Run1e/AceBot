@@ -135,8 +135,6 @@ class TagPager(Pager):
 class Tags(AceMixin, commands.Cog):
 	'''Store and bring up text using tags.'''
 
-	# TODO: add tag search
-
 	@commands.group(invoke_without_command=True)
 	async def tag(self, ctx, tag_name: TagViewConverter):
 		'''Retrieve a tags content.'''
@@ -186,7 +184,6 @@ class Tags(AceMixin, commands.Cog):
 	async def _list(self, ctx, *, member: discord.Member = None):
 		'''List someones tags'''
 
-		# TODO: could probably be improved to one query
 		if member is None:
 			tags = await self.db.fetch(
 				'SELECT name, alias, uses FROM tag WHERE guild_id=$1 ORDER BY uses DESC',

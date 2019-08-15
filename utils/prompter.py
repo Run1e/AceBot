@@ -10,6 +10,8 @@ NO_EMOJI = '\N{CROSS MARK}'
 async def prompter(ctx, title=None, prompt=None):
 	'''Creates a yes/no prompt.'''
 
+	# TODO: add check that bot can actually send embeds, add reactions, delete messages
+
 	#if ctx.author.id == ctx.bot.owner_id:
 	#	return True
 
@@ -49,8 +51,8 @@ async def admin_prompter(ctx):
 		)
 	)
 
-	if res is False:
-		raise commands.CommandError('Administrative action aborted.')
+	if res is True:
+		return True
 
-	return True
+	raise commands.CommandError('Administrative action aborted.')
 

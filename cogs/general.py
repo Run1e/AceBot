@@ -6,7 +6,7 @@ import random
 
 from datetime import datetime
 
-from config import WOLFRAM_KEY, APIXU_KEY, OXFORD_ID, OXFORD_KEY
+from config import WOLFRAM_KEY, APIXU_KEY
 from cogs.mixins import AceMixin
 
 
@@ -94,7 +94,8 @@ class General(AceMixin, commands.Cog):
 				if member.status is status:
 					statuses[status] += 1
 
-		att = {}
+		att = dict()
+
 		att['Online'] = (
 			f'{sum(member.status is not discord.Status.offline for member in ctx.guild.members)}'
 			f'/{len(ctx.guild.members)}'
@@ -137,9 +138,9 @@ class General(AceMixin, commands.Cog):
 			except asyncio.TimeoutError:
 				raise self.query_error
 
-		embed = discord.Embed()
-
 		query = query.replace('`', '\u200b`')
+
+		embed = discord.Embed()
 
 		embed.add_field(name='Query', value=f'```{query}```')
 		embed.add_field(name='Result', value=f'```{res}```', inline=False)
@@ -193,106 +194,6 @@ class General(AceMixin, commands.Cog):
 			embed.timestamp = datetime.utcnow()
 
 			await ctx.send(embed=embed)
-
-	# TODO: rewrite this literal clusterfuck
-	@commands.command()
-	@commands.bot_has_permissions(embed_links=True)
-	@commands.cooldown(rate=2, per=5.0, type=commands.BucketType.user)
-	async def define(self, ctx, *, word: str):
-		'''Define a word using Oxfords dictionary.'''
-
-		if OXFORD_ID is None or OXFORD_KEY is None:
-			raise commands.CommandError('The host has not set up an API key.')
-
-		await ctx.trigger_typing()
-
-		url = 'https://od-api.oxforddictionaries.com:443/api/v1/entries/en/' + word.split('\n')[0].lower()
-
-		headers = {
-			'Accept': 'application/json',
-			'app_id': OXFORD_ID,
-			'app_key': OXFORD_KEY
-		}
-
-		try:
-			async with self.bot.aiohttp.get(url, headers=headers) as resp:
-				if resp.status != 200:
-					if resp.status == 404:
-						raise commands.CommandError('Couldn\'t find a definition for that word.')
-					else:
-						raise self.query_error
-				info = await resp.json()
-		except asyncio.TimeoutError:
-			raise self.query_error
-
-		result = info['results'][0]
-
-		lexentry = None
-		for temp in result['lexicalEntries']:
-			if lexentry is None:
-				lexentry = temp
-			try:
-				temp['entries'][0]['senses'][0]['definitions']
-				lexentry = temp
-				break
-			except KeyError:
-				continue
-
-		word = result['word']
-
-		entry = lexentry['entries'][0]
-		sense = entry['senses'][0]
-
-		category = lexentry['lexicalCategory']
-
-		e = discord.Embed(title=f'{word.title()} ({category})')
-
-		if 'definitions' in sense:
-			defin = sense['definitions'][0]
-		elif 'short_definitions' in sense:
-			defin = sense['short_definitions'][0]
-		else:
-			defin = 'No definition.'
-
-		e.description = defin
-
-		if 'examples' in sense:
-			e.add_field(name='Example', value=sense['examples'][0]['text'])
-
-		if 'grammaticalFeatures' in entry:
-			e.add_field(
-				name='Features',
-				value=', '.join(temp['text'] for temp in entry['grammaticalFeatures']),
-			)
-
-		if 'registers' in sense:
-			e.add_field(name='Registers', value=', '.join(sense['registers']))
-
-		if 'domains' in sense:
-			e.add_field(name='Domains', value=', '.join(sense['domains']))
-
-		if 'regions' in sense:
-			e.add_field(name='Regions', value=', '.join(sense['regions']))
-
-		if 'pronunciations' in sense:
-			pro = sense['pronunciations'][0]
-			spelling = None
-			if 'phoneticNotation' in pro:
-				spelling = pro['phoneticNotation']
-			elif 'proneticSpelling' in pro:
-				spelling = pro['phoneticSpelling']
-
-			if spelling is not None:
-				if 'audioFile' in pro:
-					spelling = f'[{spelling}]({pro["audioFile"]})'
-				e.add_field(name='Pronunciation', value=spelling)
-
-		if 'variantForms' in sense:
-			e.add_field(name='Variants', value=', '.join(temp['text'] for temp in sense['variantForms']), inline=True)
-
-		e.set_footer(text='Oxford University Press', icon_url='https://i.imgur.com/7GMY4dP.png')
-
-		await ctx.send(embed=e)
 
 
 def setup(bot):

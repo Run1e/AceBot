@@ -15,8 +15,6 @@ class GuildConfig:
 		self.prefix = record.get('prefix')
 		self.mod_role_id = record.get('mod_role_id')
 		self.mute_role_id = record.get('mute_role_id')
-		self.star_channel_id = record.get('star_channel_id')
-		self.star_limit = record.get('star_limit')
 
 	async def set(self, key, value):
 		await self.bot.db.execute(f'UPDATE config SET {key}=$1 WHERE id=$2', value, self.id)

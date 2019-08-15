@@ -69,9 +69,6 @@ class Help(commands.HelpCommand):
 
 		cmds = []
 
-		# TODO: do can_run on cogs/commands
-
-		# TODO: this fix is pretty retarded
 		added = []
 		for command in cog.walk_commands():
 			if command in added:
@@ -83,8 +80,7 @@ class Help(commands.HelpCommand):
 		self.pager.add_page(cog_name, cog_desc, cmds)
 
 	async def send_bot_help(self, mapping):
-		# TODO: figure out why the fuck im enumerating here
-		for idx, cog in enumerate(mapping):
+		for cog in mapping:
 			if cog is not None:
 				await self.add_cog(cog)
 

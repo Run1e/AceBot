@@ -39,7 +39,7 @@ class RemindPager(Pager):
 class Reminders(AceMixin, commands.Cog):
 	'''Set, view and delete reminders.
 
-	Valid time types are: `minutes`, `hours`, `days` or `weeks`
+	Valid time units are: `minutes`, `hours`, `days` or `weeks`
 	'''
 
 	def __init__(self, bot):
