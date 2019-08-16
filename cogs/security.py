@@ -18,8 +18,14 @@ from utils.severity import SeverityColors
 ALLOWED_GUILDS = (115993023636176902, 517692823621861407)
 SUBMODULES = ('join', 'mention', 'spam')
 LOCK = asyncio.Lock()
+SPAM_LOCK = asyncio.Lock()
+MENTION_LOCK = asyncio.Lock()
 
 log = logging.getLogger(__name__)
+
+
+def message_link(message):
+	return f'https://discordapp.com/channels/{message.guild.id}/{message.channel.id}/{message.id}'
 
 
 class PatternConverter(commands.Converter):
@@ -195,7 +201,7 @@ class Security(AceMixin, commands.Cog):
 
 		return await ModConfig.from_guild(self.bot, guild_id)
 
-	async def log(self, action=None, reason=None, severity=None, author=None, channel=None):
+	async def log(self, action=None, reason=None, severity=None, author=None, channel=None, message=None):
 		if channel is None:
 			return
 
@@ -211,14 +217,18 @@ class Security(AceMixin, commands.Cog):
 		e.set_author(name=author.display_name, icon_url=author.avatar_url)
 		e.set_footer(text='{} - ID: {}'.format(severity.name, author.id))
 
+		if message is not None:
+			e.description += '\n\n[Context here]({})'.format(message_link(message))
+
 		await channel.send(embed=e)
 
-	async def _do_action(self, mc, member, action, reason=None):
+	async def _do_action(self, mc, member, action, reason=None, message=None):
 		'''Called when an event happens.'''
 		try:
 			if action is SecurityAction.MUTE:
 				if mc.mute_role is None:
 					raise ValueError('No mute role set.')
+				await self.db.execute('INSERT INTO muted (guild_id, user_id) VALUES ($1, $2)', member.guild.id, member.id)
 				await member.add_roles(mc.mute_role, reason=reason)
 
 			elif action is SecurityAction.KICK:
@@ -229,21 +239,16 @@ class Security(AceMixin, commands.Cog):
 
 		except Exception as exc:
 			await self.log(
-				channel=mc.log_channel,
-				author=member,
-				action='{} FAILED'.format(action.name),
-				reason=str(exc),
-				severity=SeverityColors.HIGH
+				channel=mc.log_channel, author=member, action='{} FAILED'.format(action.name), reason=str(exc),
+				severity=SeverityColors.HIGH, message=message
 			)
 
 			return
 
 		await self.log(
-			channel=mc.log_channel,
-			author=member,
-			action=action.name,
-			reason=reason,
-			severity=dict(MUTE=SeverityColors.LOW, KICK=SeverityColors.MEDIUM, BAN=SeverityColors.HIGH)[action.name]
+			channel=mc.log_channel, author=member, action=action.name, reason=reason,
+			severity=dict(MUTE=SeverityColors.LOW, KICK=SeverityColors.MEDIUM, BAN=SeverityColors.HIGH)[action.name],
+			message=message
 		)
 
 	@commands.Cog.listener()
@@ -263,18 +268,34 @@ class Security(AceMixin, commands.Cog):
 		mc = await self.get_config(message.guild.id)
 
 		if mc.spam_enabled:
-			if mc.spam_cooldown.update_rate_limit(message) is not None:
+
+			async with SPAM_LOCK:
+				res = mc.spam_cooldown.update_rate_limit(message)
+				if res is not None:
+					mc.spam_cooldown._cache[mc.spam_cooldown._bucket_key(message)].reset()
+
+			if res is not None:
+				mc.spam_cooldown._cache[mc.spam_cooldown._bucket_key(message)].reset()
+
 				await self._do_action(
 					mc, message.author, SecurityAction(mc.spam_action),
-					reason='Member is spamming'
+					reason='Member is spamming', message=message
 				)
 
 		if mc.mention_enabled:
 			for mention in message.mentions:
-				if mc.mention_cooldown.update_rate_limit(message) is not None:
+
+				async with MENTION_LOCK:
+					res = mc.mention_cooldown.update_rate_limit(message)
+					if res is not None:
+						mc.mention_cooldown._cache[mc.mention_cooldown._bucket_key(message)].reset()
+
+				if res is not None:
+					mc.mention_cooldown._cache[mc.mention_cooldown._bucket_key(message)].reset()
+
 					await self._do_action(
 						mc, message.author, SecurityAction(mc.mention_action),
-						reason='Member is mention spamming'
+						reason='Member is spamming mentions', message=message
 					)
 
 	@commands.Cog.listener()
@@ -283,6 +304,20 @@ class Security(AceMixin, commands.Cog):
 			return
 
 		mc = await self.get_config(member.guild.id)
+
+		# TODO: test that this works
+		if await self.db.fetchval('SELECT id FROM muted WHERE guild_id=$1 AND user_id=$2', member.guild.id, member.id):
+			reason = 'Member was previously muted.'
+
+			if mc.mute_role is None:
+				await self.log(
+					action='MUTE FAILED',
+					reason='Member previously muted but mute role not currently found.',
+					severity=SeverityColors.LOW,
+					author=member
+				)
+			else:
+				await member.add_roles(mc.mute_role, reason=reason)
 
 		if not mc.join_enabled:
 			return
@@ -339,18 +374,19 @@ class Security(AceMixin, commands.Cog):
 		if mc.mute_role in member.roles:
 			raise commands.CommandError('Member already muted.')
 
-		reason = 'Muted by {} (ID: {})'.format(ctx.author.name, ctx.author.id)
+		reason = 'Muted by {} (ID: {})'.format(ctx.author.mention, ctx.author.id)
 
+		await self.db.execute('INSERT INTO muted (guild_id, user_id) VALUES ($1, $2)', ctx.guild.id, member.id)
 		await member.add_roles(mc.mute_role, reason=reason)
 		await ctx.send('{} muted.'.format(member.name))
 
 		await self.log(
-			guild=ctx.guild,
 			action='MUTE',
 			reason=reason,
 			severity=SeverityColors.LOW,
 			author=member,
-			channel=mc.log_channel
+			channel=mc.log_channel,
+			message=ctx.message
 		)
 
 	@commands.command()
@@ -365,18 +401,19 @@ class Security(AceMixin, commands.Cog):
 		if mc.mute_role not in member.roles:
 			raise commands.CommandError('Member not previously muted.')
 
-		reason = 'Unmuted by {} (ID: {})'.format(ctx.author.name, ctx.author.id)
+		reason = 'Unmuted by {} (ID: {})'.format(ctx.author.mention, ctx.author.id)
 
+		await self.db.execute('DELETE FROM muted WHERE guild_id=$1 AND user_id=$2', member.guild.id, member.id)
 		await member.remove_roles(mc.mute_role, reason=reason)
 		await ctx.send('{} unmuted.'.format(member.name))
 
 		await self.log(
-			guild=ctx.guild,
 			action='UNMUTE',
 			reason=reason,
 			severity=SeverityColors.LOW,
 			author=member,
-			channel=mc.log_channel
+			channel=mc.log_channel,
+			message=ctx.message
 		)
 
 	@commands.group(aliases=['sec'], invoke_without_command=True)
@@ -593,7 +630,7 @@ class Security(AceMixin, commands.Cog):
 
 	@join.command(name='ignoreage')
 	async def join_ignore_age(self, ctx, amount: TimeMultConverter = None, unit: TimeDeltaConverter = None):
-		'''Set a minimum age for new accounts. Clear/disable by doing `security join age`.'''
+		'''Joining members with account age older than this bypass *all* rules.'''
 
 		if amount is not None and unit is None:
 			raise commands.CommandError('Malformed input.')

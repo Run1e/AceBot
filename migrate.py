@@ -55,6 +55,13 @@ CREATE TABLE IF NOT EXISTS kick_pattern (
 	disabled	BOOLEAN NOT NULL DEFAULT FALSE
 );
 
+-- list of muted people
+CREATE TABLE IF NOT EXISTS muted (
+	id			SERIAL UNIQUE,
+	guild_id	BIGINT NOT NULL,
+	user_id		BIGINT NOT NULL
+);
+
 -- ignore list
 CREATE TABLE IF NOT EXISTS ignore (
 	id			SERIAL UNIQUE,

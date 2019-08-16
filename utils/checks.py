@@ -14,13 +14,13 @@ async def check_perms(ctx, perms, check=all):
 
 # invoker is either bot owner or someone with manage guild permissions
 async def is_mod_pred(ctx):
-	# allow guild administrators (this includes guild owner)
-	if ctx.author.permissions_in(ctx.channel).administrator:
-		return True
-
 	# allow bot owner. this is a stupid way of doing it but it makes this function
 	# also work with messages instead of contexts.
 	if ctx.author.id == OWNER_ID:
+		return True
+
+	# allow guild administrators (this includes guild owner)
+	if ctx.author.permissions_in(ctx.channel).administrator:
 		return True
 
 	# check against mod_role

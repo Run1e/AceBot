@@ -10,3 +10,4 @@ test.py
 notes.md
 test_docs_parser.py
 cogs/ahk/security.py
+cogs/ahk/logger.py

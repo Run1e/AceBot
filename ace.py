@@ -33,6 +33,7 @@ EXTENSIONS = (
 	'cogs.ahk.ahk',
 	'cogs.security',
 	'cogs.ahk.security',
+	'cogs.ahk.logger',
 	'cogs.owner',
 )
 
@@ -128,7 +129,6 @@ class AceBot(commands.Bot):
 		return True
 
 	async def on_command_error(self, ctx, exc):
-
 		log.info(str(exc))
 
 		e = discord.Embed()

@@ -2,7 +2,7 @@ import discord
 import logging
 
 from discord.ext import commands
-from datetime import datetime, timedelta
+from datetime import datetime
 from asyncpg.exceptions import UniqueViolationError
 
 from utils.fakectx import FakeContext
@@ -498,7 +498,7 @@ class Stars(AceMixin, commands.Cog):
 		except commands.CommandError:
 			return
 
-		to_delete = []
+		to_delete = list()
 
 		for sm in sms:
 			try:

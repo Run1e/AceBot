@@ -1,9 +1,10 @@
 import discord
 import logging
 
+from fuzzywuzzy import process, fuzz
 from discord.ext import commands, tasks
 
-
+from cogs.ahk.ids import AHK_GUILD_ID
 from cogs.mixins import AceMixin
 from utils.docs_parser import parse_docs
 from utils.html2markdown import html2markdown
@@ -16,6 +17,92 @@ class AutoHotkey(AceMixin, commands.Cog):
 		super().__init__(bot)
 
 		# start rss
+
+	@commands.Cog.listener()
+	async def on_command_error(self, ctx, error):
+		if not hasattr(ctx, 'guild') or ctx.guild.id not in (AHK_GUILD_ID, 517692823621861407):
+			return
+
+		if not await self.bot.blacklist(ctx):
+			return
+
+		# command not found? docs search it. only if message string is not *only* dots though
+		if isinstance(error, commands.CommandNotFound) and len(ctx.message.content) > 3 and not ctx.message.content.startswith('..'):
+			try:
+				await ctx.invoke(self.docs, query=ctx.message.content[1:])
+				ctx.command = self.docs
+				await self.bot.on_command_completion(ctx)
+			except commands.CommandError as exc:
+				await self.bot.on_command_error(ctx=ctx, exc=exc)
+
+	async def get_docs(self, query):
+		query = query.lower()
+
+		match = await self.db.fetchrow('SELECT docs_id, name FROM docs_name WHERE LOWER(name)=$1', query)
+
+		if match is not None:
+			return match.get('docs_id'), match.get('name')
+
+		# get five results from docs_name
+		matches = await self.db.fetch(
+			"SELECT docs_id, name FROM docs_name ORDER BY word_similarity($1, name) DESC LIMIT 8",
+			query
+		)
+
+		result = process.extract(
+			query,
+			[tup.get('name') for tup in matches],
+			scorer=fuzz.ratio,
+			limit=1
+		)
+
+		name, score = result[0]
+
+		if score < 30:
+			raise commands.CommandError('Sorry, couldn\'t find an entry similar to that.')
+
+		for match in matches:
+			if match[1] == name:
+				docs_id = match[0]
+				break
+
+		return docs_id, name
+
+	@commands.command(aliases=['rtfm'])
+	@commands.bot_has_permissions(embed_links=True)
+	async def docs(self, ctx, *, query):
+		'''Search the AutoHotkey documentation. Enter multiple queries by separating with commas.'''
+
+		spl = set(query.split(','))
+
+		if len(spl) > 3:
+			raise commands.CommandError('Maximum three different queries.')
+		elif len(spl) > 1:
+			for query in spl:
+				query = query.strip()
+				try:
+					await ctx.invoke(self.docs, query=query)
+				except commands.CommandError:
+					pass
+			return
+
+		docs_id, name = await self.get_docs(query)
+
+		e = discord.Embed()
+		e.color = 0x95CD95
+
+		docs = await self.db.fetchrow('SELECT * FROM docs_entry WHERE id=$1', docs_id)
+		syntax = await self.db.fetchrow('SELECT * FROM docs_syntax WHERE docs_id=$1', docs.get('id'))
+
+		e.title = name
+		e.url = 'https://autohotkey.com/docs/{}'.format(docs.get('page'))
+		e.description = docs.get('content') or 'No description for this page.'
+		e.set_footer(text='autohotkey.com', icon_url='https://www.autohotkey.com/favicon.ico')
+
+		if syntax is not None:
+			e.description += '\n```autoit\n{}```'.format(syntax.get('syntax'))
+
+		await ctx.send(embed=e)
 
 	@commands.command(hidden=True)
 	@commands.is_owner()
@@ -58,10 +145,10 @@ class AutoHotkey(AceMixin, commands.Cog):
 
 		await self.db.execute('TRUNCATE docs_name, docs_syntax, docs_param, docs_entry RESTART IDENTITY')
 
-		#try:
-		await parse_docs(handler, on_update, download)
-		#except Exception as exc:
-		#	raise commands.CommandError(str(exc))
+		try:
+			await parse_docs(handler, on_update, download)
+		except Exception as exc:
+			raise commands.CommandError(str(exc))
 
 	@commands.command()
 	async def version(self, ctx):
