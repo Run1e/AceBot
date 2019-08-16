@@ -2,7 +2,7 @@ import discord
 import logging
 
 from discord.ext import commands
-from datetime import datetime
+from datetime import datetime, timedelta
 from asyncpg.exceptions import UniqueViolationError
 
 from utils.fakectx import FakeContext
@@ -178,6 +178,9 @@ class Stars(AceMixin, commands.Cog):
 		'''Set the age where a starred message is subject to the star threshold.'''
 
 		age = amount * unit
+
+		if age < timedelta(days=1):
+			raise commands.CommandNotFound('Please set to at least more than 1 day.')
 
 		sc = await StarConfig.get_guild(self.bot, ctx.guild.id)
 		await sc.set('max_age', age)

@@ -1,4 +1,3 @@
-import discord.utils
 from bs4 import BeautifulSoup, NavigableString
 
 
@@ -34,7 +33,7 @@ class UrlTagHandler:
 
 		fmt = '[{}]({})'
 
-		text = discord.utils.escape_markdown(tag.string)
+		text = self.escaper(tag.string) if callable(self.escaper) else tag.string
 		full = fmt.format(text, use_url)
 
 		greedy_chars = 3
@@ -63,9 +62,6 @@ def html2markdown(html, escaper=None, url=None, big_box=False, language=None, pa
 
 	if language is not None and big_box is False:
 		raise ValueError('Cannot have code box language with small boxes. Set big_box=True')
-
-	if not callable(escaper):
-		raise ValueError('No callable escaper set. use \'discord.utils.escape_markdown\' if using discord.py')
 
 	# tags that only prepends something
 	prepend = dict(
@@ -126,7 +122,7 @@ def html2markdown(html, escaper=None, url=None, big_box=False, language=None, pa
 					if credit and len(to_add) > credit:
 						raise MaxLengthReached()
 				else:
-					to_add = escaper(entry)
+					to_add = escaper(entry) if callable(escaper) else entry
 					if credit and len(to_add) > credit:
 						raise MaxLengthReached(result + to_add[0:credit])
 
@@ -156,8 +152,8 @@ def html2markdown(html, escaper=None, url=None, big_box=False, language=None, pa
 		return result, credit
 
 	try:
-		r, c = traverse(bs, None if max_length is None else max_length - 3)
+		r, c = traverse(bs, None if max_length is None else max_length - 4)
 	except MaxLengthReached as exc:
-		r = exc.message.strip() + '...'
+		r = exc.message.strip() + ' ...'
 
 	return r.strip()

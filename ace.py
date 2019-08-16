@@ -14,6 +14,7 @@ from datetime import datetime
 
 from config import *
 from cogs.help import Help
+from cogs.ahk.ids import AHK_GUILD_ID, MEMBER_ROLE_ID
 from utils.time import pretty_seconds
 from utils.guildconfig import GuildConfig
 
@@ -37,6 +38,8 @@ EXTENSIONS = (
 	'cogs.owner',
 )
 
+self_deleted = list()
+
 
 class AceBot(commands.Bot):
 	_support_link = 'https://discord.gg/X7abzRe'
@@ -52,6 +55,7 @@ class AceBot(commands.Bot):
 
 		self.aiohttp = None
 		self.db = None
+		self.self_deleted = self_deleted
 		self.startup_time = datetime.utcnow()
 
 		# do blacklist check before all commands
@@ -100,14 +104,15 @@ class AceBot(commands.Bot):
 			)
 
 	async def on_message(self, message):
-		if message.content.startswith(f'<@{self.user.id}>'):
-			ctx = await self.get_context(message)
-			ctx.bot = self
-			ctx.prefix = await self.prefix_resolver(self, message)
-			ctx.command = self.get_command('help')
-			await ctx.reinvoke()
-		elif self.db is not None and self.db._initialized: # only process commands if db is initialized
-			await self.process_commands(message)
+		if self.db is not None and self.db._initialized:
+			if message.content.startswith(f'<@{self.user.id}>'):
+				ctx = await self.get_context(message)
+				ctx.bot = self
+				ctx.prefix = await self.prefix_resolver(self, message)
+				ctx.command = self.get_command('help')
+				await ctx.reinvoke()
+			else: # only process commands if db is initialized
+				await self.process_commands(message)
 
 	@property
 	def invite_link(self, perms=None):
@@ -115,7 +120,8 @@ class AceBot(commands.Bot):
 			perms = 67497025
 		return f'https://discordapp.com/oauth2/authorize?&client_id={self.user.id}&scope=bot&permissions={perms}'
 
-	async def prefix_resolver(self, bot, message):
+	@staticmethod
+	async def prefix_resolver(bot, message):
 		gc = await GuildConfig.get_guild(message.guild.id)
 		return gc.prefix or DEFAULT_PREFIX
 
@@ -124,6 +130,11 @@ class AceBot(commands.Bot):
 			return False
 
 		if ctx.author.bot:
+			return False
+
+		# if we're in the ahk guild and the invoker doesn't have the member role, then ONLY
+		# allow the command to be run if the command is 'accept' (for #welcome)
+		if ctx.guild.id == AHK_GUILD_ID and not any(role.id == MEMBER_ROLE_ID for role in ctx.author.roles):
 			return False
 
 		return True
@@ -178,6 +189,19 @@ class AceBot(commands.Bot):
 			pass
 
 
+# TODO: rely on logging to fetch self-deleted messages instead of monkey-patching?
+async def patched_delete(self, *, delay=None):
+	self_deleted.insert(0, self.id)
+
+	if len(self_deleted) > 100:
+		self_deleted.pop()
+
+	await self.real_delete(delay=delay)
+
+discord.Message.real_delete = discord.Message.delete
+discord.Message.delete = patched_delete
+
+
 # monkey-patched Embed class to force embed color
 class Embed(discord.Embed):
 	def __init__(self, color=0x2E4D83, **attrs):
@@ -199,7 +223,7 @@ if __name__ == '__main__':
 		open('logs/log.log', 'w+')
 
 	# set logging levels for discord and gino lib
-	logging.getLogger('discord').setLevel(logging.INFO)
+	logging.getLogger('discord').setLevel(logging.DEBUG)
 
 	# we want out logging formatted like this everywhere
 	fmt = logging.Formatter('[{asctime}] [{levelname}] {name}: {message}', datefmt='%Y-%m-%d %H:%M:%S', style='{')

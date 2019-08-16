@@ -138,6 +138,9 @@ Create a PostgreSQL database and a role:
 ```sql
 CREATE ROLE ace WITH LOGIN PASSWORD 'your_pw';
 CREATE DATABASE acebot OWNER ace;
+
+-- connect to database and then do:
+CREATE EXTENSION pg_trgm;
 ```
 
 Then in the root folder, make a file called `config.py` and insert, at minimum, your bot token, postgresql bind and owner id:
@@ -163,4 +166,5 @@ OXFORD_KEY 	= None
 ## Acknowledgements
 
 Avatar artwork: Vinter Borge
+
 Contributors: CloakerSmoker #2459, Cap'n Odin #8812 and GeekDude #2532

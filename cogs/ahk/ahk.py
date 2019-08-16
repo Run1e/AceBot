@@ -1,13 +1,20 @@
 import discord
 import logging
+import asyncio
+import re
 
+from bs4 import BeautifulSoup
 from fuzzywuzzy import process, fuzz
+from datetime import datetime, timedelta, timezone
 from discord.ext import commands, tasks
 
-from cogs.ahk.ids import AHK_GUILD_ID
+from cogs.ahk.ids import *
 from cogs.mixins import AceMixin
 from utils.docs_parser import parse_docs
 from utils.html2markdown import html2markdown
+
+
+RSS_URL = 'https://www.autohotkey.com/boards/feed'
 
 
 class AutoHotkey(AceMixin, commands.Cog):
@@ -16,7 +23,54 @@ class AutoHotkey(AceMixin, commands.Cog):
 	def __init__(self, bot):
 		super().__init__(bot)
 
-		# start rss
+		self.forum_channel = self.bot.get_channel(FORUM_CHAN_ID)
+		self.rss_time = datetime.now(tz=timezone(timedelta(hours=1))) - timedelta(minutes=1)
+
+		self.rss.start()
+
+	def parse_date(self, date_str):
+		date_str = date_str.strip()
+		return datetime.strptime(date_str[:-3] + date_str[-2:], "%Y-%m-%dT%H:%M:%S%z")
+
+	@tasks.loop(minutes=5)
+	async def rss(self):
+		async with self.bot.aiohttp.request('get', RSS_URL) as resp:
+			if resp.status != 200:
+				return
+			xml_rss = await resp.text('UTF-8')
+
+		xml = BeautifulSoup(xml_rss, 'xml')
+
+		for entry in xml.find_all('entry')[::-1]:
+			time = self.parse_date(str(entry.updated.text))
+			title = html2markdown(str(entry.title.text))
+
+			if time > self.rss_time and '• Re: ' not in title:
+				content = str(entry.content.text).split('Statistics: ')[0]
+
+				content = html2markdown(
+					content, escaper=discord.utils.escape_markdown,
+					language='autoit', big_box=True, max_length=1024
+				)
+
+				content = content.replace('CODE:', '')
+				content = re.sub('\n\n+', '\n\n', content)
+
+				e = discord.Embed(
+					title=title,
+					description=content,
+					url=str(entry.id.text)
+				)
+
+				e.add_field(name='Author', value=str(entry.author.text))
+				e.add_field(name='Forum', value=str(entry.category['label']))
+				e.set_footer(text='autohotkey.com', icon_url='https://www.autohotkey.com/favicon.ico')
+				e.timestamp = time
+
+				if self.forum_channel is not None:
+					await self.forum_channel.send(embed=e)
+
+				self.rss_time = time
 
 	@commands.Cog.listener()
 	async def on_command_error(self, ctx, error):
@@ -73,20 +127,19 @@ class AutoHotkey(AceMixin, commands.Cog):
 	async def docs(self, ctx, *, query):
 		'''Search the AutoHotkey documentation. Enter multiple queries by separating with commas.'''
 
-		spl = set(query.split(','))
+		spl = set(st.strip().lower() for st in query.split(','))
 
 		if len(spl) > 3:
 			raise commands.CommandError('Maximum three different queries.')
 		elif len(spl) > 1:
-			for query in spl:
-				query = query.strip()
+			for subquery in spl:
 				try:
-					await ctx.invoke(self.docs, query=query)
+					await ctx.invoke(self.docs, query=subquery)
 				except commands.CommandError:
 					pass
 			return
 
-		docs_id, name = await self.get_docs(query)
+		docs_id, name = await self.get_docs(spl.pop())
 
 		e = discord.Embed()
 		e.color = 0x95CD95
@@ -97,6 +150,7 @@ class AutoHotkey(AceMixin, commands.Cog):
 		e.title = name
 		e.url = 'https://autohotkey.com/docs/{}'.format(docs.get('page'))
 		e.description = docs.get('content') or 'No description for this page.'
+
 		e.set_footer(text='autohotkey.com', icon_url='https://www.autohotkey.com/favicon.ico')
 
 		if syntax is not None:

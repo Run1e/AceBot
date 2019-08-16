@@ -119,7 +119,7 @@ CREATE TABLE IF NOT EXISTS star_msg (
 -- starrers
 CREATE TABLE IF NOT EXISTS starrers (
 	id 			SERIAL UNIQUE,
-	star_id		INTEGER REFERENCES star_msg (id),
+	star_id		INTEGER NOT NULL REFERENCES star_msg (id),
 	user_id		BIGINT NOT NULL,
 	UNIQUE (star_id, user_id)
 );
