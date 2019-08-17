@@ -6,12 +6,51 @@ from discord.ext import commands
 from cogs.mixins import AceMixin
 from cogs.ahk.ids import RULES_MSG_ID
 from utils.checks import is_mod_pred
+from utils.pager import Pager
+from utils.time import pretty_datetime
 
 log = logging.getLogger(__name__)
 
 
+class DiscordObjectPager(Pager):
+	async def craft_page(self, e, page, entries):
+		entry = entries[0]
+
+		e.description = ''
+
+		if hasattr(entry, 'mention'):
+			e.description = entry.mention
+
+		if hasattr(entry, 'avatar_url'):
+			e.set_author(name=entry.name, icon_url=entry.avatar_url)
+		elif hasattr(entry, 'name'):
+			e.title = entry.name
+
+		e.add_field(name='ID', value=entry.id)
+
+		if hasattr(entry, 'created_at'):
+			e.add_field(name='Created at', value=pretty_datetime(entry.created_at))
+
+		if hasattr(entry, 'joined_at'):
+			e.add_field(name='Joined at', value=pretty_datetime(entry.joined_at))
+
+		if hasattr(entry, 'colour'):
+			e.add_field(name='Color', value=entry.colour)
+
+		if hasattr(entry, 'mentionable'):
+			e.add_field(name='Mentionable', value='Yes' if entry.mentionable else 'No')
+
+		if hasattr(entry, 'topic'):
+			e.description += '\n\n' + entry.topic if len(e.description) else entry.topic
+
+		if hasattr(entry, 'position'):
+			e.add_field(name='Position', value=entry.position)
+
+		e.set_footer(text=str(type(entry))[8:-2])
+
+
 class Moderator(AceMixin, commands.Cog):
-	'''Commands available to moderators. '''
+	'''Commands available to moderators.'''
 
 	mod_perms = (
 		'administrator',
@@ -34,6 +73,47 @@ class Moderator(AceMixin, commands.Cog):
 
 	async def cog_check(self, ctx):
 		return await is_mod_pred(ctx)
+
+	@commands.command()
+	async def get(self, ctx, object, key=None, *, value=None):
+		'''Get a discord object by specifying key and value.'''
+
+		if value is None and key is not None:
+			raise commands.CommandError('Invalid arguments.')
+
+		obj_list = dict(
+			member=ctx.guild.members,
+			emoji=ctx.guild.emojis,
+			channel=ctx.guild.channels,
+			role=list(reversed(ctx.guild.roles[1:])),
+			category=ctx.guild.categories,
+			categorie=ctx.guild.categories,
+		)
+
+		if object[-1] == 's':
+			object = object[:-1]
+
+		if object not in obj_list:
+			raise commands.CommandError('Unknown object type.')
+
+		objects = obj_list[object]
+
+		if not len(objects):
+			raise commands.CommandError('No objects of this type on this server.')
+
+		if key is not None:
+			obj = discord.utils.get(objects, **{key: value})
+			if obj is None:
+				try:
+					obj = discord.utils.get(objects, **{key: int(value)})
+				except ValueError:
+					pass
+			objects = [obj]
+			if objects[0] is None:
+				raise commands.CommandError('Not found.')
+
+		p = DiscordObjectPager(ctx, entries=objects, per_page=1)
+		await p.go()
 
 	@commands.command()
 	@commands.bot_has_permissions(manage_messages=True)
@@ -102,31 +182,6 @@ class Moderator(AceMixin, commands.Cog):
 
 		await ctx.send(content)
 
-	@commands.command()
-	async def get(self, ctx, object, key, *, value):
-		'''Get a discord object by specifying key and value.'''
-
-		if object not in ('member', 'emoji', 'channel', 'role', 'category'):
-			raise commands.CommandError('Unknown object type.')
-
-		if object == 'category':
-			object = 'categories'
-		else:
-			object += 's'
-
-		queries = [{key: value}]
-
-		if key == 'name':
-			queries.append({'display_name': value})
-
-		for query in queries:
-			res = discord.utils.get(getattr(ctx.guild, object), **query)
-
-			if res is not None:
-				await ctx.send('```\n' + repr(res) + '\n```')
-				return
-
-		await ctx.send('None found')
 
 
 def setup(bot):

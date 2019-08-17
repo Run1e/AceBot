@@ -1,6 +1,4 @@
 import discord
-import logging
-import asyncio
 import re
 
 from bs4 import BeautifulSoup

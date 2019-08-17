@@ -40,7 +40,7 @@ CREATE TABLE IF NOT EXISTS mod (
 -- starboard config
 CREATE TABLE IF NOT EXISTS starboard (
 	id			SERIAL UNIQUE,
-	guild_id	BIGINT NOT NULL,
+	guild_id	BIGINT UNIQUE NOT NULL,
 	channel_id	BIGINT NULL,
 	locked		BOOLEAN NOT NULL DEFAULT FALSE,
 	threshold	SMALLINT NOT NULL DEFAULT '3',
@@ -59,7 +59,8 @@ CREATE TABLE IF NOT EXISTS kick_pattern (
 CREATE TABLE IF NOT EXISTS muted (
 	id			SERIAL UNIQUE,
 	guild_id	BIGINT NOT NULL,
-	user_id		BIGINT NOT NULL
+	user_id		BIGINT NOT NULL,
+	UNIQUE (guild_id, user_id)
 );
 
 -- ignore list

@@ -12,10 +12,10 @@ HELP_EMOJI = '\N{WHITE QUESTION MARK ORNAMENT}'
 
 
 class Pager:
-	def __init__(self, ctx, entries=None, page=1, per_page=12, timeout=120.0, separator=' '):
+	def __init__(self, ctx, entries=None, page=1, per_page=12, owner=None, timeout=120.0, separator=' '):
 		self.ctx = ctx
 		self.bot = ctx.bot
-		self.author = ctx.author
+		self.author = owner or ctx.author
 		self.guild = ctx.guild
 		self.channel = ctx.channel
 		self.entries = entries or []

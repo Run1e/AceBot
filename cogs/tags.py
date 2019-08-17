@@ -182,7 +182,7 @@ class Tags(AceMixin, commands.Cog):
 
 	@tag.command(name='list', aliases=['all', 'browse'])
 	async def _list(self, ctx, *, member: discord.Member = None):
-		'''List someones tags'''
+		'''List all server tags, or a members tags.'''
 
 		if member is None:
 			tags = await self.db.fetch(
@@ -297,7 +297,11 @@ class Tags(AceMixin, commands.Cog):
 		e.set_footer(text='Created')
 		e.add_field(name='Owner', value=owner.mention if owner else nick)
 
-		rank = await self.db.fetchval('SELECT COUNT(id) FROM tag WHERE uses > $1', record.get('uses') + 1)
+		rank = await self.db.fetchval(
+			'SELECT COUNT(id) FROM tag WHERE guild_id=$1 AND uses > $2',
+			ctx.guild.id, record.get('uses') + 1
+		)
+
 		e.add_field(name='Rank', value=f'#{rank + 1}')
 
 		e.add_field(name='Uses', value=record.get('uses'))

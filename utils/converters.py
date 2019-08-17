@@ -19,7 +19,9 @@ class TimeDeltaConverter(commands.Converter):
 	async def convert(self, ctx, unit):
 		unit = unit.lower()
 
-		if unit in ('m', 'min', 'mins', 'minute', 'minutes'):
+		if unit in ('s', 'sec', 'secs', 'second', 'seconds'):
+			return timedelta(seconds=1)
+		elif unit in ('m', 'min', 'mins', 'minute', 'minutes'):
 			return timedelta(minutes=1)
 		elif unit in ('h', 'hr', 'hrs', 'hour', 'hours'):
 			return timedelta(hours=1)

@@ -73,6 +73,7 @@ class AceBot(commands.Bot):
 			log.info('Creating database connection...')
 
 			GuildConfig.set_bot(self)
+
 			self.help_command = Help()
 
 			log.info('Initializing aiohttp')

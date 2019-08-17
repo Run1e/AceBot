@@ -1,7 +1,7 @@
 import discord
 import logging
 
-from discord.ext import commands
+from discord.ext import commands, tasks
 from datetime import datetime, timedelta
 from asyncpg.exceptions import UniqueViolationError
 
@@ -63,13 +63,66 @@ class StarConverter(commands.Converter):
 		return row
 
 
-class Stars(AceMixin, commands.Cog):
-	'''Classic Starboard.'''
+class Starboard(AceMixin, commands.Cog):
+	'''Classic Starboard.
+	
+	You can star messages in two ways:
+	1. Reacting to a message with the \N{WHITE MEDIUM STAR} emoji
+	2. Getting the message ID and doing `star <message_id>`
+	'''
 
 	SB_NOT_SET_ERROR = commands.CommandError('No starboard channel has been set yet.')
 	SB_NOT_FOUND_ERROR = commands.CommandError('Starboard channel previously set but not found, please set it again.')
 	SB_LOCKED_ERROR = commands.CommandError('Starboard has been locked and can not be used at the moment.')
 	SB_ORIG_MSG_NOT_FOUND_ERROR = commands.CommandError('Could not find original message.')
+
+	def __init__(self, bot):
+		super().__init__(bot)
+
+		self.purger.start()
+
+	@tasks.loop(minutes=10)
+	async def purger(self):
+		query = '''
+			SELECT id, guild_id, channel_id, star_message_id
+			FROM star_msg
+			WHERE guild_id = $1
+			AND starred_at < $2
+			AND (SELECT COUNT(id) from starrers where starrers.star_id=star_msg.id) < $3
+		'''
+
+		boards = await self.db.fetch(
+			'SELECT guild_id, channel_id, threshold, max_age FROM starboard WHERE locked=$1', False
+		)
+
+		now = datetime.utcnow()
+		to_delete = list()
+
+		for board in boards:
+			rows = await self.db.fetch(
+				query, board.get('guild_id'), now - board.get('max_age'), board.get('threshold') - 1
+			)
+
+			if rows:
+				star_channel = self.bot.get_channel(board.get('channel_id'))
+				if star_channel is None:
+					continue
+
+			for row in rows:
+				to_delete.append(row.get('id'))
+
+				try:
+					star_message = await star_channel.fetch_message(row.get('star_message_id'))
+				except discord.HTTPException:
+					continue
+
+				try:
+					await star_message.delete()
+				except discord.HTTPException:
+					pass
+
+		await self.db.execute('DELETE FROM starrers WHERE star_id=ANY($1::bigint[])', to_delete)
+		await self.db.execute('DELETE FROM star_msg WHERE id=ANY($1::bigint[])', to_delete)
 
 	@commands.group(name='star', invoke_without_command=True)
 	async def _star(self, ctx, *, message_id: discord.Message):
@@ -90,8 +143,9 @@ class Stars(AceMixin, commands.Cog):
 		row = message_id
 
 		star_channel = await self._get_star_channel(ctx.guild)
-		message = await star_channel.fetch_message(row.get('star_message_id'))
-		if message is None:
+		try:
+			message = await star_channel.fetch_message(row.get('star_message_id'))
+		except discord.HTTPException:
 			raise commands.CommandError('Starred message not found.')
 
 		await ctx.send(content=message.content, embed=message.embeds[0])
@@ -123,6 +177,29 @@ class Stars(AceMixin, commands.Cog):
 
 		e.set_footer(text='ID: {}'.format(row.get('message_id')))
 		e.timestamp = row.get('starred_at')
+
+		await ctx.send(embed=e)
+
+	@_star.command()
+	async def starrers(self, ctx, *, message_id: StarConverter):
+		'''List every starrer of a starred message.'''
+
+		row = message_id
+
+		starrers = await self.db.fetch('SELECT user_id FROM starrers WHERE star_id=$1', row.get('id'))
+
+		e = discord.Embed()
+
+		e.add_field(name='Original starrer', value='<@{}>'.format(row.get('starrer_id')), inline=False)
+
+		if starrers:
+			desc = '\n'.join('<@{}>'.format(srow.get('user_id')) for srow in starrers)
+		else:
+			desc = 'No one yet!'
+
+		e.add_field(name='Additional starrers', value=desc, inline=False)
+
+		e.set_footer(text='Total: {}'.format(len(starrers) + 1))
 
 		await ctx.send(embed=e)
 
@@ -170,22 +247,22 @@ class Stars(AceMixin, commands.Cog):
 		else:
 			await gc.set('threshold', limit)
 
-		await ctx.send(f'Starboard star threshold set to `{limit}`')
+		await ctx.send(f'Star threshold set to `{limit}`')
 
 	@_star.command()
 	@is_mod()
-	async def age(self, ctx, amount: TimeMultConverter, *, unit: TimeDeltaConverter):
-		'''Set the age where a starred message is subject to the star threshold.'''
+	async def lifespan(self, ctx, amount: TimeMultConverter, *, unit: TimeDeltaConverter):
+		'''Starred messages with less than `threshold` stars after this period are deleted from the starboard. Messages older than this cannot be starred.'''
 
 		age = amount * unit
 
 		if age < timedelta(days=1):
-			raise commands.CommandNotFound('Please set to at least more than 1 day.')
+			raise commands.CommandError('Please set to at least more than 1 day.')
 
 		sc = await StarConfig.get_guild(self.bot, ctx.guild.id)
 		await sc.set('max_age', age)
 
-		await ctx.send(f'Starboard age setting set to {pretty_timedelta(age)}')
+		await ctx.send(f'Star lifespan set to {pretty_timedelta(age)}')
 
 	@_star.command()
 	@is_mod()
@@ -198,14 +275,16 @@ class Stars(AceMixin, commands.Cog):
 		if channel is None:
 			raise self.SB_ORIG_MSG_NOT_FOUND_ERROR
 
-		message = await channel.fetch_message(row.get('message_id'))
-		if message is None:
+		try:
+			message = await channel.fetch_message(row.get('message_id'))
+		except discord.HTTPException:
 			raise self.SB_ORIG_MSG_NOT_FOUND_ERROR
 
 		star_channel = await self._get_star_channel(ctx.guild)
 
-		star_message = await star_channel.fetch_message(row.get('star_message_id'))
-		if star_message is None:
+		try:
+			star_message = await star_channel.fetch_message(row.get('star_message_id'))
+		except discord.HTTPException:
 			raise commands.CommandError('Couldn\'t find starred message.')
 
 		added = 0
@@ -263,8 +342,9 @@ class Stars(AceMixin, commands.Cog):
 
 		star_channel = await self._get_star_channel(ctx.guild)
 
-		star_message = await star_channel.fetch_message(row.get('star_message_id'))
-		if star_message is None:
+		try:
+			star_message = await star_channel.fetch_message(row.get('star_message_id'))
+		except discord.HTTPException:
 			return
 
 		try:
@@ -272,7 +352,7 @@ class Stars(AceMixin, commands.Cog):
 		except discord.HTTPException:
 			pass
 
-		await ctx.send('Starred message deleted.')
+		await ctx.send('Star deleted.')
 
 	@_star.command()
 	@is_mod()
@@ -381,6 +461,11 @@ class Stars(AceMixin, commands.Cog):
 		if gc.locked:
 			raise self.SB_LOCKED_ERROR
 
+		if datetime.utcnow() - gc.max_age > message.created_at:
+			raise commands.CommandError(
+				'Stars can\'t be added or removed from messages older than {}.'.format(pretty_timedelta(gc.max_age))
+			)
+
 		if message.channel.id == gc.channel_id:
 			star_channel = message.channel
 			star_message = message
@@ -391,8 +476,9 @@ class Stars(AceMixin, commands.Cog):
 				raise self.SB_NOT_FOUND_ERROR
 
 			if row is not None:
-				star_message = await star_channel.fetch_message(row.get('star_message_id'))
-				if star_message is None:
+				try:
+					star_message = await star_channel.fetch_message(row.get('star_message_id'))
+				except discord.HTTPException:
 					return
 			else:
 				star_message = None
@@ -421,8 +507,9 @@ class Stars(AceMixin, commands.Cog):
 		if not await self.bot.blacklist(fake_ctx):
 			return
 
-		message = await channel.fetch_message(payload.message_id)
-		if message is None:
+		try:
+			message = await channel.fetch_message(payload.message_id)
+		except discord.HTTPException:
 			return
 
 		try:
@@ -489,8 +576,8 @@ class Stars(AceMixin, commands.Cog):
 		ids = list(sm.get('id') for sm in sms)
 
 		# delete from db
-		await self.db.execute('DELETE FROM starrers WHERE star_id=ANY($1::integer[])', ids)
-		await self.db.execute('DELETE FROM star_msg WHERE id=ANY($1::integer[])', ids)
+		await self.db.execute('DELETE FROM starrers WHERE star_id=ANY($1::bigint[])', ids)
+		await self.db.execute('DELETE FROM star_msg WHERE id=ANY($1::bigint[])', ids)
 
 		guild = self.bot.get_guild(payload.guild_id)
 		if guild is None:
@@ -608,4 +695,4 @@ class Stars(AceMixin, commands.Cog):
 
 
 def setup(bot):
-	bot.add_cog(Stars(bot))
+	bot.add_cog(Starboard(bot))

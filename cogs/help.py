@@ -40,6 +40,7 @@ class HelpPager(Pager):
 
 		e.add_field(name='Support Server', value='Join the support server!\n' + self.bot._support_link)
 
+
 class Help(commands.HelpCommand):
 	'''Cog that implements the help command and help pager.'''
 
@@ -47,8 +48,12 @@ class Help(commands.HelpCommand):
 		if command.hidden:
 			return
 
-		if force is False and not await command.can_run(self.context):
-			return
+		if force is False:
+			try:
+				if not await command.can_run(self.context):
+					return
+			except commands.CheckFailure:
+				return
 
 		help_message = command.brief or command.help
 
@@ -91,7 +96,18 @@ class Help(commands.HelpCommand):
 		await self.pager.go()
 
 	async def send_group_help(self, group):
-		pass
+		added = []
+		cmds = []
+
+		for command in group.walk_commands():
+			if command in added:
+				continue
+
+			await self.add_command(cmds, command)
+			added.append(command)
+
+		self.pager.add_page(group.cog_name, group.cog.__doc__, cmds)
+		await self.pager.go()
 
 	async def send_command_help(self, command):
 		cog_name = command.cog.__class__.__name__
@@ -103,6 +119,21 @@ class Help(commands.HelpCommand):
 		self.pager.add_page(cog_name, cog_desc, cmds)
 
 		await self.pager.go()
+
+	# pretty hacky solution but afaict I gotta do something like this
+	async def command_not_found(self, string):
+		return 'notfound.' + string
+
+	async def send_error_message(self, error):
+		if not error.startswith('notfound.'):
+			return
+
+		query = error.split('.')[1].lower()
+
+		for cog in self.context.bot.cogs:
+			if query == cog.lower():
+				await self.send_cog_help(self.context.bot.get_cog(cog))
+				return
 
 
 # rip is just the signature command ripped from the lib, but with alias support removed.

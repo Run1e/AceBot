@@ -5,7 +5,7 @@ from discord.ext import commands
 
 
 from cogs.mixins import AceMixin
-from utils.checks import is_mod
+from utils.checks import is_mod_pred
 from utils.string_helpers import craft_welcome
 
 
@@ -17,6 +17,9 @@ class Welcome(AceMixin, commands.Cog):
 	`{guild}` - server name
 	`{member_count}` - server member count
 	'''
+
+	async def cog_check(self, ctx):
+		return await is_mod_pred(ctx)
 
 	async def get_welcome(self, guild_id, construct=True):
 		row = await self.db.fetchrow('SELECT * FROM welcome WHERE guild_id=$1', guild_id)
@@ -39,7 +42,6 @@ class Welcome(AceMixin, commands.Cog):
 			await channel.send(craft_welcome(member, row.get('content')))
 
 	@commands.group(hidden=True)
-	@is_mod() # propagates to subcommands as well
 	async def welcome(self, ctx):
 		pass
 
