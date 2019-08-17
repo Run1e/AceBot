@@ -5,7 +5,7 @@ from cogs.ahk.ids import AHK_GUILD_ID
 from utils.checks import is_mod
 from cogs.mixins import AceMixin
 
-DELETE_EMOJI = '\U0000274C'
+DELETE_EMOJI = '\N{Put Litter in Its Place Symbol}'
 DEFAULT_LANG = 'py'
 
 
@@ -40,9 +40,10 @@ class Highlighter(AceMixin, commands.Cog):
 			ctx.guild.id, 0, ctx.author.id
 		) or DEFAULT_LANG
 
-		message = await ctx.send(
-			f'```{lang}\n{code}\n```Paste by {ctx.author.mention} - Click the {DELETE_EMOJI} to delete.'
-		)
+		code = '```{}\n{}\n```'.format(lang, code)
+		code += '*Paste by {} - Click {} to delete.*'.format(ctx.author.mention, DELETE_EMOJI)
+
+		message = await ctx.send(code)
 
 		await self.db.execute(
 			'INSERT INTO highlight_msg (guild_id, channel_id, user_id, message_id) VALUES ($1, $2, $3, $4)',
@@ -55,7 +56,7 @@ class Highlighter(AceMixin, commands.Cog):
 	async def on_raw_reaction_add(self, payload):
 		'''Listens for raw reactions and removes a highlighed message if appropriate.'''
 
-		if payload.user_id == self.bot.user.id or str(payload.emoji) != DELETE_EMOJI:
+		if str(payload.emoji) != DELETE_EMOJI or payload.user_id == self.bot.user.id:
 			return
 
 		if await self.db.execute(

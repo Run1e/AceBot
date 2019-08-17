@@ -152,8 +152,13 @@ class Meta(AceMixin, commands.Cog):
 			raise commands.CommandError('Couldn\'t find command.')
 
 		code = '\n'.join(line[1:] for line in inspect.getsource(command.callback).splitlines())
-		code = code.replace('`', '\u200b`')
-		await ctx.send(f'```py\n{code}\n```')
+
+		paginator = commands.Paginator(prefix='```py')
+		for line in code.replace('`', '\u200b`').split('\n'):
+			paginator.add_line(line)
+
+		for page in paginator.pages:
+			await ctx.send(page)
 
 	@commands.command()
 	async def uptime(self, ctx):

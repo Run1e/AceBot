@@ -280,10 +280,14 @@ class Owner(AceMixin, commands.Cog):
 					self.objects.remove(obj)
 
 		gv = GuildVisitor(ctx.guild)
+
 		try:
 			gv.generic_visit(tree)
 		except SyntaxError as exc:
 			raise commands.CommandError('Syntax error:\n```{}```'.format(str(exc)))
+
+		if not gv.objects:
+			raise commands.CommandError('No matching objects found.')
 
 		p = DiscordObjectPager(ctx, entries=gv.objects, per_page=1)
 		await p.go()

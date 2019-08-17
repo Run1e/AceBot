@@ -6,6 +6,7 @@ import logging
 from discord.ext import commands, tasks
 from enum import Enum, IntEnum
 from datetime import datetime
+from asyncpg.exceptions import UniqueViolationError
 
 from cogs.mixins import AceMixin
 from cogs.ahk.ids import AHK_GUILD_ID
@@ -209,7 +210,7 @@ class Security(AceMixin, commands.Cog):
 
 		e = discord.Embed(
 			title=action,
-			description=reason,
+			description=author.mention + ' ' + reason,
 			color=severity.value,
 			timestamp=datetime.utcnow()
 		)
@@ -228,7 +229,14 @@ class Security(AceMixin, commands.Cog):
 			if action is SecurityAction.MUTE:
 				if mc.mute_role is None:
 					raise ValueError('No mute role set.')
-				await self.db.execute('INSERT INTO muted (guild_id, user_id) VALUES ($1, $2)', member.guild.id, member.id)
+
+				try:
+					await self.db.execute(
+						'INSERT INTO muted (guild_id, user_id) VALUES ($1, $2)', member.guild.id, member.id
+					)
+				except UniqueViolationError:
+					pass
+
 				await member.add_roles(mc.mute_role, reason=reason)
 
 			elif action is SecurityAction.KICK:
@@ -356,6 +364,33 @@ class Security(AceMixin, commands.Cog):
 
 				return
 
+	@commands.Cog.listener()
+	async def on_member_update(self, before, after):
+		try:
+			conf = await self.get_config(before.guild.id)
+		except commands.CommandError:
+			return
+
+		br = set(before.roles)
+		ar = set(after.roles)
+
+		if br == ar:
+			return
+
+		if conf.mute_role in br - ar:
+			await self.db.execute(
+				'DELETE FROM muted WHERE guild_id=$1 AND user_id=$2',
+				before.guild.id, before.id
+			)
+		elif conf.mute_role in ar - br:
+			try:
+				await self.db.execute(
+					'INSERT INTO muted (guild_id, user_id) VALUES ($1, $2)',
+					before.guild.id, before.id
+				)
+			except UniqueViolationError:
+				pass
+
 	async def cog_check(self, ctx):
 		return ctx.guild.id in ALLOWED_GUILDS and await is_mod_pred(ctx)
 
@@ -376,8 +411,13 @@ class Security(AceMixin, commands.Cog):
 
 		reason = 'Muted by {} (ID: {})'.format(ctx.author.mention, ctx.author.id)
 
-		await self.db.execute('INSERT INTO muted (guild_id, user_id) VALUES ($1, $2)', ctx.guild.id, member.id)
+		try:
+			await self.db.execute('INSERT INTO muted (guild_id, user_id) VALUES ($1, $2)', ctx.guild.id, member.id)
+		except UniqueViolationError:
+			pass
+
 		await member.add_roles(mc.mute_role, reason=reason)
+
 		await ctx.send('{} muted.'.format(member.name))
 
 		await self.log(
@@ -404,7 +444,9 @@ class Security(AceMixin, commands.Cog):
 		reason = 'Unmuted by {} (ID: {})'.format(ctx.author.mention, ctx.author.id)
 
 		await self.db.execute('DELETE FROM muted WHERE guild_id=$1 AND user_id=$2', member.guild.id, member.id)
+
 		await member.remove_roles(mc.mute_role, reason=reason)
+
 		await ctx.send('{} unmuted.'.format(member.name))
 
 		await self.log(

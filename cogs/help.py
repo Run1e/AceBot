@@ -128,12 +128,15 @@ class Help(commands.HelpCommand):
 		if not error.startswith('notfound.'):
 			return
 
-		query = error.split('.')[1].lower()
+		orig_query = error.split('.')[1]
+		query = orig_query.lower()
 
 		for cog in self.context.bot.cogs:
 			if query == cog.lower():
 				await self.send_cog_help(self.context.bot.get_cog(cog))
 				return
+
+		await self.context.send('Command \'{}\' not found.'.format(orig_query))
 
 
 # rip is just the signature command ripped from the lib, but with alias support removed.
