@@ -18,6 +18,8 @@ RSS_URL = 'https://www.autohotkey.com/boards/feed'
 class AutoHotkey(AceMixin, commands.Cog):
 	'''Commands for the AutoHotkey guild.'''
 
+	DOCS_NO_MATCH = commands.CommandError('Sorry, couldn\'t find an entry similar to that.')
+
 	def __init__(self, bot):
 		super().__init__(bot)
 
@@ -101,6 +103,9 @@ class AutoHotkey(AceMixin, commands.Cog):
 			query
 		)
 
+		if not matches:
+			raise self.DOCS_NO_MATCH
+
 		result = process.extract(
 			query,
 			[tup.get('name') for tup in matches],
@@ -111,7 +116,7 @@ class AutoHotkey(AceMixin, commands.Cog):
 		name, score = result[0]
 
 		if score < 30:
-			raise commands.CommandError('Sorry, couldn\'t find an entry similar to that.')
+			raise self.DOCS_NO_MATCH
 
 		for match in matches:
 			if match[1] == name:

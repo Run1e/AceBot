@@ -187,6 +187,7 @@ class CommandListHandler(BaseHandler):
 
 			await self.handler(names, f'{self.file}#{tag["id"]}', self.pretty_desc(desc), syntax)
 
+
 class VariablesHandler(BaseHandler):
 	async def parse(self):
 		for tag in self.bs.find_all('tr', id=True):
