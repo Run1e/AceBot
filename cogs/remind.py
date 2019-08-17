@@ -7,7 +7,7 @@ from datetime import datetime, timedelta
 from cogs.mixins import AceMixin
 from utils.converters import TimeMultConverter, TimeDeltaConverter
 from utils.string_helpers import shorten
-from utils.time import pretty_seconds
+from utils.time import pretty_timedelta
 from utils.pager import Pager
 
 log = logging.getLogger(__name__)
@@ -23,12 +23,13 @@ class RemindPager(Pager):
 	async def craft_page(self, e, page, entries):
 		now = datetime.utcnow()
 
-		e.set_author(name=self.member.name, icon_url=self.member.avatar_url)
+		e.set_author(name=self.author.name, icon_url=self.author.avatar_url)
 		e.description = 'All your reminders for this server.'
 
-		for id, guild_id, channel_id, user_id, remind_on, made_on, message in entries:
-			delta = (remind_on - now).total_seconds()
-			time_text = 'Soon...' if delta < 15 else pretty_seconds(delta)
+		for id, guild_id, channel_id, user_id, made_on, remind_on, message in entries:
+			delta = remind_on - now
+
+			time_text = 'Soon...' if delta.total_seconds() < 60 else pretty_timedelta(delta)
 			e.add_field(
 				name=f'{id}: {time_text}',
 				value=shorten(message, 256) if message is not None else DEFAULT_REMINDER_MESSAGE,
@@ -50,7 +51,7 @@ class Reminders(AceMixin, commands.Cog):
 	async def check_reminders(self):
 		res = await self.db.fetch('SELECT * FROM remind WHERE remind_on <= $1', datetime.utcnow())
 
-		for id, guild_id, channel_id, user_id, remind_on, made_on, message in res:
+		for id, guild_id, channel_id, user_id, made_on, remind_on, message in res:
 
 			channel = self.bot.get_channel(channel_id)
 			user = self.bot.get_user(user_id)
@@ -61,7 +62,6 @@ class Reminders(AceMixin, commands.Cog):
 				timestamp=made_on
 			)
 
-			# Encapsulate the reminder message in the prefix/suffix, and send it to the user
 			try:
 				if channel is not None:
 					await channel.send(content=f'<@{user_id}>', embed=e)
@@ -70,7 +70,6 @@ class Reminders(AceMixin, commands.Cog):
 			except discord.HTTPException as exc:
 				log.info(f'Failed sending reminder #{id} for {user.id} - {exc}')
 
-			# Get the record we just sent the message for, and delete it so it isn't sent again
 			await self.db.execute('DELETE FROM remind WHERE id=$1', id)
 
 	@commands.command()
@@ -110,11 +109,10 @@ class Reminders(AceMixin, commands.Cog):
 			raise commands.CommandError('Couldn\'t find any reminders.')
 
 		p = RemindPager(ctx, res, per_page=6)
-		p.member = ctx.author
 		await p.go()
 
 	@commands.command()
-	async def delreminder(self, ctx, reminder_id: int):
+	async def delreminder(self, ctx, *, reminder_id: int):
 		'''Delete a reminder. Must be your own reminder.'''
 
 		res = await self.db.execute(

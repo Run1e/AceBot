@@ -313,7 +313,6 @@ class Security(AceMixin, commands.Cog):
 
 		mc = await self.get_config(member.guild.id)
 
-		# TODO: test that this works
 		if await self.db.fetchval('SELECT id FROM muted WHERE guild_id=$1 AND user_id=$2', member.guild.id, member.id):
 			reason = 'Member was previously muted.'
 

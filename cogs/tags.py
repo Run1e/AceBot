@@ -136,7 +136,7 @@ class Tags(AceMixin, commands.Cog):
 	'''Store and bring up text using tags.'''
 
 	@commands.group(invoke_without_command=True)
-	async def tag(self, ctx, tag_name: TagViewConverter):
+	async def tag(self, ctx, *, tag_name: TagViewConverter):
 		'''Retrieve a tags content.'''
 
 		tag_name, record = tag_name

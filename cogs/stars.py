@@ -80,11 +80,7 @@ class Starboard(AceMixin, commands.Cog):
 	def __init__(self, bot):
 		super().__init__(bot)
 
-		self.purger.start()
-
-	@tasks.loop(minutes=10)
-	async def purger(self):
-		query = '''
+		self.purge_query = '''
 			SELECT id, guild_id, channel_id, star_message_id
 			FROM star_msg
 			WHERE guild_id = $1
@@ -92,6 +88,10 @@ class Starboard(AceMixin, commands.Cog):
 			AND (SELECT COUNT(id) from starrers where starrers.star_id=star_msg.id) < $3
 		'''
 
+		self.purger.start()
+
+	@tasks.loop(minutes=10)
+	async def purger(self):
 		boards = await self.db.fetch(
 			'SELECT guild_id, channel_id, threshold, max_age FROM starboard WHERE locked=$1', False
 		)
@@ -101,7 +101,7 @@ class Starboard(AceMixin, commands.Cog):
 
 		for board in boards:
 			rows = await self.db.fetch(
-				query, board.get('guild_id'), now - board.get('max_age'), board.get('threshold') - 1
+				self.purge_query, board.get('guild_id'), now - board.get('max_age'), board.get('threshold') - 1
 			)
 
 			if rows:
@@ -335,7 +335,9 @@ class Starboard(AceMixin, commands.Cog):
 		row = message_id
 
 		if ctx.author.id not in (row.get('user_id'), row.get('starrer_id')):
-			if not await is_mod_pred(ctx) and not await admin_prompter(ctx):
+			if not await is_mod_pred(ctx):
+				return
+			elif not await admin_prompter(ctx):
 				return
 
 		await self.db.execute('DELETE FROM starrers WHERE star_id=$1', row.get('id'))
