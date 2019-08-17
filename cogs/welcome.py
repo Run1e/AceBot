@@ -120,7 +120,7 @@ class Welcome(AceMixin, commands.Cog):
 
 	@welcome.command()
 	async def disable(self, ctx):
-		'''Enable welcome messages.'''
+		'''Disable welcome messages.'''
 
 		row = await self.get_welcome(ctx.guild.id)
 

@@ -84,7 +84,7 @@ class ImagePersister:
 			f.write(data)
 
 
-class Images(AceMixin, commands.Cog):
+class Image(AceMixin, commands.Cog):
 	''':heart_eyes: :heart_eyes: :heart_eyes:'''
 
 	def __init__(self, bot):
@@ -215,4 +215,4 @@ class Images(AceMixin, commands.Cog):
 
 
 def setup(bot):
-	bot.add_cog(Images(bot))
+	bot.add_cog(Image(bot))

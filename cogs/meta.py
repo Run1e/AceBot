@@ -22,73 +22,6 @@ class Meta(AceMixin, commands.Cog):
 	'''Commands about the bot itself.'''
 
 	@commands.command()
-	async def uptime(self, ctx):
-		'''Time since last bot restart.'''
-
-		await ctx.send(
-			f'It has been {pretty_timedelta(datetime.utcnow() - self.bot.startup_time)} '
-			'since the last bot restart.'
-		)
-
-	@commands.command(aliases=['join'])
-	async def invite(self, ctx):
-		'''Get bot invite link.'''
-
-		await ctx.send(self.bot.invite_link)
-
-	@commands.command()
-	async def dbl(self, ctx):
-		'''Get link to discordbots.org bot page.'''
-
-		await ctx.send('https://discordbots.org/bot/367977994486022146')
-
-	@commands.command(aliases=['source'])
-	async def code(self, ctx, *, command: str = None):
-		'''Show command code or get GitHub repo link.'''
-
-		if command is None:
-			await ctx.send('https://github.com/Run1e/AceBot')
-			return
-
-		command = self.bot.get_command(command)
-
-		if command is None or command.hidden:
-			raise commands.CommandError('Couldn\'t find command.')
-
-		code = '\n'.join(line[1:] for line in inspect.getsource(command.callback).splitlines())
-		code = code.replace('`', '\u200b`')
-		await ctx.send(f'```py\n{code}\n```')
-
-	@commands.command()
-	async def support(self, ctx):
-		'''Get link to support server.'''
-		await ctx.send(self.bot._support_link)
-
-	@commands.command(aliases=['fb'])
-	@commands.cooldown(rate=1, per=60.0, type=commands.BucketType.user)
-	async def feedback(self, ctx, *, feedback: str):
-		'''Give me some feedback about the bot!'''
-
-		e = discord.Embed(title='Feedback', description=feedback)
-
-		e.set_author(name=ctx.author.name, icon_url=ctx.author.avatar_url)
-
-		e.add_field(name='Guild', value=f'{ctx.guild.name} ({ctx.guild.id})')
-		e.set_footer(text=f'Author ID: {ctx.author.id}')
-
-		dest = self.bot.get_channel(FEEDBK_CHANNEL)
-
-		if dest is None:
-			raise commands.CommandError('Feedback not sent. Feedback channel was not found, or not set up.')
-
-		await dest.send(embed=e)
-		await ctx.send('Feedback sent. Thanks for helping improve the bot!')
-
-	@commands.command(hidden=True)
-	async def hello(self, ctx):
-		await ctx.send(f'Hello {ctx.author.mention}!')
-
-	@commands.command()
 	async def stats(self, ctx, member: discord.Member = None):
 		'''Show bot or user command stats.'''
 
@@ -173,6 +106,73 @@ class Meta(AceMixin, commands.Cog):
 		e.set_footer(text='Tracking commands since 2018/11/21')
 
 		await ctx.send(embed=e)
+
+	@commands.command(aliases=['fb'])
+	@commands.cooldown(rate=1, per=60.0, type=commands.BucketType.user)
+	async def feedback(self, ctx, *, feedback: str):
+		'''Give me some feedback about the bot!'''
+
+		e = discord.Embed(title='Feedback', description=feedback)
+
+		e.set_author(name=ctx.author.name, icon_url=ctx.author.avatar_url)
+
+		e.add_field(name='Guild', value=f'{ctx.guild.name} ({ctx.guild.id})')
+		e.set_footer(text=f'Author ID: {ctx.author.id}')
+
+		dest = self.bot.get_channel(FEEDBK_CHANNEL)
+
+		if dest is None:
+			raise commands.CommandError('Feedback not sent. Feedback channel was not found, or not set up.')
+
+		await dest.send(embed=e)
+		await ctx.send('Feedback sent. Thanks for helping improve the bot!')
+
+	@commands.command(aliases=['join'])
+	async def invite(self, ctx):
+		'''Get bot invite link.'''
+
+		await ctx.send(self.bot.invite_link)
+
+	@commands.command()
+	async def support(self, ctx):
+		'''Get link to support server.'''
+		await ctx.send(self.bot._support_link)
+
+	@commands.command(aliases=['source'])
+	async def code(self, ctx, *, command: str = None):
+		'''Show command code or get GitHub repo link.'''
+
+		if command is None:
+			await ctx.send('https://github.com/Run1e/AceBot')
+			return
+
+		command = self.bot.get_command(command)
+
+		if command is None or command.hidden:
+			raise commands.CommandError('Couldn\'t find command.')
+
+		code = '\n'.join(line[1:] for line in inspect.getsource(command.callback).splitlines())
+		code = code.replace('`', '\u200b`')
+		await ctx.send(f'```py\n{code}\n```')
+
+	@commands.command()
+	async def uptime(self, ctx):
+		'''Time since last bot restart.'''
+
+		await ctx.send(
+			f'It has been {pretty_timedelta(datetime.utcnow() - self.bot.startup_time)} '
+			'since the last bot restart.'
+		)
+
+	@commands.command()
+	async def dbl(self, ctx):
+		'''Get link to discordbots.org bot page.'''
+
+		await ctx.send('https://discordbots.org/bot/367977994486022146')
+
+	@commands.command(hidden=True)
+	async def hello(self, ctx):
+		await ctx.send(f'Hello {ctx.author.mention}!')
 
 
 def setup(bot):

@@ -1,12 +1,57 @@
-import discord, io, textwrap, traceback, asyncio
+import discord
+import io
+import textwrap
+import traceback
+import asyncio
+import ast
+
+
 from discord.ext import commands
 from contextlib import redirect_stdout
 from tabulate import tabulate
-
 from asyncpg.exceptions import UniqueViolationError
 
 from utils.google import google_parse
+from utils.pager import Pager
+from utils.time import pretty_datetime
 from cogs.mixins import AceMixin
+
+
+class DiscordObjectPager(Pager):
+	async def craft_page(self, e, page, entries):
+		entry = entries[0]
+
+		e.description = ''
+
+		if hasattr(entry, 'mention'):
+			e.description = entry.mention
+
+		if hasattr(entry, 'avatar_url'):
+			e.set_author(name=entry.name, icon_url=entry.avatar_url)
+		elif hasattr(entry, 'name'):
+			e.title = entry.name
+
+		e.add_field(name='ID', value=entry.id)
+
+		if hasattr(entry, 'created_at'):
+			e.add_field(name='Created at', value=pretty_datetime(entry.created_at))
+
+		if hasattr(entry, 'joined_at'):
+			e.add_field(name='Joined at', value=pretty_datetime(entry.joined_at))
+
+		if hasattr(entry, 'colour'):
+			e.add_field(name='Color', value=entry.colour)
+
+		if hasattr(entry, 'mentionable'):
+			e.add_field(name='Mentionable', value='Yes' if entry.mentionable else 'No')
+
+		if hasattr(entry, 'topic'):
+			e.description += '\n\n' + entry.topic if len(e.description) else entry.topic
+
+		if hasattr(entry, 'position'):
+			e.add_field(name='Position', value=entry.position)
+
+		e.set_footer(text=e.footer.text + ' - ' + str(type(entry))[8:-2].split('.')[-1])
 
 
 class Owner(AceMixin, commands.Cog):
@@ -148,6 +193,100 @@ class Owner(AceMixin, commands.Cog):
 		'''Calls eval but wraps code in print()'''
 
 		await ctx.invoke(self.eval, body=f'pprint({body})')
+
+	@commands.command()
+	async def get(self, ctx, *, query: commands.clean_content):
+		'''Get a discord object by specifying key and value.'''
+
+		try:
+			tree = ast.parse(query)
+		except SyntaxError as exc:
+			raise commands.CommandError('Syntax error:\n```{}```'.format(str(exc)))
+
+		class GuildVisitor(ast.NodeVisitor):
+			GUILD_ATTRS = (
+				'members',
+				'roles',
+				'channels',
+				'emojis',
+				'categories'
+			)
+
+			def __init__(self, guild):
+				self.guild = guild
+				self.objects = list()
+
+			def get_value(self, thing):
+				if isinstance(thing, ast.Name):
+					return thing.id
+				elif isinstance(thing, ast.Num):
+					return thing.n
+				elif isinstance(thing, ast.Str):
+					return thing.s
+				else:
+					raise SyntaxError('Unsupported type {}'.format(type(thing)))
+
+			def visit_Call(self, node):
+				fn = node.func.id.lower()
+
+				if fn not in self.GUILD_ATTRS:
+					raise SyntaxError('Unknown type \'{}\''.format(fn))
+
+				self.objects_type = fn
+
+				for obj in getattr(self.guild, fn):
+					passed = True
+					for kwarg in node.keywords:
+						if not hasattr(obj, kwarg.arg):
+							raise SyntaxError('Unknown attribute {}'.format(kwarg.arg))
+						if getattr(obj, kwarg.arg) != self.get_value(kwarg.value):
+							passed = False
+							break
+					if passed:
+						self.objects.append(obj)
+
+			def visit_Subscript(self, node):
+				if not hasattr(node.slice, 'lower'):
+					raise SyntaxError('Slice malformed.')
+
+				self.visit_Call(node.value)
+
+				attr = self.get_value(node.slice.lower)
+				key = self.get_value(node.slice.upper)
+				val = self.get_value(node.slice.step)
+
+				if not isinstance(attr, str):
+					raise SyntaxError('Slice type has to be string')
+				if not isinstance(key, str):
+					raise SyntaxError('Slice type attribute has to be string')
+				if val is None:
+					raise SyntaxError('Missing slice type value')
+
+				to_remove = list()
+
+				for obj in self.objects:
+					if not hasattr(obj, attr):
+						raise SyntaxError('Unknown attribute {}'.format(attr))
+					passed = False
+					for subobj in getattr(obj, attr):
+						if not hasattr(subobj, key):
+							raise SyntaxError('Unknown attribute for sub-object {}'.format(key))
+						if getattr(subobj, key) == val:
+							passed = True
+					if not passed:
+						to_remove.append(obj)
+
+				for obj in to_remove:
+					self.objects.remove(obj)
+
+		gv = GuildVisitor(ctx.guild)
+		try:
+			gv.generic_visit(tree)
+		except SyntaxError as exc:
+			raise commands.CommandError('Syntax error:\n```{}```'.format(str(exc)))
+
+		p = DiscordObjectPager(ctx, entries=gv.objects, per_page=1)
+		await p.go()
 
 	@commands.command()
 	async def eval(self, ctx, *, body: str):

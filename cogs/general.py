@@ -19,7 +19,7 @@ class General(AceMixin, commands.Cog):
 	async def flip(self, ctx):
 		'''Flip a coin!'''
 
-		msg = await ctx.send('\*flip\*')
+		msg = await ctx.send('*Flipping...*')
 		await asyncio.sleep(3)
 		await msg.edit(content=random.choice(('Heads!', 'Tails!')))
 

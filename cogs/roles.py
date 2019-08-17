@@ -287,11 +287,12 @@ class Roles(AceMixin, commands.Cog):
 
 		e = discord.Embed()
 
-		for role in role_rows:
-			e.add_field(
-				name=role.get('name'),
-				value='ID: {}\nROLE ID: {}\nEMOJI: {}'.format(role.get('id'), role.get('role_id'), role.get('emoji'))
-			)
+		for role_id in conf.get('roles'):
+			for role in filter(lambda role: role.get('id') == role_id, role_rows):
+				e.add_field(
+					name=role.get('name'),
+					value='ROLE ID: {}\nEMOJI: {}'.format(role.get('role_id'), role.get('emoji'))
+				)
 
 		await ctx.send(embed=e)
 

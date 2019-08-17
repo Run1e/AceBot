@@ -14,6 +14,7 @@ from cogs.mixins import AceMixin
 
 log = logging.getLogger(__name__)
 STAR_EMOJI = '\N{WHITE MEDIUM STAR}'
+STAR_COOLDOWN = timedelta(minutes=3)
 
 
 class StarConfig:
@@ -402,11 +403,22 @@ class Starboard(AceMixin, commands.Cog):
 		else:
 			# new star. post it and store it
 
+			if message is None:
+				return # undef behaviour
+
 			if message.author == starrer:
 				raise commands.CommandError('Can\'t star your own message.')
 
 			if message.channel.is_nsfw() and not star_message.channel.is_nsfw():
 				raise commands.CommandError('Can\'t star message from nsfw channel into non-nsfw starboard.')
+
+			prev_time = await self.db.fetchval(
+				'SELECT starred_at FROM star_msg WHERE guild_id=$1 AND starrer_id=$2 ORDER BY id DESC LIMIT 1',
+				message.guild.id, starrer.id
+			)
+
+			if prev_time is not None and datetime.utcnow() - prev_time < STAR_COOLDOWN:
+				raise commands.CommandError('Please wait a bit before starring again.')
 
 			try:
 				star_message = await star_channel.send(self.get_header(1), embed=self.get_embed(message, 1))
@@ -515,8 +527,9 @@ class Starboard(AceMixin, commands.Cog):
 		try:
 			await self._on_star_event_meta(event, message, starrer)
 		except commands.CommandError as exc:
-			# await channel.send(content=starrer.mention, embed=discord.Embed(description=str(exc)), delete_after=15)
-			pass
+			gc = await StarConfig.get_guild(self.bot, message.guild.id)
+			if channel.id != gc.channel_id:
+				await channel.send(content=starrer.mention, embed=discord.Embed(description=str(exc)), delete_after=15)
 
 	@commands.Cog.listener()
 	async def on_raw_reaction_add(self, payload):

@@ -74,22 +74,6 @@ class Reminders(AceMixin, commands.Cog):
 			await self.db.execute('DELETE FROM remind WHERE id=$1', id)
 
 	@commands.command()
-	async def reminders(self, ctx):
-		'''List your reminders in this guild.'''
-
-		res = await self.db.fetch(
-			'SELECT * FROM remind WHERE guild_id=$1 AND user_id=$2 ORDER BY id DESC',
-			ctx.guild.id, ctx.author.id
-		)
-
-		if not len(res):
-			raise commands.CommandError('Couldn\'t find any reminders.')
-
-		p = RemindPager(ctx, res, per_page=6)
-		p.member = ctx.author
-		await p.go()
-
-	@commands.command()
 	async def remindme(self, ctx, amount: TimeMultConverter, unit: TimeDeltaConverter, *, message=None):
 		'''Create a new reminder.'''
 
@@ -112,6 +96,22 @@ class Reminders(AceMixin, commands.Cog):
 		)
 
 		await ctx.message.add_reaction(SUCCESS_EMOJI)
+
+	@commands.command()
+	async def reminders(self, ctx):
+		'''List your reminders in this guild.'''
+
+		res = await self.db.fetch(
+			'SELECT * FROM remind WHERE guild_id=$1 AND user_id=$2 ORDER BY id DESC',
+			ctx.guild.id, ctx.author.id
+		)
+
+		if not len(res):
+			raise commands.CommandError('Couldn\'t find any reminders.')
+
+		p = RemindPager(ctx, res, per_page=6)
+		p.member = ctx.author
+		await p.go()
 
 	@commands.command()
 	async def delreminder(self, ctx, reminder_id: int):
