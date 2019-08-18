@@ -31,8 +31,13 @@ class TagCreateConverter(commands.Converter):
 		'edit', 'raw',
 		'delete', 'remove',
 		'list', 'all', 'browse',
-		'info', 'stat', 'stats',
-		'top', 'get', 'set', 'put', 'exec', 'search',
+		'raw',
+		'rename',
+		'alias',
+		'transfer',
+		'search',
+		'info', 'stats',
+		'top', 'get', 'set', 'put', 'exec'
 	)
 
 	async def convert(self, ctx, tag_name: str):
@@ -241,39 +246,7 @@ class Tags(AceMixin, commands.Cog):
 		else:
 			await ctx.send(f"Alias for \'{record.get('name')}\' set to \'{alias}\'")
 
-	@tag.command()
-	async def transfer(self, ctx, tag_name: TagEditConverter, *, new_owner: discord.Member):
-		'''Transfer a tag to another member.'''
-
-		tag_name, record = tag_name
-
-		if record.get('user_id') == new_owner.id:
-			raise commands.CommandError('User already owns tag.')
-
-		res = await self.db.execute('UPDATE tag SET user_id=$1 WHERE id=$2', new_owner.id, record.get('id'))
-
-		if res == 'UPDATE 1':
-			await ctx.send('Tag \'{}\' transferred to \'{}\''.format(record.get('name'), new_owner.display_name))
-		else:
-			raise commands.CommandError('Unknown error occured.')
-
-	@tag.command()
-	async def search(self, ctx, *, query: str):
-		'''Search for a tag.'''
-
-		similars = await ctx.bot.db.fetch(
-			'SELECT name, alias FROM tag WHERE guild_id=$1 AND (name % $2 OR alias % $2) LIMIT 5',
-			ctx.guild.id, query
-		)
-
-		if not similars:
-			raise commands.CommandError('No approximate matches found.')
-
-		tag_list = '\n'.join(build_tag_name(record) for record in similars)
-
-		await ctx.send(embed=discord.Embed(description=tag_list))
-
-	@tag.command(aliases=['stat', 'stats'])
+	@tag.command(aliases=['stats'])
 	async def info(self, ctx, *, tag_name: TagViewConverter):
 		'''See stats about a tag.'''
 
@@ -316,6 +289,41 @@ class Tags(AceMixin, commands.Cog):
 			e.add_field(name='Last edited at', value=pretty_datetime(record.get('edited_at')))
 
 		await ctx.send(embed=e)
+
+	@tag.command()
+	async def transfer(self, ctx, tag_name: TagEditConverter, *, new_owner: discord.Member):
+		'''Transfer a tag to another member.'''
+
+		tag_name, record = tag_name
+
+		if new_owner.bot:
+			raise commands.CommandError('Can\'t transfer tag to bot.')
+
+		if record.get('user_id') == new_owner.id:
+			raise commands.CommandError('User already owns tag.')
+
+		res = await self.db.execute('UPDATE tag SET user_id=$1 WHERE id=$2', new_owner.id, record.get('id'))
+
+		if res == 'UPDATE 1':
+			await ctx.send('Tag \'{}\' transferred to \'{}\''.format(record.get('name'), new_owner.display_name))
+		else:
+			raise commands.CommandError('Unknown error occured.')
+
+	@tag.command()
+	async def search(self, ctx, *, query: str):
+		'''Search for a tag.'''
+
+		similars = await ctx.bot.db.fetch(
+			'SELECT name, alias FROM tag WHERE guild_id=$1 AND (name % $2 OR alias % $2) LIMIT 5',
+			ctx.guild.id, query
+		)
+
+		if not similars:
+			raise commands.CommandError('No approximate matches found.')
+
+		tag_list = '\n'.join(build_tag_name(record) for record in similars)
+
+		await ctx.send(embed=discord.Embed(description=tag_list))
 
 	@commands.command()
 	async def tags(self, ctx, member: discord.Member = None):

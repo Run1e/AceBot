@@ -9,8 +9,8 @@ class TimeMultConverter(commands.Converter):
 		except ValueError:
 			raise commands.CommandError('Argument has to be float.')
 
-		if mult < 0.0:
-			raise commands.CommandError('Unit has to be more than 0.')
+		if mult < 1.0:
+			raise commands.CommandError('Unit must be more than 1.')
 
 		return mult
 

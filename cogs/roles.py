@@ -8,6 +8,7 @@ from asyncpg.exceptions import UniqueViolationError
 from cogs.mixins import AceMixin
 from utils.checks import is_mod_pred
 from utils.pager import Pager
+from utils.guildconfig import GuildConfig
 
 # TODO: role add rate limiting?
 
@@ -38,7 +39,7 @@ class RoleIDConverter(commands.Converter):
 		try:
 			role = await commands.RoleConverter().convert(ctx, id)
 			return role.id
-		except TypeError:
+		except commands.BadArgument:
 			try:
 				ret = int(id)
 				return ret
@@ -103,12 +104,15 @@ class Roles(AceMixin, commands.Cog):
 			)
 			return
 
-		if role in member.roles:
-			await member.remove_roles(role, reason='Removed through Role Selector')
-			added = False
-		else:
-			await member.add_roles(role, reason='Added through Role Selector')
-			added = True
+		try:
+			if role in member.roles:
+				await member.remove_roles(role, reason='Removed through Role Selector')
+				added = False
+			else:
+				await member.add_roles(role, reason='Added through Role Selector')
+				added = True
+		except discord.Forbidden:
+			raise commands.CommandError('Sorry, the bot does not have permissions to manage roles.')
 
 		e = discord.Embed(
 			title='Role {}'.format('Added' if added else 'Removed'),
@@ -187,6 +191,10 @@ class Roles(AceMixin, commands.Cog):
 
 		if len(name) < 1 or len(name) > 248:
 			raise commands.CommandError('Name has to be between 1 and 250 characters long.')
+
+		gc = await GuildConfig.get_guild(ctx.guild.id)
+		if role.id == gc.mod_role_id:
+			raise commands.CommandError('Moderator/mute role can\'t be added to the roles selector.')
 
 		try:
 			id = await self.db.fetchval(

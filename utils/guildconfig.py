@@ -14,7 +14,17 @@ class GuildConfig:
 		self.guild_id = guild_id
 		self.prefix = record.get('prefix')
 		self.mod_role_id = record.get('mod_role_id')
-		self.mute_role_id = record.get('mute_role_id')
+
+	@property
+	def mod_role(self):
+		if self.mod_role_id is None:
+			return None
+
+		guild = self.bot.get_guild(self.guild_id)
+		if guild is None:
+			return None
+
+		return guild.get_role(self.mod_role_id)
 
 	async def set(self, key, value):
 		await self.bot.db.execute(f'UPDATE config SET {key}=$1 WHERE id=$2', value, self.id)

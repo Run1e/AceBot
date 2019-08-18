@@ -3,8 +3,6 @@ from discord.ext import commands
 
 import asyncpg
 import aiohttp
-import traceback
-import io
 import logging
 import logging.handlers
 import sys
@@ -33,8 +31,8 @@ EXTENSIONS = (
 	'cogs.roles',
 	'cogs.ahk.ahk',
 	'cogs.security',
-	'cogs.ahk.security',
 	'cogs.ahk.logger',
+	'cogs.ahk.security',
 	'cogs.dwitter',
 	'cogs.owner',
 )

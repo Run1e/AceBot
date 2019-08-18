@@ -13,8 +13,10 @@ class LangConverter(commands.Converter):
 	async def convert(self, ctx, argument):
 		if len(argument) < 1:
 			raise commands.CommandError('Argument too short.')
-		if len(argument) > 32:
+		elif len(argument) > 32:
 			raise commands.CommandError('Argument too long.')
+		elif argument != discord.utils.escape_markdown(argument):
+			raise commands.CommandError('No markdown allowed in the codebox language.')
 
 		return argument
 

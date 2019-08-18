@@ -15,6 +15,7 @@ log = logging.getLogger(__name__)
 SUCCESS_EMOJI = '\U00002705'
 CHECK_EVERY = 60
 DEFAULT_REMINDER_MESSAGE = 'Hey, wake up!'
+MIN_DELTA = timedelta(minutes=1)
 MAX_DELTA = timedelta(days=365)
 MAX_REMINDERS = 12
 
@@ -80,7 +81,9 @@ class Reminders(AceMixin, commands.Cog):
 		delta = unit * amount
 
 		if delta > MAX_DELTA:
-			raise commands.CommandError('Sorry. Can\'t remind in more than a year!')
+			raise commands.CommandError('Sorry, can\'t remind in more than a year!')
+		elif delta < MIN_DELTA:
+			raise commands.CommandError('Sorry, can\'t remind in less than one minute.')
 
 		if message is not None and len(message) > 1024:
 			raise commands.CommandError('Sorry, keep the message below 1024 characters!')

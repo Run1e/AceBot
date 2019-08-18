@@ -30,6 +30,7 @@ class Welcome(AceMixin, commands.Cog):
 		await self.db.execute('INSERT INTO welcome (guild_id) VALUES ($1)', guild_id)
 		return await self.db.fetchrow('SELECT * FROM welcome WHERE guild_id=$1', guild_id)
 
+	@commands.Cog.listener()
 	async def on_member_join(self, member):
 		row = await self.get_welcome(member.guild.id, construct=False)
 

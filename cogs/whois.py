@@ -5,7 +5,6 @@ from datetime import datetime
 
 from cogs.mixins import AceMixin
 from utils.time import pretty_timedelta, pretty_datetime
-from utils.prompter import prompter, admin_prompter
 
 MAX_NICKS = 6
 
