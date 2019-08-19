@@ -14,7 +14,7 @@ steps = dict(
 )
 
 
-def pretty_timedelta(td):
+def pretty_timedelta(td: timedelta):
 	'''Returns a pretty string of a timedelta'''
 
 	if not isinstance(td, timedelta):
@@ -23,7 +23,7 @@ def pretty_timedelta(td):
 	parts = []
 
 	for name, span in steps.items():
-		if td > span:
+		if td >= span:
 			count = int(td / span)
 			td -= count * span
 			parts.append('{} {}{}'.format(count, name, 's' if count > 1 else ''))
@@ -40,8 +40,6 @@ def pretty_seconds(s):
 
 
 def pretty_datetime(dt: datetime):
-	'''Simply removes the microseconds from the timedelta string.'''
-
 	if not isinstance(dt, datetime):
 		raise ValueError('datetime expected, \'{}\' given'.format(type(dt)))
 

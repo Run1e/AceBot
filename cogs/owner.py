@@ -203,93 +203,141 @@ class Owner(AceMixin, commands.Cog):
 		except SyntaxError as exc:
 			raise commands.CommandError('Syntax error:\n```{}```'.format(str(exc)))
 
-		class GuildVisitor(ast.NodeVisitor):
-			GUILD_ATTRS = (
-				'members',
-				'roles',
-				'channels',
-				'emojis',
-				'categories'
-			)
+		def get_objects(lst, iden=None, **kwargs):
+			if iden is None and not kwargs:
+				return lst
+			new_list = []
+			for item in lst:
+				if iden is not None:
+					if isinstance(iden, int):
+						if getattr(item, 'id', None) != iden:
+							continue
+					elif isinstance(iden, str):
+						if getattr(item, 'name', None) != iden:
+							continue
+					else:
+						continue
+				for key, val in kwargs.items():
+					if not getattr(item, key, None) == val:
+						continue
+				new_list.append(item)
+			return new_list
 
-			def __init__(self, guild):
-				self.guild = guild
-				self.objects = list()
+		def fguild(*args, **kwargs):
+			return [ctx.guild]
 
-			def get_value(self, thing):
-				if isinstance(thing, ast.Name):
-					return thing.id
-				elif isinstance(thing, ast.Num):
-					return thing.n
+		def members(*args, **kwargs):
+			return get_objects(ctx.guild.members, *args, **kwargs)
+
+		def roles(*args, **kwargs):
+			return get_objects(list(reversed(ctx.guild.roles[1:])), *args, **kwargs)
+
+		def channels(*args, **kwargs):
+			return get_objects(ctx.guild.channels, *args, **kwargs)
+
+		def emojis(*args, **kwargs):
+			return get_objects(ctx.guild.emojis, *args, **kwargs)
+
+		def categories(*args, **kwargs):
+			return get_objects(ctx.guild.categories, *args, **kwargs)
+
+		namespace = dict(
+			guild=fguild,
+			members=members,
+			roles=roles,
+			channels=channels,
+			emojis=emojis,
+			categories=categories
+		)
+
+		def iter_fields(node):
+			for field in node._fields:
+				try:
+					yield field, getattr(node, field)
+				except AttributeError:
+					pass
+
+		def get_namespace(name):
+			if name in namespace:
+				return namespace[name]
+			else:
+				return name
+
+		def do_slice(value, lower, upper, step):
+			if callable(lower):
+				lower = lower.__name__
+			elif not isinstance(lower, str):
+				raise SyntaxError('Should be string')
+
+			new_list = list()
+			for item in value:
+				for subitem in getattr(item, lower, list()):
+					if getattr(subitem, upper) == step:
+						new_list.append(item)
+						break
+
+			return new_list
+
+		def traverse(node):
+
+			def get_value(thing):
+				if isinstance(thing, (str, int)):
+					return thing
+
 				elif isinstance(thing, ast.Str):
 					return thing.s
+
+				elif isinstance(thing, ast.Num):
+					return thing.n
+
+				elif isinstance(thing, ast.Name):
+					return get_namespace(thing.id)
+
 				else:
-					raise SyntaxError('Unsupported type {}'.format(type(thing)))
+					return None
 
-			def visit_Call(self, node):
-				fn = node.func.id.lower()
+			nval = get_value(node)
+			if nval is not None:
+				return nval
 
-				if fn not in self.GUILD_ATTRS:
-					raise SyntaxError('Unknown type \'{}\''.format(fn))
+			for field, value in iter_fields(node):
+				if isinstance(value, list):
+					for item in value:
+						return traverse(item)
+				elif isinstance(value, ast.Call):
+					func = traverse(value)
+					args = [traverse(val) for val in value.args]
+					kwargs = {kw.arg: traverse(kw.value) for kw in value.keywords}
+					if not callable(func):
+						raise SyntaxError('Not callable: \'{}\''.format(str(func)))
+					return func(*args, **kwargs)
+				elif isinstance(value, ast.Subscript):
+					return do_slice(
+						traverse(value),
+						get_value(value.slice.lower),
+						get_value(value.slice.upper),
+						get_value(value.slice.step)
+					)
+				else:
+					vval = get_value(value)
+					if vval is not None:
+						return vval
+					else:
+						raise SyntaxError('Unsure what to do with: \'{}\ of type \'{}\''.format(
+							str(value), str(type(value))
+						))
 
-				self.objects_type = fn
-
-				for obj in getattr(self.guild, fn):
-					passed = True
-					for kwarg in node.keywords:
-						if not hasattr(obj, kwarg.arg):
-							raise SyntaxError('Unknown attribute {}'.format(kwarg.arg))
-						if getattr(obj, kwarg.arg) != self.get_value(kwarg.value):
-							passed = False
-							break
-					if passed:
-						self.objects.append(obj)
-
-			def visit_Subscript(self, node):
-				if not hasattr(node.slice, 'lower'):
-					raise SyntaxError('Slice malformed.')
-
-				self.visit_Call(node.value)
-
-				attr = self.get_value(node.slice.lower)
-				key = self.get_value(node.slice.upper)
-				val = self.get_value(node.slice.step)
-
-				if not isinstance(attr, str):
-					raise SyntaxError('Slice type has to be string')
-				if not isinstance(key, str):
-					raise SyntaxError('Slice type attribute has to be string')
-				if val is None:
-					raise SyntaxError('Missing slice type value')
-
-				to_remove = list()
-
-				for obj in self.objects:
-					if not hasattr(obj, attr):
-						raise SyntaxError('Unknown attribute {}'.format(attr))
-					passed = False
-					for subobj in getattr(obj, attr):
-						if not hasattr(subobj, key):
-							raise SyntaxError('Unknown attribute for sub-object {}'.format(key))
-						if getattr(subobj, key) == val:
-							passed = True
-					if not passed:
-						to_remove.append(obj)
-
-				for obj in to_remove:
-					self.objects.remove(obj)
-
-		gv = GuildVisitor(ctx.guild)
+		# print(ast.dump(tree))
 
 		try:
-			gv.generic_visit(tree)
+			objects = traverse(tree)
 		except SyntaxError as exc:
-			raise commands.CommandError('Syntax error:\n```{}```'.format(str(exc)))
+			raise commands.CommandError('Error when traversing:\n\n{}'.format(str(exc)))
 
-		if not gv.objects:
-			raise commands.CommandError('No matching objects found.')
+		if not isinstance(objects, list) or not len(objects):
+			raise commands.CommandError('No matches found.')
 
-		p = DiscordObjectPager(ctx, entries=gv.objects, per_page=1)
+		p = DiscordObjectPager(ctx, entries=objects, per_page=1)
 		await p.go()
 
 	@commands.command()
