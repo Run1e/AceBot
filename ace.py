@@ -140,9 +140,6 @@ class AceBot(commands.Bot):
 		return True
 
 	async def on_command_error(self, ctx, exc):
-		log.info(str(exc))
-		log.info(str(type(exc)))
-
 		e = discord.Embed()
 
 		async def log_and_raise():

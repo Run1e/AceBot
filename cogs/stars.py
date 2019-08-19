@@ -531,7 +531,10 @@ class Starboard(AceMixin, commands.Cog):
 		except commands.CommandError as exc:
 			gc = await StarConfig.get_guild(self.bot, message.guild.id)
 			if channel.id != gc.channel_id:
-				await channel.send(content=starrer.mention, embed=discord.Embed(description=str(exc)), delete_after=15)
+				try:
+					await channel.send(content=starrer.mention, embed=discord.Embed(description=str(exc)), delete_after=15)
+				except discord.HTTPException:
+					pass
 
 	@commands.Cog.listener()
 	async def on_raw_reaction_add(self, payload):
@@ -684,11 +687,11 @@ class Starboard(AceMixin, commands.Cog):
 		return embed
 
 	def star_emoji(self, stars):
-		if stars >= 14:
+		if stars >= 16:
 			return '\N{SPARKLES}'
 		elif stars >= 8:
 			return '\N{DIZZY SYMBOL}'
-		elif stars >= 5:
+		elif stars >= 4:
 			return '\N{GLOWING STAR}'
 		else:
 			return '\N{WHITE MEDIUM STAR}'

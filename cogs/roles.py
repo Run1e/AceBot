@@ -12,6 +12,12 @@ from utils.guildconfig import GuildConfig
 
 # TODO: role add rate limiting?
 
+VALID_FIELDS = dict(
+	emoji=8,
+	name=248,
+	description=1024
+)
+
 
 class RolePager(Pager):
 	async def craft_page(self, e, page, entries):
@@ -61,68 +67,6 @@ class Roles(AceMixin, commands.Cog):
 		await self.db.execute('INSERT INTO role (guild_id) VALUES ($1)', guild_id)
 		return await self.db.fetchrow('SELECT * FROM role WHERE guild_id=$1', guild_id)
 
-	@commands.Cog.listener()
-	async def on_raw_reaction_add(self, payload):
-
-		stored_msg_id = await self.db.fetchval('SELECT message_id FROM role WHERE guild_id=$1', payload.guild_id)
-		if stored_msg_id != payload.message_id:
-			return
-
-		guild = self.bot.get_guild(payload.guild_id)
-		if guild is None:
-			return
-
-		member = guild.get_member(payload.user_id)
-		if member is None or member.bot:
-			return
-
-		channel = guild.get_channel(payload.channel_id)
-		if channel is None:
-			return
-
-		message = await channel.fetch_message(payload.message_id)
-		if message is None:
-			return
-
-		await message.remove_reaction(payload.emoji, member)
-
-		conf = await self.get_config(payload.guild_id)
-
-		role_row = await self.db.fetchrow(
-			'SELECT * FROM role_entry WHERE emoji=$1 AND id = ANY($2::INTEGER[])',
-			str(payload.emoji), conf.get('roles')
-		)
-
-		if role_row is None:
-			return
-
-		role = guild.get_role(role_row.get('role_id'))
-		if role is None:
-			await channel.send(
-				f'Role with ID `{role_row.get("role_id")}` registered but not found. Has it been deleted?',
-				delete_after=10
-			)
-			return
-
-		try:
-			if role in member.roles:
-				await member.remove_roles(role, reason='Removed through Role Selector')
-				added = False
-			else:
-				await member.add_roles(role, reason='Added through Role Selector')
-				added = True
-		except discord.Forbidden:
-			raise commands.CommandError('Sorry, the bot does not have permissions to manage roles.')
-
-		e = discord.Embed(
-			title='Role {}'.format('Added' if added else 'Removed'),
-			description=role.mention
-		)
-
-		e.set_author(name=member.display_name, icon_url=member.avatar_url)
-
-		await channel.send(embed=e, delete_after=10)
-
 	@commands.group(hidden=True)
 	async def roles(self, ctx):
 		pass
@@ -152,7 +96,8 @@ class Roles(AceMixin, commands.Cog):
 				if role_entry_id == role.get('id'):
 					e.add_field(
 						name='{} {}'.format(role.get('emoji'), role.get('name')),
-						value=role.get('description')
+						value=role.get('description'),
+						inline=conf.get('inline')
 					)
 
 		# delete old message
@@ -228,6 +173,46 @@ class Roles(AceMixin, commands.Cog):
 		await self.db.execute('UPDATE role SET roles = array_remove(roles, $1)', role_row.get('id'))
 
 		await ctx.send('Role removed from the role selector.')
+
+	@roles.command()
+	async def edit(self, ctx, role: RoleIDConverter, field: str, *, new_value: str):
+		'''Edit a field of a role field. Valid fields are `emoji`, `name` and `description`.'''
+
+		field = field.lower()
+
+		if field not in VALID_FIELDS:
+			raise commands.CommandError('Sorry, \'{}\' is not a valid field.'.format(field))
+
+		# emoji has to run through converter
+		if field == 'emoji':
+			new_value = await EmojiConverter().convert(ctx, emoj=new_value)
+
+		char_limit = VALID_FIELDS[field]
+
+		if len(field) > char_limit:
+			raise commands.CommandError(
+				'New value is too long, maximum length for this field is {} characters.'.format(char_limit)
+			)
+
+		conf = await self.get_config(ctx.guild.id)
+		role_db_id = await self.db.fetchval('SELECT id FROM role_entry WHERE role_id=$1', role)
+
+		if role_db_id is None or role_db_id not in conf.get('roles'):
+			raise commands.CommandError('Role with id {} is not set up in the role selector yet.'.format(role))
+
+		await self.db.execute('UPDATE role_entry SET {}=$1 WHERE id=$2'.format(field), new_value, role_db_id)
+		await ctx.send('Value updated. Respawn role selector for updated version.')
+
+	@roles.command()
+	async def inline(self, ctx):
+		'''Toggle whether embed fields in the role selector should be inline.'''
+
+		conf = await self.get_config(ctx.guild.id)
+		new_value = not conf.get('inline')
+
+		await self.db.execute('UPDATE role SET inline=$1 WHERE guild_id=$2', new_value, ctx.guild.id)
+
+		await ctx.send('Inline fields {}.'.format('enabled' if new_value else 'disabled'))
 
 	@roles.command()
 	async def moveup(self, ctx, role: RoleIDConverter):
@@ -308,8 +293,74 @@ class Roles(AceMixin, commands.Cog):
 	async def _list(self, ctx):
 		'''List all roles in this server.'''
 
-		p = RolePager(ctx, list(reversed(ctx.guild.roles[1:])), per_page=25)
+		p = RolePager(ctx, list(reversed(ctx.guild.roles[1:])), per_page=24)
 		await p.go()
+
+	@commands.Cog.listener()
+	async def on_raw_reaction_add(self, payload):
+
+		stored_msg_id = await self.db.fetchval('SELECT message_id FROM role WHERE guild_id=$1', payload.guild_id)
+		if stored_msg_id != payload.message_id:
+			return
+
+		guild = self.bot.get_guild(payload.guild_id)
+		if guild is None:
+			return
+
+		member = guild.get_member(payload.user_id)
+		if member is None or member.bot:
+			return
+
+		channel = guild.get_channel(payload.channel_id)
+		if channel is None:
+			return
+
+		message = await channel.fetch_message(payload.message_id)
+		if message is None:
+			return
+
+		await message.remove_reaction(payload.emoji, member)
+
+		conf = await self.get_config(payload.guild_id)
+
+		role_row = await self.db.fetchrow(
+			'SELECT * FROM role_entry WHERE emoji=$1 AND id = ANY($2::INTEGER[])',
+			str(payload.emoji), conf.get('roles')
+		)
+
+		if role_row is None:
+			return
+
+		role = guild.get_role(role_row.get('role_id'))
+		if role is None:
+			await channel.send(
+				f'Role with ID `{role_row.get("role_id")}` registered but not found. Has it been deleted?',
+				delete_after=10
+			)
+			return
+
+		try:
+			if role in member.roles:
+				await member.remove_roles(role, reason='Removed through Role Selector')
+				added = False
+			else:
+				await member.add_roles(role, reason='Added through Role Selector')
+				added = True
+		except discord.Forbidden:
+			await channel.send('Sorry, I\'m not allow to manage roles.', delete_after=10)
+			return
+		except discord.HTTPException:
+			await channel.send('Sorry, something went wrong.', delete_after=10)
+			return
+
+		e = discord.Embed(
+			title='Role {}'.format('Added' if added else 'Removed'),
+			description=role.mention
+		)
+
+		e.set_author(name=member.display_name, icon_url=member.avatar_url)
+
+		await channel.send(embed=e, delete_after=10)
 
 
 def setup(bot):
