@@ -10,10 +10,12 @@ from discord.ext import commands
 from contextlib import redirect_stdout
 from tabulate import tabulate
 from asyncpg.exceptions import UniqueViolationError
+from datetime import datetime
 
 from utils.google import google_parse
 from utils.pager import Pager
 from utils.time import pretty_datetime
+from utils.string_helpers import shorten
 from cogs.mixins import AceMixin
 
 
@@ -23,35 +25,50 @@ class DiscordObjectPager(Pager):
 
 		e.description = ''
 
+		for field in dir(entry):
+			if field.startswith('_'):
+				continue
+
+			try:
+				attr = getattr(entry, field)
+			except AttributeError:
+				continue
+
+			if callable(attr):
+				continue
+
+			if isinstance(attr, int):
+				e.add_field(name=field, value='`{}`'.format(str(attr)), inline=False)
+
+			elif isinstance(attr, str):
+				e.add_field(name=field, value=attr, inline=False)
+
+			elif isinstance(attr, datetime):
+				e.add_field(name=field, value=pretty_datetime(attr), inline=False)
+
+			elif isinstance(attr, list) and len(attr) and field not in ('members',):
+				lst = list()
+				for item in attr:
+					if hasattr(item, 'mention'):
+						lst.append(item.mention)
+					elif hasattr(item, 'name'):
+						lst.append(item.name)
+					elif hasattr(item, 'id'):
+						lst.append(item.id)
+
+				if len(lst):
+					e.add_field(name=field, value=shorten(' '.join(lst), 1024), inline=False)
+
+		if hasattr(entry, 'name'):
+			e.title = entry.name
+
 		if hasattr(entry, 'mention'):
 			e.description = entry.mention
 
 		if hasattr(entry, 'avatar_url'):
-			e.set_author(name=entry.name, icon_url=entry.avatar_url)
-		elif hasattr(entry, 'name'):
-			e.title = entry.name
-
-		e.add_field(name='ID', value=entry.id)
-
-		if hasattr(entry, 'created_at'):
-			e.add_field(name='Created at', value=pretty_datetime(entry.created_at))
-
-		if hasattr(entry, 'joined_at'):
-			e.add_field(name='Joined at', value=pretty_datetime(entry.joined_at))
-
-		if hasattr(entry, 'colour'):
-			e.add_field(name='Color', value=entry.colour)
-
-		if hasattr(entry, 'mentionable'):
-			e.add_field(name='Mentionable', value='Yes' if entry.mentionable else 'No')
-
-		if hasattr(entry, 'topic'):
-			e.description += '\n\n' + entry.topic if len(e.description) else entry.topic
-
-		if hasattr(entry, 'position'):
-			e.add_field(name='Position', value=entry.position)
-
-		e.set_footer(text=e.footer.text + ' - ' + str(type(entry))[8:-2].split('.')[-1])
+			e.set_thumbnail(url=entry.avatar_url)
+		elif hasattr(entry, 'icon_url'):
+			e.set_thumbnail(url=entry.icon_url)
 
 
 class Owner(AceMixin, commands.Cog):
