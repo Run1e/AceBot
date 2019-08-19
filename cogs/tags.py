@@ -263,11 +263,9 @@ class Tags(AceMixin, commands.Cog):
 
 		e = discord.Embed(
 			description=f"**{record.get('name')}**",
-			timestamp=record.get('created_at')
 		)
 
 		e.set_author(name=nick, icon_url=avatar)
-		e.set_footer(text='Created')
 		e.add_field(name='Owner', value=owner.mention if owner else nick)
 
 		rank = await self.db.fetchval(
@@ -281,6 +279,8 @@ class Tags(AceMixin, commands.Cog):
 
 		if record.get('alias') is not None:
 			e.add_field(name='Alias', value=record.get('alias'))
+
+		e.add_field(name='Created at', value=pretty_datetime(record.get('created_at')))
 
 		if record.get('viewed_at'):
 			e.add_field(name='Last viewed at', value=pretty_datetime(record.get('viewed_at')))
