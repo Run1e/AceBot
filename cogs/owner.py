@@ -240,8 +240,8 @@ class Owner(AceMixin, commands.Cog):
 				new_list.append(item)
 			return new_list
 
-		def fguild(*args, **kwargs):
-			return [ctx.guild]
+		def guilds(*args, **kwargs):
+			return get_objects(ctx.bot.guilds, *args, **kwargs)
 
 		def members(*args, **kwargs):
 			return get_objects(ctx.guild.members, *args, **kwargs)
@@ -259,7 +259,7 @@ class Owner(AceMixin, commands.Cog):
 			return get_objects(ctx.guild.categories, *args, **kwargs)
 
 		namespace = dict(
-			guild=fguild,
+			guilds=guilds,
 			members=members,
 			roles=roles,
 			channels=channels,

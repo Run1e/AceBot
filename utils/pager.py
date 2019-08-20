@@ -98,7 +98,7 @@ class Pager:
 
 		try:
 			await msg.clear_reactions()
-		except discord.NotFound:
+		except discord.HTTPException:
 			pass
 
 	@property

@@ -75,7 +75,9 @@ class PerConverter(commands.Converter):
 		per = int(per)
 
 		if per < 3:
-			raise commands.CommandError('Setting count less than 3 is not recommended.')
+			raise commands.CommandError('Setting per less than 3 is not recommended.')
+		elif per > 30:
+			raise commands.CommandError('Setting per more than 30 is not recommended.')
 
 		return per
 
@@ -117,6 +119,7 @@ class ModConfig:
 
 		self.join_age = record.get('join_age')
 		self.join_ignore_age = record.get('join_ignore_age')
+		self.join_kick_cooldown = record.get('join_kick_cooldown')
 
 		self.join_action = record.get('join_action')
 		self.mention_action = record.get('mention_action')
@@ -182,10 +185,13 @@ class Security(AceMixin, commands.Cog):
 	Valid actions are: `MUTE`, `KICK` and `BAN`
 
 	Actions are triggered when an event happens more than `COUNT` times per `PER` seconds.
+
+	To clear a value leave all arguments blank.
 	'''
 
 	def __init__(self, bot):
 		super().__init__(bot)
+		self.last_pattern_kick = dict()  # (guild_id, user_id): datetime
 		self.setup_configs.start()
 
 	# init configs
@@ -209,7 +215,7 @@ class Security(AceMixin, commands.Cog):
 		severity = severity or SeverityColors.LOW
 
 		e = discord.Embed(
-			title=action,
+			title=action or 'INFO',
 			description=author.mention + ' ' + reason,
 			color=severity.value,
 			timestamp=datetime.utcnow()
@@ -355,12 +361,24 @@ class Security(AceMixin, commands.Cog):
 
 		# do action if matching any patterns
 		for pat in pats:
-			if re.fullmatch(pat.get('pattern'), member.name):
+			pattern = pat.get('pattern')
+			if re.fullmatch(pattern, member.name):
+				key = (member.guild.id, member.id)
+
+				if key in self.last_pattern_kick and (datetime.now() - self.last_pattern_kick[key]) < mc.join_kick_cooldown:
+					await self.log(
+						reason='Member spared by kick pattern cooldown. Pattern: `{}`'.format(pattern),
+						severity=SeverityColors.MEDIUM, author=member, channel=mc.log_channel
+					)
+					self.last_pattern_kick.pop(key)
+					return
+
 				await self._do_action(
 					mc, member, SecurityAction(mc.join_action),
-					reason='Member name matched pattern: `{}`'.format(pat.get('pattern'))
+					reason='Member name matched pattern: `{}`'.format(pattern)
 				)
 
+				self.last_pattern_kick[key] = datetime.now()
 				return
 
 	@commands.Cog.listener()
@@ -640,19 +658,20 @@ class Security(AceMixin, commands.Cog):
 		await ctx.invoke(self.join)
 
 	async def _join_status(self, mc):
-		return 'STATUS: **{}**\nACTION: **{}**\nACTIVE PATTERNS: **{}**\nMINIMUM AGE: **{}**\nIGNORE AFTER AGE: **{}**'.format(
+		return 'STATUS: **{}**\nACTION: **{}**\nACTIVE PATTERNS: **{}**\nKICK PATTERN COOLDOWN: **{}**\nMINIMUM AGE: **{}**\nIGNORE AFTER AGE: **{}**'.format(
 			self._print_status(mc.join_enabled),
 			SecurityAction(mc.join_action).name,
 			await self.db.fetchval(
 				'SELECT COUNT(*) FROM kick_pattern WHERE guild_id=$1 AND disabled=FALSE', mc.guild_id
 			),
+			'NOT SET' if mc.join_kick_cooldown is None else (pretty_timedelta(mc.join_kick_cooldown).upper()),
 			'NOT SET' if mc.join_age is None else (pretty_timedelta(mc.join_age).upper()),
 			'NOT SET' if mc.join_ignore_age is None else (pretty_timedelta(mc.join_ignore_age).upper()),
 		)
 
 	@join.command(name='age')
 	async def join_age(self, ctx, amount: TimeMultConverter = None, unit: TimeDeltaConverter = None):
-		'''Set a minimum age for new accounts. Clear/disable by doing `security join age`.'''
+		'''Action will always perform on joins with accounts newer than this.'''
 
 		if amount is not None and unit is None:
 			raise commands.CommandError('Malformed input.')
@@ -671,7 +690,7 @@ class Security(AceMixin, commands.Cog):
 
 	@join.command(name='ignoreage')
 	async def join_ignore_age(self, ctx, amount: TimeMultConverter = None, unit: TimeDeltaConverter = None):
-		'''Joining members with account age older than this bypass *all* rules.'''
+		'''Action will never perform on joins with accounts older than this.'''
 
 		if amount is not None and unit is None:
 			raise commands.CommandError('Malformed input.')
@@ -687,6 +706,25 @@ class Security(AceMixin, commands.Cog):
 
 		await mc.set('join_ignore_age', delta)
 		await ctx.send('New ignore account age limit set: {}'.format(pretty_timedelta(delta)))
+
+	@join.command(name='cooldown')
+	async def join_kick_cooldown(self, ctx, amount: TimeMultConverter = None, unit: TimeDeltaConverter = None):
+		'''User will not be kicked twice by kick cooldowns within this period.'''
+
+		if amount is not None and unit is None:
+			raise commands.CommandError('Malformed input.')
+
+		mc = await self.get_config(ctx.guild.id)
+
+		if amount is None:
+			await mc.set('join_kick_cooldown', None)
+			await ctx.send('Join kick pattern cooldown disabled.')
+			return
+
+		delta = amount * unit
+
+		await mc.set('join_kick_cooldown', delta)
+		await ctx.send('New join kick pattern cooldown set: {}'.format(pretty_timedelta(delta)))
 
 	@join.command(name='add')
 	async def pattern_add(self, ctx, *, pattern: PatternConverter):
