@@ -414,6 +414,9 @@ class Starboard(AceMixin, commands.Cog):
 			if message.channel.is_nsfw() and not star_message.channel.is_nsfw():
 				raise commands.CommandError('Can\'t star message from nsfw channel into non-nsfw starboard.')
 
+			if not len(message.content) and not len(message.attachments):
+				raise commands.CommandError('Can\'t star this message because it has no starrable content.')
+
 			prev_time = await self.db.fetchval(
 				'SELECT starred_at FROM star_msg WHERE guild_id=$1 AND starrer_id=$2 ORDER BY id DESC LIMIT 1',
 				message.guild.id, starrer.id

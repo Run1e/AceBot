@@ -8,6 +8,8 @@ mutes are fucked, need to remove member role
 
 set up system for emailing exception stacktraces
 
+on action for kick patterns it could also show the id
+
 new stuff for roles selector:
 - add toggle for inline
 - add edits (roles edit <role> <field> * <new_value>)
