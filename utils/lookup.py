@@ -36,7 +36,7 @@ class DiscordLookup:
 			es=lambda: ctx.guild.emojis
 		)
 
-	def get_object(self, items, ident):
+	def get_object(self, items, converter, ident):
 		ident_type = 'id' if isinstance(ident, int) else 'name'
 		res = discord.utils.get(items, **{ident_type: ident})
 		if res is None:
@@ -99,10 +99,10 @@ class DiscordLookup:
 			return node.s
 		elif isinstance(node, ast.Num):
 			return node.n
-		elif isinstance(node, ast.Name):
-			return self.get_namespace(node.id)
 		elif isinstance(node, ast.NameConstant):
 			return node.value
+		elif isinstance(node, ast.Name):
+			return self.get_namespace(node.id)
 		else:
 			raise NotImplementedError('Unsupported AST type: \'{}\''.format(node))
 
@@ -134,7 +134,6 @@ class DiscordLookup:
 			raise NotImplementedError('Only attrs allowed with unary not')
 
 		op_res = operand.id
-
 		new_list = list()
 
 		for item in items:

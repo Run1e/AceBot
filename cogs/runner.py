@@ -82,7 +82,7 @@ class Runner(AceMixin, commands.Cog):
 		except Exception as exc:
 			raise commands.CommandError('{}\n\n{}'.format(exc.__class__.__name__, str(exc)))
 
-		if isinstance(res, list) and not res:
+		if res is None or (isinstance(res, list) and not res):
 			raise commands.CommandError('No results.')
 
 		if isinstance(res, self.DISCORD_BASE_TYPES):
@@ -92,15 +92,15 @@ class Runner(AceMixin, commands.Cog):
 			p = DiscordObjectPager(ctx, entries=res, per_page=1)
 			await p.go()
 		else:
-			if len(res) > 1994:
-				fp = io.BytesIO(res.encode('utf-8'))
-				await ctx.send('Log too large...', file=discord.File(fp, 'results.txt'))
+			if isinstance(res, int):
+				await ctx.send('`{}`'.format(res))
 			else:
-				if isinstance(res, int):
-					content = '`{}`'.format(res)
+				wrapped = '```{}```'.format(res)
+				if len(wrapped) > 2000:
+					fp = io.BytesIO(res.encode('utf-8'))
+					await ctx.send('Log too large...', file=discord.File(fp, 'results.txt'))
 				else:
-					content = '```{}```'.format(res)
-				await ctx.send(content)
+					await ctx.send(wrapped)
 
 
 def setup(bot):
