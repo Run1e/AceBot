@@ -35,6 +35,7 @@ EXTENSIONS = (
 	'cogs.ahk.security',
 	'cogs.dwitter',
 	'cogs.owner',
+	'cogs.runner'
 )
 
 self_deleted = list()
