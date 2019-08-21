@@ -4,6 +4,14 @@ import ast
 from datetime import datetime, timedelta
 
 
+def ago(*args, **kwargs):
+	return datetime.utcnow() - timedelta(*args, **kwargs)
+
+
+def lines(items):
+	return '\n'.join(str(item) for item in items)
+
+
 class DiscordLookup:
 	def __init__(self, ctx, query):
 		self.ctx = ctx
@@ -15,6 +23,9 @@ class DiscordLookup:
 			str=str,
 			int=int,
 			repr=repr,
+			len=len,
+			lines=lines,
+			sorted=sorted,
 			r=lambda ident: self.get_object(all_roles, ident),
 			m=lambda ident: self.get_object(ctx.guild.members, ident),
 			c=lambda ident: self.get_object(ctx.guild.channels, ident),
@@ -26,6 +37,7 @@ class DiscordLookup:
 			message=ctx.message,
 			st=discord.utils.snowflake_time,
 			dt=datetime.utcnow,
+			ago=ago,
 			td=timedelta,
 		)
 
@@ -36,7 +48,7 @@ class DiscordLookup:
 			es=lambda: ctx.guild.emojis
 		)
 
-	def get_object(self, items, converter, ident):
+	def get_object(self, items, ident):
 		ident_type = 'id' if isinstance(ident, int) else 'name'
 		res = discord.utils.get(items, **{ident_type: ident})
 		if res is None:
@@ -55,7 +67,15 @@ class DiscordLookup:
 			if not callable(func):
 				raise SyntaxError('Not callable: \'{}\''.format(str(func)))
 
-			if func in self.standard_namespace.values():
+			if func in self.special_namespace.values():
+				items = func()
+
+				if not node.args:
+					return items
+
+				return self.filter_items(items, node.args[0])
+
+			else:
 				args = [self.traverse(arg_val) for arg_val in node.args]
 				kwargs = {kw.arg: self.traverse(kw.value) for kw in node.keywords}
 
@@ -63,14 +83,6 @@ class DiscordLookup:
 
 				if func not in self.special_namespace.values():
 					return res
-
-			elif func in self.special_namespace.values():
-				items = func()
-
-				if not node.args:
-					return items
-
-				return self.filter_items(items, node.args[0])
 
 		elif isinstance(node, ast.Attribute):
 			val = self.traverse(node.value)

@@ -97,7 +97,7 @@ class Runner(AceMixin, commands.Cog):
 			else:
 				wrapped = '```{}```'.format(res)
 				if len(wrapped) > 2000:
-					fp = io.BytesIO(res.encode('utf-8'))
+					fp = io.BytesIO(str(res).encode('utf-8'))
 					await ctx.send('Log too large...', file=discord.File(fp, 'results.txt'))
 				else:
 					await ctx.send(wrapped)
