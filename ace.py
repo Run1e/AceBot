@@ -1,6 +1,4 @@
 import discord
-from discord.ext import commands
-
 import asyncpg
 import aiohttp
 import logging
@@ -8,10 +6,11 @@ import logging.handlers
 import sys
 import os
 
+from discord.ext import commands
 from datetime import datetime
 
 from config import *
-from cogs.help import Help
+from cogs.help import PaginatedHelpCommand, EditedMinimalHelpCommand
 from cogs.ahk.ids import AHK_GUILD_ID, MEMBER_ROLE_ID
 from utils.time import pretty_seconds
 from utils.guildconfig import GuildConfig
@@ -50,7 +49,8 @@ class AceBot(commands.Bot):
 		super().__init__(
 			command_prefix=self.prefix_resolver,
 			owner_id=OWNER_ID,
-			description=DESCRIPTION
+			description=DESCRIPTION,
+			help_command=EditedMinimalHelpCommand()
 		)
 
 		self.aiohttp = None
@@ -74,7 +74,10 @@ class AceBot(commands.Bot):
 
 			GuildConfig.set_bot(self)
 
-			self.help_command = Help()
+			self.static_help_command = self.help_command
+			command_impl = self.help_command._command_impl
+			self.help_command = PaginatedHelpCommand()
+			self.static_help_command._command_impl = command_impl
 
 			log.info('Initializing aiohttp')
 			self.aiohttp = aiohttp.ClientSession(

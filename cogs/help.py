@@ -1,8 +1,8 @@
 import discord
 from discord.ext import commands
 
-from cogs.mixins import AceMixin
 from utils.pager import Pager
+
 
 class HelpPager(Pager):
 
@@ -31,7 +31,7 @@ class HelpPager(Pager):
 
 		e.description = (
 			'Invoke a command by sending the prefix followed by a command name.\n\n'
-			'For example, the command signature `define <query>` can be invoked by doing `.define cake`\n\n'
+			'For example, the command signature `define <query>` can be invoked by doing `define cake`\n\n'
 			'The different argument brackets mean:'
 		)
 
@@ -41,7 +41,7 @@ class HelpPager(Pager):
 		e.add_field(name='Support Server', value='Join the support server!\n' + self.bot._support_link)
 
 
-class Help(commands.HelpCommand):
+class PaginatedHelpCommand(commands.HelpCommand):
 	'''Cog that implements the help command and help pager.'''
 
 	async def add_command(self, cmds, command, force=False):
@@ -66,7 +66,12 @@ class Help(commands.HelpCommand):
 
 	async def prepare_help_command(self, ctx, command=None):
 		self.context = ctx
-		self.pager = HelpPager(ctx, [], per_page=1)
+		self.pager = HelpPager(ctx, list(), per_page=1)
+
+		if self.pager.static:
+			ctx.bot.static_help_command.context = ctx
+			ctx.bot.static_help_command.missing_perms = self.pager.missing_perms
+			await ctx.bot.static_help_command.command_callback(ctx, command=command)
 
 	async def add_cog(self, cog):
 		cog_name = cog.__class__.__name__
@@ -85,6 +90,9 @@ class Help(commands.HelpCommand):
 		self.pager.add_page(cog_name, cog_desc, cmds)
 
 	async def send_bot_help(self, mapping):
+		if self.pager.static:
+			return
+
 		for cog in mapping:
 			if cog is not None:
 				await self.add_cog(cog)
@@ -92,10 +100,16 @@ class Help(commands.HelpCommand):
 		await self.pager.go()
 
 	async def send_cog_help(self, cog):
+		if self.pager.static:
+			return
+
 		await self.add_cog(cog)
 		await self.pager.go()
 
 	async def send_group_help(self, group):
+		if self.pager.static:
+			return
+
 		added = []
 		cmds = []
 
@@ -110,6 +124,9 @@ class Help(commands.HelpCommand):
 		await self.pager.go()
 
 	async def send_command_help(self, command):
+		if self.pager.static:
+			return
+
 		cog_name = command.cog.__class__.__name__
 		cog_desc = command.cog.__doc__
 
@@ -137,6 +154,14 @@ class Help(commands.HelpCommand):
 				return
 
 		await self.context.send('Command \'{}\' not found.'.format(orig_query))
+
+
+class EditedMinimalHelpCommand(commands.MinimalHelpCommand):
+	def get_ending_note(self):
+		return (
+			'NOTE: The custom help command menu did not get sent because the bot is missing '
+			'the following permissions - ' + ', '.join(self.missing_perms)
+		)
 
 
 # rip is just the signature command ripped from the lib, but with alias support removed.

@@ -86,17 +86,17 @@ class Meta(AceMixin, commands.Cog):
 
 			total_uses = await self.db.fetchval(
 				'SELECT COUNT(id) FROM log WHERE guild_id=$1 AND user_id=$2',
-				ctx.guild.id, ctx.author.id
+				ctx.guild.id, member.id
 			)
 
 			commands_alltime = await self.db.fetch(
 				'SELECT COUNT(id), command FROM log WHERE guild_id=$1 AND user_id=$2 GROUP BY command '
-				'ORDER BY COUNT DESC LIMIT 5', ctx.guild.id, ctx.author.id
+				'ORDER BY COUNT DESC LIMIT 5', ctx.guild.id, member.id
 			)
 
 			commands_today = await self.db.fetch(
 				'SELECT COUNT(id), command FROM log WHERE guild_id=$1 AND user_id=$2 AND timestamp > $3 '
-				'GROUP BY command ORDER BY COUNT DESC LIMIT 5', ctx.guild.id, ctx.author.id, now
+				'GROUP BY command ORDER BY COUNT DESC LIMIT 5', ctx.guild.id, member.id, now
 			)
 
 			e.add_field(name='Top Commands', value=create_list(commands_alltime))
