@@ -12,6 +12,10 @@ MAX_NICKS = 6
 class WhoIs(AceMixin, commands.Cog):
 	'''Keeps track of when members was last seen.'''
 
+	def __init__(self, bot):
+		super().__init__(bot)
+		self.nick_cache = dict()
+
 	@commands.Cog.listener()
 	async def on_message(self, ctx):
 		if ctx.author.bot:
@@ -28,26 +32,30 @@ class WhoIs(AceMixin, commands.Cog):
 		if before.bot:
 			return
 
-		nicks = [before.display_name]
+		key = (after.guild.id, after.id)
 
-		if before.display_name != after.display_name:
-			nicks.append(after.display_name)
+		# if the current nick is the same as the last stored one, aborterino
+		if key in self.nick_cache and self.nick_cache[key] == after.display_name:
+			return
 
 		now = datetime.utcnow()
 
+		# figure out what the last stored nick was
 		last_nick = await self.db.fetchval(
 			'SELECT nick FROM nick WHERE guild_id=$1 AND user_id=$2 ORDER BY id DESC LIMIT 1',
 			before.guild.id, before.id
 		)
 
-		for nick in nicks:
-			if last_nick != nick:
-				await self.db.execute(
-					'INSERT INTO nick (guild_id, user_id, nick, stored_at) VALUES ($1, $2, $3, $4)',
-					before.guild.id, before.id, nick, now
-				)
+		# insert all nicks in (beforenick, afternick) that does not equal to the previously stored nick
+		for nick in filter(lambda nick: nick != last_nick, [before.display_name, after.display_name]):
+			await self.db.execute(
+				'INSERT INTO nick (guild_id, user_id, nick, stored_at) VALUES ($1, $2, $3, $4)',
+				before.guild.id, before.id, nick, now
+			)
 
-				last_nick = nick
+			last_nick = nick
+
+		self.nick_cache[key] = last_nick
 
 	@commands.command()
 	@commands.bot_has_permissions(embed_links=True)

@@ -60,10 +60,10 @@ class ConfigTable:
 		if not isinstance(key, int):
 			raise self.PRIMARY_KEY_TYPE_ERROR
 
-		if key in self._entries:
-			return self._entries[key]
-
 		async with self.lock:
+			if key in self._entries:
+				return self._entries[key]
+
 			record = await self.bot.db.fetchrow(
 				'SELECT * FROM {} WHERE {} = $1'.format(self.table, self.primary), key
 			)

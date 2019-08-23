@@ -236,6 +236,7 @@ if __name__ == '__main__':
 
 	# set logging levels for discord and gino lib
 	logging.getLogger('discord').setLevel(logging.DEBUG)
+	logging.getLogger('asyncpg').setLevel(logging.DEBUG)
 
 	# we want out logging formatted like this everywhere
 	fmt = logging.Formatter('[{asctime}] [{levelname}] {name}: {message}', datefmt='%Y-%m-%d %H:%M:%S', style='{')
