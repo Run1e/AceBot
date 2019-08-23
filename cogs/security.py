@@ -220,7 +220,7 @@ class Security(AceMixin, commands.Cog):
 		if message.author.bot:
 			return
 
-		if await is_mod_pred(message):
+		if await is_mod_pred(await self.bot.get_context(message)):
 			return
 
 		mc = await self.get_config(message.guild.id)
