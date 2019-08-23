@@ -72,11 +72,11 @@ class CountConverter(commands.Converter):
 
 class PerConverter(commands.Converter):
 	async def convert(self, ctx, per):
-		per = int(per)
+		per = float(per)
 
-		if per < 3:
+		if per < 3.0:
 			raise commands.CommandError('Setting per less than 3 is not recommended.')
-		elif per > 30:
+		elif per > 30.0:
 			raise commands.CommandError('Setting per more than 30 is not recommended.')
 
 		return per
