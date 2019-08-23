@@ -13,7 +13,7 @@ from config import *
 from cogs.help import PaginatedHelpCommand, EditedMinimalHelpCommand
 from cogs.ahk.ids import AHK_GUILD_ID, MEMBER_ROLE_ID
 from utils.time import pretty_seconds
-from utils.guildconfig import GuildConfig
+from utils.config import ConfigTable, GuildConfigEntry
 
 EXTENSIONS = (
 	'cogs.general',
@@ -55,6 +55,7 @@ class AceBot(commands.Bot):
 
 		self.aiohttp = None
 		self.db = None
+		self.config = None
 		self.self_deleted = self_deleted
 		self.startup_time = datetime.utcnow()
 
@@ -65,6 +66,7 @@ class AceBot(commands.Bot):
 		'''Called on connection with the Discord gateway.'''
 
 		log.info('Connected to Discord...')
+		await self.change_presence(activity=BOT_ACTIVITY)
 
 	async def on_ready(self):
 		'''Called when discord.py has finished connecting to the gateway.'''
@@ -72,7 +74,16 @@ class AceBot(commands.Bot):
 		if self.db is None:
 			log.info('Creating database connection...')
 
-			GuildConfig.set_bot(self)
+			self.config = ConfigTable(
+				self, 'config', 'guild_id',
+				dict(
+					id=int,
+					guild_id=int,
+					prefix=str,
+					mod_role_id=int
+				),
+				entry_class=GuildConfigEntry
+			)
 
 			self.static_help_command = self.help_command
 			command_impl = self.help_command._command_impl
@@ -124,9 +135,8 @@ class AceBot(commands.Bot):
 			perms = 67497025
 		return f'https://discordapp.com/oauth2/authorize?&client_id={self.user.id}&scope=bot&permissions={perms}'
 
-	@staticmethod
-	async def prefix_resolver(bot, message):
-		gc = await GuildConfig.get_guild(message.guild.id)
+	async def prefix_resolver(self, bot, message):
+		gc = await self.config.get_entry(message.guild.id)
 		return gc.prefix or DEFAULT_PREFIX
 
 	async def blacklist(self, ctx):

@@ -8,7 +8,6 @@ from asyncpg.exceptions import UniqueViolationError
 from cogs.mixins import AceMixin
 from utils.checks import is_mod_pred
 from utils.pager import Pager
-from utils.guildconfig import GuildConfig
 
 # TODO: role add rate limiting?
 
@@ -137,7 +136,7 @@ class Roles(AceMixin, commands.Cog):
 		if len(name) < 1 or len(name) > 248:
 			raise commands.CommandError('Name has to be between 1 and 250 characters long.')
 
-		gc = await GuildConfig.get_guild(ctx.guild.id)
+		gc = self.bot.config.get_entry(ctx.guild.id)
 		if role.id == gc.mod_role_id:
 			raise commands.CommandError('Moderator/mute role can\'t be added to the roles selector.')
 

@@ -2,7 +2,6 @@ import discord.utils
 from discord.ext import commands
 
 from config import OWNER_ID
-from utils.guildconfig import GuildConfig
 
 
 async def check_perms(ctx, perms, check=all):
@@ -24,7 +23,7 @@ async def is_mod_pred(ctx):
 		return True
 
 	# check against mod_role
-	gc = await GuildConfig.get_guild(ctx.guild.id)
+	gc = await ctx.bot.config.get_entry(ctx.guild.id)
 
 	# false if not set
 	if gc.mod_role_id is None:

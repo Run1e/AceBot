@@ -71,7 +71,7 @@ class Runner(AceMixin, commands.Cog):
 	)
 
 	async def cog_check(self, ctx):
-		return await ctx.bot.is_owner(ctx.author) or any(role.id == STAFF_ROLE_ID for role in ctx.author.roles)
+		return await ctx.bot.is_owner(ctx.author) # or any(role.id == STAFF_ROLE_ID for role in ctx.author.roles)
 
 	@commands.command()
 	async def get(self, ctx, *, query: commands.clean_content):

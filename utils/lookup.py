@@ -27,6 +27,7 @@ class DiscordLookup:
 
 		self.namespace = dict(
 			bot=ctx.bot,
+			guilds=ctx.bot.guilds,
 			channel=ctx.channel,
 			guild=ctx.guild,
 			author=ctx.author,
@@ -49,9 +50,11 @@ class DiscordLookup:
 			len=len,
 			lines=lines,
 			sorted=sorted,
+			guild=lambda ident: self.get_object(ctx.bot.guilds, ident),
 			role=lambda ident: self.get_object(all_roles, ident),
 			member=lambda ident: self.get_object(ctx.guild.members, ident),
-			channel=lambda ident: self.get_object(ctx.guild.channels, ident),
+			user=lambda ident: self.get_object(ctx.bot.users, ident),
+			channel=lambda ident: self.get_object(list(ctx.bot.get_all_channels()), ident),
 			emoji=lambda ident: self.get_object(ctx.guild.emojis, ident),
 		)
 

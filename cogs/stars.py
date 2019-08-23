@@ -10,40 +10,12 @@ from utils.checks import is_mod, is_mod_pred
 from utils.time import pretty_timedelta
 from utils.prompter import admin_prompter
 from utils.converters import TimeMultConverter, TimeDeltaConverter
+from utils.config import ConfigTable, StarboardConfigEntry
 from cogs.mixins import AceMixin
 
 log = logging.getLogger(__name__)
 STAR_EMOJI = '\N{WHITE MEDIUM STAR}'
 STAR_COOLDOWN = timedelta(minutes=3)
-
-
-class StarConfig:
-	guilds = dict()
-
-	def __init__(self, bot, guild_id, record):
-		self.bot = bot
-		self.id = record.get('id')
-		self.guild_id = guild_id
-		self.channel_id = record.get('channel_id')
-		self.locked = record.get('locked')
-		self.threshold = record.get('threshold')
-		self.max_age = record.get('max_age')
-
-	@classmethod
-	async def get_guild(cls, bot, guild_id):
-		row = await bot.db.fetchrow('SELECT * FROM starboard WHERE guild_id=$1', guild_id)
-
-		if row is None:
-			await bot.db.execute('INSERT INTO starboard (guild_id) VALUES ($1)', guild_id)
-			row = await bot.db.fetchrow('SELECT * FROM starboard WHERE guild_id=$1', guild_id)
-
-		inst = cls(bot, guild_id, row)
-		cls.guilds[guild_id] = inst
-		return inst
-
-	async def set(self, key, value):
-		await self.bot.db.execute(f'UPDATE starboard SET {key}=$1 WHERE id=$2', value, self.id)
-		setattr(self, key, value)
 
 
 class StarConverter(commands.Converter):
@@ -79,6 +51,19 @@ class Starboard(AceMixin, commands.Cog):
 
 	def __init__(self, bot):
 		super().__init__(bot)
+
+		self.config = ConfigTable(
+			bot, 'starboard', 'guild_id',
+			dict(
+				id=int,
+				guild_id=int,
+				channel_id=int,
+				locked=bool,
+				threshold=int,
+				max_age=timedelta
+			),
+			entry_class=StarboardConfigEntry
+		)
 
 		self.purge_query = '''
 			SELECT id, guild_id, channel_id, star_message_id
@@ -220,7 +205,7 @@ class Starboard(AceMixin, commands.Cog):
 	async def channel(self, ctx, *, channel: discord.TextChannel = None):
 		'''Set the starboard channel. Remember only the bot should be allowed to send messages in this channel!'''
 
-		gc = await StarConfig.get_guild(self.bot, ctx.guild.id)
+		gc = await self.config.get_entry(ctx.guild.id)
 
 		if channel is None:
 			channel_id = gc.channel_id
@@ -241,7 +226,7 @@ class Starboard(AceMixin, commands.Cog):
 	async def threshold(self, ctx, *, limit: int = None):
 		'''Set the minimum amount of stars needed for a starred message to remain on the starboard after a week has passed'''
 
-		gc = await StarConfig.get_guild(self.bot, ctx.guild.id)
+		gc = await self.config.get_entry(ctx.guild.id)
 
 		if limit is None:
 			limit = gc.threshold
@@ -252,16 +237,23 @@ class Starboard(AceMixin, commands.Cog):
 
 	@_star.command()
 	@is_mod()
-	async def lifespan(self, ctx, amount: TimeMultConverter, *, unit: TimeDeltaConverter):
+	async def lifespan(self, ctx, amount: TimeMultConverter = None, *, unit: TimeDeltaConverter = None):
 		'''Starred messages with less than `threshold` stars after this period are deleted from the starboard. Messages older than this cannot be starred.'''
 
-		age = amount * unit
+		if unit is None and amount is not None:
+			raise commands.CommandError('Malformed input.')
 
-		if age < timedelta(days=1):
-			raise commands.CommandError('Please set to at least more than 1 day.')
+		sc = await self.config.get_entry(ctx.guild.id)
 
-		sc = await StarConfig.get_guild(self.bot, ctx.guild.id)
-		await sc.set('max_age', age)
+		if unit is not None and amount is not None:
+			age = amount * unit
+
+			if age < timedelta(days=1):
+				raise commands.CommandError('Please set to at least more than 1 day.')
+
+			await sc.set('max_age', age)
+		else:
+			age = sc.max_age
 
 		await ctx.send(f'Star lifespan set to {pretty_timedelta(age)}')
 
@@ -362,7 +354,7 @@ class Starboard(AceMixin, commands.Cog):
 	async def lock(self, ctx):
 		'''Lock the starboard.'''
 
-		sc = await StarConfig.get_guild(self.bot, ctx.guild.id)
+		sc = await self.config.get_entry(ctx.guild.id)
 		await sc.set('locked', True)
 
 		await ctx.send('Starboard locked.')
@@ -372,7 +364,7 @@ class Starboard(AceMixin, commands.Cog):
 	async def unlock(self, ctx):
 		'''Unlock the starboard.'''
 
-		sc = await StarConfig.get_guild(self.bot, ctx.guild.id)
+		sc = await self.config.get_entry(ctx.guild.id)
 		await sc.set('locked', False)
 
 		await ctx.send('Starboard unlocked.')
@@ -470,7 +462,7 @@ class Starboard(AceMixin, commands.Cog):
 			message.guild.id, message.id
 		)
 
-		gc = await StarConfig.get_guild(self.bot, message.guild.id)
+		gc = await self.config.get_entry(message.guild.id)
 
 		if gc.channel_id is None:
 			raise self.SB_NOT_SET_ERROR
@@ -532,7 +524,7 @@ class Starboard(AceMixin, commands.Cog):
 		try:
 			await self._on_star_event_meta(event, message, starrer)
 		except commands.CommandError as exc:
-			gc = await StarConfig.get_guild(self.bot, message.guild.id)
+			gc = await self.config.get_entry(message.guild.id)
 			if channel.id != gc.channel_id:
 				try:
 					await channel.send(content=starrer.mention, embed=discord.Embed(description=str(exc)), delete_after=15)
@@ -625,7 +617,7 @@ class Starboard(AceMixin, commands.Cog):
 			pass
 
 	async def _get_star_channel(self, guild):
-		sc = await StarConfig.get_guild(self.bot, guild.id)
+		sc = await self.config.get_entry(guild.id)
 		if sc.channel_id is None:
 			raise self.SB_NOT_SET_ERROR
 

@@ -88,95 +88,9 @@ class SecurityAction(IntEnum):
 	BAN = 2
 
 
-class ModConfig:
-	_guilds = dict()
+from datetime import timedelta
 
-	@classmethod
-	async def from_guild(cls, bot, guild_id):
-		if guild_id in cls._guilds:
-			return cls._guilds[guild_id]
-
-		self = cls()
-
-		# needs a lock to prevent creating rows twice
-		async with LOCK:
-			record = await bot.db.fetchrow('SELECT * FROM mod WHERE guild_id=$1', guild_id)
-
-			if record is None:
-				await bot.db.execute('INSERT INTO mod (guild_id) VALUES ($1)', guild_id)
-				record = await bot.db.fetchrow('SELECT * FROM mod WHERE guild_id=$1', guild_id)
-
-		self.bot = bot
-		self.id = record.get('id')
-		self.guild_id = record.get('guild_id')
-
-		self.mute_role_id = record.get('mute_role_id')
-		self.log_channel_id = record.get('log_channel_id')
-
-		self.join_enabled = record.get('join_enabled')
-		self.mention_enabled = record.get('mention_enabled')
-		self.spam_enabled = record.get('spam_enabled')
-
-		self.join_age = record.get('join_age')
-		self.join_ignore_age = record.get('join_ignore_age')
-		self.join_kick_cooldown = record.get('join_kick_cooldown')
-
-		self.join_action = record.get('join_action')
-		self.mention_action = record.get('mention_action')
-		self.spam_action = record.get('spam_action')
-
-		self.spam_per = record.get('spam_per')
-		self.spam_count = record.get('spam_count')
-
-		self.mention_per = record.get('mention_per')
-		self.mention_count = record.get('mention_count')
-
-		# it's not really a model so we can store this kinda shit here IMHO
-		self.create_spam_cooldown()
-		self.create_mention_cooldown()
-
-		self._guilds[guild_id] = self
-		return self
-
-	@property
-	def guild(self):
-		return self.bot.get_guild(self.guild_id)
-
-	@property
-	def mute_role(self):
-		if self.mute_role_id is None:
-			return None
-
-		guild = self.bot.get_guild(self.guild_id)
-		if guild is None:
-			return None
-
-		return guild.get_role(self.mute_role_id)
-
-	@property
-	def log_channel(self):
-		if self.log_channel_id is None:
-			return None
-
-		guild = self.bot.get_guild(self.guild_id)
-		if guild is None:
-			return None
-
-		return guild.get_channel(self.log_channel_id)
-
-	def create_spam_cooldown(self):
-		self.spam_cooldown = commands.CooldownMapping.from_cooldown(
-			self.spam_count, self.spam_per, commands.BucketType.user
-		)
-
-	def create_mention_cooldown(self):
-		self.mention_cooldown = commands.CooldownMapping.from_cooldown(
-			self.mention_count, self.mention_per, commands.BucketType.user
-		)
-
-	async def set(self, key, value):
-		await self.bot.db.execute(f'UPDATE mod SET {key}=$1 WHERE guild_id=$2', value, self.guild_id)
-		setattr(self, key, value)
+from utils.config import ConfigTable, SecurityConfigEntry
 
 
 class Security(AceMixin, commands.Cog):
@@ -191,6 +105,36 @@ class Security(AceMixin, commands.Cog):
 
 	def __init__(self, bot):
 		super().__init__(bot)
+
+		self.config = ConfigTable(
+			bot, 'mod', 'guild_id',
+			dict(
+				id=int,
+				guild_id=int,
+				mute_role_id=int,
+				log_channel_id=int,
+
+				join_enabled=bool,
+				spam_enabled=bool,
+				mention_enabled=bool,
+
+				join_action=int,
+				join_age=timedelta,
+				join_ignore_age=timedelta,
+				join_kick_cooldown=timedelta,
+
+				spam_action=int,
+				spam_count=int,
+				spam_per=float,
+
+				mention_action=int,
+				mention_count=int,
+				mention_per=float,
+
+			),
+			entry_class=SecurityConfigEntry
+		)
+
 		self.last_pattern_kick = dict()  # (guild_id, user_id): datetime
 		self.setup_configs.start()
 
@@ -206,7 +150,7 @@ class Security(AceMixin, commands.Cog):
 		if guild_id not in ALLOWED_GUILDS:
 			raise commands.CommandError('This feature is current reserved for selected guilds, sorry.')
 
-		return await ModConfig.from_guild(self.bot, guild_id)
+		return await self.config.get_entry(guild_id)
 
 	async def log(self, action=None, reason=None, severity=None, author=None, channel=None, message=None):
 		if channel is None:

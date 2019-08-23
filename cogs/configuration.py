@@ -3,7 +3,6 @@ from discord.ext import commands
 
 from cogs.mixins import AceMixin
 from utils.checks import is_mod
-from utils.guildconfig import GuildConfig
 
 
 class PrefixConverter(commands.Converter):
@@ -30,7 +29,7 @@ class Configuration(AceMixin, commands.Cog):
 	async def prefix(self, ctx, *, prefix: PrefixConverter):
 		'''Set a guild-specific prefix.'''
 
-		guild = await GuildConfig.get_guild(ctx.guild.id)
+		guild = await self.bot.config.get_entry(ctx.guild.id)
 		await guild.set('prefix', prefix)
 
 		await ctx.send(
@@ -42,7 +41,7 @@ class Configuration(AceMixin, commands.Cog):
 	async def modrole(self, ctx, *, role: discord.Role = None):
 		'''Set the moderator role. Only modifiable by server administrators.'''
 
-		gc = await GuildConfig.get_guild(ctx.guild.id)
+		gc = await self.bot.config.get_entry(ctx.guild.id)
 
 		if role is None:
 			role_id = gc.mod_role_id
