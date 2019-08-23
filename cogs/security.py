@@ -141,10 +141,10 @@ class Security(AceMixin, commands.Cog):
 	# init configs
 	@tasks.loop(count=1)
 	async def setup_configs(self):
-		recs = await self.db.fetch('SELECT guild_id FROM mod')
+		recs = await self.db.fetch('SELECT * FROM mod')
 
 		for rec in recs:
-			await self.get_config(rec.get('guild_id'))
+			self.config.insert_record(rec)
 
 	async def get_config(self, guild_id):
 		# security stuff is only for the ahk guild as of right now

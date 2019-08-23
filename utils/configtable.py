@@ -56,6 +56,12 @@ class ConfigTable:
 	def entries(self):
 		return self._entries.values()
 
+	def insert_record(self, record):
+		entry = self.entry_class(self, record)
+		self._entries[record.get(self.primary)] = entry
+
+		return entry
+
 	async def get_entry(self, key):
 		if not isinstance(key, int):
 			raise self.PRIMARY_KEY_TYPE_ERROR
@@ -77,10 +83,7 @@ class ConfigTable:
 					'SELECT * FROM {} WHERE {} = $1'.format(self.table, self.primary), key
 				)
 
-			entry = self.entry_class(self, record)
-			self._entries[key] = entry
-
-			return entry
+			return self.insert_record(record)
 
 
 class GuildConfigEntry(ConfigTableEntry):
