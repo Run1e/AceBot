@@ -13,7 +13,7 @@ from config import *
 from cogs.help import PaginatedHelpCommand, EditedMinimalHelpCommand
 from cogs.ahk.ids import AHK_GUILD_ID, MEMBER_ROLE_ID
 from utils.time import pretty_seconds
-from utils.config import ConfigTable, GuildConfigEntry
+from utils.configtable import ConfigTable, GuildConfigEntry
 
 EXTENSIONS = (
 	'cogs.general',

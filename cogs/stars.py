@@ -10,7 +10,7 @@ from utils.checks import is_mod, is_mod_pred
 from utils.time import pretty_timedelta
 from utils.prompter import admin_prompter
 from utils.converters import TimeMultConverter, TimeDeltaConverter
-from utils.config import ConfigTable, StarboardConfigEntry
+from utils.configtable import ConfigTable, StarboardConfigEntry
 from cogs.mixins import AceMixin
 
 log = logging.getLogger(__name__)

@@ -90,7 +90,7 @@ class SecurityAction(IntEnum):
 
 from datetime import timedelta
 
-from utils.config import ConfigTable, SecurityConfigEntry
+from utils.configtable import ConfigTable, SecurityConfigEntry
 
 
 class Security(AceMixin, commands.Cog):
