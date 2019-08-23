@@ -107,8 +107,9 @@ class Starboard(AceMixin, commands.Cog):
 				except discord.HTTPException:
 					pass
 
-		await self.db.execute('DELETE FROM starrers WHERE star_id=ANY($1::bigint[])', to_delete)
-		await self.db.execute('DELETE FROM star_msg WHERE id=ANY($1::bigint[])', to_delete)
+		if to_delete:
+			await self.db.execute('DELETE FROM starrers WHERE star_id=ANY($1::bigint[])', to_delete)
+			await self.db.execute('DELETE FROM star_msg WHERE id=ANY($1::bigint[])', to_delete)
 
 	@commands.group(name='star', invoke_without_command=True)
 	async def _star(self, ctx, *, message_id: discord.Message):

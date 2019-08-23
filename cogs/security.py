@@ -142,6 +142,7 @@ class Security(AceMixin, commands.Cog):
 	@tasks.loop(count=1)
 	async def setup_configs(self):
 		recs = await self.db.fetch('SELECT guild_id FROM mod')
+
 		for rec in recs:
 			await self.get_config(rec.get('guild_id'))
 
