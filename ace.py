@@ -14,6 +14,7 @@ from cogs.help import PaginatedHelpCommand, EditedMinimalHelpCommand
 from cogs.ahk.ids import AHK_GUILD_ID, MEMBER_ROLE_ID
 from utils.time import pretty_seconds
 from utils.configtable import ConfigTable, GuildConfigEntry
+from utils.checks import set_bot
 
 EXTENSIONS = (
 	'cogs.general',
@@ -44,6 +45,8 @@ class AceBot(commands.Bot):
 	_support_link = 'https://discord.gg/X7abzRe'
 
 	def __init__(self):
+		set_bot(self)  # fuckin hack fam
+
 		log.info('Starting...')
 
 		super().__init__(

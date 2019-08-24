@@ -13,7 +13,7 @@ from cogs.mixins import AceMixin
 from cogs.ahk.ids import AHK_GUILD_ID
 from utils.converters import TimeMultConverter, TimeDeltaConverter
 from utils.time import pretty_timedelta
-from utils.checks import is_mod_pred
+from utils.checks import is_mod_pred, is_mutable
 from utils.severity import SeverityColors
 from utils.configtable import ConfigTable, SecurityConfigEntry
 
@@ -183,7 +183,7 @@ class Security(AceMixin, commands.Cog):
 	async def _do_action(self, mc, member, action, reason=None, message=None):
 		'''Called when an event happens.'''
 
-		if message is not None and await is_mod_pred(await self.bot.get_context(message)):
+		if message is not None and await is_mod_pred(message):
 			await self.log(
 				channel=mc.log_channel, action='IGNORED {} (MEMBER IS MOD)'.format(action.name), reason=reason,
 				severity=SeverityColors.LOW, member=member, message=message
@@ -386,6 +386,9 @@ class Security(AceMixin, commands.Cog):
 	async def mute(self, ctx, *, member: discord.Member):
 		'''Mute a member.'''
 
+		if not await is_mutable(member):
+			raise commands.CommandError('Can\'t mute other mods.')
+
 		mc = await self.get_config(ctx.guild.id)
 
 		if mc.mute_role is None:
@@ -412,6 +415,9 @@ class Security(AceMixin, commands.Cog):
 	@commands.command()
 	async def unmute(self, ctx, *, member: discord.Member):
 		'''Unmute a member.'''
+
+		if not await is_mutable(member):
+			raise commands.CommandError('Can\'t unmute other mods.')
 
 		mc = await self.get_config(ctx.guild.id)
 
