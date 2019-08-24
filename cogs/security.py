@@ -4,8 +4,9 @@ import re
 import logging
 
 from discord.ext import commands, tasks
-from enum import Enum, IntEnum
-from datetime import datetime
+from enum import IntEnum
+from datetime import datetime, timedelta
+
 from asyncpg.exceptions import UniqueViolationError
 
 from cogs.mixins import AceMixin
@@ -14,9 +15,10 @@ from utils.converters import TimeMultConverter, TimeDeltaConverter
 from utils.time import pretty_timedelta
 from utils.checks import is_mod_pred
 from utils.severity import SeverityColors
+from utils.configtable import ConfigTable, SecurityConfigEntry
 
 
-ALLOWED_GUILDS = (115993023636176902, 517692823621861407)
+ALLOWED_GUILDS = (AHK_GUILD_ID, 517692823621861407)
 SUBMODULES = ('join', 'mention', 'spam')
 LOCK = asyncio.Lock()
 SPAM_LOCK = asyncio.Lock()
@@ -88,10 +90,6 @@ class SecurityAction(IntEnum):
 	BAN = 2
 
 
-from datetime import timedelta
-
-from utils.configtable import ConfigTable, SecurityConfigEntry
-
 
 class Security(AceMixin, commands.Cog):
 	'''Security features.
@@ -153,29 +151,46 @@ class Security(AceMixin, commands.Cog):
 
 		return await self.config.get_entry(guild_id)
 
-	async def log(self, action=None, reason=None, severity=None, author=None, channel=None, message=None):
+	async def log(self, channel, reason, action=None, severity=None, message=None, member: discord.Member = None):
 		if channel is None:
 			return
+
+		if member is None and message is None:
+			return
+
+		if member is None:
+			member = message.author
 
 		severity = severity or SeverityColors.LOW
 
 		e = discord.Embed(
 			title=action or 'INFO',
-			description=author.mention + ' ' + reason,
+			description=member.mention,
 			color=severity.value,
 			timestamp=datetime.utcnow()
 		)
 
-		e.set_author(name=author.display_name, icon_url=author.avatar_url)
-		e.set_footer(text='{} - ID: {}'.format(severity.name, author.id))
+		e.add_field(name='Reason', value=reason)
+
+		e.set_thumbnail(url=member.avatar_url)
+		e.set_footer(text='{} - ID: {}'.format(severity.name, member.id))
 
 		if message is not None:
-			e.description += '\n\n[Context here]({})'.format(message_link(message))
+			e.add_field(name='Context', value='[Here]({})'.format(message_link(message)), inline=False)
 
 		await channel.send(embed=e)
 
 	async def _do_action(self, mc, member, action, reason=None, message=None):
 		'''Called when an event happens.'''
+
+		if message is not None and await is_mod_pred(await self.bot.get_context(message)):
+			await self.log(
+				channel=mc.log_channel, action='IGNORED {} (MEMBER IS MOD)'.format(action.name), reason=reason,
+				severity=SeverityColors.LOW, member=member, message=message
+			)
+
+			return
+
 		try:
 			if action is SecurityAction.MUTE:
 				if mc.mute_role is None:
@@ -198,30 +213,24 @@ class Security(AceMixin, commands.Cog):
 
 		except Exception as exc:
 			await self.log(
-				channel=mc.log_channel, author=member, action='{} FAILED'.format(action.name), reason=str(exc),
-				severity=SeverityColors.HIGH, message=message
+				channel=mc.log_channel, action='{} FAILED'.format(action.name), reason=str(exc),
+				severity=SeverityColors.HIGH, member=member, message=message
 			)
 
 			return
 
 		await self.log(
-			channel=mc.log_channel, author=member, action=action.name, reason=reason,
+			channel=mc.log_channel, action=action.name, reason=reason,
 			severity=dict(MUTE=SeverityColors.LOW, KICK=SeverityColors.MEDIUM, BAN=SeverityColors.HIGH)[action.name],
-			message=message
+			member=member, message=message
 		)
 
 	@commands.Cog.listener()
 	async def on_message(self, message):
-		if message.guild is None:
+		if message.guild is None or message.author.bot:
 			return
 
 		if message.guild.id not in ALLOWED_GUILDS:
-			return
-
-		if message.author.bot:
-			return
-
-		if await is_mod_pred(await self.bot.get_context(message)):
 			return
 
 		mc = await self.get_config(message.guild.id)
@@ -243,7 +252,6 @@ class Security(AceMixin, commands.Cog):
 
 		if mc.mention_enabled:
 			for mention in message.mentions:
-
 				async with MENTION_LOCK:
 					res = mc.mention_cooldown.update_rate_limit(message)
 					if res is not None:
@@ -265,17 +273,15 @@ class Security(AceMixin, commands.Cog):
 		mc = await self.get_config(member.guild.id)
 
 		if await self.db.fetchval('SELECT id FROM muted WHERE guild_id=$1 AND user_id=$2', member.guild.id, member.id):
-			reason = 'Member was previously muted.'
-
 			if mc.mute_role is None:
 				await self.log(
-					action='MUTE FAILED',
-					reason='Member previously muted but mute role not currently found.',
-					severity=SeverityColors.LOW,
-					author=member
+					action='MUTE FAILED', reason='New member previously muted but mute role not currently found.',
+					severity=SeverityColors.LOW, member=member
 				)
 			else:
-				await member.add_roles(mc.mute_role, reason=reason)
+				await self._do_action(
+					mc, member, SecurityAction.MUTE, reason='Re-muting new member who was previously muted',
+				)
 
 		if not mc.join_enabled:
 			return
@@ -306,21 +312,27 @@ class Security(AceMixin, commands.Cog):
 
 		# do action if matching any patterns
 		for pat in pats:
+
+			pattern_id = pat.get('id')
 			pattern = pat.get('pattern')
+
 			if re.fullmatch(pattern, member.name):
+
 				key = (member.guild.id, member.id)
 
 				if key in self.last_pattern_kick and (datetime.now() - self.last_pattern_kick[key]) < mc.join_kick_cooldown:
 					await self.log(
-						reason='Member spared by kick pattern cooldown. Pattern: `{}`'.format(pattern),
-						severity=SeverityColors.MEDIUM, author=member, channel=mc.log_channel
+						channel=mc.log_channel,
+						reason='Member spared by kick pattern cooldown. Matched pattern #{}'.format(pattern_id),
+						severity=SeverityColors.LOW, member=member
 					)
+
 					self.last_pattern_kick.pop(key)
 					return
 
 				await self._do_action(
 					mc, member, SecurityAction(mc.join_action),
-					reason='Member name matched pattern: `{}`'.format(pattern)
+					reason='Member name matched pattern #{}'.format(pattern_id)
 				)
 
 				self.last_pattern_kick[key] = datetime.now()
@@ -344,6 +356,12 @@ class Security(AceMixin, commands.Cog):
 				'DELETE FROM muted WHERE guild_id=$1 AND user_id=$2',
 				before.guild.id, before.id
 			)
+
+			await self.log(
+				conf.log_channel, 'Mute role removed', action='UNMUTE',
+				severity=SeverityColors.LOW, member=after
+			)
+
 		elif conf.mute_role in ar - br:
 			try:
 				await self.db.execute(
@@ -352,6 +370,11 @@ class Security(AceMixin, commands.Cog):
 				)
 			except UniqueViolationError:
 				pass
+
+			await self.log(
+				conf.log_channel, 'Mute role added', action='MUTE',
+				severity=SeverityColors.LOW, member=after
+			)
 
 	async def cog_check(self, ctx):
 		return ctx.guild.id in ALLOWED_GUILDS and await is_mod_pred(ctx)
@@ -373,21 +396,16 @@ class Security(AceMixin, commands.Cog):
 
 		reason = 'Muted by {} (ID: {})'.format(ctx.author.mention, ctx.author.id)
 
-		try:
-			await self.db.execute('INSERT INTO muted (guild_id, user_id) VALUES ($1, $2)', ctx.guild.id, member.id)
-		except UniqueViolationError:
-			pass
-
 		await member.add_roles(mc.mute_role, reason=reason)
 
 		await ctx.send('{} muted.'.format(member.name))
 
 		await self.log(
+			channel=mc.log_channel,
 			action='MUTE',
 			reason=reason,
 			severity=SeverityColors.LOW,
-			author=member,
-			channel=mc.log_channel,
+			member=member,
 			message=ctx.message
 		)
 
@@ -405,18 +423,16 @@ class Security(AceMixin, commands.Cog):
 
 		reason = 'Unmuted by {} (ID: {})'.format(ctx.author.mention, ctx.author.id)
 
-		await self.db.execute('DELETE FROM muted WHERE guild_id=$1 AND user_id=$2', member.guild.id, member.id)
-
 		await member.remove_roles(mc.mute_role, reason=reason)
 
 		await ctx.send('{} unmuted.'.format(member.name))
 
 		await self.log(
+			channel=mc.log_channel,
 			action='UNMUTE',
 			reason=reason,
 			severity=SeverityColors.LOW,
-			author=member,
-			channel=mc.log_channel,
+			member=member,
 			message=ctx.message
 		)
 
@@ -481,6 +497,17 @@ class Security(AceMixin, commands.Cog):
 		await mc.set(f'{module}_enabled', False)
 
 		await ctx.send(f'\'{module.upper()}\' disabled.')
+
+	@security.command()
+	async def testlogchannel(self, ctx):
+		'''Test that logging to the log channel works.'''
+
+		mc = await self.get_config(ctx.guild.id)
+
+		await self.log(
+			mc.log_channel, reason='Reason written here', action='ACTION HERE', severity=SeverityColors.MEDIUM,
+			message=ctx.message
+		)
 
 	@security.group(invoke_without_command=True)
 	async def spam(self, ctx):

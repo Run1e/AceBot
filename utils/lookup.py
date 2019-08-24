@@ -78,7 +78,10 @@ class DiscordLookup:
 			return func(*args, **kwargs)
 
 		elif isinstance(node, ast.Subscript):
-			items = self.traverse(node.value)
+			if hasattr(node, 'value'):
+				items = self.traverse(node.value)
+			else:
+				raise NotImplementedError('Those slices not implemented.')
 
 			if not isinstance(items, list):
 				raise ValueError('Can only perform queries on lists.')
