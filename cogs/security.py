@@ -352,6 +352,9 @@ class Security(AceMixin, commands.Cog):
 			return
 
 		if conf.mute_role in br - ar:
+			if not await is_mutable(after):
+				return
+
 			await self.db.execute(
 				'DELETE FROM muted WHERE guild_id=$1 AND user_id=$2',
 				before.guild.id, before.id
@@ -363,6 +366,9 @@ class Security(AceMixin, commands.Cog):
 			)
 
 		elif conf.mute_role in ar - br:
+			if not await is_mutable(after):
+				return
+
 			try:
 				await self.db.execute(
 					'INSERT INTO muted (guild_id, user_id) VALUES ($1, $2)',
@@ -387,7 +393,7 @@ class Security(AceMixin, commands.Cog):
 		'''Mute a member.'''
 
 		if not await is_mutable(member):
-			raise commands.CommandError('Can\'t mute other mods.')
+			raise commands.CommandError('Can\'t mute this member.')
 
 		mc = await self.get_config(ctx.guild.id)
 
@@ -401,7 +407,7 @@ class Security(AceMixin, commands.Cog):
 
 		await member.add_roles(mc.mute_role, reason=reason)
 
-		await ctx.send('{} muted.'.format(member.name))
+		await ctx.send('{} muted.'.format(member.display_name))
 
 		await self.log(
 			channel=mc.log_channel,
@@ -417,7 +423,7 @@ class Security(AceMixin, commands.Cog):
 		'''Unmute a member.'''
 
 		if not await is_mutable(member):
-			raise commands.CommandError('Can\'t unmute other mods.')
+			raise commands.CommandError('Can\'t unmute this member.')
 
 		mc = await self.get_config(ctx.guild.id)
 
@@ -431,7 +437,7 @@ class Security(AceMixin, commands.Cog):
 
 		await member.remove_roles(mc.mute_role, reason=reason)
 
-		await ctx.send('{} unmuted.'.format(member.name))
+		await ctx.send('{} unmuted.'.format(member.display_name))
 
 		await self.log(
 			channel=mc.log_channel,

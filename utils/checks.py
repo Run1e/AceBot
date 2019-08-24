@@ -47,4 +47,4 @@ def is_mod():
 
 
 async def is_mutable(member):
-	return member.guild.channels and await is_mod_pred_meta(member, member.guild.channels[0])
+	return not (member.guild.channels and await is_mod_pred_meta(member, member.guild.channels[0]))
