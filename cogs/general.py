@@ -5,6 +5,7 @@ import asyncio
 import random
 
 from datetime import datetime
+from bs4 import BeautifulSoup
 
 from config import WOLFRAM_KEY, APIXU_KEY
 from cogs.mixins import AceMixin
@@ -194,6 +195,58 @@ class General(AceMixin, commands.Cog):
 			embed.timestamp = datetime.utcnow()
 
 			await ctx.send(embed=embed)
+
+	@commands.command()
+	@commands.cooldown(rate=3, per=10.0, type=commands.BucketType.user)
+	async def bill(self, ctx):
+		'''Get a random Bill Wurtz video from his website.'''
+
+		url = 'https://billwurtz.com/'
+
+		async with ctx.typing():
+			async with self.bot.aiohttp.get(url + 'videos.html') as resp:
+				if resp.status != 200:
+					raise commands.CommandError('Request failed.')
+
+				content = await resp.text()
+
+			bs = BeautifulSoup(content, 'html.parser')
+			tag = random.choice(bs.find_all('a'))
+
+			await ctx.send(url + tag['href'])
+
+	@commands.command()
+	@commands.cooldown(rate=3, per=10.0, type=commands.BucketType.user)
+	async def xkcd(self, ctx, *, id: int = None):
+		'''Get a random or specified xkcd comic.'''
+
+		if id is None:
+			url = 'https://c.xkcd.com/random/comic/'
+		else:
+			url = 'https://xkcd.com/{}'.format(id)
+
+		async with ctx.typing():
+			async with self.bot.aiohttp.get(url) as resp:
+				if resp.status != 200:
+					raise commands.CommandError('Request failed.')
+
+				content = await resp.text()
+
+				comic_url = str(resp.url)
+
+			bs = BeautifulSoup(content, 'html.parser')
+			brs = bs.find('div', attrs=dict(id='middleContainer'))
+			img = brs.find('img')
+
+			e = discord.Embed(
+				title=img['alt'],
+				description=img['title']
+			)
+
+			e.set_image(url='https:' + img['src'])
+			e.set_footer(text=comic_url.lstrip('https://').rstrip('/'), icon_url='https://i.imgur.com/onzWnfd.png')
+
+			await ctx.send(embed=e)
 
 
 def setup(bot):
