@@ -3,10 +3,10 @@ import io
 import textwrap
 import traceback
 import asyncio
-import ast
 
 
 from discord.ext import commands
+from discord.mixins import Hashable
 from contextlib import redirect_stdout
 from tabulate import tabulate
 from asyncpg.exceptions import UniqueViolationError
@@ -16,6 +16,7 @@ from utils.google import google_parse
 from utils.pager import Pager
 from utils.time import pretty_datetime
 from utils.string_helpers import shorten
+from utils.lookup import DiscordLookup
 from cogs.mixins import AceMixin
 
 
@@ -74,6 +75,10 @@ class DiscordObjectPager(Pager):
 class Owner(AceMixin, commands.Cog):
 	'''Commands accessible only to the bot owner.'''
 
+	DISCORD_BASE_TYPES = (
+		discord.Object, discord.Emoji, discord.abc.Messageable, discord.mixins.Hashable
+	)
+
 	async def cog_check(self, ctx):
 		return await self.bot.is_owner(ctx.author)
 
@@ -85,6 +90,33 @@ class Owner(AceMixin, commands.Cog):
 
 		# remove `foo`
 		return content.strip('` \n')
+
+	@commands.command()
+	async def get(self, ctx, *, query: commands.clean_content):
+		'''Run a meta-python query.'''
+
+		try:
+			res = DiscordLookup(ctx, query).run()
+		except Exception as exc:
+			raise commands.CommandError('{}\n\n{}'.format(exc.__class__.__name__, str(exc)))
+
+		if res is None or (isinstance(res, list) and not res):
+			raise commands.CommandError('No results.')
+
+		if not isinstance(res, list):
+			res = [res]
+
+		if isinstance(res[0], self.DISCORD_BASE_TYPES):
+			p = DiscordObjectPager(ctx, entries=res, per_page=1)
+			await p.go()
+		else:
+			res = '\n'.join('`{}`'.format(str(item)) if isinstance(item, int) else str(item) for item in res)
+
+			if len(res) > 2000:
+				fp = io.BytesIO(str(res).encode('utf-8'))
+				await ctx.send('Log too large...', file=discord.File(fp, 'results.txt'))
+			else:
+				await ctx.send(embed=discord.Embed(description=res))
 
 	@commands.command()
 	async def sql(self, ctx, *, query: str):
@@ -107,7 +139,7 @@ class Owner(AceMixin, commands.Cog):
 		else:
 			await ctx.send('```' + table + '```')
 
-	@commands.command(name='reload', aliases=['rl'], hidden=True)
+	@commands.command(name='reload', aliases=['rl'])
 	async def _reload(self, ctx, *, module: str):
 		'''Reloads a module.'''
 
@@ -119,18 +151,6 @@ class Owner(AceMixin, commands.Cog):
 			await ctx.send(f'```py\n{traceback.format_exc()}\n```')
 		else:
 			await ctx.message.add_reaction('\N{OK HAND SIGN}')
-
-	@commands.command(hidden=True)
-	async def gh(self, ctx, *, query: str):
-		'''Google search for GitHub pages.'''
-
-		await ctx.invoke(self.google, query='site:github.com ' + query)
-
-	@commands.command(hidden=True)
-	async def f(self, ctx, *, query: str):
-		'''Google search for AutoHotkey pages.'''
-
-		await ctx.invoke(self.google, query='site:autohotkey.com ' + query)
 
 	@commands.command(aliases=['g'])
 	@commands.bot_has_permissions(embed_links=True)
@@ -164,6 +184,18 @@ class Owner(AceMixin, commands.Cog):
 				raise commands.CommandError('Query timed out.')
 
 	@commands.command()
+	async def gh(self, ctx, *, query: str):
+		'''Google search for GitHub pages.'''
+
+		await ctx.invoke(self.google, query='site:github.com ' + query)
+
+	@commands.command()
+	async def f(self, ctx, *, query: str):
+		'''Google search for AutoHotkey pages.'''
+
+		await ctx.invoke(self.google, query='site:autohotkey.com ' + query)
+
+	@commands.command()
 	async def ignore(self, ctx, user: discord.User):
 		'''Make bot ignore a user.'''
 
@@ -176,7 +208,6 @@ class Owner(AceMixin, commands.Cog):
 			await ctx.send('User ignored.')
 		except UniqueViolationError:
 			await ctx.send('User already ignored.')
-
 
 	@commands.command()
 	async def notice(self, ctx, user: discord.User):
@@ -196,6 +227,7 @@ class Owner(AceMixin, commands.Cog):
 	@commands.command(hidden=True)
 	async def pm(self, ctx, user: discord.User, *, content: str):
 		'''Private message a user.'''
+
 		await user.send(content)
 
 	@commands.command(hidden=True)
