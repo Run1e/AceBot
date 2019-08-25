@@ -5,12 +5,8 @@ from enum import Enum
 from datetime import datetime, timedelta
 
 
-def ago(*args, **kwargs):
+def past(*args, **kwargs):
 	return datetime.utcnow() - timedelta(*args, **kwargs)
-
-
-def lines(items):
-	return '\n'.join(str(item) for item in items)
 
 
 class Context(Enum):
@@ -35,21 +31,20 @@ class DiscordLookup:
 			members=ctx.guild.members,
 			emojis=ctx.guild.emojis,
 			channels=ctx.guild.channels,
-			st=discord.utils.snowflake_time,
-			dt=datetime.utcnow,
-			past=ago,
-			td=timedelta,
 			roles=all_roles,
 		)
 
 		self.funcs = dict(
+			st=discord.utils.snowflake_time,
+			dt=datetime.utcnow,
+			td=timedelta,
 			str=str,
 			list=list,
 			int=int,
 			repr=repr,
 			len=len,
-			lines=lines,
 			sorted=sorted,
+			past=past,
 			guild=lambda ident: self.get_object(ctx.bot.guilds, ident),
 			role=lambda ident: self.get_object(all_roles, ident),
 			member=lambda ident: self.get_object(ctx.guild.members, ident),

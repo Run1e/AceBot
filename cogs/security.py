@@ -163,9 +163,11 @@ class Security(AceMixin, commands.Cog):
 
 		severity = severity or SeverityColors.LOW
 
+		desc = 'ID: `{}`\nNAME: {}\nMENTION: {}'.format(member.id, member.display_name, member.mention)
+
 		e = discord.Embed(
 			title=action or 'INFO',
-			description=member.mention,
+			description=desc,
 			color=severity.value,
 			timestamp=datetime.utcnow()
 		)

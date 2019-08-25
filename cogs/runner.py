@@ -85,22 +85,20 @@ class Runner(AceMixin, commands.Cog):
 		if res is None or (isinstance(res, list) and not res):
 			raise commands.CommandError('No results.')
 
-		if isinstance(res, self.DISCORD_BASE_TYPES):
+		if not isinstance(res, list):
 			res = [res]
 
-		if isinstance(res, list) and isinstance(res[0], self.DISCORD_BASE_TYPES):
+		if isinstance(res[0], self.DISCORD_BASE_TYPES):
 			p = DiscordObjectPager(ctx, entries=res, per_page=1)
 			await p.go()
 		else:
-			if isinstance(res, int):
-				await ctx.send('`{}`'.format(res))
+			res = '\n'.join('`{}`'.format(str(item)) if isinstance(item, int) else str(item) for item in res)
+
+			if len(res) > 2000:
+				fp = io.BytesIO(str(res).encode('utf-8'))
+				await ctx.send('Log too large...', file=discord.File(fp, 'results.txt'))
 			else:
-				wrapped = '```{}```'.format(res)
-				if len(wrapped) > 2000:
-					fp = io.BytesIO(str(res).encode('utf-8'))
-					await ctx.send('Log too large...', file=discord.File(fp, 'results.txt'))
-				else:
-					await ctx.send(wrapped)
+				await ctx.send(embed=discord.Embed(description=res))
 
 
 def setup(bot):
