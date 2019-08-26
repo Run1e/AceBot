@@ -54,10 +54,18 @@ class DiscordLookup:
 		)
 
 	def get_object(self, items, ident):
-		ident_type = 'id' if isinstance(ident, int) else 'name'
-		res = discord.utils.get(items, **{ident_type: ident})
+		if isinstance(ident, int):
+			res = discord.utils.get(items, id=ident)
+		elif isinstance(ident, str):
+			res = discord.utils.get(items, name=ident)
+			if res is None:
+				res = discord.utils.get(items, display_name=ident)
+		else:
+			raise TypeError('Can\'t find items with ident of type \'{}\''.format(type(ident)).__name__)
+
 		if res is None:
-			raise ValueError('No item with {} equal to \'{}\''.format(ident_type, ident))
+			raise ValueError('No item with ident equal to \'{}\''.format(ident))
+
 		return res
 
 	def run(self):

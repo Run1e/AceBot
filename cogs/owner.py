@@ -91,6 +91,26 @@ class Owner(AceMixin, commands.Cog):
 		# remove `foo`
 		return content.strip('` \n')
 
+	@commands.command(hidden=True)
+	async def test(self, ctx):
+		from pprint import saferepr, pprint
+
+		start_ind = '  '
+		seen = set()
+
+		def indent(cont, prefix):
+			return '\n'.join(prefix + line for line in cont.split('\n'))
+
+		def po(obj, ind=start_ind):
+			for key in vars(obj):
+				val = getattr(obj, key)
+				if isinstance(val, object) and hasattr(val, '__dict__'):
+					print(indent(po(val), start_ind + ind))
+				else:
+					print(ind + str(val))
+
+		po(ctx)
+
 	@commands.command()
 	async def get(self, ctx, *, query: commands.clean_content):
 		'''Run a meta-python query.'''
