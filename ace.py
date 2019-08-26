@@ -2,17 +2,19 @@ import discord
 import asyncpg
 import aiohttp
 import logging
+import traceback
 import logging.handlers
 import sys
 import os
 
 from discord.ext import commands
+from pprint import saferepr
 from datetime import datetime
 
 from config import *
 from cogs.help import PaginatedHelpCommand, EditedMinimalHelpCommand
 from cogs.ahk.ids import AHK_GUILD_ID, MEMBER_ROLE_ID
-from utils.time import pretty_seconds
+from utils.time import pretty_seconds, pretty_datetime
 from utils.configtable import ConfigTable, GuildConfigEntry
 from utils.checks import set_bot
 
@@ -159,12 +161,38 @@ class AceBot(commands.Bot):
 		e = discord.Embed()
 
 		async def log_and_raise():
-			e.description = 'An error occured. The exception has been logged and will hopefully be fixed. Thanks for using the bot!'
+			e.description = (
+				'An error occured. The error has been saved and will hopefully be fixed. Thanks for using the bot!'
+			)
 
 			try:
 				await ctx.send(embed=e)
 			except discord.HTTPException:
 				pass
+
+			present_object = lambda obj: '{} ({})'.format(obj.name, obj.id)
+
+			now = datetime.utcnow()
+
+			timestamp = str(now).split('.')[0].replace(' ', '_').replace(':', '')
+			filename = str(ctx.message.id) + '_' + timestamp
+
+			try:
+				raise exc
+			except Exception:
+				tb = traceback.format_exc()
+
+			content = (
+				'TIME: {}\nGUILD: {}\nCHANNEL: #{}\nAUTHOR: {}\nMESSAGE ID: {}\n\nMESSAGE CONTENT:\n{}\n\n'
+				'COMMAND: {}\nARGS: {}\nKWARGS: {}\n\nTRACEBACK:\n{}'
+			).format(
+				pretty_datetime(now), present_object(ctx.guild), present_object(ctx.channel),
+				present_object(ctx.author), str(ctx.message.id), ctx.message.content, ctx.command.qualified_name,
+				saferepr(ctx.args[2:]), saferepr(ctx.kwargs), tb
+			)
+
+			with open('exc/{}.error'.format(filename), 'w', encoding='utf-8-sig') as f:
+				f.write(content)
 
 			raise exc
 
@@ -228,7 +256,7 @@ discord.Embed = Embed
 if __name__ == '__main__':
 
 	# create additional folders
-	for path in ('data', 'logs'):
+	for path in ('data', 'logs', 'exc'):
 		if not os.path.exists(path):
 			os.makedirs(path)
 
