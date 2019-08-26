@@ -1,1 +1,0 @@
-alias mailme='mail -s "mail from gecko" "runar-borge@hotmail.com"'
