@@ -157,6 +157,15 @@ class PaginatedHelpCommand(commands.HelpCommand):
 
 
 class EditedMinimalHelpCommand(commands.MinimalHelpCommand):
+	async def send_pages(self):
+		"""A helper utility to send the page output from :attr:`paginator` to the destination."""
+		destination = self.get_destination()
+		for page in self.paginator.pages:
+			try:
+				await destination.send(page)
+			except discord.HTTPException:
+				return
+
 	def get_ending_note(self):
 		return (
 			'NOTE: The custom help command menu did not get sent because the bot is missing '
