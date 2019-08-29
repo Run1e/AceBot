@@ -1,159 +1,204 @@
+import re
 from bs4 import BeautifulSoup, NavigableString
 
 
-class CodeTagHandler:
-	def __init__(self, big_box=False, language=None):
-		self.big_box = big_box
-		self.language = None if big_box is False else language or None
-		self._nl = '\n' if big_box else ''
+PREPEND = dict(
+	br='\n',  # linebreak
+	p='\n\n',  # paragraph
+)
 
-	def convert(self, tag, content, credit):
-		if self.big_box:
-			content = content.replace('```', '`\u200b``')
-		return (self.language or '') + self._nl + content + self._nl
+WRAP = dict(
+	b='**',  # bold
+	em='*',  # emphasis
+	i='*',  # italics
+	div='\n',  # div
+)
+
+MULTIWRAP = dict(
+	ul=('\n\n', '\n'),  # starts a list section
+	li=(' - ', '\n'),  # list item
+)
 
 
-class UrlTagHandler:
-	def __init__(self, url=None, escaper=None):
-		self.url = url
+class CreditsEmpty(Exception):
+	pass
+
+
+class Result:
+	def __init__(self, credits):
+		self.credits = credits
+		self.content = ''
+
+	def __str__(self):
+		return self.content
+
+	def consume(self, amount: int):
+		if amount > self.credits:
+			raise CreditsEmpty()
+
+		self.credits -= amount
+
+	def can_afford(self, *strings):
+		return sum(len(part) for part in strings) <= self.credits
+
+	def add(self, string):
+		self.content += string
+
+	def add_and_consume(self, string, trunc=False):
+		to_consume = len(string)
+		do_raise = False
+
+		if trunc is True and to_consume > self.credits:
+			to_consume = self.credits
+			string = string[:to_consume]
+			do_raise = True
+
+		self.consume(to_consume)
+		self.add(string)
+
+		if do_raise:
+			raise CreditsEmpty()
+
+
+class HTML2Markdown:
+	def __init__(self, escaper=None, big_box=False, lang=None, max_len=2000, base_url=None):
+		if not big_box and lang is not None:
+			raise ValueError('Languages can only be added to big code boxes.')
+
+		self.result = None
 		self.escaper = escaper
+		self.max_len = max_len
+		self.base_url = base_url
+		self.big_box = big_box
+		self.lang = lang
 
-	def convert(self, tag, content, credit):
-		if self.url is None:
-			return content
+		self.cutoff = '...'
 
-		href = tag['href']
+	def convert(self, html, temp_url=None):
+		self.result = Result(max(self.max_len, 8) - len(self.cutoff) - 1)
 
-		if href.startswith('#'):
-			use_url = self.url + href
-		elif href.startswith(('http', 'ftp')):
-			use_url = href
+		if temp_url is not None:
+			old_url = self.base_url
+			self.base_url = temp_url
 		else:
-			use_url = '/'.join(self.url.split('/')[:-1]) + '/' + href
+			old_url = None
 
-		fmt = '[{}]({})'
+		try:
+			self.traverse(BeautifulSoup(html, 'html.parser'))
+		except CreditsEmpty:
+			if str(self.result).endswith(' '):
+				self.result.add(self.cutoff)
+			else:
+				self.result.add(' ' + self.cutoff)
 
-		text = self.escaper(tag.string) if callable(self.escaper) else tag.string
-		full = fmt.format(text, use_url)
+		if old_url is not None:
+			self.base_url = old_url
 
-		greedy_chars = 3
+		ret = str(self.result)
+		return ret.strip('\n')
 
-		if credit is None:
-			return text
-		elif credit > len(full):
-			return full
-		elif credit >= len(use_url) + 4 + greedy_chars:
-			return fmt.format(text[0:credit - len(use_url) - 4], use_url)
-		else:
-			return text[0:credit]
-
-
-class MaxLengthReached(Exception):
-	def __init__(self, message=None):
-		self.message = message
-
-
-def html2markdown(html, escaper=None, url=None, big_box=False, language=None, parser='html.parser', max_length=None):
-	'''Converts html to markdown.'''
-
-	if max_length is not None:
-		if max_length < 1 or not isinstance(max_length, int):
-			raise ValueError('max_length should be above 0 and integer type.')
-
-	if language is not None and big_box is False:
-		raise ValueError('Cannot have code box language with small boxes. Set big_box=True')
-
-	# tags that only prepends something
-	prepend = dict(
-		br='\n',  	# linebreak
-		p='\n\n',  	# paragraph
-	)
-
-	# tags that wrap the contents in the same character
-	wrap = dict(
-		b='**',  	# bold
-		em='*',  	# emphasis
-		i='*',  	# italics
-		div='\n',  	# div
-		code='```' if big_box else '`'
-	)
-
-	# tags that wrap the contents in two different characters
-	multiwrap = dict(
-		ul=('\n\n', '\n'),	# starts a list section
-		li=(' - ', '\n')  	# list item
-	)
-
-	specials = dict(
-		a=UrlTagHandler(url, escaper),
-		code=CodeTagHandler(big_box, language)
-	)
-
-	def get_wrapper(name):
-		if name in prepend:
-			front = prepend[name]
-			back = ''
-		elif name in wrap:
-			front = wrap[name]
-			back = front
-		elif name in multiwrap:
-			front = multiwrap[name][0]
-			back = multiwrap[name][1]
-		else:
-			front, back = '', ''
-
-		return front, back
-
-	bs = BeautifulSoup(html, parser)
-
-	def traverse(tag, credit):
-		result = ''
-
-		for entry in tag.contents:
-			if isinstance(entry, NavigableString):
-				if entry == '\n':
+	def traverse(self, tag):
+		for node in tag.contents:
+			if isinstance(node, NavigableString):
+				node = str(node)
+				if node == '\n':
+					continue
+				self.result.add_and_consume(self.escaper(node) if callable(self.escaper) else node, True)
+			else:
+				if node.name == 'code':
+					self.codebox(node)
+					continue
+				elif node.name == 'a':
+					self.link(node)
 					continue
 
-				# remove reference...
-				entry = str(entry)
+				back_required = False
 
-				if tag.name in specials:
-					to_add = specials[tag.name].convert(tag, entry, credit)
-					if credit and len(to_add) > credit:
-						raise MaxLengthReached()
+				if node.name in PREPEND:
+					front, back = PREPEND[node.name], ''
+
+					# eeeeh hack?
+					if node.name == 'p' and str(self.result).endswith(front):
+						front = ''
+
+				elif node.name in WRAP:
+					wrap_str = WRAP[node.name]
+					front, back = wrap_str, wrap_str
+					back_required = True
+
+				elif node.name in MULTIWRAP:
+					front, back = MULTIWRAP[node.name]
+
 				else:
-					to_add = escaper(entry) if callable(escaper) else entry
-					if credit and len(to_add) > credit:
-						raise MaxLengthReached(result + to_add[0:credit])
+					front, back = '', ''
 
-				result += to_add
-				if credit is not None:
-					credit -= len(to_add)
-			else:
-				front, back = get_wrapper(entry.name)
+				if not self.result.can_afford(front, back, ' '):
+					raise CreditsEmpty()
 
-				if credit and credit <= len(front + back):
-					raise MaxLengthReached(result)
+				self.result.add_and_consume(front)
 
-				result += front
-				if credit is not None:
-					credit -= len(front + back)
+				# prematurely consume the back characters if it *must* be added later
+				if back_required:
+					self.result.consume(len(back))
 
 				try:
-					to_add, credit = traverse(entry, credit)
-				except MaxLengthReached as exc:
-					if exc.message is None:
-						raise MaxLengthReached(result if not len(front) else result[:len(front) * -1])
-					else:
-						raise MaxLengthReached(result + exc.message + back)
+					self.traverse(node)
+				except CreditsEmpty as exc:
+					if back_required:
+						self.result.add(back)
+					raise exc
 
-				result += to_add + back
+				if back_required:
+					self.result.add(back)
+				else:
+					self.result.add_and_consume(back)
 
-		return result, credit
+	def _get_content(self, tag):
+		contents = ''
+		for node in filter(lambda node: isinstance(node, NavigableString), tag.contents):
+			contents += str(node)
 
-	try:
-		r, c = traverse(bs, None if max_length is None else max_length - 4)
-	except MaxLengthReached as exc:
-		r = exc.message.strip() + ' ...'
+		return contents
 
-	return r.strip()
+	def codebox(self, tag):
+		front, back = self._codebox_wraps()
+
+		# specific fix for autohotkey rss
+		for br in tag.find_all('br'):
+			br.replace_with('\n')
+
+		contents = self._get_content(tag)
+
+		self.result.add_and_consume(front + contents + back)
+
+	def _format_link(self, href):
+		if re.match('^.+:\/\/', href):
+			return href
+
+		if self.base_url is None:
+			return None
+
+		if href.startswith('#'):
+			return self.base_url + href
+		else:
+			return '/'.join(self.base_url.split('/')[:-1]) + '/' + href
+
+	def _codebox_wraps(self):
+		return '```{}\n'.format(self.lang or '') if self.big_box else '`', '\n```\n' if self.big_box else '`'
+
+	def link(self, tag):
+		credits = self.result.credits
+
+		link = self._format_link(tag['href'])
+		contents = self._get_content(tag)
+
+		full = '[{}]({})'.format(contents, link)
+
+		if link is None:
+			self.result.add_and_consume(contents, True)
+		elif credits >= len(full):
+			self.result.add_and_consume(full)
+		elif credits >= len(link) + 5:
+			self.result.add_and_consume('[{}]({})'.format(contents[:credits - len(link) - 4], link))
+		else:
+			self.result.add_and_consume(contents, True)

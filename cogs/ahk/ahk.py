@@ -9,7 +9,7 @@ from discord.ext import commands, tasks
 from cogs.ahk.ids import *
 from cogs.mixins import AceMixin
 from utils.docs_parser import parse_docs
-from utils.html2markdown import html2markdown
+from utils.html2markdown import HTML2Markdown
 
 
 RSS_URL = 'https://www.autohotkey.com/boards/feed'
@@ -22,6 +22,12 @@ class AutoHotkey(AceMixin, commands.Cog):
 
 	def __init__(self, bot):
 		super().__init__(bot)
+
+		self.h2m = HTML2Markdown(
+			escaper=discord.utils.escape_markdown,
+			big_box=True, lang='autoit',
+			max_len=2000
+		)
 
 		self.forum_channel = self.bot.get_channel(FORUM_CHAN_ID)
 		self.rss_time = datetime.now(tz=timezone(timedelta(hours=1))) - timedelta(minutes=1)
@@ -42,16 +48,13 @@ class AutoHotkey(AceMixin, commands.Cog):
 		xml = BeautifulSoup(xml_rss, 'xml')
 
 		for entry in xml.find_all('entry')[::-1]:
+
 			time = self.parse_date(str(entry.updated.text))
-			title = html2markdown(str(entry.title.text))
+			title = self.h2m.convert(str(entry.title.text))
 
-			if time > self.rss_time and '• Re: ' not in title:
+			if time > self.rss_time and not title.startswith('• Re: '):
 				content = str(entry.content.text).split('Statistics: ')[0]
-
-				content = html2markdown(
-					content, escaper=discord.utils.escape_markdown,
-					language='autoit', big_box=True, max_length=1024
-				)
+				content = self.h2m.convert(content)
 
 				content = content.replace('CODE:', '')
 				content = re.sub('\n\n+', '\n\n', content)

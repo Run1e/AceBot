@@ -2,7 +2,7 @@ import re
 import discord
 from bs4 import BeautifulSoup
 
-from utils.html2markdown import html2markdown
+from utils.html2markdown import HTML2Markdown
 
 
 class BaseHandler:
@@ -12,6 +12,11 @@ class BaseHandler:
 	def __init__(self, path, handler):
 		self.file = path
 		self.handler = handler
+
+		self.h2m = HTML2Markdown(
+			escaper=discord.utils.escape_markdown,
+			max_len=2000, base_url=self.url
+		)
 
 		with open(self.file_base + '/' + path, 'r') as f:
 			self.bs = BeautifulSoup(f.read(), 'html.parser')
@@ -43,7 +48,7 @@ class BaseHandler:
 		return self.pretty_desc(p)
 
 	def pretty_desc(self, desc):
-		md = html2markdown(str(desc), escaper=discord.utils.escape_markdown, url=self.url)
+		md = self.h2m.convert(str(desc))
 
 		sp = md.split('.\n')
 		return md[0:len(sp[0]) + 1] if len(sp) > 1 else md

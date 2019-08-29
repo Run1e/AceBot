@@ -1,14 +1,14 @@
 import os, aiohttp, json, shutil
 
 from utils.docs_parser.handlers import *
-from utils.html2markdown import html2markdown
+from utils.html2markdown import HTML2Markdown
 
 from zipfile import ZipFile
 from bs4 import BeautifulSoup
 
 URL = 'https://www.autohotkey.com/docs'
 PARSER = 'html.parser'
-EXTRACT_TO = 'temp'
+EXTRACT_TO = 'data'
 DOCS_BASE = f'{EXTRACT_TO}/AutoHotkey_L-Docs-master'
 DOCS_FOLDER = f'{DOCS_BASE}/docs'
 DOWNLOAD_FILE = f'{EXTRACT_TO}/docs.zip'
@@ -90,6 +90,13 @@ async def parse_docs(handler, on_update, fetch=True):
 	for names, page, desc in customs:
 		await handler(names, page, desc)
 
+	h2m = HTML2Markdown(
+		escaper=discord.utils.escape_markdown,
+		base_url=URL,
+		big_box=False,
+		max_len=2000
+	)
+
 	# parse the index list and add additional names for stuff
 	with open(f'{DOCS_FOLDER}/static/source/data_index.js') as f:
 		j = json.loads(f.read()[12:-2])
@@ -113,7 +120,7 @@ async def parse_docs(handler, on_update, fetch=True):
 				if p is None:
 					desc = None
 				else:
-					md = html2markdown(str(p), escaper=discord.utils.escape_markdown, url=URL)
+					md = h2m.convert(str(p))
 
 					sp = md.split('.\n')
 					desc = md[0:len(sp[0]) + 1] if len(sp) > 1 else md
