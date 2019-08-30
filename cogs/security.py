@@ -133,7 +133,7 @@ class Security(AceMixin, commands.Cog):
 			entry_class=SecurityConfigEntry
 		)
 
-		self.last_pattern_kick = dict()  # (guild_id, user_id): datetime
+		self.cooldown_users = dict()  # (guild_id, user_id): datetime
 		self.setup_configs.start()
 
 	# init configs
@@ -288,23 +288,39 @@ class Security(AceMixin, commands.Cog):
 		if not mc.join_enabled:
 			return
 
-		age = datetime.utcnow() - member.created_at
+		now = datetime.utcnow()
+		age = now - member.created_at
 
-		# ignore user if ignore_age is set and passed
+		# ignore user if ignore_age is set and surpassed
 		if mc.join_ignore_age is not None:
 			if age > mc.join_ignore_age:
 				return
+
+		key = (member.guild.id, member.id)
+
+		if key in self.cooldown_users and (now - self.cooldown_users[key]) < mc.join_kick_cooldown:
+			await self.log(
+				channel=mc.log_channel,
+				reason='Member let in based on cooldown.',
+				severity=SeverityColors.LOW, member=member
+			)
+
+			self.cooldown_users.pop(key)
+			return
 
 		# do action if below minimum account age
 		if mc.join_age is not None and member.created_at is not None:
 			if mc.join_age > age:
 				await self._do_action(
 					mc, member, SecurityAction(mc.join_action),
-					reason='Account age {}, which is younger than the limit of {}'.format(
-						pretty_timedelta(age), pretty_timedelta(mc.join_age)
+					reason='Account age {}, which is {} younger than the limit of {}'.format(
+						pretty_timedelta(age),
+						pretty_timedelta(mc.join_age - age),
+						pretty_timedelta(mc.join_age)
 					)
 				)
 
+				self.cooldown_users[key] = now
 				return
 
 		pats = await self.db.fetch(
@@ -320,24 +336,12 @@ class Security(AceMixin, commands.Cog):
 
 			if re.fullmatch(pattern, member.name):
 
-				key = (member.guild.id, member.id)
-
-				if key in self.last_pattern_kick and (datetime.now() - self.last_pattern_kick[key]) < mc.join_kick_cooldown:
-					await self.log(
-						channel=mc.log_channel,
-						reason='Member spared by kick pattern cooldown. Matched pattern #{}'.format(pattern_id),
-						severity=SeverityColors.LOW, member=member
-					)
-
-					self.last_pattern_kick.pop(key)
-					return
-
 				await self._do_action(
 					mc, member, SecurityAction(mc.join_action),
 					reason='Member name matched pattern #{}'.format(pattern_id)
 				)
 
-				self.last_pattern_kick[key] = datetime.now()
+				self.cooldown_users[key] = now
 				return
 
 	@commands.Cog.listener()
