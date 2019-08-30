@@ -25,6 +25,7 @@ CREATE TABLE IF NOT EXISTS mod (
 	join_action			SMALLINT NOT NULL DEFAULT 0 CHECK (join_action >= 0 AND join_action <= 2),
 	join_age			INTERVAL NULL,
 	join_ignore_age		INTERVAL NULL,
+	join_cooldown		INTERVAL NULL,
 	
 	spam_enabled		BOOLEAN NOT NULL DEFAULT FALSE,
 	spam_action			SMALLINT NOT NULL DEFAULT 0 CHECK (spam_action >= 0 AND spam_action <= 2),

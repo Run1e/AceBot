@@ -119,7 +119,7 @@ class Security(AceMixin, commands.Cog):
 				join_action=int,
 				join_age=timedelta,
 				join_ignore_age=timedelta,
-				join_kick_cooldown=timedelta,
+				join_cooldown=timedelta,
 
 				spam_action=int,
 				spam_count=int,
@@ -298,15 +298,16 @@ class Security(AceMixin, commands.Cog):
 
 		key = (member.guild.id, member.id)
 
-		if key in self.cooldown_users and (now - self.cooldown_users[key]) < mc.join_kick_cooldown:
-			await self.log(
-				channel=mc.log_channel,
-				reason='Member let in based on cooldown.',
-				severity=SeverityColors.LOW, member=member
-			)
+		if mc.join_cooldown is not None and key in self.cooldown_users:
+			if (now - self.cooldown_users[key]) < mc.join_cooldown:
+				await self.log(
+					channel=mc.log_channel,
+					reason='Member let in based on cooldown.',
+					severity=SeverityColors.LOW, member=member
+				)
 
-			self.cooldown_users.pop(key)
-			return
+				self.cooldown_users.pop(key)
+				return
 
 		# do action if below minimum account age
 		if mc.join_age is not None and member.created_at is not None:
@@ -648,13 +649,13 @@ class Security(AceMixin, commands.Cog):
 		await ctx.invoke(self.join)
 
 	async def _join_status(self, mc):
-		return 'STATUS: **{}**\nACTION: **{}**\nACTIVE PATTERNS: **{}**\nKICK PATTERN COOLDOWN: **{}**\nMINIMUM AGE: **{}**\nIGNORE AFTER AGE: **{}**'.format(
+		return 'STATUS: **{}**\nACTION: **{}**\nACTIVE PATTERNS: **{}**\nACTION COOLDOWN: **{}**\nMINIMUM AGE: **{}**\nIGNORE AFTER AGE: **{}**'.format(
 			self._print_status(mc.join_enabled),
 			SecurityAction(mc.join_action).name,
 			await self.db.fetchval(
 				'SELECT COUNT(*) FROM kick_pattern WHERE guild_id=$1 AND disabled=FALSE', mc.guild_id
 			),
-			'NOT SET' if mc.join_kick_cooldown is None else (pretty_timedelta(mc.join_kick_cooldown).upper()),
+			'NOT SET' if mc.join_cooldown is None else (pretty_timedelta(mc.join_cooldown).upper()),
 			'NOT SET' if mc.join_age is None else (pretty_timedelta(mc.join_age).upper()),
 			'NOT SET' if mc.join_ignore_age is None else (pretty_timedelta(mc.join_ignore_age).upper()),
 		)
@@ -698,8 +699,8 @@ class Security(AceMixin, commands.Cog):
 		await ctx.send('New ignore account age limit set: {}'.format(pretty_timedelta(delta)))
 
 	@join.command(name='cooldown')
-	async def join_kick_cooldown(self, ctx, amount: TimeMultConverter = None, unit: TimeDeltaConverter = None):
-		'''User will not be kicked twice by kick cooldowns within this period.'''
+	async def join_cooldown(self, ctx, amount: TimeMultConverter = None, unit: TimeDeltaConverter = None):
+		'''User will not be actioned twice within this period.'''
 
 		if amount is not None and unit is None:
 			raise commands.CommandError('Malformed input.')
@@ -707,18 +708,18 @@ class Security(AceMixin, commands.Cog):
 		mc = await self.get_config(ctx.guild.id)
 
 		if amount is None:
-			await mc.set('join_kick_cooldown', None)
-			await ctx.send('Join kick pattern cooldown disabled.')
+			await mc.set('join_cooldown', None)
+			await ctx.send('Join cooldown disabled.')
 			return
 
 		delta = amount * unit
 
-		await mc.set('join_kick_cooldown', delta)
-		await ctx.send('New join kick pattern cooldown set: {}'.format(pretty_timedelta(delta)))
+		await mc.set('join_cooldown', delta)
+		await ctx.send('New join cooldown set: {}'.format(pretty_timedelta(delta)))
 
 	@join.command(name='add')
 	async def pattern_add(self, ctx, *, pattern: PatternConverter):
-		'''Add a regex pattern to the kick pattern list.'''
+		'''Add a regex pattern to the pattern list.'''
 
 		await self.db.execute(
 			'INSERT INTO kick_pattern (guild_id, pattern) VALUES ($1, $2)',
