@@ -29,7 +29,8 @@ class AutoHotkey(AceMixin, commands.Cog):
 			max_len=2000
 		)
 
-		self.forum_channel = self.bot.get_channel(FORUM_CHAN_ID)
+		self.forum_thread_channel = self.bot.get_channel(FORUM_THRD_CHAN_ID)
+		self.forum_reply_channel = self.bot.get_channel(FORUM_REPLY_CHAN_ID)
 		self.rss_time = datetime.now(tz=timezone(timedelta(hours=1))) - timedelta(minutes=1)
 
 		self.rss.start()
@@ -70,8 +71,10 @@ class AutoHotkey(AceMixin, commands.Cog):
 				e.set_footer(text='autohotkey.com', icon_url='https://www.autohotkey.com/favicon.ico')
 				e.timestamp = time
 
-				if self.forum_channel is not None:
-					await self.forum_channel.send(embed=e)
+				if '• Re: ' in title and self.forum_reply_channel is not None:
+					await self.forum_reply_channel.send(embed=e)
+				elif self.forum_thread_channel is not None:
+					await self.forum_thread_channel.send(embed=e)
 
 				self.rss_time = time
 

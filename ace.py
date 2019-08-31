@@ -27,6 +27,7 @@ EXTENSIONS = (
 	'cogs.tags',
 	'cogs.stars',
 	'cogs.meta',
+	'cogs.trivia',
 	'cogs.remind',
 	'cogs.hl',
 	'cogs.welcome',

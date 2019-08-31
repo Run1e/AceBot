@@ -40,16 +40,21 @@ class ConfigTable:
 
 	def __init__(self, bot, table, primary, keys, entry_class=None):
 		entry_class = entry_class or ConfigTableEntry
-		
+
 		if entry_class is not ConfigTableEntry and not issubclass(entry_class, ConfigTableEntry):
 			raise TypeError('entry_class must inherit from ConfigTableEntry.')
+
+		if isinstance(primary, str):
+			primary = (primary,)
+		elif not isinstance(primary, tuple):
+			raise TypeError('Primary keys must be tuple or string.')
 
 		self.bot = bot
 		self.lock = asyncio.Lock()
 		self.entry_class = entry_class
 		self.table = table
-		self._entries = dict()
 		self.primary = primary
+		self._entries = dict()
 		self.keys = keys
 
 	@property
@@ -62,26 +67,43 @@ class ConfigTable:
 
 		return entry
 
-	async def get_entry(self, key):
-		if not isinstance(key, int):
-			raise self.PRIMARY_KEY_TYPE_ERROR
+	@property
+	def _get_query(self):
+		query = 'SELECT * FROM {} WHERE '.format(self.table)
+
+		sub = list()
+		for idx, key in enumerate(self.primary):
+			sub.append('{} = ${}'.format(key, idx + 1))
+
+		return query + ' AND '.join(sub)
+
+	@property
+	def _create_query(self):
+		return 'INSERT INTO {} ({}) VALUES ({})'.format(
+			self.table,
+			', '.join(self.primary),
+			', '.join('${}'.format(idx + 1) for idx, _ in enumerate(self.primary))
+		)
+
+	async def get_entry(self, *keys):
+		keys = tuple(keys)
+
+		for key in keys:
+			if not isinstance(key, int):
+				raise self.PRIMARY_KEY_TYPE_ERROR
+
+		get_query = self._get_query
 
 		async with self.lock:
-			if key in self._entries:
-				return self._entries[key]
+			if keys in self._entries:
+				return self._entries[keys]
 
-			record = await self.bot.db.fetchrow(
-				'SELECT * FROM {} WHERE {} = $1'.format(self.table, self.primary), key
-			)
+			record = await self.bot.db.fetchrow(get_query, *keys)
 
 			if record is None:
-				await self.bot.db.execute(
-					'INSERT INTO {} ({}) VALUES ($1)'.format(self.table, self.primary), key,
-				)
+				await self.bot.db.execute(self._create_query, *keys)
 
-				record = await self.bot.db.fetchrow(
-					'SELECT * FROM {} WHERE {} = $1'.format(self.table, self.primary), key
-				)
+				record = await self.bot.db.fetchrow(get_query, *keys)
 
 			return self.insert_record(record)
 

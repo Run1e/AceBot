@@ -123,13 +123,13 @@ CREATE TABLE IF NOT EXISTS starrers (
 	id 			SERIAL UNIQUE,
 	star_id		INTEGER NOT NULL REFERENCES star_msg (id),
 	user_id		BIGINT NOT NULL,
-	UNIQUE (star_id, user_id)
+	UNIQUE 		(star_id, user_id)
 );
 
 -- fact list
 CREATE TABLE IF NOT EXISTS facts (
-	id 		SERIAL UNIQUE,
-	content	TEXT NOT NULL
+	id 			SERIAL UNIQUE,
+	content		TEXT NOT NULL
 );
 
 -- tag list
@@ -215,6 +215,24 @@ CREATE TABLE IF NOT EXISTS role (
 	message_id	BIGINT,
 	roles		INTEGER[25] NOT NULL DEFAULT ARRAY[]::INTEGER[25],
 	inline		BOOL NOT NULL DEFAULT TRUE
+);
+
+CREATE TABLE IF NOT EXISTS trivia (
+	id				SERIAL UNIQUE,
+	guild_id		BIGINT NOT NULL,
+	user_id			BIGINT NOT NULL,
+	correct_count	INT NOT NULL DEFAULT 0,
+	wrong_count		INT NOT NULL DEFAULT 0,
+	score			BIGINT NOT NULL DEFAULT 0,
+	UNIQUE			(guild_id, user_id)
+);
+
+CREATE TABLE IF NOT EXISTS trivia_stats (
+	id				SERIAL UNIQUE,
+	guild_id		BIGINT NOT NULL,
+	user_id			BIGINT NOT NULL,
+	question_hash	BIGINT NOT NULL,
+	result			BOOL NOT NULL
 );
 
 '''
