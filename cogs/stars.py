@@ -10,7 +10,7 @@ from utils.checks import is_mod, is_mod_pred
 from utils.time import pretty_timedelta
 from utils.prompter import admin_prompter
 from utils.converters import TimeMultConverter, TimeDeltaConverter
-from utils.configtable import ConfigTable, StarboardConfigEntry
+from utils.configtable import ConfigTable, StarboardConfigRecord
 from cogs.mixins import AceMixin
 
 log = logging.getLogger(__name__)
@@ -52,18 +52,7 @@ class Starboard(AceMixin, commands.Cog):
 	def __init__(self, bot):
 		super().__init__(bot)
 
-		self.config = ConfigTable(
-			bot, 'starboard', 'guild_id',
-			dict(
-				id=int,
-				guild_id=int,
-				channel_id=int,
-				locked=bool,
-				threshold=int,
-				max_age=timedelta
-			),
-			entry_class=StarboardConfigEntry
-		)
+		self.config = ConfigTable(bot, table='starboard', primary='guild_id', record_class=StarboardConfigRecord)
 
 		self.purge_query = '''
 			SELECT id, guild_id, channel_id, star_message_id
@@ -218,7 +207,7 @@ class Starboard(AceMixin, commands.Cog):
 				raise self.SB_NOT_FOUND_ERROR
 
 		else:
-			await gc.set('channel_id', channel.id)
+			await gc.update(channel_id=channel.id)
 
 		await ctx.send(f'Starboard channel set to {channel.mention}')
 
@@ -232,7 +221,7 @@ class Starboard(AceMixin, commands.Cog):
 		if limit is None:
 			limit = gc.threshold
 		else:
-			await gc.set('threshold', limit)
+			await gc.update(threshold=limit)
 
 		await ctx.send(f'Star threshold set to `{limit}`')
 
@@ -252,7 +241,7 @@ class Starboard(AceMixin, commands.Cog):
 			if age < timedelta(days=1):
 				raise commands.CommandError('Please set to at least more than 1 day.')
 
-			await sc.set('max_age', age)
+			await sc.update(max_age=age)
 		else:
 			age = sc.max_age
 
@@ -356,7 +345,8 @@ class Starboard(AceMixin, commands.Cog):
 		'''Lock the starboard.'''
 
 		sc = await self.config.get_entry(ctx.guild.id)
-		await sc.set('locked', True)
+
+		await sc.update(locked=True)
 
 		await ctx.send('Starboard locked.')
 
@@ -366,7 +356,8 @@ class Starboard(AceMixin, commands.Cog):
 		'''Unlock the starboard.'''
 
 		sc = await self.config.get_entry(ctx.guild.id)
-		await sc.set('locked', False)
+
+		await sc.update(locked=False)
 
 		await ctx.send('Starboard unlocked.')
 

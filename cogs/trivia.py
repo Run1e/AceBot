@@ -2,11 +2,9 @@ import discord
 import asyncio
 
 from discord.ext import commands
-from datetime import datetime, timedelta
+from datetime import datetime
 from urllib.parse import unquote
-from random import randrange
-from base64 import decode
-from enum import Enum
+from random import randrange, choice
 
 from cogs.mixins import AceMixin
 from utils.configtable import ConfigTable
@@ -15,7 +13,7 @@ from utils.configtable import ConfigTable
 API_URL = 'https://opentdb.com/api.php'
 QUESTION_TIMEOUT = 15.0
 
-MULTIPLE_CHOICE_EMOJIS = {
+MULTIPLE_MAP = {
 	('1', 'one'): '1️⃣',
 	('2', 'two'): '2️⃣',
 	('3', 'three'): '3️⃣',
@@ -23,17 +21,17 @@ MULTIPLE_CHOICE_EMOJIS = {
 }
 
 BOOLEAN_MAP = {
-	True: ('y', 't', '1', 'yes', 'true'),
-	False: ('n', 'f', '0', 'no', 'false')
+	('y', 'yes', 't', 'true'): '\N{REGIONAL INDICATOR SYMBOL LETTER Y}',
+	('n', 'no', 'f', 'false'): '\N{REGIONAL INDICATOR SYMBOL LETTER N}'
 }
 
 SCORE_POT = dict(
-	easy=200,
-	medium=400,
-	hard=600
+	easy=250,
+	medium=500,
+	hard=1000
 )
 
-print(MULTIPLE_CHOICE_EMOJIS)
+PENALTY_DIV = 2.2
 
 
 class DifficultyConverter(commands.Converter):
@@ -54,26 +52,20 @@ class Trivia(AceMixin, commands.Cog):
 	def __init__(self, bot):
 		super().__init__(bot)
 
-		self.config = ConfigTable(
-			bot, 'trivia', ('guild_id', 'user_id'),
-			dict(
-				id=int,
-				guild_id=int,
-				user_id=int,
-				correct_count=int,
-				wrong_count=int,
-				score=int
-			)
-		)
+		self.config = ConfigTable(bot, 'trivia', ('guild_id', 'user_id'))
 
-	@commands.command()
-	async def trivia(self, ctx, *, difficulty: DifficultyConverter = 'medium'):
+	@commands.group(invoke_without_command=True)
+	async def trivia(self, ctx, *, difficulty: DifficultyConverter = None):
 		'''Trivia time! Specify a difficulty as argument. Valid difficulties are `easy`, `medium` and `hard`.'''
+
+		if difficulty is None:
+			difficulty = choice(DifficultyConverter.valid_difficulties)
 
 		params = dict(
 			amount=1,
 			encode='url3986',
-			difficulty=difficulty
+			difficulty=difficulty,
+			#type='boolean'
 		)
 
 		async with self.bot.aiohttp.get(API_URL, params=params) as resp:
@@ -83,49 +75,35 @@ class Trivia(AceMixin, commands.Cog):
 			res = await resp.json()
 
 		result = res['results'][0]
-		print(result)
 
 		question_type = result['type']
 		category = unquote(result['category'])
+		correct_answer = unquote(result['correct_answer'])
+
 		question = unquote(result['question'])
 		question_hash = hash(question)
-		correct_answer = unquote(result['correct_answer'])
 
 		if question_type == 'multiple':
 			options = list(unquote(option) for option in result['incorrect_answers'])
-
 			correct_pos = randrange(0, len(options) + 1)
 			options.insert(correct_pos, correct_answer)
-
-			correct = list(MULTIPLE_CHOICE_EMOJIS.keys())[correct_pos]
-
-			wrong = list()
-			for idx, tup in enumerate(MULTIPLE_CHOICE_EMOJIS.keys()):
-				if idx == correct_pos:
-					continue
-				for entry in tup:
-					wrong.append(entry)
-
-			options_string = '\n'.join(
-				'{} {}'.format(emoj, option) for emoj, option in zip(MULTIPLE_CHOICE_EMOJIS.values(), options)
-			)
-
 		else:
+			options = ('True', 'False')
+			correct_pos = int(correct_answer == 'False')
 
-			options_string = (
-				'\N{REGIONAL INDICATOR SYMBOL LETTER Y} Yes/True\n'
-				'\N{REGIONAL INDICATOR SYMBOL LETTER N} No/False'
-			)
+		option_reference = BOOLEAN_MAP if question_type == 'boolean' else MULTIPLE_MAP
 
-			correct = BOOLEAN_MAP[correct_answer == 'True']
-			wrong = BOOLEAN_MAP[correct_answer == 'False']
-
-		e = discord.Embed(title='Trivia!', description=category)
-		e.add_field(name='Question', value='{}\n\n{}'.format(question, options_string), inline=False)
-
-		e.set_footer(
-			text='Answer by sending a message with the correct option.',
+		question_string = '{}\n\n{}\n'.format(
+			question,
+			'\n'.join('{} {}'.format(emoji, option) for emoji, option in zip(option_reference.values(), options))
 		)
+
+		e = discord.Embed(
+			title='Trivia time!',
+			description='**Category**: {}\n**Difficulty**: {}'.format(category, difficulty)
+		)
+		e.add_field(name='Question', value=question_string, inline=False)
+		e.set_footer(text='Answer by sending a message with the correct option.')
 
 		await ctx.send(embed=e)
 
@@ -138,31 +116,25 @@ class Trivia(AceMixin, commands.Cog):
 			try:
 				msg = await self.bot.wait_for('message', check=check, timeout=QUESTION_TIMEOUT)
 
-				if msg.content in correct:
-					seconds_spent = (datetime.utcnow() - now).total_seconds()
+				for idx, responses in enumerate(option_reference.keys()):
+					if msg.content.lower() in responses:
+						seconds_spent = (datetime.utcnow() - now).total_seconds()
+						score = int(SCORE_POT[difficulty] * (QUESTION_TIMEOUT - seconds_spent / 2) / QUESTION_TIMEOUT)
 
-					await self._on_correct(
-						ctx,
-						question_hash,
-						SCORE_POT[difficulty] * (QUESTION_TIMEOUT - seconds_spent) / QUESTION_TIMEOUT
-					)
+						if idx == correct_pos:
+							await ctx.send('Correct! You gained {} points.'.format(score))
+							await self._on_correct(ctx, question_hash, score)
+						else:
+							score = int(score / PENALTY_DIV)
 
-					await ctx.send('Correct!')
-					break
+							await ctx.send('Sorry, that was wrong! You lost {} points.'.format(score))
+							await self._on_wrong(ctx, question_hash, score)
 
-				elif msg.content in wrong:
-					wrong_reply = 'Sorry, that was wrong!'
-
-					if question_type == 'multiple':
-						wrong_reply += 'The correct answer is: {}'.format(correct_answer)
-
-					await ctx.send(wrong_reply)
-					await self._on_wrong(ctx, question_hash)
-					break
+						return
 
 			except asyncio.TimeoutError:
-				await ctx.send('Question timed out! Answer within {} seconds next time!'.format(int(QUESTION_TIMEOUT)))
-				break
+				await ctx.send('Question timed out. Answer within {} seconds next time!'.format(int(QUESTION_TIMEOUT)))
+				return
 
 	async def _on_correct(self, ctx, question_hash, add_score):
 		entry = await self.config.get_entry(ctx.guild.id, ctx.author.id)
@@ -177,8 +149,45 @@ class Trivia(AceMixin, commands.Cog):
 
 		await self.db.execute(self._stats_query, ctx.guild.id, ctx.author.id, question_hash, True)
 
-	async def _on_wrong(self, ctx, question_hash):
+	async def _on_wrong(self, ctx, question_hash, remove_score):
+		entry = await self.config.get_entry(ctx.guild.id, ctx.author.id)
+
+		new_score = entry.score - remove_score
+		new_wrong_count = entry.wrong_count + 1
+
+		await self.db.execute(
+			'UPDATE trivia SET score = $1, wrong_count = $2 WHERE guild_id=$3 AND user_id=$4',
+			new_score, new_wrong_count, ctx.guild.id, ctx.author.id
+		)
+
 		await self.db.execute(self._stats_query, ctx.guild.id, ctx.author.id, question_hash, False)
+
+	@trivia.command()
+	async def stats(self, ctx, *, member: discord.Member = None):
+		'''Get your own or another members' trivia stats.'''
+
+		member = member or ctx.author
+
+		entry = await self.config.get_entry(ctx.guild.id, member.id)
+
+		total_games = entry.correct_count + entry.wrong_count
+
+		if total_games == 0:
+			win_rate = 0
+		else:
+			win_rate = int(entry.correct_count / total_games * 100)
+
+		e = discord.Embed()
+
+		e.set_author(name=member.display_name, icon_url=member.avatar_url)
+
+		e.add_field(name='Score', value=str(entry.score))
+		e.add_field(name='Correct', value='{} games'.format(str(entry.correct_count)))
+		e.add_field(name='Wrong', value='{} games'.format(str(entry.wrong_count)))
+		e.add_field(name='Games played', value='{} games'.format(str(total_games)))
+		e.add_field(name='Success rate', value='{}%'.format(str(win_rate)))
+
+		await ctx.send(embed=e)
 
 
 def setup(bot):

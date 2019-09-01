@@ -1,47 +1,81 @@
 import asyncio
 
-from asyncpg.exceptions import NotNullViolationError
 from discord.ext import commands
 
 
-class ConfigTableEntry:
-	def __init__(self, cfg, record):
-		self._config = cfg
-		self._values = {key: record.get(key) for key in cfg.keys.keys()}
+class ConfigTableRecord(object):
+	_data = dict()
+	_dirty = set()
 
-		self.__slots__ = cfg.keys.keys()
+	def __init__(self, config, record):
+		self._config = config
 
-	async def set(self, key, value):
-		if key not in self._config.keys:
-			raise AttributeError('Key \'{}\' not defined in \'{}\''.format(key, self._config.table))
+		for key, value in record.items():
+			self._data[key] = value
 
-		expected_type = self._config.keys[key]
+	def __getattr__(self, key):
+		if key in self._data:
+			return self._data[key]
 
-		if value is not None and not isinstance(value, expected_type):
-			raise TypeError('Key \'{}\' should be of type {}, got {}'.format(
-				key, expected_type.__name__, type(value).__name__)
-			)
+	def __setattr__(self, key, value):
+		if key in self._data:
+			self.set(key, value)
+		else:
+			self.__dict__[key] = value
 
-		# raises NotNullViolationError if value is None and schema actually doesn't allow it, it's an ok fix for now
-		await self._config.bot.db.execute(
-			'UPDATE {} SET {}=$1 WHERE {}=$2'.format(self._config.table, key, self._config.primary),
-			value, getattr(self, self._config.primary)
+	def _build_dirty(self, start_at=1):
+		return ', '.join('{} = ${}'.format(key, idx + start_at) for idx, key in enumerate(self._dirty))
+
+	def _set_dirty(self, key):
+		if key not in self._data:
+			raise AttributeError('Attempted to set key {} to dirty, but it does not exist'.format(key))
+		self._dirty.add(key)
+
+	def _clear_dirty(self):
+		self._dirty.clear()
+
+	def get(self, key):
+		if key in self._data:
+			return self._data[key]
+		else:
+			raise AttributeError('Key \'{}\' not defined in this table.'.format(key))
+
+	def set(self, key, value):
+		if key not in self._data:
+			raise AttributeError('Key \'{}\' not defined in this table.'.format(key))
+
+		self._data[key] = value
+		self._set_dirty(key)
+
+	async def update(self, **kwargs):
+		for key, val in kwargs.items():
+			self.set(key, val)
+
+		if not self._dirty:
+			raise ValueError('No values dirty for table {}'.format(self._config.table))
+
+		query = 'UPDATE {} SET {} WHERE {}'.format(
+			self._config.table,
+			self._build_dirty(len(self._config.primary) + 1),
+			self._config.build_predicate()
 		)
-		self._values[key] = value
 
-	def __getattr__(self, item):
-		if item in self._values:
-			return self._values[item]
+		keys = tuple(self._data[primary] for primary in self._config.primary)
+		values = tuple(self._data[key] for key in self._dirty)
+
+		await self._config.bot.db.execute(query, *keys, *values)
+
+		self._clear_dirty()
 
 
 class ConfigTable:
 
 	PRIMARY_KEY_TYPE_ERROR = TypeError('Primary key must be int.')
 
-	def __init__(self, bot, table, primary, keys, entry_class=None):
-		entry_class = entry_class or ConfigTableEntry
+	def __init__(self, bot, table, primary, record_class=None):
+		record_class = record_class or ConfigTableRecord
 
-		if entry_class is not ConfigTableEntry and not issubclass(entry_class, ConfigTableEntry):
+		if record_class is not ConfigTableRecord and not issubclass(record_class, ConfigTableRecord):
 			raise TypeError('entry_class must inherit from ConfigTableEntry.')
 
 		if isinstance(primary, str):
@@ -50,35 +84,27 @@ class ConfigTable:
 			raise TypeError('Primary keys must be tuple or string.')
 
 		self.bot = bot
-		self.lock = asyncio.Lock()
-		self.entry_class = entry_class
 		self.table = table
 		self.primary = primary
-		self._entries = dict()
-		self.keys = keys
+		self.entries = dict()
 
-	@property
-	def entries(self):
-		return self._entries.values()
+		self._record_class = record_class
+		self._lock = asyncio.Lock()
 
-	def insert_record(self, record):
-		entry = self.entry_class(self, record)
-		self._entries[record.get(self.primary)] = entry
+	async def insert_record(self, record):
+		entry = self._record_class(self, record)
+		self.entries[self.get_keys_from_record(record)] = entry
 
 		return entry
 
-	@property
-	def _get_query(self):
-		query = 'SELECT * FROM {} WHERE '.format(self.table)
+	def build_predicate(self, start_at=1):
+		return ' AND '.join('{} = ${}'.format(key, idx + start_at) for idx, key in enumerate(self.primary))
 
-		sub = list()
-		for idx, key in enumerate(self.primary):
-			sub.append('{} = ${}'.format(key, idx + 1))
-
-		return query + ' AND '.join(sub)
+	def get_keys_from_record(self, record):
+		return tuple(record.get(primary) for primary in self.primary)
 
 	@property
-	def _create_query(self):
+	def _insert_query(self):
 		return 'INSERT INTO {} ({}) VALUES ({})'.format(
 			self.table,
 			', '.join(self.primary),
@@ -92,23 +118,25 @@ class ConfigTable:
 			if not isinstance(key, int):
 				raise self.PRIMARY_KEY_TYPE_ERROR
 
-		get_query = self._get_query
+		get_query = 'SELECT * FROM {} WHERE '.format(self.table) + self.build_predicate()
 
-		async with self.lock:
-			if keys in self._entries:
-				return self._entries[keys]
+		async with self._lock:
+			if keys in self.entries:
+				return self.entries[keys]
 
 			record = await self.bot.db.fetchrow(get_query, *keys)
 
 			if record is None:
-				await self.bot.db.execute(self._create_query, *keys)
-
+				await self.bot.db.execute(self._insert_query, *keys)
 				record = await self.bot.db.fetchrow(get_query, *keys)
 
-			return self.insert_record(record)
+			return await self.insert_record(record)
+
+	def has_entry(self, *keys):
+		return tuple(keys) in self.entries
 
 
-class GuildConfigEntry(ConfigTableEntry):
+class GuildConfigRecord(ConfigTableRecord):
 
 	@property
 	def mod_role(self):
@@ -123,7 +151,7 @@ class GuildConfigEntry(ConfigTableEntry):
 		return guild.get_role(self.mod_role_id)
 
 
-class StarboardConfigEntry(ConfigTableEntry):
+class StarboardConfigRecord(ConfigTableRecord):
 
 	@property
 	def channel(self):
@@ -137,7 +165,7 @@ class StarboardConfigEntry(ConfigTableEntry):
 		return guild.get_channel(self.channel_id)
 
 
-class SecurityConfigEntry(ConfigTableEntry):
+class SecurityConfigRecord(ConfigTableRecord):
 
 	def __init__(self, *args, **kwargs):
 		super().__init__(*args, **kwargs)
@@ -170,7 +198,6 @@ class SecurityConfigEntry(ConfigTableEntry):
 
 		return guild.get_channel(self.log_channel_id)
 
-	# injects it into the _values dict so __getattr__ can find them
 	def create_spam_cooldown(self):
 		self.spam_cooldown = commands.CooldownMapping.from_cooldown(
 			self.spam_count, self.spam_per, commands.BucketType.user

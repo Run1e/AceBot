@@ -15,7 +15,7 @@ from config import *
 from cogs.help import PaginatedHelpCommand, EditedMinimalHelpCommand
 from cogs.ahk.ids import AHK_GUILD_ID, MEMBER_ROLE_ID
 from utils.time import pretty_seconds, pretty_datetime
-from utils.configtable import ConfigTable, GuildConfigEntry
+from utils.configtable import ConfigTable, GuildConfigRecord
 from utils.checks import set_bot
 
 EXTENSIONS = (
@@ -79,16 +79,7 @@ class AceBot(commands.Bot):
 		if self.db is None:
 			log.info('Creating database connection...')
 
-			self.config = ConfigTable(
-				self, 'config', 'guild_id',
-				dict(
-					id=int,
-					guild_id=int,
-					prefix=str,
-					mod_role_id=int
-				),
-				entry_class=GuildConfigEntry
-			)
+			self.config = ConfigTable(self, table='config', primary='guild_id', record_class=GuildConfigRecord)
 
 			self.static_help_command = self.help_command
 			command_impl = self.help_command._command_impl

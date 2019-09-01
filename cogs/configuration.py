@@ -1,6 +1,7 @@
 import discord
 from discord.ext import commands
 
+from config import DEFAULT_PREFIX
 from cogs.mixins import AceMixin
 from utils.checks import is_mod
 
@@ -26,37 +27,36 @@ class Configuration(AceMixin, commands.Cog):
 
 	@commands.command()
 	@is_mod()
-	async def prefix(self, ctx, *, prefix: PrefixConverter):
-		'''Set a guild-specific prefix.'''
+	async def prefix(self, ctx, *, prefix: PrefixConverter = None):
+		'''Set a guild-specific prefix. Call `prefix` to clear.'''
 
-		guild = await self.bot.config.get_entry(ctx.guild.id)
-		await guild.set('prefix', prefix)
+		gc = await self.bot.config.get_entry(ctx.guild.id)
+
+		await gc.update(prefix=prefix)
 
 		await ctx.send(
-			f'Prefix set to `{prefix}` - if you forget your prefix, simply mention the bot to open up the help menu.'
+			f'Prefix set to `{prefix or DEFAULT_PREFIX}` - if you forget your prefix, '
+			'simply mention the bot to open up the help menu.'
 		)
 
 	@commands.command()
 	@commands.has_permissions(administrator=True)  # only allow administrators to change the moderator role
 	async def modrole(self, ctx, *, role: discord.Role = None):
-		'''Set the moderator role. Only modifiable by server administrators.'''
+		'''Set the moderator role. Only modifiable by server administrators. Call `modrole` to clear.'''
 
 		gc = await self.bot.config.get_entry(ctx.guild.id)
 
 		if role is None:
-			role_id = gc.mod_role_id
-			if role_id is None:
-				raise commands.CommandError('Mod role not set.')
-
-			role = ctx.guild.get_role(role_id)
-			if role is None:
-				raise commands.CommandError('Mod role set but not found. Try setting it again.')
+			gc.mod_role_id = None
+			await ctx.send('Mod role cleared.')
 		else:
-			await gc.set('mod_role_id', role.id)
+			gc.mod_role_id = role.id
+			await ctx.send(
+				f'Mod role has been set to `{role.name}` ({role.id}). '
+				'Members with this role can configure and manage the bot.'
+			)
 
-		await ctx.send(
-			f'Mod role has been set to `{role.name}` ({role.id}). Members with this role can configure and manage the bot.'
-		)
+		await gc.update()
 
 
 def setup(bot):

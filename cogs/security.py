@@ -5,7 +5,7 @@ import logging
 
 from discord.ext import commands, tasks
 from enum import IntEnum
-from datetime import datetime, timedelta
+from datetime import datetime
 
 from asyncpg.exceptions import UniqueViolationError
 
@@ -15,7 +15,7 @@ from utils.converters import TimeMultConverter, TimeDeltaConverter
 from utils.time import pretty_timedelta
 from utils.checks import is_mod_pred, is_mutable
 from utils.severity import SeverityColors
-from utils.configtable import ConfigTable, SecurityConfigEntry
+from utils.configtable import ConfigTable, SecurityConfigRecord
 
 
 ALLOWED_GUILDS = (AHK_GUILD_ID, 517692823621861407)
@@ -90,7 +90,6 @@ class SecurityAction(IntEnum):
 	BAN = 2
 
 
-
 class Security(AceMixin, commands.Cog):
 	'''Security features.
 
@@ -104,34 +103,7 @@ class Security(AceMixin, commands.Cog):
 	def __init__(self, bot):
 		super().__init__(bot)
 
-		self.config = ConfigTable(
-			bot, 'mod', 'guild_id',
-			dict(
-				id=int,
-				guild_id=int,
-				mute_role_id=int,
-				log_channel_id=int,
-
-				join_enabled=bool,
-				spam_enabled=bool,
-				mention_enabled=bool,
-
-				join_action=int,
-				join_age=timedelta,
-				join_ignore_age=timedelta,
-				join_cooldown=timedelta,
-
-				spam_action=int,
-				spam_count=int,
-				spam_per=float,
-
-				mention_action=int,
-				mention_count=int,
-				mention_per=float,
-
-			),
-			entry_class=SecurityConfigEntry
-		)
+		self.config = ConfigTable(bot, 'mod', 'guild_id', record_class=SecurityConfigRecord)
 
 		self.cooldown_users = dict()  # (guild_id, user_id): datetime
 		self.setup_configs.start()
@@ -139,10 +111,10 @@ class Security(AceMixin, commands.Cog):
 	# init configs
 	@tasks.loop(count=1)
 	async def setup_configs(self):
-		recs = await self.db.fetch('SELECT * FROM mod')
+		records = await self.db.fetch('SELECT * FROM {}'.format(self.config.table))
 
-		for rec in recs:
-			self.config.insert_record(rec)
+		for record in records:
+			await self.config.insert_record(record)
 
 	async def get_config(self, guild_id):
 		# security stuff is only for the ahk guild as of right now
@@ -245,8 +217,6 @@ class Security(AceMixin, commands.Cog):
 					mc.spam_cooldown._cache[mc.spam_cooldown._bucket_key(message)].reset()
 
 			if res is not None:
-				mc.spam_cooldown._cache[mc.spam_cooldown._bucket_key(message)].reset()
-
 				await self._do_action(
 					mc, message.author, SecurityAction(mc.spam_action),
 					reason='Member is spamming', message=message
@@ -260,8 +230,6 @@ class Security(AceMixin, commands.Cog):
 						mc.mention_cooldown._cache[mc.mention_cooldown._bucket_key(message)].reset()
 
 				if res is not None:
-					mc.mention_cooldown._cache[mc.mention_cooldown._bucket_key(message)].reset()
-
 					await self._do_action(
 						mc, message.author, SecurityAction(mc.mention_action),
 						reason='Member is spamming mentions', message=message
@@ -277,7 +245,8 @@ class Security(AceMixin, commands.Cog):
 		if await self.db.fetchval('SELECT id FROM muted WHERE guild_id=$1 AND user_id=$2', member.guild.id, member.id):
 			if mc.mute_role is None:
 				await self.log(
-					action='MUTE FAILED', reason='New member previously muted but mute role not currently found.',
+					channel=mc.log_channel, action='MUTE FAILED',
+					reason='New member previously muted but mute role not currently found.',
 					severity=SeverityColors.LOW, member=member
 				)
 			else:
@@ -477,29 +446,43 @@ class Security(AceMixin, commands.Cog):
 		await ctx.send(embed=e)
 
 	@security.command()
-	async def muterole(self, ctx, *, role: discord.Role):
+	async def muterole(self, ctx, *, role: discord.Role = None):
 		'''Set a role that will be given to muted members.'''
 
 		mc = await self.get_config(ctx.guild.id)
 
-		await mc.set('mute_role_id', role.id)
-		await ctx.send('Mute role set to {} (ID: {})'.format(role.name, role.id))
+		if role is None:
+			mc.mute_role_id = None
+			await ctx.send('Cleared mute role.')
+		else:
+			mc.mute_role_id = role.id
+			await ctx.send('Mute role set to {} (ID: {})'.format(role.name, role.id))
+
+		await mc.update()
 
 	@security.command()
-	async def logchannel(self, ctx, *, channel: discord.TextChannel):
+	async def logchannel(self, ctx, *, channel: discord.TextChannel = None):
 		'''Set a text channel for logging incidents.'''
 
 		mc = await self.get_config(ctx.guild.id)
 
-		await mc.set('log_channel_id', channel.id)
-		await ctx.send('Log channel set to {} (ID: {})'.format(channel.mention, channel.id))
+		if channel is None:
+			mc.log_channel_id = None
+			await ctx.send('Cleared log channel.')
+		else:
+			mc.log_channel_id = channel.id
+			await ctx.send('Log channel set to {} (ID: {})'.format(channel.mention, channel.id))
+
+		await mc.update()
 
 	@security.command()
 	async def enable(self, ctx, *, module: SubmoduleConverter):
 		'''Enable a submodule.'''
 
 		mc = await self.get_config(ctx.guild.id)
-		await mc.set(f'{module}_enabled', True)
+
+		mc.set(f'{module}_enabled', True)
+		await mc.update()
 
 		if module == 'mention':
 			mc.create_mention_cooldown()
@@ -513,7 +496,9 @@ class Security(AceMixin, commands.Cog):
 		'''Disable a submodule.'''
 
 		mc = await self.get_config(ctx.guild.id)
-		await mc.set(f'{module}_enabled', False)
+
+		mc.set(f'{module}_enabled', False)
+		await mc.update()
 
 		await ctx.send(f'\'{module.upper()}\' disabled.')
 
@@ -544,7 +529,8 @@ class Security(AceMixin, commands.Cog):
 		'''Set an action upon mention spam.'''
 
 		mc = await self.get_config(ctx.guild.id)
-		await mc.set('spam_action', action.value)
+
+		await mc.update(spam_action=action.value)
 
 		await ctx.invoke(self.spam)
 
@@ -553,8 +539,8 @@ class Security(AceMixin, commands.Cog):
 		'''Maximum mentions allowed within the time span.'''
 
 		mc = await self.get_config(ctx.guild.id)
-		await mc.set('spam_count', count)
-		await mc.set('spam_per', per)
+
+		await mc.update(spam_count=count, spam_per=per)
 
 		mc.create_spam_cooldown()
 
@@ -584,7 +570,8 @@ class Security(AceMixin, commands.Cog):
 		'''Set an action upon mention spam.'''
 
 		mc = await self.get_config(ctx.guild.id)
-		await mc.set('mention_action', action.value)
+
+		await mc.update(mention_action=action.value)
 
 		await ctx.invoke(self.mention)
 
@@ -593,8 +580,8 @@ class Security(AceMixin, commands.Cog):
 		'''Maximum mentions allowed within the time span.'''
 
 		mc = await self.get_config(ctx.guild.id)
-		await mc.set('mention_count', count)
-		await mc.set('mention_per', per)
+
+		await mc.update(mention_count=count, mention_per=per)
 
 		# set new cooldown
 		mc.create_mention_cooldown()
@@ -644,7 +631,8 @@ class Security(AceMixin, commands.Cog):
 		'''Set an action upon disallowed member join.'''
 
 		mc = await self.get_config(ctx.guild.id)
-		await mc.set('join_action', action.value)
+
+		await mc.update(join_action=action.value)
 
 		await ctx.invoke(self.join)
 
@@ -670,14 +658,14 @@ class Security(AceMixin, commands.Cog):
 		mc = await self.get_config(ctx.guild.id)
 
 		if amount is None:
-			await mc.set('join_age', None)
+			mc.join_age = None
 			await ctx.send('Account age limit disabled.')
-			return
+		else:
+			delta = amount * unit
+			mc.join_age = delta
+			await ctx.send('New account age limit set: {}'.format(pretty_timedelta(delta)))
 
-		delta = amount * unit
-
-		await mc.set('join_age', delta)
-		await ctx.send('New account age limit set: {}'.format(pretty_timedelta(delta)))
+		await mc.update()
 
 	@join.command(name='ignoreage')
 	async def join_ignore_age(self, ctx, amount: TimeMultConverter = None, unit: TimeDeltaConverter = None):
@@ -689,14 +677,14 @@ class Security(AceMixin, commands.Cog):
 		mc = await self.get_config(ctx.guild.id)
 
 		if amount is None:
-			await mc.set('join_ignore_age', None)
+			mc.join_ignore_age = None
 			await ctx.send('Ignore account age limit disabled.')
-			return
+		else:
+			delta = amount * unit
+			mc.join_ignore_age = delta
+			await ctx.send('New ignore account age limit set: {}'.format(pretty_timedelta(delta)))
 
-		delta = amount * unit
-
-		await mc.set('join_ignore_age', delta)
-		await ctx.send('New ignore account age limit set: {}'.format(pretty_timedelta(delta)))
+		await mc.update()
 
 	@join.command(name='cooldown')
 	async def join_cooldown(self, ctx, amount: TimeMultConverter = None, unit: TimeDeltaConverter = None):
@@ -708,14 +696,14 @@ class Security(AceMixin, commands.Cog):
 		mc = await self.get_config(ctx.guild.id)
 
 		if amount is None:
-			await mc.set('join_cooldown', None)
+			mc.join_cooldown = None
 			await ctx.send('Join cooldown disabled.')
-			return
+		else:
+			delta = amount * unit
+			mc.join_cooldown = delta
+			await ctx.send('New join cooldown set: {}'.format(pretty_timedelta(delta)))
 
-		delta = amount * unit
-
-		await mc.set('join_cooldown', delta)
-		await ctx.send('New join cooldown set: {}'.format(pretty_timedelta(delta)))
+		await mc.update()
 
 	@join.command(name='add')
 	async def pattern_add(self, ctx, *, pattern: PatternConverter):

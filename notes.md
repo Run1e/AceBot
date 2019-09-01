@@ -1,3 +1,4 @@
+.mute and .unmute in security cog doesn't update db?
 
 performance:
  - could more stuff be cached? check how many db calls per message/command
