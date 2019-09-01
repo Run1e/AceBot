@@ -4,11 +4,13 @@ from discord.ext import commands
 
 
 class ConfigTableRecord(object):
+	# TODO: figure out how to stop infinite recursion without having to set this in init
 	_data = dict()
-	_dirty = set()
 
 	def __init__(self, config, record):
 		self._config = config
+		self._data = dict()
+		self._dirty = set()
 
 		for key, value in record.items():
 			self._data[key] = value

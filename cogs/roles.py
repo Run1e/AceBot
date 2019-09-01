@@ -60,7 +60,6 @@ class Roles(AceMixin, commands.Cog):
 		super().__init__(bot)
 
 		self.config = ConfigTable(bot, table='role', primary='guild_id')
-
 		self.setup_configs.start()
 
 	# init configs
@@ -314,12 +313,11 @@ class Roles(AceMixin, commands.Cog):
 	async def on_raw_reaction_add(self, payload):
 
 		if not self.config.has_entry(payload.guild_id):
-			print('does not have roles entry')
 			return
 
 		conf = await self.config.get_entry(payload.guild_id)
+
 		if conf.channel_id != payload.channel_id:
-			print('not right channel')
 			return
 
 		if conf.message_id != payload.message_id:
