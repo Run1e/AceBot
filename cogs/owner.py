@@ -3,7 +3,7 @@ import io
 import textwrap
 import traceback
 import asyncio
-
+import copy
 
 from discord.ext import commands
 from discord.mixins import Hashable
@@ -171,6 +171,21 @@ class Owner(AceMixin, commands.Cog):
 			await ctx.send(f'```py\n{traceback.format_exc()}\n```')
 		else:
 			await ctx.message.add_reaction('\N{OK HAND SIGN}')
+
+	@commands.command()
+	async def repeat(self, ctx, repeats: int, *, command):
+		'''Repeat a command several times.'''
+
+		if repeats < 1:
+			raise commands.CommandError('Repeat count must be more than 0.')
+
+		msg = copy.copy(ctx.message)
+		msg.content = ctx.prefix + command
+
+		new_ctx = await self.bot.get_context(msg)
+
+		for i in range(repeats):
+			await new_ctx.reinvoke()
 
 	@commands.command(aliases=['g'])
 	@commands.bot_has_permissions(embed_links=True)
