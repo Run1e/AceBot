@@ -171,18 +171,6 @@ class HTML2Markdown:
 
 		self.result.add_and_consume(front + contents + back)
 
-	def _format_link(self, href):
-		if re.match('^.+:\/\/', href):
-			return href
-
-		if self.base_url is None:
-			return None
-
-		if href.startswith('#'):
-			return self.base_url + href
-		else:
-			return '/'.join(self.base_url.split('/')[:-1]) + '/' + href
-
 	def _codebox_wraps(self):
 		return '```{}\n'.format(self.lang or '') if self.big_box else '`', '\n```\n' if self.big_box else '`'
 
@@ -202,3 +190,15 @@ class HTML2Markdown:
 			self.result.add_and_consume('[{}]({})'.format(contents[:credits - len(link) - 4], link))
 		else:
 			self.result.add_and_consume(contents, True)
+
+	def _format_link(self, href):
+		if re.match('^.+:\/\/', href):
+			return href
+
+		if self.base_url is None:
+			return None
+
+		if href.startswith('#'):
+			return self.base_url + href
+		else:
+			return '/'.join(self.base_url.split('/')[:-1]) + '/' + href
