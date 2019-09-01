@@ -54,6 +54,9 @@ class Trivia(AceMixin, commands.Cog):
 
 		self.config = ConfigTable(bot, 'trivia', ('guild_id', 'user_id'))
 
+	async def cog_check(self, ctx):
+		return await self.bot.is_owner(ctx.author)
+
 	@commands.group(invoke_without_command=True)
 	async def trivia(self, ctx, *, difficulty: DifficultyConverter = None):
 		'''Trivia time! Specify a difficulty as argument. Valid difficulties are `easy`, `medium` and `hard`.'''
