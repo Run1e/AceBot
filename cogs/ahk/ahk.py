@@ -53,7 +53,7 @@ class AutoHotkey(AceMixin, commands.Cog):
 			time = self.parse_date(str(entry.updated.text))
 			title = self.h2m.convert(str(entry.title.text))
 
-			if time > self.rss_time and '• Re: ' not in title:
+			if time > self.rss_time:
 				content = str(entry.content.text).split('Statistics: ')[0]
 				content = self.h2m.convert(content)
 
