@@ -165,8 +165,10 @@ class CommandListHandler(BaseHandler):
 		'commands/Menu.htm': 'Menu'
 	}
 
+	_h2_or_h3 = re.compile('^h(2|3)$')
+
 	async def parse(self):
-		for tag in self.bs.find_all('h3', id=True):
+		for tag in self.bs.find_all(self._h2_or_h3, id=True):
 			for span in tag.find_all('span'):
 				span.decompose()
 
@@ -176,7 +178,7 @@ class CommandListHandler(BaseHandler):
 			for file, prep in self._prepend.items():
 				if self.file == file and not name.startswith(prep):
 					for idx, nme in enumerate(names):
-						names[idx] = f'{prep}, {nme}'
+						names[idx] = f'{prep}: {nme}'
 					break
 
 			desc = tag.next_element.next_element.next_element
