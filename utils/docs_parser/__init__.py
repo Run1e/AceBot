@@ -22,21 +22,20 @@ directory_handlers = dict(
 
 file_handlers = {
 	'Variables.htm': VariablesHandler,
+	'../docs/Variables.htm': CommandListHandler,  # hahhahha fuckin kek
+	'Hotkeys.htm': CommandListHandler,
+	'Concepts.htm': CommandListHandler,
+	'Functions.htm': CommandListHandler,
+	'Objects.htm': CommandListHandler,
+	'Program.htm': CommandListHandler,
+	'Scripts.htm': CommandListHandler,
 	'commands/Math.htm': CommandListHandler,
 	'commands/GuiControls.htm': CommandListHandler, # contains SB_*() functions
 	'commands/ListView.htm': CommandListHandler,
 	'commands/TreeView.htm': CommandListHandler,
 	'commands/Gui.htm': CommandListHandler,
-	'commands/Menu.htm': CommandListHandler
+	'commands/Menu.htm': CommandListHandler,
 }
-
-
-customs = (
-	(('Symbols', 'Hotkey Modifier Symbols'), 'Hotkeys.htm#Symbols', 'List of Hotkey Modifier Symbols.'),
-	(('Simple Arrays',), 'Objects.htm#Usage_Simple_Arrays', 'Overview of simple, indexed arrays.'),
-	(('Associative arrays', 'Dictionary'), 'Objects.htm#Usage_Associative_Arrays', 'Overview of associative arrays (key/value).'),
-	(('Freeing Objects',), 'Objects.htm#Usage_Freeing_Objects', 'How to free objects from memory.')
-)
 
 
 async def parse_docs(handler, on_update, fetch=True):
@@ -85,10 +84,6 @@ async def parse_docs(handler, on_update, fetch=True):
 	# main pages
 	for filename in filter(lambda fn: fn.endswith('.htm'), os.listdir(f'{DOCS_FOLDER}')):
 		await SimpleHandler(filename, handler).parse()
-
-	# customly added stuff
-	for names, page, desc in customs:
-		await handler(names, page, desc)
 
 	h2m = HTML2Markdown(
 		escaper=discord.utils.escape_markdown,
