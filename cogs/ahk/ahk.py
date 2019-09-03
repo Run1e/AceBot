@@ -29,11 +29,9 @@ class AutoHotkey(AceMixin, commands.Cog):
 			max_len=2000
 		)
 
-		FORUM_REPLY_CHAN_ID = 612323195353169935
-
 		self.forum_thread_channel = self.bot.get_channel(FORUM_THRD_CHAN_ID)
 		self.forum_reply_channel = self.bot.get_channel(FORUM_REPLY_CHAN_ID)
-		self.rss_time = datetime.now(tz=timezone(timedelta(hours=1))) - timedelta(minutes=60)
+		self.rss_time = datetime.now(tz=timezone(timedelta(hours=1))) - timedelta(minutes=1)
 
 		self.rss.start()
 
