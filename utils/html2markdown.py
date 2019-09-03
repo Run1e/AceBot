@@ -88,8 +88,6 @@ class HTML2Markdown:
 		self.cutoff = '...'
 
 	def convert(self, html, temp_url=None):
-		print(html)
-
 		self.result = Result(max(self.max_len, 8) - len(self.cutoff) - 1)
 
 		if temp_url is not None:
