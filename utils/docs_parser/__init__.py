@@ -1,44 +1,21 @@
-import os, aiohttp, json, shutil
-
-from utils.docs_parser.handlers import *
-from utils.html2markdown import HTML2Markdown
+import os
+import json
+import shutil
+import aiohttp
 
 from zipfile import ZipFile
-from bs4 import BeautifulSoup
 
-URL = 'https://www.autohotkey.com/docs'
-PARSER = 'html.parser'
+from utils.docs_parser.handlers import *
+
+DOCS_URL = 'https://www.autohotkey.com/docs/'
 EXTRACT_TO = 'data'
 DOCS_BASE = f'{EXTRACT_TO}/AutoHotkey_L-Docs-master'
 DOCS_FOLDER = f'{DOCS_BASE}/docs'
 DOWNLOAD_FILE = f'{EXTRACT_TO}/docs.zip'
 DOWNLOAD_LINK = 'https://github.com/Lexikos/AutoHotkey_L-Docs/archive/master.zip'
 
-directory_handlers = dict(
-	commands=CommandsHandler,
-	misc=BaseHandler,
-	objects=BaseHandler
-)
 
-file_handlers = {
-	'Variables.htm': VariablesHandler,
-	'../docs/Variables.htm': CommandListHandler,  # hahhahha fuckin kek
-	'Hotkeys.htm': CommandListHandler,
-	'Concepts.htm': CommandListHandler,
-	'Functions.htm': CommandListHandler,
-	'Objects.htm': CommandListHandler,
-	'Program.htm': CommandListHandler,
-	'Scripts.htm': CommandListHandler,
-	'commands/Math.htm': CommandListHandler,
-	'commands/GuiControls.htm': CommandListHandler, # contains SB_*() functions
-	'commands/ListView.htm': CommandListHandler,
-	'commands/TreeView.htm': CommandListHandler,
-	'commands/Gui.htm': CommandListHandler,
-	'commands/Menu.htm': CommandListHandler,
-}
-
-
-async def parse_docs(handler, on_update, fetch=True):
+async def parse_docs(on_update, fetch=True):
 	if fetch:
 		await on_update('Downloading...')
 
@@ -65,61 +42,71 @@ async def parse_docs(handler, on_update, fetch=True):
 		zip_ref.extractall(EXTRACT_TO)
 		zip_ref.close()
 
-	# for embedded URLs, they need the URL base
-	BaseHandler.url_base = URL
-	BaseHandler.file_base = DOCS_FOLDER
+	await on_update('Building and aggregating...')
 
-	# parse object pages
-	await on_update('Building...')
-	for dir, handlr in directory_handlers.items():
-		for filename in filter(lambda fn: fn.endswith('.htm'), os.listdir(f'{DOCS_FOLDER}/{dir}')):
-			fn = f'{dir}/{filename}'
-			if fn in file_handlers:
-				continue
-			await handlr(fn, handler).parse()
+	aggregator = DocsAggregator()
+	BaseParser.DOCS_URL = DOCS_URL
+	BaseParser.DOCS_FOLDER = DOCS_FOLDER
 
-	for file, handlr in file_handlers.items():
-		await handlr(file, handler).parse()
-
-	# main pages
-	for filename in filter(lambda fn: fn.endswith('.htm'), os.listdir(f'{DOCS_FOLDER}')):
-		await SimpleHandler(filename, handler).parse()
-
-	h2m = HTML2Markdown(
-		escaper=discord.utils.escape_markdown,
-		base_url=URL,
-		big_box=False,
-		max_len=2000
+	parsers = (
+		HeadersParser('Hotkeys.htm'),
+		VariablesParser('Hotkeys.htm'),
+		HeadersParser('Functions.htm'),
+		HeadersParser('Objects.htm'),
+		HeadersParser('Program.htm'),
+		HeadersParser('Scripts.htm'),
+		HeadersParser('Concepts.htm'),
+		HeadersParser('Variables.htm', ignores=['Loop']),
+		HeadersParser('commands/Math.htm'),
+		HeadersParser('commands/ListView.htm'),
+		HeadersParser('commands/TreeView.htm'),
+		HeadersParser('commands/Gui.htm', prefix='Gui: '),
+		HeadersParser('commands/Menu.htm', prefix='Menu: '),
+		HeadersParser('objects/Functor.htm'),
+		MethodListParser('objects/File.htm'),
+		MethodListParser('objects/Func.htm'),
+		MethodListParser('objects/Object.htm'),
+		EnumeratorParser('objects/Enumerator.htm'),
+		GuiControlParser('commands/GuiControls.htm', postfix=' Control'),
+		VariablesParser('Variables.htm'),
 	)
 
-	# parse the index list and add additional names for stuff
+	for parser in parsers:
+		for entry in parser.run():
+			aggregator.add_entry(entry)
+
+	for file in filter(lambda file: file.endswith('.htm'), os.listdir('{}/commands'.format(DOCS_FOLDER))):
+		for entry in CommandParser('commands/{}'.format(file)).run():
+			aggregator.add_entry(entry)
+
+	for file in filter(lambda file: file.endswith('.htm'), os.listdir('{}/misc'.format(DOCS_FOLDER))):
+		for entry in HeadersParser('misc/{}'.format(file)).run():
+			aggregator.add_entry(entry)
+
+	parsers[0].page = DOCS_URL
+
 	with open(f'{DOCS_FOLDER}/static/source/data_index.js') as f:
 		j = json.loads(f.read()[12:-2])
 		for line in j:
 			name, page, *junk = line
 
+			if not aggregator.name_check(name):
+				continue
+
 			if '#' in page:
 				page_base, offs = page.split('#')
 			else:
-				page_base = page
-				offs = None
+				page_base, offs = page, None
 
 			with open(f'{DOCS_FOLDER}/{page_base}') as f:
 				bs = BeautifulSoup(f.read(), 'html.parser')
 
-				if offs is None:
-					p = bs.find('p')
-				else:
-					p = bs.find(True, id=offs)
+				p = bs.find('p') if offs is None else bs.find(True, id=offs)
+				desc = None if p is None else parsers[0].pretty_desc(p)
 
-				if p is None:
-					desc = None
-				else:
-					md = h2m.convert(str(p))
+			entry = dict(names=[name], page=page, desc=desc)
+			aggregator.add_entry(entry)
 
-					sp = md.split('.\n')
-					desc = md[0:len(sp[0]) + 1] if len(sp) > 1 else md
+	await on_update('Aggregator built.')
 
-			await handler([name], page, desc)
-
-	await on_update('Build finished successfully.')
+	return aggregator

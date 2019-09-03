@@ -8,7 +8,8 @@ venv
 config.py
 
 test.py
-notes.md
+test_md.py
 test_docs_parser.py
+notes.md
 cogs/ahk/security.py
 cogs/ahk/logger.py

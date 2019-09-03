@@ -1,23 +1,27 @@
 import re
 from bs4 import BeautifulSoup, NavigableString
 
-
 PREPEND = dict(
 	br='\n',  # linebreak
-	p='\n\n',  # paragraph
 )
 
 WRAP = dict(
 	b='**',  # bold
 	em='*',  # emphasis
 	i='*',  # italics
-	div='\n',  # div
 )
 
 MULTIWRAP = dict(
-	ul=('\n\n', '\n'),  # starts a list section
 	li=(' - ', '\n'),  # list item
 )
+
+SPACING = dict(
+	p=2,
+	div=2,
+	ul=2
+)
+
+CODEBOX_NAMES = ('code', 'pre')
 
 
 class CreditsEmpty(Exception):
@@ -38,8 +42,20 @@ class Result:
 
 		self.credits -= amount
 
+	def feed(self, amount: int):
+		self.credits += amount
+
 	def can_afford(self, *strings):
 		return sum(len(part) for part in strings) <= self.credits
+
+	def ensure_spacing(self, spacing=2):
+		while self.content.endswith('\n' * (spacing + 1)):
+			self.content = self.content[:-1]
+			self.feed(1)
+
+		while not self.content.endswith('\n' * spacing):
+			self.content += '\n'
+			self.consume(1)
 
 	def add(self, string):
 		self.content += string
@@ -62,9 +78,6 @@ class Result:
 
 class HTML2Markdown:
 	def __init__(self, escaper=None, big_box=False, lang=None, max_len=2000, base_url=None):
-		if not big_box and lang is not None:
-			raise ValueError('Languages can only be added to big code boxes.')
-
 		self.result = None
 		self.escaper = escaper
 		self.max_len = max_len
@@ -100,12 +113,9 @@ class HTML2Markdown:
 	def traverse(self, tag):
 		for node in tag.contents:
 			if isinstance(node, NavigableString):
-				node = str(node)
-				if node == '\n':
-					continue
-				self.result.add_and_consume(self.escaper(node) if callable(self.escaper) else node, True)
+				self.navigable_string(node)
 			else:
-				if node.name == 'code':
+				if node.name in CODEBOX_NAMES:
 					self.codebox(node)
 					continue
 				elif node.name == 'a':
@@ -117,10 +127,6 @@ class HTML2Markdown:
 				if node.name in PREPEND:
 					front, back = PREPEND[node.name], ''
 
-					# eeeeh hack?
-					if node.name == 'p' and str(self.result).endswith(front):
-						front = ''
-
 				elif node.name in WRAP:
 					wrap_str = WRAP[node.name]
 					front, back = wrap_str, wrap_str
@@ -129,6 +135,9 @@ class HTML2Markdown:
 				elif node.name in MULTIWRAP:
 					front, back = MULTIWRAP[node.name]
 
+				elif node.name in SPACING:
+					self.result.ensure_spacing(SPACING[node.name])
+					front, back = '', ''
 				else:
 					front, back = '', ''
 
@@ -150,8 +159,16 @@ class HTML2Markdown:
 
 				if back_required:
 					self.result.add(back)
+				elif node.name in SPACING:
+					self.result.ensure_spacing(SPACING[node.name])
 				else:
 					self.result.add_and_consume(back)
+
+	def navigable_string(self, node):
+		node = str(node)
+		if node == '\n':
+			return
+		self.result.add_and_consume(self.escaper(node) if callable(self.escaper) else node, True)
 
 	def _get_content(self, tag):
 		contents = ''
@@ -192,7 +209,7 @@ class HTML2Markdown:
 			self.result.add_and_consume(contents, True)
 
 	def _format_link(self, href):
-		if re.match('^.+:\/\/', href):
+		if re.match(r'^.+:\/\/', href):
 			return href
 
 		if self.base_url is None:

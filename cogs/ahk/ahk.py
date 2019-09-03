@@ -173,45 +173,33 @@ class AutoHotkey(AceMixin, commands.Cog):
 		async def on_update(text):
 			await ctx.send(text)
 
-		async def handler(names, page, desc=None, syntax=None, params=None):
+		try:
+			agg = await parse_docs(on_update, download)
+		except Exception as exc:
+			raise commands.CommandError(str(exc))
 
-			# ignore everything that has to do with examples
+		await on_update('Rebuilding database...')
+
+		await self.db.execute('TRUNCATE docs_name, docs_syntax, docs_param, docs_entry RESTART IDENTITY')
+
+		async for entry in agg.get_all():
+			names = entry.pop('names')
+			page = entry.pop('page')
+			desc = entry.pop('desc')
+			syntax = entry.pop('syntax', None)
+
+			docs_id = await self.db.fetchval(
+				'INSERT INTO docs_entry (page, content) VALUES ($1, $2) RETURNING id',
+				page, desc
+			)
+
 			for name in names:
-				if 'example' in name.lower():
-					return
-
-			docs_id = await self.db.fetchval('SELECT id FROM docs_entry WHERE page=$1', page)
-
-			if docs_id is None:
-				docs_id = await self.db.fetchval(
-					'INSERT INTO docs_entry (page, content) VALUES ($1, $2) RETURNING id',
-					page, desc
-				)
-
-			for name in names:
-				# don't add if item already exists (including case insensitive matches)
-				if await self.db.fetchval('SELECT id FROM docs_name WHERE LOWER(name)=$1', name.lower()):
-					continue
-				if name.endswith('()') and await self.db.fetchval('SELECT id FROM docs_name WHERE LOWER(name)=$1', name.lower()[:-2]):
-					continue
 				await self.db.execute('INSERT INTO docs_name (docs_id, name) VALUES ($1, $2)', docs_id, name)
 
 			if syntax is not None:
 				await self.db.execute('INSERT INTO docs_syntax (docs_id, syntax) VALUES ($1, $2)', docs_id, syntax)
 
-			if params is not None:
-				for name, value in params.items():
-					await self.db.execute(
-						'INSERT INTO docs_param (docs_id, name, value) VALUES ($1, $2, $3)',
-						docs_id, name, value
-					)
-
-		await self.db.execute('TRUNCATE docs_name, docs_syntax, docs_param, docs_entry RESTART IDENTITY')
-
-		try:
-			await parse_docs(handler, on_update, download)
-		except Exception as exc:
-			raise commands.CommandError(str(exc))
+		await on_update('Done!')
 
 	@commands.command()
 	async def version(self, ctx):

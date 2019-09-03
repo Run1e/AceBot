@@ -1,225 +1,330 @@
-import re
 import discord
-from bs4 import BeautifulSoup
+import re
+
+from bs4 import BeautifulSoup, NavigableString
 
 from utils.html2markdown import HTML2Markdown
 
 
-class BaseHandler:
-	url_base = None
-	file_base = None
+MULTIPLE_NAME_RE = re.compile(r'.*\[.*\]$')
+HEADER_RE = re.compile(r'^h\d$')
+DIV_OR_HEADER_RE = re.compile(r'^(div|h\d)$')
 
-	def __init__(self, path, handler):
-		self.file = path
-		self.handler = handler
 
-		self.h2m = HTML2Markdown(
-			escaper=discord.utils.escape_markdown,
-			max_len=2000, base_url=self.url
+class DescAndSyntaxFound(Exception):
+	pass
+
+
+# the base parser looks for all h2 and h3 tags that link somewhere and adds those sites
+# it's the most basic way of parsing
+class BaseParser:
+	DOCS_URL = None
+	DOCS_FOLDER = None
+	PARSER = 'lxml'
+
+	def __init__(self, page, prefix=None, postfix=None, ignores=None):
+		self.page = page
+		self.prefix = prefix or ''
+		self.postfix = postfix or ''
+		self.ignores = ignores or list()
+		self.entries = list()
+
+		self.h2m = DocsHTML2Markdown(
+			escaper=discord.utils.escape_markdown, base_url=self.DOCS_URL + self.page,
+			big_box=False, lang='autoit', max_len=2000
 		)
 
-		with open(self.file_base + '/' + path, 'r') as f:
-			self.bs = BeautifulSoup(f.read(), 'html.parser')
+		with open('{}/{}'.format(self.DOCS_FOLDER, self.page), 'r') as f:
+			self.bs = BeautifulSoup(f.read(), self.PARSER)
 
-	@property
-	def url(self):
-		return f'{self.url_base}/{self.file}'
+	def _set_prefix_and_prepend(self, name):
+		return self.prefix + name + self.postfix
 
-	async def parse(self):
-		await self.handler([self.get_name()], self.file, self.get_desc())
+	def add(self, names, page=None, **kwargs):
 
-	def get_name(self):
-		h1 = self.bs.find('h1')
+		# remove unwanted names
+		for name in names:
+			if name in self.ignores:
+				names.remove(name)
+				return
 
-		if h1 is None:
+		# if no names left, return
+		if not len(names):
+			return
+
+		for idx, name in enumerate(names):
+			names[idx] = self._set_prefix_and_prepend(name)
+
+		self.add_force(names, page, **kwargs)
+
+	def add_force(self, names, page=None, **kwargs):
+		self.entries.append(dict(names=names, page=page, **kwargs))
+
+	def run(self):
+		self.go()
+		return self.entries
+
+	def add_page_entry(self):
+		header = self.bs.find('h1')
+		if header is None:
+			return
+		names = self.as_list(header)
+
+		p = header.find_next_sibling('p')
+		if p is None:
+			return
+
+		desc = self.as_string(p)
+		self.add_force(names=names, page=self.page, desc=desc)
+
+	def as_string(self, tag):
+		content = self._as_string_meta(tag)
+
+		if not len(content):
 			return None
 
-		for span in h1.find_all('span'):
+		return content.strip()
+
+	def _as_string_meta(self, tag):
+		if isinstance(tag, NavigableString):
+			return str(tag)
+		elif tag.name == 'br':
+			return '\n'
+
+		content = ''
+		for child in tag.children:
+			content += self._as_string_meta(child)
+
+		return content
+
+	@staticmethod
+	def remove_versioning(tag):
+		for span in tag.find_all('span', class_='ver'):
 			span.decompose()
 
-		return h1.text.strip()
+	def handle_optional(self, tag):
+		for span in tag.find_all('span', class_='optional'):
+			span.replace_with('[{}]'.format(self.as_string(span)))
 
-	def get_desc(self):
-		p = self.bs.find('p')
+	@staticmethod
+	def convert_brs(tag):
+		for br in tag.find_all('br'):
+			br.replace_with('\n')
 
-		if p is None:
-			return None
+	def as_list(self, tag):
+		self.remove_versioning(tag)
 
-		return self.pretty_desc(p)
+		names = [self.as_string(tag)]
+		splits = [' or ', ' / ', '\n']
 
-	def pretty_desc(self, desc):
-		md = self.h2m.convert(str(desc))
+		# fragment the names by the splits def above
+		for split in splits:
+			new_names = list()
+			for name in names:
+				for insert_name in name.split(split):
+					if len(insert_name) and insert_name != '\n':
+						if insert_name.endswith(': Send Keys & Clicks'):
+							insert_name = insert_name.rstrip(': Send Keys & Clicks')
+						new_names.append(insert_name.strip())
+			names = new_names
+
+		# also split if we have stuff like Command[OptionalPostfix]
+		new_names = list()
+		for name in names:
+			if not name.startswith('[') and len(name) > 5 and re.match(MULTIPLE_NAME_RE, name):
+				bracket_split = name.split('[')
+				base = bracket_split[0]
+				others = bracket_split[1][:-1]
+
+				new_names.append(base)
+				for other_split in others.split('|'):
+					new_names.append(base + other_split)
+			else:
+				new_names.append(name)
+
+		return new_names
+
+	def get_desc_and_syntax(self, tag):
+		desc = None
+		syntax = None
+
+		def check_name(tg):
+			return tg.name in (tag.name, 'p', 'pre')
+
+		def check_tag(sub):
+			nonlocal desc, syntax
+			if desc is None and sub.name == 'p':
+				desc = self.pretty_desc(sub)
+			elif syntax is None and sub.name == 'pre':
+				self.handle_optional(sub)
+				syntax = self.as_string(sub)
+
+			if syntax is not None and desc is not None:
+				raise DescAndSyntaxFound()
+
+		try:
+			for sub in tag.find_all(check_name):
+				check_tag(sub)
+
+			for sib in tag.next_siblings:
+				if isinstance(sib, NavigableString):
+					continue
+				check_tag(sib)
+				for sub in sib.find_all(check_name):
+					check_tag(sub)
+		except DescAndSyntaxFound:
+			pass
+
+		return desc, syntax
+
+	def pretty_desc(self, tag):
+		self.remove_versioning(tag)
+		self.convert_brs(tag)
+		md = self.h2m.convert(str(tag))
 
 		sp = md.split('.\n')
 		return md[0:len(sp[0]) + 1] if len(sp) > 1 else md
 
 
-class SimpleHandler(BaseHandler):
-	def get_desc(self):
-		meta_desc = self.bs.find('meta', attrs=dict(name='description', content=True))
-		if meta_desc is None:
-			return None
-		return meta_desc['content']
+class HeadersParser(BaseParser):
+	def handle(self, id, tag):
+		names = self.as_list(tag)
 
-	async def parse(self):
+		desc, syntax = self.get_desc_and_syntax(tag)
 
-		proper_name = self.get_name()
-		if proper_name is None:
-			return
+		self.add(names, '{}#{}'.format(self.page, id), desc=desc, syntax=syntax)
 
-		desc = self.get_desc()
-		if desc is None:
-			return
+	def go(self):
+		self.add_page_entry()
 
-		name = ''
-		for sect in re.split('([a-z][A-Z])', self.file.replace('_', ' ').split('.')[0]):
-			if re.match('^[a-z][A-Z]$', sect):
-				name += sect[0] + ' ' + sect[1]
-			else:
-				name += sect
-
-		# ew, but whatever
-		if name == 'Auto Hotkey':
-			name = 'AutoHotkey'
-
-		names = [name, proper_name]
-
-		await self.handler(
-			names,
-			self.file,
-			desc
-		)
+		for tag in self.bs.find_all(HEADER_RE, id=True):
+			self.handle(tag.get('id'), tag)
 
 
-class CommandsHandler(BaseHandler):
-	async def parse(self):
-		await self.handler(
-			self.get_names(),
-			self.file,
-			self.get_desc(),
-			self.get_syntax(),
-			self.get_params()
-		)
+class VariablesParser(BaseParser):
+	def go(self):
+		self.add_page_entry()
 
-	def transform_names(self, names):
-		new_names = []
+		for tr in self.bs.find_all('tr'):
+			first = True
+			names, desc = None, None
+			for td in tr.find_all('td'):
+				if first:
+					first = False
+					names = self.as_list(td)
+				else:
+					desc = self.pretty_desc(td)
 
-		for name in names:
-			mtch = re.search('\[(.*)\]', name)
-
-			if mtch is None:
-				new_names.append(name)
+			if names is None:
 				continue
 
-			extra = mtch.group(1)
-			with_extra = name.replace('[', '').replace(']', '')
-			without_extra = name.replace(f'[{extra}]', '').replace('  ', ' ')  # last replace is kinda hacky
-
-			new_names.extend((without_extra, with_extra))
-
-		return new_names
-
-	def get_names(self):
-		name = self.get_name()
-
-		split = name.split(' / ')
-
-		for idx, part in enumerate(split):
-			split[idx] = part.strip()
-
-		split = self.transform_names(split)
-
-		return split
-
-	def get_syntax(self):
-		syntax = self.bs.find('pre', class_='Syntax')
-
-		if syntax is None:
-			return None
-
-		for span in syntax.find_all('span', class_='optional'):
-			span.replace_with(f'[{span.text}]')
-
-		return str(syntax.text)
-
-	def get_params(self):
-		dl = self.bs.find('dl')
-
-		if dl is None:
-			return None
-
-		params = dict()
-
-		for dt, dd in zip(dl.find_all('dt'), dl.find_all('dd')):
-			params[', '.join(text.strip() for text in dt.text.split('\n'))] = dd.text
-
-		if not len(params):
-			return None
-
-		return params
+			id = tr.get('id')
+			self.add(names, None if id is None else '{}#{}'.format(self.page, id), desc=desc)
 
 
-class CommandListHandler(BaseHandler):
-	_prepend = {
-		'commands/Gui.htm': 'Gui',
-		'commands/Menu.htm': 'Menu'
-	}
+class MethodListParser(BaseParser):
+	def go(self):
+		self.add_page_entry()
 
-	_h2_or_h3 = re.compile('^h(2|3)$')
+		for tag in self.bs.find_all('div', id=True):
+			id = tag.get('id')
+			names = self.as_list(tag.find('h2'))
 
-	async def parse(self):
-		for tag in self.bs.find_all(self._h2_or_h3, id=True):
-			for span in tag.find_all('span'):
-				span.decompose()
+			desc, syntax = self.get_desc_and_syntax(tag)
 
-			name = tag.text.strip()
-			names = name.split(' / ')
-
-			for file, prep in self._prepend.items():
-				if self.file == file and not name.startswith(prep):
-					for idx, nme in enumerate(names):
-						names[idx] = f'{prep}: {nme}'
-					break
-
-			desc = tag.next_element.next_element.next_element
-			syntax = self.bs.find('span', class_='func', string=name)
-
-			if syntax is not None:
-				syntax = syntax.parent
-
-				for span in syntax.find_all('span', class_='optional'):
-					span.replace_with(f'[{span.text}]')
-
-				syntax = str(syntax.text)
-
-			await self.handler(names, f'{self.file}#{tag["id"]}', self.pretty_desc(desc), syntax)
+			self.add(names, '{}#{}'.format(self.page, id), desc=desc, syntax=syntax)
 
 
-class VariablesHandler(BaseHandler):
-	async def parse(self):
-		for tag in self.bs.find_all('tr', id=True):
-			names = []
-			for idx, td in enumerate(tag.find_all('td')):
-				if idx == 0:
-					for span in tag.td.find_all('span', class_='ver'):
-						span.decompose()
+class CommandParser(BaseParser):
+	def go(self):
+		body = self.bs.find('body')
 
-					for name in [text.strip() for text in td.text.split('\n')]:
-						if not len(name):
-							continue
-						for name in name.split(', '):
-							for name in name.split(' '):
-								names.append(name)
+		header = body.find('h1')
+		if header is None:
+			return
 
-				elif idx == 1:
-					desc = self.pretty_desc(td)
-				else:
-					break
+		names = self.as_list(header)
+		desc, syntax = self.get_desc_and_syntax(body)
+		self.add(names, self.page, desc=desc, syntax=syntax)
 
-			# if the id has some other searchable data that
-			# isn't just the var name without the A_ we add it
-			tag_id = tag['id']
-			if f'A_{tag_id}' not in names and tag_id not in names:
-				names.append(tag['id'])
 
-			await self.handler(names, f"{self.file}#{tag['id']}", desc)
+class EnumeratorParser(HeadersParser):
+	def go(self):
+		self.add_page_entry()
+
+		for tag in self.bs.find_all('h2', id=True):
+			self.handle(tag.get('id'), tag)
+
+
+class GuiControlParser(HeadersParser):
+	def _set_prefix_and_prepend(self, name):
+		if ' ' in name or '_' in name:
+			return name
+		return super()._set_prefix_and_prepend(name)
+
+
+class DocsHTML2Markdown(HTML2Markdown):
+	def codebox(self, tag):
+		if tag.name == 'pre':
+			old_bigbox = self.big_box
+			self.big_box = True
+			front, back = self._codebox_wraps()
+			self.big_box = old_bigbox
+		else:
+			front, back = self._codebox_wraps()
+
+		# specific fix for autohotkey rss
+		for br in tag.find_all('br'):
+			br.replace_with('\n')
+
+		contents = self._get_content(tag)
+		self.result.add_and_consume(front + contents + back)
+
+
+class DocsAggregator:
+	def __init__(self):
+		self.names = list()
+		self.entries = list()
+
+	async def get_all(self):
+		for entry in self.entries:
+			yield entry
+
+	def name_check(self, name):
+		name = name.lower()
+
+		if name in self.names:
+			return False
+
+		if name.endswith('()') and name[:-2] in self.names:
+			return False
+
+		return True
+
+	def get_entry_by_page(self, page):
+		for entry in self.entries:
+			if entry['page'] == page:
+				return entry
+		return None
+
+	def add_entry(self, entry):
+		to_remove = list()
+		for idx, name in enumerate(entry['names']):
+			if not self.name_check(name):
+				to_remove.append(idx)
+
+		for idx in reversed(to_remove):
+			entry['names'].pop(idx)
+
+		if not len(entry['names']):
+			return
+
+		for name in entry['names']:
+			self.names.append(name.lower())
+
+		similar_entry = self.get_entry_by_page(entry['page'])
+		if similar_entry is None:
+			self.entries.append(entry)
+		else:
+			for name in filter(lambda name: name not in similar_entry['names'], entry['names']):
+				similar_entry['names'].append(name)
