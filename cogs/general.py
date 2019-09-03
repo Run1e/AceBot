@@ -239,7 +239,8 @@ class General(AceMixin, commands.Cog):
 			img = brs.find('img')
 
 			if img is None:
-				raise commands.CommandError('This xkcd seems to not be an image.')
+				await ctx.send(url)
+				return
 
 			e = discord.Embed(
 				title=img['alt'],
