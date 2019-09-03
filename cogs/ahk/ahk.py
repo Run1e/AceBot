@@ -29,9 +29,11 @@ class AutoHotkey(AceMixin, commands.Cog):
 			max_len=2000
 		)
 
+		FORUM_REPLY_CHAN_ID = 612323195353169935
+
 		self.forum_thread_channel = self.bot.get_channel(FORUM_THRD_CHAN_ID)
 		self.forum_reply_channel = self.bot.get_channel(FORUM_REPLY_CHAN_ID)
-		self.rss_time = datetime.now(tz=timezone(timedelta(hours=1))) - timedelta(minutes=1)
+		self.rss_time = datetime.now(tz=timezone(timedelta(hours=1))) - timedelta(minutes=60)
 
 		self.rss.start()
 
@@ -57,7 +59,7 @@ class AutoHotkey(AceMixin, commands.Cog):
 				content = str(entry.content.text).split('Statistics: ')[0]
 				content = self.h2m.convert(content)
 
-				content = content.replace('CODE:', '')
+				content = content.replace('CODE: ', '')
 				content = re.sub('\n\n+', '\n\n', content)
 
 				e = discord.Embed(
@@ -77,6 +79,8 @@ class AutoHotkey(AceMixin, commands.Cog):
 					await self.forum_thread_channel.send(embed=e)
 
 				self.rss_time = time
+
+				return
 
 	@commands.Cog.listener()
 	async def on_command_error(self, ctx, error):
@@ -201,6 +205,8 @@ class AutoHotkey(AceMixin, commands.Cog):
 
 			if syntax is not None:
 				await self.db.execute('INSERT INTO docs_syntax (docs_id, syntax) VALUES ($1, $2)', docs_id, syntax)
+
+		await on_update('Done!')
 
 	@commands.command()
 	async def version(self, ctx):

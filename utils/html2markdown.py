@@ -88,6 +88,8 @@ class HTML2Markdown:
 		self.cutoff = '...'
 
 	def convert(self, html, temp_url=None):
+		print(html)
+
 		self.result = Result(max(self.max_len, 8) - len(self.cutoff) - 1)
 
 		if temp_url is not None:
@@ -170,12 +172,25 @@ class HTML2Markdown:
 			return
 		self.result.add_and_consume(self.escaper(node) if callable(self.escaper) else node, True)
 
-	def _get_content(self, tag):
-		contents = ''
-		for node in filter(lambda node: isinstance(node, NavigableString), tag.contents):
-			contents += str(node)
+	def get_content(self, tag):
+		content = self._get_content_meta(tag)
 
-		return contents
+		if not len(content):
+			return None
+
+		return content.strip()
+
+	def _get_content_meta(self, tag):
+		if isinstance(tag, NavigableString):
+			return str(tag)
+		elif tag.name == 'br':
+			return '\n'
+
+		content = ''
+		for child in tag.children:
+			content += self._get_content_meta(child)
+
+		return content
 
 	def codebox(self, tag):
 		front, back = self._codebox_wraps()
@@ -184,7 +199,7 @@ class HTML2Markdown:
 		for br in tag.find_all('br'):
 			br.replace_with('\n')
 
-		contents = self._get_content(tag)
+		contents = self.get_content(tag)
 
 		self.result.add_and_consume(front + contents + back)
 
@@ -195,7 +210,7 @@ class HTML2Markdown:
 		credits = self.result.credits
 
 		link = self._format_link(tag['href'])
-		contents = self._get_content(tag)
+		contents = self.get_content(tag)
 
 		full = '[{}]({})'.format(contents, link)
 
