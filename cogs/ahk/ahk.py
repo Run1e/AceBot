@@ -156,8 +156,11 @@ class AutoHotkey(AceMixin, commands.Cog):
 		docs = await self.db.fetchrow('SELECT * FROM docs_entry WHERE id=$1', docs_id)
 		syntax = await self.db.fetchrow('SELECT * FROM docs_syntax WHERE docs_id=$1', docs.get('id'))
 
+		page = docs.get('page')
+		if page is not None:
+			e.url = 'https://autohotkey.com/docs/{}'.format(docs.get('page'))
+
 		e.title = name
-		e.url = 'https://autohotkey.com/docs/{}'.format(docs.get('page'))
 		e.description = docs.get('content') or 'No description for this page.'
 
 		e.set_footer(text='autohotkey.com', icon_url='https://www.autohotkey.com/favicon.ico')

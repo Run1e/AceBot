@@ -157,6 +157,7 @@ class BaseParser:
 				desc = self.pretty_desc(sub)
 			elif syntax is None and sub.name == 'pre':
 				self.handle_optional(sub)
+				self.remove_versioning(sub)
 				syntax = self.as_string(sub)
 
 			if syntax is not None and desc is not None:
@@ -219,7 +220,7 @@ class VariablesParser(BaseParser):
 				continue
 
 			id = tr.get('id')
-			self.add(names, self.page if id is None else '{}#{}'.format(self.page, id), desc=desc)
+			self.add(names, None if id is None else '{}#{}'.format(self.page, id), desc=desc)
 
 
 class MethodListParser(BaseParser):
@@ -308,9 +309,6 @@ class DocsAggregator:
 		return None
 
 	def add_entry(self, entry):
-		if entry.get('page') is None:
-			raise ValueError('Page should not be None. Names: {}'.format(entry.get('names')))
-
 		to_remove = list()
 		for idx, name in enumerate(entry['names']):
 			if not self.name_check(name):
@@ -325,7 +323,11 @@ class DocsAggregator:
 		for name in entry['names']:
 			self.names.append(name.lower())
 
-		similar_entry = self.get_entry_by_page(entry['page'])
+		if entry['page'] is None:
+			similar_entry = None
+		else:
+			similar_entry = self.get_entry_by_page(entry['page'])
+
 		if similar_entry is None:
 			self.entries.append(entry)
 		else:
