@@ -238,6 +238,9 @@ class General(AceMixin, commands.Cog):
 			brs = bs.find('div', attrs=dict(id='middleContainer'))
 			img = brs.find('img')
 
+			if img is None:
+				raise commands.CommandError('This xkcd seems to not be an image.')
+
 			e = discord.Embed(
 				title=img['alt'],
 				description=img['title']
