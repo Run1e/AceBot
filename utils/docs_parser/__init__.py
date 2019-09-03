@@ -107,6 +107,9 @@ async def parse_docs(on_update, fetch=True):
 			entry = dict(names=[name], page=page, desc=desc)
 			aggregator.add_entry(entry)
 
-	await on_update('Aggregator built.')
+	await on_update('List built. Total names: `{}` Unique entries: `{}`\n'.format(
+		sum(len(entry['names']) for entry in aggregator.entries),
+		len(aggregator.entries)
+	))
 
 	return aggregator

@@ -199,8 +199,6 @@ class AutoHotkey(AceMixin, commands.Cog):
 			if syntax is not None:
 				await self.db.execute('INSERT INTO docs_syntax (docs_id, syntax) VALUES ($1, $2)', docs_id, syntax)
 
-		await on_update('Done!')
-
 	@commands.command()
 	async def version(self, ctx):
 		'''Get changelog and download for the latest AutoHotkey_L version.'''

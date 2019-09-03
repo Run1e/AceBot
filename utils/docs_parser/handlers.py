@@ -40,7 +40,7 @@ class BaseParser:
 	def _set_prefix_and_prepend(self, name):
 		return self.prefix + name + self.postfix
 
-	def add(self, names, page=None, **kwargs):
+	def add(self, names, page, **kwargs):
 
 		# remove unwanted names
 		for name in names:
@@ -219,7 +219,7 @@ class VariablesParser(BaseParser):
 				continue
 
 			id = tr.get('id')
-			self.add(names, None if id is None else '{}#{}'.format(self.page, id), desc=desc)
+			self.add(names, self.page if id is None else '{}#{}'.format(self.page, id), desc=desc)
 
 
 class MethodListParser(BaseParser):
@@ -308,6 +308,9 @@ class DocsAggregator:
 		return None
 
 	def add_entry(self, entry):
+		if entry.get('page') is None:
+			raise ValueError('Page should not be None. Names: {}'.format(entry.get('names')))
+
 		to_remove = list()
 		for idx, name in enumerate(entry['names']):
 			if not self.name_check(name):
