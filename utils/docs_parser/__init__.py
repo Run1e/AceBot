@@ -42,41 +42,42 @@ async def parse_docs(on_update, fetch=True):
 		zip_ref.extractall(EXTRACT_TO)
 		zip_ref.close()
 
-	await on_update('Building and aggregating...')
+	await on_update('Building...')
 
 	aggregator = DocsAggregator()
 	BaseParser.DOCS_URL = DOCS_URL
 	BaseParser.DOCS_FOLDER = DOCS_FOLDER
 
 	parsers = (
-		HeadersParser('Hotkeys.htm'),
-		VariablesParser('Hotkeys.htm'),
-		HeadersParser('Functions.htm'),
-		HeadersParser('Objects.htm'),
-		HeadersParser('Program.htm'),
-		HeadersParser('Scripts.htm'),
-		HeadersParser('Concepts.htm'),
-		HeadersParser('Variables.htm', ignores=['Loop']),
 		HeadersParser('commands/Math.htm'),
 		HeadersParser('commands/ListView.htm'),
 		HeadersParser('commands/TreeView.htm'),
 		HeadersParser('commands/Gui.htm', prefix='Gui: '),
 		HeadersParser('commands/Menu.htm', prefix='Menu: '),
+		GuiControlParser('commands/GuiControls.htm', postfix=' Control'),
 		HeadersParser('objects/Functor.htm'),
 		MethodListParser('objects/File.htm'),
 		MethodListParser('objects/Func.htm'),
 		MethodListParser('objects/Object.htm'),
 		EnumeratorParser('objects/Enumerator.htm'),
-		GuiControlParser('commands/GuiControls.htm', postfix=' Control'),
+		HeadersParser('Functions.htm'),
+		VariablesParser('Functions.htm'),
+		HeadersParser('Hotkeys.htm'),
+		VariablesParser('Hotkeys.htm'),
+		HeadersParser('Variables.htm', ignores=['Loop']),
 		VariablesParser('Variables.htm'),
+		HeadersParser('Objects.htm'),
+		HeadersParser('Program.htm'),
+		HeadersParser('Scripts.htm'),
+		HeadersParser('Concepts.htm'),
 	)
-
-	for parser in parsers:
-		for entry in parser.run():
-			aggregator.add_entry(entry)
 
 	for file in filter(lambda file: file.endswith('.htm'), os.listdir('{}/commands'.format(DOCS_FOLDER))):
 		for entry in CommandParser('commands/{}'.format(file)).run():
+			aggregator.add_entry(entry)
+
+	for parser in parsers:
+		for entry in parser.run():
 			aggregator.add_entry(entry)
 
 	for file in filter(lambda file: file.endswith('.htm'), os.listdir('{}/misc'.format(DOCS_FOLDER))):
@@ -107,9 +108,12 @@ async def parse_docs(on_update, fetch=True):
 			entry = dict(names=[name], page=page, desc=desc)
 			aggregator.add_entry(entry)
 
-	await on_update('List built. Total names: `{}` Unique entries: `{}`\n'.format(
+	await on_update('List built. Total names: {} Unique entries: {}\n'.format(
 		sum(len(entry['names']) for entry in aggregator.entries),
 		len(aggregator.entries)
 	))
+
+	for entry in aggregator.entries:
+		print(entry)
 
 	return aggregator

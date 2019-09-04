@@ -6,10 +6,11 @@ from bs4 import BeautifulSoup, NavigableString
 from utils.html2markdown import HTML2Markdown
 
 
-MULTIPLE_NAME_RE = re.compile(r'.*\[.*\]$')
+MULTIPLE_NAME_RE = re.compile(r'.*\[.*].*')
 HEADER_RE = re.compile(r'^h\d$')
 DIV_OR_HEADER_RE = re.compile(r'^(div|h\d)$')
 
+DONT_REMOVE_BRACKETS = ('func.()', '%func%()')
 
 class DescAndSyntaxFound(Exception):
 	pass
@@ -70,12 +71,19 @@ class BaseParser:
 			return
 		names = self.as_list(header)
 
+		names.append(self.pretty_file_name())
+
 		p = header.find_next_sibling('p')
 		if p is None:
 			return
 
 		desc = self.as_string(p)
+
 		self.add_force(names=names, page=self.page, desc=desc)
+
+	def pretty_file_name(self):
+		file_name = self.page.split('/')
+		return file_name[len(file_name) - 1][:-4]
 
 	def as_string(self, tag):
 		content = self._as_string_meta(tag)
@@ -120,29 +128,40 @@ class BaseParser:
 		# fragment the names by the splits def above
 		for split in splits:
 			new_names = list()
+
 			for name in names:
 				for insert_name in name.split(split):
 					if len(insert_name) and insert_name != '\n':
 						if insert_name.endswith(': Send Keys & Clicks'):
 							insert_name = insert_name.rstrip(': Send Keys & Clicks')
 						new_names.append(insert_name.strip())
+
 			names = new_names
 
-		# also split if we have stuff like Command[OptionalPostfix]
 		new_names = list()
 		for name in names:
 			if not name.startswith('[') and len(name) > 5 and re.match(MULTIPLE_NAME_RE, name):
 				bracket_split = name.split('[')
-				base = bracket_split[0]
-				others = bracket_split[1][:-1]
+				pre = bracket_split[0]
+				bracket2_split = bracket_split[1].split(']')
+				others = bracket2_split[0]
+				post = '' if len(bracket2_split) == 1 else bracket2_split[1]
 
-				new_names.append(base)
+				new_names.append((pre[:-1] if pre.endswith(' ') and post.startswith(' ') else pre) + post)
 				for other_split in others.split('|'):
-					new_names.append(base + other_split)
+					new_name = pre + other_split + post
+					new_names.append(new_name)
 			else:
 				new_names.append(name)
 
-		return new_names
+		names = list()
+		for name in new_names:
+			name = name.strip()
+			if name not in DONT_REMOVE_BRACKETS and name.endswith('()'):
+				name = name[:-2]
+			names.append(name)
+
+		return names
 
 	def get_desc_and_syntax(self, tag):
 		desc = None
@@ -153,12 +172,16 @@ class BaseParser:
 
 		def check_tag(sub):
 			nonlocal desc, syntax
-			if desc is None and sub.name == 'p':
-				desc = self.pretty_desc(sub)
-			elif syntax is None and sub.name == 'pre':
-				self.handle_optional(sub)
-				self.remove_versioning(sub)
-				syntax = self.as_string(sub)
+			if sub.name == 'p':
+				if sub.get('class') is None and desc is None:
+					desc = self.pretty_desc(sub)
+			elif sub.name == 'pre':
+				if syntax is None:
+					self.handle_optional(sub)
+					self.remove_versioning(sub)
+					syntax = self.as_string(sub)
+			else:
+				raise DescAndSyntaxFound()
 
 			if syntax is not None and desc is not None:
 				raise DescAndSyntaxFound()
@@ -190,7 +213,6 @@ class BaseParser:
 class HeadersParser(BaseParser):
 	def handle(self, id, tag):
 		names = self.as_list(tag)
-
 		desc, syntax = self.get_desc_and_syntax(tag)
 
 		self.add(names, '{}#{}'.format(self.page, id), desc=desc, syntax=syntax)
@@ -204,8 +226,6 @@ class HeadersParser(BaseParser):
 
 class VariablesParser(BaseParser):
 	def go(self):
-		self.add_page_entry()
-
 		for tr in self.bs.find_all('tr'):
 			first = True
 			names, desc = None, None
@@ -220,7 +240,14 @@ class VariablesParser(BaseParser):
 				continue
 
 			id = tr.get('id')
-			self.add(names, None if id is None else '{}#{}'.format(self.page, id), desc=desc)
+
+			if id is not None:
+				names.append(id)
+				page = '{}#{}'.format(self.page, id)
+			else:
+				page = None
+
+			self.add(names, page, desc=desc)
 
 
 class MethodListParser(BaseParser):
@@ -278,7 +305,8 @@ class DocsHTML2Markdown(HTML2Markdown):
 		for br in tag.find_all('br'):
 			br.replace_with('\n')
 
-		contents = self._get_content(tag)
+		contents = self.get_content(tag)
+
 		self.result.add_and_consume(front + contents + back)
 
 
