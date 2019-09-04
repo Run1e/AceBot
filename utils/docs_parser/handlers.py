@@ -138,6 +138,7 @@ class BaseParser:
 
 			names = new_names
 
+		# transform 'a[b|c]d' into ['ad', 'abd', 'acd']
 		new_names = list()
 		for name in names:
 			if not name.startswith('[') and len(name) > 5 and re.match(MULTIPLE_NAME_RE, name):
@@ -154,14 +155,26 @@ class BaseParser:
 			else:
 				new_names.append(name)
 
-		names = list()
-		for name in new_names:
+		names = new_names
+
+		# remove trailing '()'
+		new_names = list()
+		for name in names:
 			name = name.strip()
 			if name not in DONT_REMOVE_BRACKETS and name.endswith('()'):
 				name = name[:-2]
-			names.append(name)
+			new_names.append(name)
 
-		return names
+		names = new_names
+
+		# if on 'thing (asd)' then also add 'thing'
+		new_names = list()
+		for name in names:
+			if '(' in name:
+				new_names.append(name.split('(')[0].strip())
+			new_names.append(name)
+
+		return new_names
 
 	def get_desc_and_syntax(self, tag):
 		desc = None

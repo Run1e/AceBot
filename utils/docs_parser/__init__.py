@@ -60,6 +60,8 @@ async def parse_docs(on_update, fetch=True):
 		MethodListParser('objects/Func.htm'),
 		MethodListParser('objects/Object.htm'),
 		EnumeratorParser('objects/Enumerator.htm'),
+		HeadersParser('KeyList.htm'),
+		# VariablesParser('KeyList.htm', prefix='Key: '),
 		HeadersParser('Functions.htm'),
 		VariablesParser('Functions.htm'),
 		HeadersParser('Hotkeys.htm'),
@@ -70,7 +72,17 @@ async def parse_docs(on_update, fetch=True):
 		HeadersParser('Program.htm'),
 		HeadersParser('Scripts.htm'),
 		HeadersParser('Concepts.htm'),
+		HeadersParser('HotkeyFeatures.htm'),
+		HeadersParser('Language.htm'),
 	)
+
+	'''
+	for parser in parsers:
+		for entry in parser.run():
+			print(entry)
+
+	return
+	'''
 
 	for file in filter(lambda file: file.endswith('.htm'), os.listdir('{}/commands'.format(DOCS_FOLDER))):
 		for entry in CommandParser('commands/{}'.format(file)).run():
@@ -112,8 +124,5 @@ async def parse_docs(on_update, fetch=True):
 		sum(len(entry['names']) for entry in aggregator.entries),
 		len(aggregator.entries)
 	))
-
-	for entry in aggregator.entries:
-		print(entry)
 
 	return aggregator
