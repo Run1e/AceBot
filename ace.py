@@ -94,7 +94,7 @@ class AceBot(commands.Bot):
 
 			self.db = await asyncpg.create_pool(DB_BIND)
 
-			for extension in EXTENSIONS:
+			for extension in filter(lambda extension: os.path.isfile(extension.replace('.', '/') + '.py'), EXTENSIONS):
 				log.info(f'loading {extension}')
 				self.load_extension(extension)
 

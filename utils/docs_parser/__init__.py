@@ -74,15 +74,11 @@ async def parse_docs(on_update, fetch=True):
 		HeadersParser('Concepts.htm'),
 		HeadersParser('HotkeyFeatures.htm'),
 		HeadersParser('Language.htm'),
+		HeadersParser('Tutorial.htm'),
+		HeadersParser('AHKL_DBGPClients.htm'),
+		HeadersParser('AHKL_Features.htm'),
+		VariablesParser('AHKL_Features.htm'),
 	)
-
-	'''
-	for parser in parsers:
-		for entry in parser.run():
-			print(entry)
-
-	return
-	'''
 
 	for file in filter(lambda file: file.endswith('.htm'), os.listdir('{}/commands'.format(DOCS_FOLDER))):
 		for entry in CommandParser('commands/{}'.format(file)).run():
@@ -117,7 +113,7 @@ async def parse_docs(on_update, fetch=True):
 				p = bs.find('p') if offs is None else bs.find(True, id=offs)
 				desc = None if p is None else parsers[0].pretty_desc(p)
 
-			entry = dict(names=[name], page=page, desc=desc)
+			entry = dict(names=parsers[0].handle_name(name), page=page, desc=desc)
 			aggregator.add_entry(entry)
 
 	await on_update('List built. Total names: {} Unique entries: {}\n'.format(

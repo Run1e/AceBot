@@ -69,7 +69,8 @@ class BaseParser:
 		header = self.bs.find('h1')
 		if header is None:
 			return
-		names = self.as_list(header)
+
+		names = self.name_as_list(header)
 
 		names.append(self.pretty_file_name())
 
@@ -119,10 +120,8 @@ class BaseParser:
 		for br in tag.find_all('br'):
 			br.replace_with('\n')
 
-	def as_list(self, tag):
-		self.remove_versioning(tag)
-
-		names = [self.as_string(tag)]
+	def handle_name(self, name):
+		names = [name]
 		splits = [' or ', ' / ', '\n']
 
 		# fragment the names by the splits def above
@@ -176,6 +175,10 @@ class BaseParser:
 
 		return new_names
 
+	def name_as_list(self, tag):
+		self.remove_versioning(tag)
+		return self.handle_name(self.as_string(tag))
+
 	def get_desc_and_syntax(self, tag):
 		desc = None
 		syntax = None
@@ -225,7 +228,7 @@ class BaseParser:
 
 class HeadersParser(BaseParser):
 	def handle(self, id, tag):
-		names = self.as_list(tag)
+		names = self.name_as_list(tag)
 		desc, syntax = self.get_desc_and_syntax(tag)
 
 		self.add(names, '{}#{}'.format(self.page, id), desc=desc, syntax=syntax)
@@ -245,7 +248,7 @@ class VariablesParser(BaseParser):
 			for td in tr.find_all('td'):
 				if first:
 					first = False
-					names = self.as_list(td)
+					names = self.name_as_list(td)
 				else:
 					desc = self.pretty_desc(td)
 
@@ -269,7 +272,7 @@ class MethodListParser(BaseParser):
 
 		for tag in self.bs.find_all('div', id=True):
 			id = tag.get('id')
-			names = self.as_list(tag.find('h2'))
+			names = self.name_as_list(tag.find('h2'))
 
 			desc, syntax = self.get_desc_and_syntax(tag)
 
@@ -284,7 +287,7 @@ class CommandParser(BaseParser):
 		if header is None:
 			return
 
-		names = self.as_list(header)
+		names = self.name_as_list(header)
 		desc, syntax = self.get_desc_and_syntax(body)
 		self.add(names, self.page, desc=desc, syntax=syntax)
 
