@@ -2,6 +2,7 @@ import discord
 import re
 
 from bs4 import BeautifulSoup, NavigableString
+from enum import Enum
 
 from utils.html2markdown import HTML2Markdown
 
@@ -11,6 +12,13 @@ HEADER_RE = re.compile(r'^h\d$')
 DIV_OR_HEADER_RE = re.compile(r'^(div|h\d)$')
 
 DONT_REMOVE_BRACKETS = ('func.()', '%func%()')
+
+
+class SearchAction(Enum):
+	CONTINUE = 1
+	LIMIT = 2
+	STOP = 3
+
 
 class DescAndSyntaxFound(Exception):
 	pass
@@ -70,21 +78,17 @@ class BaseParser:
 		if header is None:
 			return
 
-		names = self.name_as_list(header)
+		names = self.tag_as_names(header)
 
 		names.append(self.pretty_file_name())
 
-		p = header.find_next_sibling('p')
-		if p is None:
-			return
+		desc, syntax = self.get_desc_and_syntax(header)
 
-		self.add_force(names=names, page=self.page, desc=self.as_string(p))
-
-	def _pretty_file_name_finish(self, name):
-		name = re.sub(r' +', ' ', name)
-		return name.strip()
+		self.add_force(names=names, page=self.page, desc=desc)
 
 	def pretty_file_name(self):
+		finish = lambda name: re.sub(r' +', ' ', name).strip()
+
 		file_name = self.page.split('/')
 		file_name = file_name[len(file_name) - 1][:-4]
 
@@ -95,17 +99,17 @@ class BaseParser:
 			'-': ' ',
 		}
 
-		add_space = ('DBGP', 'AutoIt2', 'RegEx', 'SendMessage')
+		add_trailing_space = ('DBGP', 'AutoIt2', 'RegEx', 'SendMessage')
 
 		for old, new in replacements.items():
 			file_name = file_name.replace(old, new)
 
-		for add_spacer in add_space:
-			file_name.replace(add_spacer, add_spacer + ' ')
+		for add_spacer in add_trailing_space:
+			file_name = file_name.replace(add_spacer, add_spacer + ' ')
 
 		for ignore in skip_auto_spacing:
 			if ignore in file_name:
-				return self._pretty_file_name_finish(file_name)
+				return finish(file_name)
 
 		since_last = 0
 		name = ''
@@ -119,7 +123,7 @@ class BaseParser:
 
 			name += letter
 
-		return self._pretty_file_name_finish(name)
+		return finish(name)
 
 	def as_string(self, tag):
 		content = self._as_string_meta(tag)
@@ -146,6 +150,11 @@ class BaseParser:
 		for span in tag.find_all('span', class_='ver'):
 			span.decompose()
 
+	@staticmethod
+	def remove_headnote(tag):
+		for span in tag.find_all('span', class_='headnote'):
+			span.decompose()
+
 	def handle_optional(self, tag):
 		for span in tag.find_all('span', class_='optional'):
 			span.replace_with('[{}]'.format(self.as_string(span)))
@@ -155,7 +164,7 @@ class BaseParser:
 		for br in tag.find_all('br'):
 			br.replace_with('\n')
 
-	def handle_name(self, name):
+	def _string_as_names(self, name):
 		names = [name]
 		splits = [' or ', ' / ', '\n']
 
@@ -210,50 +219,70 @@ class BaseParser:
 
 		return new_names
 
-	def name_as_list(self, tag):
+	def tag_as_names(self, tag):
 		self.remove_versioning(tag)
-		return self.handle_name(self.as_string(tag))
+		self.remove_headnote(tag)
+		return self._string_as_names(self.as_string(tag))
 
 	def get_desc_and_syntax(self, tag):
 		desc = None
 		syntax = None
 
-		def check_name(tg):
-			return tg.name in (tag.name, 'p', 'pre')
+		def pred(pred_tag):
+			return pred_tag.name in (tag.name, 'pre', 'p')
 
-		def check_tag(sub):
+		def tag_process(current_tag):
 			nonlocal desc, syntax
-			if sub.name == 'p':
-				if sub.get('class') is None and desc is None:
-					desc = self.pretty_desc(sub)
-			elif sub.name == 'pre':
-				if syntax is None:
-					self.handle_optional(sub)
-					self.remove_versioning(sub)
-					syntax = self.as_string(sub)
+
+			if desc is None and current_tag.name == 'p' and current_tag.get('class') is None:
+				desc = self.pretty_desc(current_tag)
+
+			if syntax is None and current_tag.name == 'pre':
+				self.handle_optional(current_tag)
+				self.remove_versioning(current_tag)
+				syntax = self.as_string(current_tag)
+
+			if desc is not None and syntax is not None:
+				return SearchAction.STOP
+			elif current_tag.name == tag.name and current_tag != tag:
+				return SearchAction.LIMIT
 			else:
-				raise DescAndSyntaxFound()
+				return SearchAction.CONTINUE
 
-			if syntax is not None and desc is not None:
-				raise DescAndSyntaxFound()
-
-		try:
-			for sub in tag.find_all(check_name):
-				check_tag(sub)
-
-			for sib in tag.next_siblings:
-				if isinstance(sib, NavigableString):
-					continue
-				check_tag(sib)
-				for sub in sib.find_all(check_name):
-					check_tag(sub)
-		except DescAndSyntaxFound:
-			pass
-
+		self.search(tag, pred, tag_process)
 		return desc, syntax
+
+	def search(self, tag, pred, on_found, max_depth=5):
+		self._search_meta([tag, *list(tag.next_siblings)], pred, on_found, max_depth, 0)
+
+	def _search_meta(self, tags, pred, on_found, max_depth, current_depth):
+		new_tags = list()
+
+		for tag in tags:
+			if isinstance(tag, NavigableString):
+				continue
+
+			for child in tag.children:
+				if isinstance(child, NavigableString):
+					continue
+				new_tags.append(child)
+
+			if pred(tag):
+				result = on_found(tag)
+				if result is SearchAction.CONTINUE:
+					continue
+				if result is SearchAction.LIMIT:
+					break
+				if result == SearchAction.STOP:
+					return
+
+		current_depth += 1
+		if new_tags and current_depth <= max_depth:
+			self._search_meta(new_tags, pred, on_found, max_depth, current_depth)
 
 	def pretty_desc(self, tag):
 		self.remove_versioning(tag)
+		self.remove_headnote(tag)
 		self.convert_brs(tag)
 		md = self.h2m.convert(str(tag))
 
@@ -263,7 +292,7 @@ class BaseParser:
 
 class HeadersParser(BaseParser):
 	def handle(self, id, tag):
-		names = self.name_as_list(tag)
+		names = self.tag_as_names(tag)
 		desc, syntax = self.get_desc_and_syntax(tag)
 
 		self.add(names, '{}#{}'.format(self.page, id), desc=desc, syntax=syntax)
@@ -283,7 +312,7 @@ class VariablesParser(BaseParser):
 			for td in tr.find_all('td'):
 				if first:
 					first = False
-					names = self.name_as_list(td)
+					names = self.tag_as_names(td)
 				else:
 					desc = self.pretty_desc(td)
 
@@ -307,9 +336,10 @@ class MethodListParser(BaseParser):
 
 		for tag in self.bs.find_all('div', id=True):
 			id = tag.get('id')
-			names = self.name_as_list(tag.find('h2'))
+			header = tag.find('h2')
+			names = self.tag_as_names(header)
 
-			desc, syntax = self.get_desc_and_syntax(tag)
+			desc, syntax = self.get_desc_and_syntax(header)
 
 			self.add(names, '{}#{}'.format(self.page, id), desc=desc, syntax=syntax)
 
@@ -322,8 +352,8 @@ class CommandParser(BaseParser):
 		if header is None:
 			return
 
-		names = self.name_as_list(header)
-		desc, syntax = self.get_desc_and_syntax(body)
+		names = self.tag_as_names(header)
+		desc, syntax = self.get_desc_and_syntax(header)
 		self.add(names, self.page, desc=desc, syntax=syntax)
 
 
@@ -359,56 +389,3 @@ class DocsHTML2Markdown(HTML2Markdown):
 		contents = self.get_content(tag)
 
 		self.result.add_and_consume(front + contents + back)
-
-
-class DocsAggregator:
-	def __init__(self):
-		self.names = list()
-		self.entries = list()
-
-	async def get_all(self):
-		for entry in self.entries:
-			yield entry
-
-	def name_check(self, name):
-		name = name.lower()
-
-		if name in self.names:
-			return False
-
-		if name.endswith('()') and name[:-2] in self.names:
-			return False
-
-		return True
-
-	def get_entry_by_page(self, page):
-		for entry in self.entries:
-			if entry['page'] == page:
-				return entry
-		return None
-
-	def add_entry(self, entry):
-		to_remove = list()
-		for idx, name in enumerate(entry['names']):
-			if not self.name_check(name):
-				to_remove.append(idx)
-
-		for idx in reversed(to_remove):
-			entry['names'].pop(idx)
-
-		if not len(entry['names']):
-			return
-
-		for name in entry['names']:
-			self.names.append(name.lower())
-
-		if entry['page'] is None:
-			similar_entry = None
-		else:
-			similar_entry = self.get_entry_by_page(entry['page'])
-
-		if similar_entry is None:
-			self.entries.append(entry)
-		else:
-			for name in filter(lambda name: name not in similar_entry['names'], entry['names']):
-				similar_entry['names'].append(name)

@@ -15,6 +15,62 @@ DOWNLOAD_FILE = f'{EXTRACT_TO}/docs.zip'
 DOWNLOAD_LINK = 'https://github.com/Lexikos/AutoHotkey_L-Docs/archive/master.zip'
 
 
+class DocsAggregator:
+	def __init__(self):
+		self.names = list()
+		self.entries = list()
+
+	async def get_all(self):
+		for entry in self.entries:
+			yield entry
+
+	def name_check(self, name):
+		name = name.lower()
+
+		if name in self.names:
+			return False
+
+		if name.endswith('()') and name[:-2] in self.names:
+			return False
+
+		return True
+
+	def get_entry_by_page(self, page):
+		for entry in self.entries:
+			if entry['page'] == page:
+				return entry
+		return None
+
+	def add_entry(self, entry):
+		if entry.get('desc', None) is None:
+			return
+
+		to_remove = list()
+		for idx, name in enumerate(entry['names']):
+			if not self.name_check(name):
+				to_remove.append(idx)
+
+		for idx in reversed(to_remove):
+			entry['names'].pop(idx)
+
+		if not len(entry['names']):
+			return
+
+		for name in entry['names']:
+			self.names.append(name.lower())
+
+		if entry['page'] is None:
+			similar_entry = None
+		else:
+			similar_entry = self.get_entry_by_page(entry['page'])
+
+		if similar_entry is None:
+			self.entries.append(entry)
+		else:
+			for name in filter(lambda name: name not in similar_entry['names'], entry['names']):
+				similar_entry['names'].append(name)
+
+
 async def parse_docs(on_update, fetch=True):
 	if fetch:
 		await on_update('Downloading...')
@@ -113,7 +169,7 @@ async def parse_docs(on_update, fetch=True):
 				p = bs.find('p') if offs is None else bs.find(True, id=offs)
 				desc = None if p is None else parsers[0].pretty_desc(p)
 
-			entry = dict(names=parsers[0].handle_name(name), page=page, desc=desc)
+			entry = dict(names=parsers[0]._string_as_names(name), page=page, desc=desc)
 			aggregator.add_entry(entry)
 
 	await on_update('List built. Total names: {} Unique entries: {}\n'.format(
