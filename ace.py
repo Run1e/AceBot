@@ -55,7 +55,8 @@ class AceBot(commands.Bot):
 			command_prefix=self.prefix_resolver,
 			owner_id=OWNER_ID,
 			description=DESCRIPTION,
-			help_command=EditedMinimalHelpCommand()
+			help_command=EditedMinimalHelpCommand(),
+			max_messages=20000,
 		)
 
 		self.aiohttp = None

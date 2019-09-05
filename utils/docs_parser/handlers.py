@@ -78,13 +78,48 @@ class BaseParser:
 		if p is None:
 			return
 
-		desc = self.as_string(p)
+		self.add_force(names=names, page=self.page, desc=self.as_string(p))
 
-		self.add_force(names=names, page=self.page, desc=desc)
+	def _pretty_file_name_finish(self, name):
+		name = re.sub(r' +', ' ', name)
+		return name.strip()
 
 	def pretty_file_name(self):
 		file_name = self.page.split('/')
-		return file_name[len(file_name) - 1][:-4]
+		file_name = file_name[len(file_name) - 1][:-4]
+
+		skip_auto_spacing = ('ListView', 'TreeView', 'RegEx', 'AutoIt', 'WinTitle', 'SendMessage')
+
+		replacements = {
+			'_': ' ',
+			'-': ' ',
+		}
+
+		add_space = ('DBGP', 'AutoIt2', 'RegEx', 'SendMessage')
+
+		for old, new in replacements.items():
+			file_name = file_name.replace(old, new)
+
+		for add_spacer in add_space:
+			file_name.replace(add_spacer, add_spacer + ' ')
+
+		for ignore in skip_auto_spacing:
+			if ignore in file_name:
+				return self._pretty_file_name_finish(file_name)
+
+		since_last = 0
+		name = ''
+		for letter in file_name:
+			if letter.isupper():
+				if since_last > 0 and not name.endswith(' '):
+					name += ' '
+				since_last = 0
+			else:
+				since_last += 1
+
+			name += letter
+
+		return self._pretty_file_name_finish(name)
 
 	def as_string(self, tag):
 		content = self._as_string_meta(tag)
