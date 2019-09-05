@@ -228,8 +228,19 @@ class BaseParser:
 		desc = None
 		syntax = None
 
+		stop_on_tag_name = [tag.name]
+		use_on_tag_name = ['pre', 'p']
+
+		if re.fullmatch(HEADER_RE, tag.name):
+			current_h = int(tag.name[-1]) - 1
+			while current_h > 0:
+				stop_on_tag_name.append('h' + str(current_h))
+				current_h -= 1
+
+		all_tag_name = use_on_tag_name + stop_on_tag_name
+
 		def pred(pred_tag):
-			return pred_tag.name in (tag.name, 'pre', 'p')
+			return pred_tag.name in all_tag_name
 
 		def tag_process(current_tag):
 			nonlocal desc, syntax
@@ -244,7 +255,7 @@ class BaseParser:
 
 			if desc is not None and syntax is not None:
 				return SearchAction.STOP
-			elif current_tag.name == tag.name and current_tag != tag:
+			elif current_tag.name in stop_on_tag_name and current_tag != tag:
 				return SearchAction.LIMIT
 			else:
 				return SearchAction.CONTINUE
