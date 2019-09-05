@@ -195,10 +195,10 @@ class Starboard(AceMixin, commands.Cog):
 	async def channel(self, ctx, *, channel: discord.TextChannel = None):
 		'''Set the starboard channel. Remember only the bot should be allowed to send messages in this channel!'''
 
-		gc = await self.config.get_entry(ctx.guild.id)
+		sc = await self.config.get_entry(ctx.guild.id)
 
 		if channel is None:
-			channel_id = gc.channel_id
+			channel_id = sc.channel_id
 			if channel_id is None:
 				raise self.SB_NOT_SET_ERROR
 
@@ -207,7 +207,7 @@ class Starboard(AceMixin, commands.Cog):
 				raise self.SB_NOT_FOUND_ERROR
 
 		else:
-			await gc.update(channel_id=channel.id)
+			await sc.update(channel_id=channel.id)
 
 		await ctx.send(f'Starboard channel set to {channel.mention}')
 
@@ -216,12 +216,12 @@ class Starboard(AceMixin, commands.Cog):
 	async def threshold(self, ctx, *, limit: int = None):
 		'''Set the minimum amount of stars needed for a starred message to remain on the starboard after a week has passed'''
 
-		gc = await self.config.get_entry(ctx.guild.id)
+		sc = await self.config.get_entry(ctx.guild.id)
 
 		if limit is None:
-			limit = gc.threshold
+			limit = sc.threshold
 		else:
-			await gc.update(threshold=limit)
+			await sc.update(threshold=limit)
 
 		await ctx.send(f'Star threshold set to `{limit}`')
 
@@ -454,25 +454,25 @@ class Starboard(AceMixin, commands.Cog):
 			message.guild.id, message.id
 		)
 
-		gc = await self.config.get_entry(message.guild.id)
+		sc = await self.config.get_entry(message.guild.id)
 
-		if gc.channel_id is None:
+		if sc.channel_id is None:
 			raise self.SB_NOT_SET_ERROR
 
-		if gc.locked:
+		if sc.locked:
 			raise self.SB_LOCKED_ERROR
 
-		if datetime.utcnow() - gc.max_age > message.created_at:
+		if datetime.utcnow() - sc.max_age > message.created_at:
 			raise commands.CommandError(
-				'Stars can\'t be added or removed from messages older than {}.'.format(pretty_timedelta(gc.max_age))
+				'Stars can\'t be added or removed from messages older than {}.'.format(pretty_timedelta(sc.max_age))
 			)
 
-		if message.channel.id == gc.channel_id:
+		if message.channel.id == sc.channel_id:
 			star_channel = message.channel
 			star_message = message
 			message = None
 		else:
-			star_channel = message.guild.get_channel(gc.channel_id)
+			star_channel = message.guild.get_channel(sc.channel_id)
 			if star_channel is None:
 				raise self.SB_NOT_FOUND_ERROR
 
@@ -516,8 +516,8 @@ class Starboard(AceMixin, commands.Cog):
 		try:
 			await self._on_star_event_meta(event, message, starrer)
 		except commands.CommandError as exc:
-			gc = await self.config.get_entry(message.guild.id)
-			if channel.id != gc.channel_id:
+			sc = await self.config.get_entry(message.guild.id)
+			if channel.id != sc.channel_id:
 				try:
 					await channel.send(content=starrer.mention, embed=discord.Embed(description=str(exc)), delete_after=15)
 				except discord.HTTPException:

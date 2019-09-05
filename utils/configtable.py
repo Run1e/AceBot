@@ -92,6 +92,7 @@ class ConfigTable:
 
 		self._record_class = record_class
 		self._lock = asyncio.Lock()
+		self._non_existent = set()
 
 	async def insert_record(self, record):
 		entry = self._record_class(self, record)
@@ -113,12 +114,15 @@ class ConfigTable:
 			', '.join('${}'.format(idx + 1) for idx, _ in enumerate(self.primary))
 		)
 
-	async def get_entry(self, *keys):
+	async def get_entry(self, *keys, construct=True):
 		keys = tuple(keys)
 
 		for key in keys:
 			if not isinstance(key, int):
 				raise self.PRIMARY_KEY_TYPE_ERROR
+
+		if not construct and keys in self._non_existent:
+			return None
 
 		get_query = 'SELECT * FROM {} WHERE '.format(self.table) + self.build_predicate()
 
@@ -129,6 +133,12 @@ class ConfigTable:
 			record = await self.bot.db.fetchrow(get_query, *keys)
 
 			if record is None:
+				if not construct:
+					self._non_existent.add(keys)
+					return None
+				elif keys in self._non_existent:
+					self._non_existent.remove(keys)
+
 				await self.bot.db.execute(self._insert_query, *keys)
 				record = await self.bot.db.fetchrow(get_query, *keys)
 

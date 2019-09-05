@@ -242,17 +242,12 @@ class Security(AceMixin, commands.Cog):
 
 		mc = await self.get_config(member.guild.id)
 
-		if await self.db.fetchval('SELECT id FROM muted WHERE guild_id=$1 AND user_id=$2', member.guild.id, member.id):
-			if mc.mute_role is None:
-				await self.log(
-					channel=mc.log_channel, action='MUTE FAILED',
-					reason='New member previously muted but mute role not currently found.',
-					severity=SeverityColors.LOW, member=member
-				)
-			else:
-				await self._do_action(
-					mc, member, SecurityAction.MUTE, reason='Re-muting new member who was previously muted',
-				)
+		if mc.mute_role_id is not None and await self.db.fetchval(
+				'SELECT id FROM muted WHERE guild_id=$1 AND user_id=$2', member.guild.id, member.id
+		):
+			await self._do_action(
+				mc, member, SecurityAction.MUTE, reason='Re-muting new member who was previously muted',
+			)
 
 		if not mc.join_enabled:
 			return
