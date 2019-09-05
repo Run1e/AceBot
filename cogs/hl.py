@@ -45,6 +45,9 @@ class Highlighter(AceMixin, commands.Cog):
 		code = '```{}\n{}\n```'.format(lang, code)
 		code += '*Paste by {} - Click {} to delete.*'.format(ctx.author.mention, DELETE_EMOJI)
 
+		if len(code) > 2000:
+			raise commands.CommandError('Code contents too long to paste.')
+
 		message = await ctx.send(code)
 
 		await self.db.execute(

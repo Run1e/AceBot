@@ -45,8 +45,8 @@ class Result:
 	def feed(self, amount: int):
 		self.credits += amount
 
-	def can_afford(self, *strings):
-		return sum(len(part) for part in strings) <= self.credits
+	def can_afford(self, string):
+		return len(string) <= self.credits
 
 	def ensure_spacing(self, spacing=2):
 		while self.content.endswith('\n' * (spacing + 1)):
@@ -130,18 +130,18 @@ class HTML2Markdown:
 				elif node.name in WRAP:
 					wrap_str = WRAP[node.name]
 					front, back = wrap_str, wrap_str
+
+					# for wrapping, we *must* add the back char(s)
 					back_required = True
 
 				elif node.name in MULTIWRAP:
 					front, back = MULTIWRAP[node.name]
 
-				elif node.name in SPACING:
-					self.result.ensure_spacing(SPACING[node.name])
-					front, back = '', ''
 				else:
 					front, back = '', ''
 
-				if not self.result.can_afford(front, back, ' '):
+				# if we can't add the front + back and at least one char, just raise creditsempty
+				if not self.result.can_afford(front + back + ' '):
 					raise CreditsEmpty()
 
 				self.result.add_and_consume(front)
@@ -159,10 +159,11 @@ class HTML2Markdown:
 
 				if back_required:
 					self.result.add(back)
-				elif node.name in SPACING:
-					self.result.ensure_spacing(SPACING[node.name])
 				else:
-					self.result.add_and_consume(back)
+					if node.name in SPACING:
+						self.result.ensure_spacing(SPACING[node.name])
+					else:
+						self.result.add_and_consume(back)
 
 	def navigable_string(self, node):
 		node = str(node)

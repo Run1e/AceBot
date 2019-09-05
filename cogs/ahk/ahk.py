@@ -59,6 +59,7 @@ class AutoHotkey(AceMixin, commands.Cog):
 
 				content = content.replace('CODE: ', '')
 				content = re.sub('\n\n+', '\n\n', content)
+				content = re.sub('\n```\n+', '\n```\n', content)
 
 				e = discord.Embed(
 					title=title,
@@ -77,8 +78,6 @@ class AutoHotkey(AceMixin, commands.Cog):
 					await self.forum_thread_channel.send(embed=e)
 
 				self.rss_time = time
-
-				return
 
 	@commands.Cog.listener()
 	async def on_command_error(self, ctx, error):
@@ -183,7 +182,7 @@ class AutoHotkey(AceMixin, commands.Cog):
 		except Exception as exc:
 			raise commands.CommandError(str(exc))
 
-		await on_update('Rebuilding database...')
+		await on_update('Building tables...')
 
 		await self.db.execute('TRUNCATE docs_name, docs_syntax, docs_param, docs_entry RESTART IDENTITY')
 
