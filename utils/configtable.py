@@ -94,9 +94,14 @@ class ConfigTable:
 		self._lock = asyncio.Lock()
 		self._non_existent = set()
 
-	async def insert_record(self, record):
+	async def insert_record(self, record, key=None):
+		key = key or self.get_keys_from_record(record)
+
+		if key in self._non_existent:
+			self._non_existent.remove(key)
+
 		entry = self._record_class(self, record)
-		self.entries[self.get_keys_from_record(record)] = entry
+		self.entries[key] = entry
 
 		return entry
 
@@ -142,7 +147,7 @@ class ConfigTable:
 				await self.bot.db.execute(self._insert_query, *keys)
 				record = await self.bot.db.fetchrow(get_query, *keys)
 
-			return await self.insert_record(record)
+			return await self.insert_record(record, key=keys)
 
 	def has_entry(self, *keys):
 		return tuple(keys) in self.entries
