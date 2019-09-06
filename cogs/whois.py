@@ -18,7 +18,7 @@ class WhoIs(AceMixin, commands.Cog):
 
 	@commands.Cog.listener()
 	async def on_message(self, ctx):
-		if ctx.author.bot:
+		if ctx.author.bot or ctx.guild is None:
 			return
 
 		await self.db.execute(

@@ -424,7 +424,10 @@ class Starboard(AceMixin, commands.Cog):
 				datetime.utcnow(), starrer.id
 			)
 
-			await star_message.add_reaction(STAR_EMOJI)
+			try:
+				await star_message.add_reaction(STAR_EMOJI)
+			except discord.HTTPException:
+				pass
 
 	async def _on_unstar(self, starrer, star_channel, message, star_message, record):
 		if record:
@@ -620,6 +623,9 @@ class Starboard(AceMixin, commands.Cog):
 		return star_channel
 
 	async def update_star_count(self, star_message, stars):
+		if not len(star_message.embeds):
+			return
+
 		embed = star_message.embeds[0]
 		embed.colour = self.star_gradient_colour(stars)
 		await star_message.edit(content=self.get_header(stars), embed=embed)

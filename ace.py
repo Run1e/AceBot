@@ -133,6 +133,9 @@ class AceBot(commands.Bot):
 		return f'https://discordapp.com/oauth2/authorize?&client_id={self.user.id}&scope=bot&permissions={perms}'
 
 	async def prefix_resolver(self, bot, message):
+		if message.guild is None:
+			return DEFAULT_PREFIX
+
 		gc = await self.config.get_entry(message.guild.id)
 		return gc.prefix or DEFAULT_PREFIX
 
