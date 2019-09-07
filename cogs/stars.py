@@ -536,6 +536,11 @@ class Starboard(AceMixin, commands.Cog):
 
 	@commands.Cog.listener()
 	async def on_raw_message_delete(self, payload):
+		sc = await self.config.get_entry(payload.guild_id, construct=False)
+
+		if sc is None or sc.locked:
+			return
+
 		row = await self.db.fetchrow(
 			'SELECT * FROM star_msg WHERE message_id=$1 OR star_message_id=$1',
 			payload.message_id
@@ -573,6 +578,11 @@ class Starboard(AceMixin, commands.Cog):
 
 	@commands.Cog.listener()
 	async def on_raw_bulk_message_delete(self, payload):
+		sc = await self.config.get_entry(payload.guild_id, construct=False)
+
+		if sc is None or sc.locked:
+			return
+
 		sms = await self.db.fetch(
 			'SELECT * FROM star_msg WHERE message_id=ANY($1::bigint[]) OR star_message_id=ANY($1::bigint[])',
 			payload.message_ids

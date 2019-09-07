@@ -201,13 +201,16 @@ class Security(AceMixin, commands.Cog):
 
 	@commands.Cog.listener()
 	async def on_message(self, message):
-		if message.guild is None or message.author.bot:
+		if message.guild is None or message.guild.id not in ALLOWED_GUILDS:
 			return
 
-		if message.guild.id not in ALLOWED_GUILDS:
+		if message.author.bot:
 			return
 
-		mc = await self.get_config(message.guild.id)
+		try:
+			mc = await self.get_config(message.guild.id)
+		except commands.CommandError:
+			return
 
 		if mc.spam_enabled:
 
@@ -238,6 +241,9 @@ class Security(AceMixin, commands.Cog):
 	@commands.Cog.listener()
 	async def on_member_join(self, member):
 		if member.guild.id not in ALLOWED_GUILDS:
+			return
+
+		if member.bot:
 			return
 
 		mc = await self.get_config(member.guild.id)

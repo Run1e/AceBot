@@ -311,11 +311,10 @@ class Roles(AceMixin, commands.Cog):
 
 	@commands.Cog.listener()
 	async def on_raw_reaction_add(self, payload):
+		conf = await self.config.get_entry(payload.guild_id, construct=False)
 
-		if not self.config.has_entry(payload.guild_id):
+		if conf is None:
 			return
-
-		conf = await self.config.get_entry(payload.guild_id)
 
 		if conf.channel_id != payload.channel_id:
 			return

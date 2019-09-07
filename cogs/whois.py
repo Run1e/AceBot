@@ -17,14 +17,14 @@ class WhoIs(AceMixin, commands.Cog):
 		self.nick_cache = dict()
 
 	@commands.Cog.listener()
-	async def on_message(self, ctx):
-		if ctx.author.bot or ctx.guild is None:
+	async def on_message(self, message):
+		if message.guild is None or message.author.bot:
 			return
 
 		await self.db.execute(
 			'INSERT INTO seen (guild_id, user_id, seen) VALUES ($1, $2, $3) ON CONFLICT (guild_id, user_id) '
 			'DO UPDATE SET seen=$3',
-			ctx.guild.id, ctx.author.id, datetime.now()
+			message.guild.id, message.author.id, datetime.now()
 		)
 
 	@commands.Cog.listener()

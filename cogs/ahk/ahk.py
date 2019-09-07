@@ -81,20 +81,15 @@ class AutoHotkey(AceMixin, commands.Cog):
 
 	@commands.Cog.listener()
 	async def on_command_error(self, ctx, error):
-		if not hasattr(ctx, 'guild') or ctx.guild.id not in (AHK_GUILD_ID, 517692823621861407):
-			return
-
-		if not await self.bot.blacklist(ctx):
+		if ctx.guild is None or ctx.guild.id not in (AHK_GUILD_ID, 517692823621861407):
 			return
 
 		# command not found? docs search it. only if message string is not *only* dots though
 		if isinstance(error, commands.CommandNotFound) and len(ctx.message.content) > 3 and not ctx.message.content.startswith('..'):
-			try:
-				await ctx.invoke(self.docs, query=ctx.message.content[1:])
-				ctx.command = self.docs
-				await self.bot.on_command_completion(ctx)
-			except commands.CommandError as exc:
-				await self.bot.on_command_error(ctx=ctx, exc=exc)
+			if not await self.bot.blacklist(ctx):
+				return
+
+			await ctx.send('If you meant to bring up the documentation, please do `.d <query>` instead.')
 
 	async def get_docs(self, query):
 		query = query.lower()
@@ -132,7 +127,7 @@ class AutoHotkey(AceMixin, commands.Cog):
 
 		return docs_id, name
 
-	@commands.command(aliases=['rtfm'])
+	@commands.command(aliases=['d', 'doc', 'rtfm'])
 	@commands.bot_has_permissions(embed_links=True)
 	async def docs(self, ctx, *, query):
 		'''Search the AutoHotkey documentation. Enter multiple queries by separating with commas.'''

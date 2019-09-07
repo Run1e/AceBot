@@ -25,87 +25,127 @@ class Meta(AceMixin, commands.Cog):
 	async def stats(self, ctx, member: discord.Member = None):
 		'''Show bot or user command stats.'''
 
-		def create_list(cmds, members=None):
-			value = ''
-			for index, cmd in enumerate(cmds):
-				value += f'\n{MEDALS[index]} {members[index] if members else cmd[1]} ({cmd[0]} uses)'
+		if member is None:
+			await self._stats_guild(ctx)
+		else:
+			await self._stats_member(ctx, member)
 
-			if not len(value):
-				return 'None so far!'
+	async def _stats_member(self, ctx, member):
+		past_day = datetime.utcnow() - timedelta(days=1)
 
-			return value[1:]
+		first_command = await self.db.fetchval(
+			'SELECT timestamp FROM log WHERE guild_id=$1 AND user_id=$2 LIMIT 1',
+			ctx.guild.id, member.id
+		)
 
-		now = datetime.utcnow() - timedelta(days=1)
+		total_uses = await self.db.fetchval(
+			'SELECT COUNT(id) FROM log WHERE guild_id=$1 AND user_id=$2',
+			ctx.guild.id, member.id
+		)
+
+		commands_alltime = await self.db.fetch(
+			'SELECT COUNT(id), command FROM log WHERE guild_id=$1 AND user_id=$2 GROUP BY command '
+			'ORDER BY COUNT DESC LIMIT 5', ctx.guild.id, member.id
+		)
+
+		commands_today = await self.db.fetch(
+			'SELECT COUNT(id), command FROM log WHERE guild_id=$1 AND user_id=$2 AND timestamp > $3 '
+			'GROUP BY command ORDER BY COUNT DESC LIMIT 5', ctx.guild.id, member.id, past_day
+		)
 
 		e = discord.Embed()
+		e.set_author(name=member.name, icon_url=member.avatar_url)
+		e.add_field(name='Top Commands', value=self._stats_craft_list(commands_alltime))
+		e.add_field(name='Top Commands Today', value=self._stats_craft_list(commands_today))
 
-		if member is None:
-			# guild stats
-
-			e.set_author(name=ctx.guild.name, icon_url=ctx.guild.icon_url)
-
-			total_uses = await self.db.fetchval('SELECT COUNT(id) FROM log WHERE guild_id=$1', ctx.guild.id)
-
-			commands_today = await self.db.fetch(
-				'SELECT COUNT(id), command FROM log WHERE guild_id=$1 AND timestamp > $2 GROUP BY command '
-				'ORDER BY COUNT DESC LIMIT 5', ctx.guild.id, now
-			)
-
-			commands_alltime = await self.db.fetch(
-				'SELECT COUNT(id), command FROM log WHERE guild_id=$1 GROUP BY command ORDER BY COUNT DESC LIMIT 5',
-				ctx.guild.id
-			)
-
-			users_today = await self.db.fetch(
-				'SELECT COUNT(id), user_id FROM log WHERE guild_id=$1 AND timestamp > $2 GROUP BY user_id '
-				'ORDER BY COUNT DESC LIMIT 5', ctx.guild.id, now
-			)
-
-			users_alltime = await self.db.fetch(
-				'SELECT COUNT(id), user_id FROM log WHERE guild_id=$1 GROUP BY user_id '
-				'ORDER BY COUNT DESC LIMIT 5', ctx.guild.id
-			)
-
-			e.add_field(name='Top Commands', value=create_list(commands_alltime))
-			e.add_field(name='Top Commands Today', value=create_list(commands_today))
-
-			e.add_field(
-				name='Top Users',
-				value=create_list(users_alltime, [f'<@{user_id}>' for _, user_id in users_alltime])
-			)
-
-			e.add_field(
-				name='Top Users Today',
-				value=create_list(users_today, [f'<@{user_id}>' for _, user_id in users_today])
-			)
-
-		else:
-			# user stats
-
-			e.set_author(name=member.name, icon_url=member.avatar_url)
-
-			total_uses = await self.db.fetchval(
-				'SELECT COUNT(id) FROM log WHERE guild_id=$1 AND user_id=$2',
-				ctx.guild.id, member.id
-			)
-
-			commands_alltime = await self.db.fetch(
-				'SELECT COUNT(id), command FROM log WHERE guild_id=$1 AND user_id=$2 GROUP BY command '
-				'ORDER BY COUNT DESC LIMIT 5', ctx.guild.id, member.id
-			)
-
-			commands_today = await self.db.fetch(
-				'SELECT COUNT(id), command FROM log WHERE guild_id=$1 AND user_id=$2 AND timestamp > $3 '
-				'GROUP BY command ORDER BY COUNT DESC LIMIT 5', ctx.guild.id, member.id, now
-			)
-
-			e.add_field(name='Top Commands', value=create_list(commands_alltime))
-			e.add_field(name='Top Commands Today', value=create_list(commands_today))
-
-		e.description = f'{total_uses} total commands issued.'
-		e.set_footer(text='Tracking commands since 2018/11/21')
+		self._stats_embed_fill(e, total_uses, first_command)
 
 		await ctx.send(embed=e)
+
+	async def _stats_guild(self, ctx):
+		past_day = datetime.utcnow() - timedelta(days=1)
+		total_uses = await self.db.fetchval('SELECT COUNT(id) FROM log WHERE guild_id=$1', ctx.guild.id)
+
+		first_command = await self.db.fetchval(
+			'SELECT timestamp FROM log WHERE guild_id=$1 LIMIT 1', ctx.guild.id
+		)
+
+		commands_today = await self.db.fetch(
+			'SELECT COUNT(id), command FROM log WHERE guild_id=$1 AND timestamp > $2 GROUP BY command '
+			'ORDER BY COUNT DESC LIMIT 5', ctx.guild.id, past_day
+		)
+
+		commands_alltime = await self.db.fetch(
+			'SELECT COUNT(id), command FROM log WHERE guild_id=$1 GROUP BY command ORDER BY COUNT DESC LIMIT 5',
+			ctx.guild.id
+		)
+
+		users_today = await self.db.fetch(
+			'SELECT COUNT(id), user_id FROM log WHERE guild_id=$1 AND timestamp > $2 GROUP BY user_id '
+			'ORDER BY COUNT DESC LIMIT 5', ctx.guild.id, past_day
+		)
+
+		users_alltime = await self.db.fetch(
+			'SELECT COUNT(id), user_id FROM log WHERE guild_id=$1 GROUP BY user_id '
+			'ORDER BY COUNT DESC LIMIT 5', ctx.guild.id
+		)
+
+		e = discord.Embed()
+		e.set_author(name=ctx.guild.name, icon_url=ctx.guild.icon_url)
+		e.add_field(name='Top Commands', value=self._stats_craft_list(commands_alltime))
+		e.add_field(name='Top Commands Today', value=self._stats_craft_list(commands_today))
+
+		e.add_field(
+			name='Top Users',
+			value=self._stats_craft_list(users_alltime, [f'<@{user_id}>' for _, user_id in users_alltime])
+		)
+
+		e.add_field(
+			name='Top Users Today',
+			value=self._stats_craft_list(users_today, [f'<@{user_id}>' for _, user_id in users_today])
+		)
+
+		self._stats_embed_fill(e, total_uses, first_command)
+
+		await ctx.send(embed=e)
+
+	def _stats_embed_fill(self, e, total_uses, first_command):
+		e.description = f'{total_uses} total commands issued.'
+		if first_command is not None:
+			e.timestamp = first_command
+			e.set_footer(text='First command invoked')
+
+	def _stats_craft_list(self, cmds, members=None):
+		value = ''
+		for index, cmd in enumerate(cmds):
+			value += f'\n{MEDALS[index]} {members[index] if members else cmd[1]} ({cmd[0]} uses)'
+
+		if not len(value):
+			return 'None so far!'
+
+		return value[1:]
+
+	@commands.command()
+	async def about(self, ctx, command_name: str = None):
+		'''See the aliases for a given command.'''
+
+		if command_name is None:
+			await self._about_bot(ctx)
+		else:
+			cmd = self.bot.get_command(command_name)
+			if cmd is None:
+				raise commands.CommandError('No command with that name found.')
+			await self._about_command(ctx, cmd)
+
+	async def _about_bot(self, ctx):
+		e = discord.Embed()
+
+		e.set_author(name=self.bot.user.name, icon_url=self.bot.user.avatar_url)
+
+		await ctx.send(embed=e)
+
+	async def _about_command(self, ctx, command):
+		raise commands.CommandError('Not implemented yet.')
 
 	@commands.command(aliases=['fb'])
 	@commands.cooldown(rate=1, per=60.0, type=commands.BucketType.user)
@@ -119,12 +159,12 @@ class Meta(AceMixin, commands.Cog):
 		e.add_field(name='Guild', value=f'{ctx.guild.name} ({ctx.guild.id})')
 		e.set_footer(text=f'Author ID: {ctx.author.id}')
 
-		dest = self.bot.get_channel(FEEDBK_CHANNEL)
+		channel = self.bot.get_channel(FEEDBK_CHANNEL)
 
-		if dest is None:
+		if channel is None:
 			raise commands.CommandError('Feedback not sent. Feedback channel was not found, or not set up.')
 
-		await dest.send(embed=e)
+		await channel.send(embed=e)
 		await ctx.send('Feedback sent. Thanks for helping improve the bot!')
 
 	@commands.command(aliases=['join'])
@@ -136,7 +176,7 @@ class Meta(AceMixin, commands.Cog):
 	@commands.command()
 	async def support(self, ctx):
 		'''Get link to support server.'''
-		await ctx.send(self.bot._support_link)
+		await ctx.send(self.bot.support_link)
 
 	@commands.command(aliases=['source'])
 	async def code(self, ctx, *, command: str = None):

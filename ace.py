@@ -44,10 +44,10 @@ self_deleted = list()
 
 
 class AceBot(commands.Bot):
-	_support_link = 'https://discord.gg/X7abzRe'
+	support_link = 'https://discord.gg/X7abzRe'
 
 	def __init__(self):
-		set_bot(self)  # fuckin hack fam
+		set_bot(self)
 
 		log.info('Starting...')
 

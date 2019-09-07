@@ -38,7 +38,7 @@ class HelpPager(Pager):
 		e.add_field(name='<argument>', value='the argument is required.', inline=False)
 		e.add_field(name='[argument]', value='the argument is optional.\n\u200b', inline=False)
 
-		e.add_field(name='Support Server', value='Join the support server!\n' + self.bot._support_link)
+		e.add_field(name='Support Server', value='Join the support server!\n' + self.bot.support_link)
 
 
 class PaginatedHelpCommand(commands.HelpCommand):

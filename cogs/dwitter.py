@@ -28,7 +28,7 @@ class Dwitter(AceMixin, commands.Cog):
 		if message.content.startswith(await self.bot.prefix_resolver(self, message)):
 			return
 
-		short = OrderedDict.fromkeys(re.findall('.?(d/(\d*)).?', message.content))
+		short = OrderedDict.fromkeys(re.findall(r'.?(d/(\d*)).?', message.content))
 
 		if not len(short):
 			return
