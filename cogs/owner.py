@@ -112,6 +112,7 @@ class Owner(AceMixin, commands.Cog):
 		po(ctx)
 
 	@commands.command()
+	@commands.bot_has_permissions(embed_links=True)
 	async def get(self, ctx, *, query: commands.clean_content):
 		'''Run a meta-python query.'''
 
@@ -160,6 +161,7 @@ class Owner(AceMixin, commands.Cog):
 			await ctx.send('```' + table + '```')
 
 	@commands.command(name='reload', aliases=['rl'])
+	@commands.bot_has_permissions(add_reactions=True)
 	async def _reload(self, ctx, *, module: str):
 		'''Reloads a module.'''
 
@@ -219,12 +221,14 @@ class Owner(AceMixin, commands.Cog):
 				raise commands.CommandError('Query timed out.')
 
 	@commands.command()
+	@commands.bot_has_permissions(embed_links=True)
 	async def gh(self, ctx, *, query: str):
 		'''Google search for GitHub pages.'''
 
 		await ctx.invoke(self.google, query='site:github.com ' + query)
 
 	@commands.command()
+	@commands.bot_has_permissions(embed_links=True)
 	async def f(self, ctx, *, query: str):
 		'''Google search for AutoHotkey pages.'''
 
@@ -266,6 +270,7 @@ class Owner(AceMixin, commands.Cog):
 		await user.send(content)
 
 	@commands.command(hidden=True)
+	@commands.bot_has_permissions(manage_messages=True)
 	async def say(self, ctx, channel: discord.TextChannel, *, content: str):
 		'''Send a message in a channel.'''
 

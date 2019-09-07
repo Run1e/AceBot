@@ -22,6 +22,7 @@ class Meta(AceMixin, commands.Cog):
 	'''Commands about the bot itself.'''
 
 	@commands.command()
+	@commands.bot_has_permissions(embed_links=True)
 	async def stats(self, ctx, member: discord.Member = None):
 		'''Show bot or user command stats.'''
 
@@ -126,6 +127,7 @@ class Meta(AceMixin, commands.Cog):
 		return value[1:]
 
 	@commands.command()
+	@commands.bot_has_permissions(embed_links=True)
 	async def about(self, ctx, command_name: str = None):
 		'''See the aliases for a given command.'''
 
@@ -176,6 +178,7 @@ class Meta(AceMixin, commands.Cog):
 	@commands.command()
 	async def support(self, ctx):
 		'''Get link to support server.'''
+
 		await ctx.send(self.bot.support_link)
 
 	@commands.command(aliases=['source'])

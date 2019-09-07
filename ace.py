@@ -156,17 +156,28 @@ class AceBot(commands.Bot):
 	async def on_command_error(self, ctx, exc):
 		e = discord.Embed()
 
+		async def send_error():
+			try:
+				if ctx.guild.me.permissions_in(ctx.channel).embed_links:
+					await ctx.send(embed=e)
+				else:
+					await ctx.send(
+						e.description if e.title is discord.Embed.Empty else '{}\n{}'.format(e.title, e.description)
+					)
+			except discord.HTTPException:
+				pass
+
 		async def log_and_raise():
+			nonlocal send_error
+
 			e.description = (
 				'An error occured. The error has been saved and will hopefully be fixed. Thanks for using the bot!'
 			)
 
-			try:
-				await ctx.send(embed=e)
-			except discord.HTTPException:
-				pass
+			await send_error()
 
-			present_object = lambda obj: '{} ({})'.format(obj.name, obj.id)
+			def present_object(obj):
+				return '{} ({})'.format(obj.name, obj.id)
 
 			now = datetime.utcnow()
 
@@ -193,13 +204,13 @@ class AceBot(commands.Bot):
 			raise exc
 
 		if isinstance(exc, commands.CommandInvokeError):
-			exc = exc.original
+			if isinstance(exc.original, discord.Forbidden):
+				return  # ignore forbidden errors
 			await log_and_raise()
 
 		if isinstance(exc, (commands.ConversionError, commands.UserInputError)):
-			prefix = await self.prefix_resolver(self, ctx.message)
 			e.title = str(exc)
-			e.description = f'Usage: `{prefix}{ctx.command.qualified_name} {ctx.command.signature}`'
+			e.description = f'Usage: `{ctx.prefix}{ctx.command.qualified_name} {ctx.command.signature}`'
 
 		elif isinstance(exc, commands.DisabledCommand):
 			e.description = 'Sorry, command has been disabled by owner. Try again later!'
@@ -209,8 +220,7 @@ class AceBot(commands.Bot):
 			e.description = f'Try again in {pretty_seconds(exc.retry_after)}.'
 
 		elif isinstance(exc, commands.BotMissingPermissions):
-			e.title = 'Bot is missing permissions to run command:'
-			e.description = ', '.join(perm.replace('_', ' ').title() for perm in exc.missing_perms)
+			e.description = str(exc)
 
 		elif isinstance(exc, (commands.CheckFailure, commands.CommandNotFound)):
 			return # *specifically* do nothing on these
@@ -221,10 +231,7 @@ class AceBot(commands.Bot):
 		elif isinstance(exc, discord.DiscordException):
 			await log_and_raise()
 
-		try:
-			await ctx.send(embed=e)
-		except discord.HTTPException:
-			pass
+		await send_error()
 
 
 # TODO: rely on logging to fetch self-deleted messages instead of monkey-patching?

@@ -104,8 +104,8 @@ class Image(AceMixin, commands.Cog):
 		self.quack_persister = ImagePersister(bot.aiohttp, 'duck')
 
 	@commands.command(aliases=['dog'])
-	@commands.bot_has_permissions(attach_files=True)
 	@commands.cooldown(rate=3, per=10.0, type=commands.BucketType.user)
+	@commands.bot_has_permissions(attach_files=True)
 	async def woof(self, ctx):
 		'''Get a random doggo!'''
 
@@ -133,8 +133,8 @@ class Image(AceMixin, commands.Cog):
 					raise QUERY_ERROR
 
 	@commands.command(aliases=['cat'])
-	@commands.bot_has_permissions(attach_files=True)
 	@commands.cooldown(rate=3, per=10.0, type=commands.BucketType.user)
+	@commands.bot_has_permissions(attach_files=True)
 	async def meow(self, ctx):
 		'''Get a random cat image!'''
 
@@ -170,8 +170,8 @@ class Image(AceMixin, commands.Cog):
 					raise QUERY_ERROR
 
 	@commands.command(aliases=['duck'])
-	@commands.bot_has_permissions(attach_files=True)
 	@commands.cooldown(rate=3, per=10.0, type=commands.BucketType.user)
+	@commands.bot_has_permissions(attach_files=True)
 	async def quack(self, ctx):
 		'''Get a random duck image!'''
 
@@ -202,8 +202,8 @@ class Image(AceMixin, commands.Cog):
 					raise QUERY_ERROR
 
 	@commands.command(aliases=['fox'])
-	@commands.bot_has_permissions(attach_files=True)
 	@commands.cooldown(rate=3, per=10.0, type=commands.BucketType.user)
+	@commands.bot_has_permissions(attach_files=True)
 	async def floof(self, ctx):
 		'''~floooof~'''
 

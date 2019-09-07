@@ -116,8 +116,8 @@ class General(AceMixin, commands.Cog):
 		await ctx.send(embed=e)
 
 	@commands.command(aliases=['w', 'wa'])
-	@commands.bot_has_permissions(embed_links=True)
 	@commands.cooldown(rate=3, per=10.0, type=commands.BucketType.user)
+	@commands.bot_has_permissions(embed_links=True)
 	async def wolfram(self, ctx, *, query):
 		'''Queries wolfram.'''
 
@@ -155,8 +155,8 @@ class General(AceMixin, commands.Cog):
 		await ctx.send(embed=embed)
 
 	@commands.command()
-	@commands.bot_has_permissions(embed_links=True)
 	@commands.cooldown(rate=2, per=5.0, type=commands.BucketType.user)
+	@commands.bot_has_permissions(embed_links=True)
 	async def weather(self, ctx, *, location: str):
 		'''Check the weather at a location.'''
 
@@ -217,6 +217,7 @@ class General(AceMixin, commands.Cog):
 
 	@commands.command()
 	@commands.cooldown(rate=3, per=10.0, type=commands.BucketType.user)
+	@commands.bot_has_permissions(embed_links=True)
 	async def xkcd(self, ctx, *, id: int = None):
 		'''Get a random or specified xkcd comic.'''
 

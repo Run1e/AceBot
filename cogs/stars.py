@@ -101,18 +101,21 @@ class Starboard(AceMixin, commands.Cog):
 			await self.db.execute('DELETE FROM star_msg WHERE id=ANY($1::bigint[])', to_delete)
 
 	@commands.group(name='star', invoke_without_command=True)
+	@commands.bot_has_permissions(embed_links=True, add_reactions=True)
 	async def _star(self, ctx, *, message_id: discord.Message):
 		'''Star a message by ID.'''
 
 		await self._on_star_event_meta(self._on_star, message_id, ctx.author)
 
 	@commands.command()
+	@commands.bot_has_permissions(embed_links=True, add_reactions=True)
 	async def unstar(self, ctx, *, message_id: discord.Message):
 		'''Unstar a message by ID.'''
 
 		await self._on_star_event_meta(self._on_unstar, message_id, ctx.author)
 
 	@_star.command()
+	@commands.bot_has_permissions(embed_links=True)
 	async def show(self, ctx, *, message_id: StarConverter):
 		'''Bring up a starred message by ID.'''
 
@@ -127,6 +130,7 @@ class Starboard(AceMixin, commands.Cog):
 		await ctx.send(content=message.content, embed=message.embeds[0])
 
 	@_star.command()
+	@commands.bot_has_permissions(embed_links=True)
 	async def info(self, ctx, *, message_id: StarConverter):
 		'''Show info about a starred message.'''
 
@@ -157,6 +161,7 @@ class Starboard(AceMixin, commands.Cog):
 		await ctx.send(embed=e)
 
 	@_star.command()
+	@commands.bot_has_permissions(embed_links=True)
 	async def starrers(self, ctx, *, message_id: StarConverter):
 		'''List every starrer of a starred message.'''
 
@@ -180,6 +185,7 @@ class Starboard(AceMixin, commands.Cog):
 		await ctx.send(embed=e)
 
 	@_star.command()
+	@commands.bot_has_permissions(embed_links=True)
 	async def random(self, ctx):
 		'''Show a random starred message.'''
 
@@ -311,6 +317,7 @@ class Starboard(AceMixin, commands.Cog):
 		await ctx.send(', '.join(parts) + '.')
 
 	@_star.command()
+	@commands.bot_has_permissions(manage_messages=True)
 	async def delete(self, ctx, *, message_id: StarConverter):
 		'''Remove a starred message. The author, starrer or any moderator can use this on any given starred message.'''
 
@@ -329,10 +336,6 @@ class Starboard(AceMixin, commands.Cog):
 
 		try:
 			star_message = await star_channel.fetch_message(row.get('star_message_id'))
-		except discord.HTTPException:
-			return
-
-		try:
 			await star_message.delete()
 		except discord.HTTPException:
 			pass

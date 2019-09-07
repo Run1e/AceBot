@@ -74,6 +74,7 @@ class Reminders(AceMixin, commands.Cog):
 			await self.db.execute('DELETE FROM remind WHERE id=$1', id)
 
 	@commands.command()
+	@commands.bot_has_permissions(add_reactions=True)
 	async def remindme(self, ctx, amount: TimeMultConverter, unit: TimeDeltaConverter, *, message=None):
 		'''Create a new reminder.'''
 
@@ -100,6 +101,7 @@ class Reminders(AceMixin, commands.Cog):
 		await ctx.message.add_reaction(SUCCESS_EMOJI)
 
 	@commands.command()
+	@commands.bot_has_permissions(embed_links=True)
 	async def reminders(self, ctx):
 		'''List your reminders in this guild.'''
 

@@ -100,6 +100,7 @@ class WhoIs(AceMixin, commands.Cog):
 		await ctx.send(embed=e)
 
 	@commands.command()
+	@commands.bot_has_permissions(embed_links=True)
 	async def seen(self, ctx, member: discord.Member):
 		'''Check when a member last sent a message.'''
 
@@ -127,6 +128,7 @@ class WhoIs(AceMixin, commands.Cog):
 		await ctx.send(embed=e)
 
 	@commands.command()
+	@commands.bot_has_permissions(embed_links=True)
 	async def nicks(self, ctx, member: discord.Member = None):
 		'''Lists all known usernames of a member.'''
 
@@ -134,7 +136,6 @@ class WhoIs(AceMixin, commands.Cog):
 
 		if member.bot:
 			raise commands.CommandError('I\'m not paying attention to bots.')
-
 
 		nicks_data = await self.db.fetch(
 			'SELECT nick, stored_at FROM nick WHERE guild_id=$1 AND user_id=$2',

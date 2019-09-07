@@ -58,6 +58,7 @@ class Trivia(AceMixin, commands.Cog):
 		return await self.bot.is_owner(ctx.author)
 
 	@commands.group(invoke_without_command=True)
+	@commands.bot_has_permissions(embed_links=True)
 	async def trivia(self, ctx, *, difficulty: DifficultyConverter = None):
 		'''Trivia time! Specify a difficulty as argument. Valid difficulties are `easy`, `medium` and `hard`.'''
 
@@ -166,6 +167,7 @@ class Trivia(AceMixin, commands.Cog):
 		await self.db.execute(self._stats_query, ctx.guild.id, ctx.author.id, question_hash, False)
 
 	@trivia.command()
+	@commands.bot_has_permissions(embed_links=True)
 	async def stats(self, ctx, *, member: discord.Member = None):
 		'''Get your own or another members' trivia stats.'''
 

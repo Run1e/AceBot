@@ -25,13 +25,14 @@ class Highlighter(AceMixin, commands.Cog):
 	'''Create highlighted code-boxes with one command.'''
 
 	@commands.command(aliases=['h1'])
+	@commands.bot_has_permissions(add_reactions=True)
 	async def hl(self, ctx, *, code):
 		'''Highlight some code.'''
 
 		await ctx.message.delete()
 
 		# include spaces/tabs at the beginning
-		code = ctx.message.content[ctx.message.content.find(' ') + 1:]
+		code = ctx.message.content[len(ctx.prefix) + 3:]
 
 		# don't allow three backticks in a row, alternative is to throw error upon this case
 		code = code.replace('```', '`\u200b``')
@@ -81,6 +82,7 @@ class Highlighter(AceMixin, commands.Cog):
 		await message.delete()
 
 	@commands.command()
+	@commands.bot_has_permissions(embed_links=True)
 	async def lang(self, ctx, *, language: LangConverter = None):
 		'''Set your preferred highlighting language in this server.'''
 

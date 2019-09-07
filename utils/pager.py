@@ -1,7 +1,10 @@
-import discord, asyncio
+import discord
+import asyncio
+
+from discord.ext import commands
 from math import ceil
 
-REQUIRED_PERMS = ('send_messages', 'add_reactions', 'manage_messages', 'embed_links')
+STATIC_PERMS = ('add_reactions', 'manage_messages')
 
 FIRST_EMOJI = '\N{BLACK LEFT-POINTING DOUBLE TRIANGLE WITH VERTICAL BAR}'
 NEXT_EMOJI = '\N{BLACK RIGHT-POINTING DOUBLE TRIANGLE}'
@@ -32,7 +35,7 @@ class Pager:
 		# overrides to a static view if missing perms!
 		perms = ctx.guild.me.permissions_in(ctx.channel)
 
-		for perm in REQUIRED_PERMS:
+		for perm in STATIC_PERMS:
 			if not getattr(perms, perm):
 				self.missing_perms.append(perm.replace('_', ' ').title())
 				self.static = True

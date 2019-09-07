@@ -78,6 +78,7 @@ class Roles(AceMixin, commands.Cog):
 		pass
 
 	@roles.command()
+	@commands.bot_has_permissions(add_reactions=True, embed_links=True)
 	async def spawn(self, ctx):
 		'''Spawns the role selector. Deletes previous role selector instance.'''
 
@@ -150,7 +151,7 @@ class Roles(AceMixin, commands.Cog):
 			raise commands.CommandError('Moderator/mute role can\'t be added to the roles selector.')
 
 		try:
-			id = await self.db.fetchval(
+			_id = await self.db.fetchval(
 				'INSERT INTO role_entry (role_id, emoji, name, description) VALUES ($1, $2, $3, $4) RETURNING id',
 				role.id, str(emoji), name, description
 			)
@@ -159,7 +160,7 @@ class Roles(AceMixin, commands.Cog):
 
 		conf = await self.config.get_entry(ctx.guild.id)
 
-		conf.roles.append(id)
+		conf.roles.append(_id)
 		conf._set_dirty('roles')
 		await conf.update()
 
@@ -208,12 +209,12 @@ class Roles(AceMixin, commands.Cog):
 			)
 
 		conf = await self.config.get_entry(ctx.guild.id)
-		role_db_id = await self.db.fetchval('SELECT id FROM role_entry WHERE role_id=$1', role)
+		_id = await self.db.fetchval('SELECT id FROM role_entry WHERE role_id=$1', role)
 
-		if role_db_id is None or role_db_id not in conf.roles:
+		if _id is None or _id not in conf.roles:
 			raise commands.CommandError('Role with id {} is not set up in the role selector yet.'.format(role))
 
-		await self.db.execute('UPDATE role_entry SET {}=$1 WHERE id=$2'.format(field), new_value, role_db_id)
+		await self.db.execute('UPDATE role_entry SET {}=$1 WHERE id=$2'.format(field), new_value, _id)
 		await ctx.send('Value updated. Respawn role selector for updated version.')
 
 	@roles.command()
@@ -278,6 +279,7 @@ class Roles(AceMixin, commands.Cog):
 		await conf.update(roles=ids)
 
 	@roles.command()
+	@commands.bot_has_permissions(embed_links=True)
 	async def print(self, ctx):
 		'''Print information about the roles currently in the Role Selector.'''
 
@@ -303,6 +305,7 @@ class Roles(AceMixin, commands.Cog):
 		await ctx.send(embed=e)
 
 	@roles.command(name='list', aliases=['all'])
+	@commands.bot_has_permissions(embed_links=True)
 	async def _list(self, ctx):
 		'''List all roles in this server.'''
 

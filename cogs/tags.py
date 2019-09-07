@@ -186,6 +186,7 @@ class Tags(AceMixin, commands.Cog):
 		await ctx.send(f"Tag \'{record.get('name')}\' deleted.")
 
 	@tag.command(name='list', aliases=['all', 'browse'])
+	@commands.bot_has_permissions(embed_links=True)
 	async def _list(self, ctx, *, member: discord.Member = None):
 		'''List all server tags, or a members tags.'''
 
@@ -247,6 +248,7 @@ class Tags(AceMixin, commands.Cog):
 			await ctx.send(f"Alias for \'{record.get('name')}\' set to \'{alias}\'")
 
 	@tag.command(aliases=['stats'])
+	@commands.bot_has_permissions(embed_links=True)
 	async def info(self, ctx, *, tag_name: TagViewConverter):
 		'''See stats about a tag.'''
 
@@ -310,6 +312,7 @@ class Tags(AceMixin, commands.Cog):
 			raise commands.CommandError('Unknown error occured.')
 
 	@tag.command()
+	@commands.bot_has_permissions(embed_links=True)
 	async def search(self, ctx, *, query: str):
 		'''Search for a tag.'''
 
@@ -326,6 +329,7 @@ class Tags(AceMixin, commands.Cog):
 		await ctx.send(embed=discord.Embed(description=tag_list))
 
 	@commands.command()
+	@commands.bot_has_permissions(embed_links=True)
 	async def tags(self, ctx, member: discord.Member = None):
 		'''View your or someone elses tags.'''
 
