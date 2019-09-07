@@ -81,15 +81,17 @@ class AutoHotkey(AceMixin, commands.Cog):
 
 	@commands.Cog.listener()
 	async def on_command_error(self, ctx, error):
-		if ctx.guild is None or ctx.guild.id not in (AHK_GUILD_ID, 517692823621861407):
+		if not hasattr(ctx, 'guild') or ctx.guild.id not in (AHK_GUILD_ID, 517692823621861407):
 			return
 
 		# command not found? docs search it. only if message string is not *only* dots though
 		if isinstance(error, commands.CommandNotFound) and len(ctx.message.content) > 3 and not ctx.message.content.startswith('..'):
-			if not await self.bot.blacklist(ctx):
-				return
-
-			await ctx.send('If you meant to bring up the documentation, please do `.d <query>` instead.')
+			try:
+				await ctx.invoke(self.docs, query=ctx.message.content[1:])
+				ctx.command = self.docs
+				await self.bot.on_command_completion(ctx)
+			except commands.CommandError as exc:
+				await self.bot.on_command_error(ctx=ctx, exc=exc)
 
 	async def get_docs(self, query):
 		query = query.lower()
