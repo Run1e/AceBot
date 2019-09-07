@@ -89,7 +89,7 @@ class AutoHotkey(AceMixin, commands.Cog):
 			if not await self.bot.blacklist(ctx):
 				return
 
-			await ctx.send('If you meant to bring up the documentation, please do `.d <query>` instead.')
+			await ctx.send('If you meant to bring up the docs, please do `.d <query>` instead.')
 
 	async def get_docs(self, query):
 		query = query.lower()
