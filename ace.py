@@ -14,7 +14,8 @@ from datetime import datetime
 from config import *
 from cogs.help import PaginatedHelpCommand, EditedMinimalHelpCommand
 from cogs.ahk.ids import AHK_GUILD_ID, MEMBER_ROLE_ID
-from utils.time import pretty_seconds, pretty_datetime
+from utils.time import pretty_seconds
+from utils.string_helpers import repr_ctx
 from utils.configtable import ConfigTable, GuildConfigRecord
 from utils.checks import set_bot
 
@@ -176,13 +177,8 @@ class AceBot(commands.Bot):
 
 			await send_error()
 
-			def present_object(obj):
-				return '{} ({})'.format(obj.name, obj.id)
-
-			now = datetime.utcnow()
-
-			timestamp = str(now).split('.')[0].replace(' ', '_').replace(':', '')
-			filename = str(ctx.message.id) + '_' + timestamp
+			timestamp = str(datetime.utcnow()).split('.')[0].replace(' ', '_').replace(':', '')
+			filename = str(ctx.message.id) + '_' + timestamp + '.error'
 
 			try:
 				raise exc
@@ -190,15 +186,13 @@ class AceBot(commands.Bot):
 				tb = traceback.format_exc()
 
 			content = (
-				'TIME: {}\nGUILD: {}\nCHANNEL: #{}\nAUTHOR: {}\nMESSAGE ID: {}\n\nMESSAGE CONTENT:\n{}\n\n'
-				'COMMAND: {}\nARGS: {}\nKWARGS: {}\n\nTRACEBACK:\n{}'
+				'{}\n\nMESSAGE CONTENT:\n{}\n\nCOMMAND: {}\nARGS: {}\nKWARGS: {}\n\nTRACEBACK:\n{}'
 			).format(
-				pretty_datetime(now), present_object(ctx.guild), present_object(ctx.channel),
-				present_object(ctx.author), str(ctx.message.id), ctx.message.content, ctx.command.qualified_name,
+				repr_ctx(ctx), ctx.message.content, ctx.command.qualified_name,
 				saferepr(ctx.args[2:]), saferepr(ctx.kwargs), tb
 			)
 
-			with open('exc/{}.error'.format(filename), 'w', encoding='utf-8-sig') as f:
+			with open('exc/{}'.format(filename), 'w', encoding='utf-8-sig') as f:
 				f.write(content)
 
 			raise exc
@@ -259,7 +253,7 @@ discord.Embed = Embed
 if __name__ == '__main__':
 
 	# create additional folders
-	for path in ('data', 'logs', 'exc'):
+	for path in ('data', 'logs', 'exc', 'feedback'):
 		if not os.path.exists(path):
 			os.makedirs(path)
 

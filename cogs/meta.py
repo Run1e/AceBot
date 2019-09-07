@@ -4,10 +4,9 @@ import inspect
 from discord.ext import commands
 from datetime import datetime, timedelta
 
-from config import FEEDBK_CHANNEL
-
 from cogs.mixins import AceMixin
 from utils.time import pretty_timedelta
+from utils.string_helpers import repr_ctx
 
 MEDALS = (
 	'\N{FIRST PLACE MEDAL}',
@@ -154,19 +153,14 @@ class Meta(AceMixin, commands.Cog):
 	async def feedback(self, ctx, *, feedback: str):
 		'''Give me some feedback about the bot!'''
 
-		e = discord.Embed(title='Feedback', description=feedback)
+		timestamp = str(datetime.utcnow()).split('.')[0].replace(' ', '_').replace(':', '')
+		filename = str(ctx.message.id) + '_' + timestamp + '.feedback'
 
-		e.set_author(name=ctx.author.name, icon_url=ctx.author.avatar_url)
+		content = '{}\n\n{}'.format(repr_ctx(ctx), feedback)
 
-		e.add_field(name='Guild', value=f'{ctx.guild.name} ({ctx.guild.id})')
-		e.set_footer(text=f'Author ID: {ctx.author.id}')
+		with open('feedback/{}'.format(filename), 'w', encoding='utf-8-sig') as f:
+			f.write(content)
 
-		channel = self.bot.get_channel(FEEDBK_CHANNEL)
-
-		if channel is None:
-			raise commands.CommandError('Feedback not sent. Feedback channel was not found, or not set up.')
-
-		await channel.send(embed=e)
 		await ctx.send('Feedback sent. Thanks for helping improve the bot!')
 
 	@commands.command(aliases=['join'])

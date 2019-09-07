@@ -1,3 +1,7 @@
+from datetime import datetime
+
+from utils.time import pretty_datetime
+
 
 def shorten(text, max_char=2000):
 	'''Shortens text to fit within max_chars and max_newline.'''
@@ -28,3 +32,14 @@ def craft_welcome(member, string):
 		string = string.replace('{' + key + '}', str(val))
 
 	return string
+
+
+def present_object(obj):
+	return '{} ({})'.format(obj.name, obj.id)
+
+
+def repr_ctx(ctx):
+	return 'TIME: {}\nGUILD: {}\nCHANNEL: #{}\nAUTHOR: {}\nMESSAGE ID: {}'.format(
+		pretty_datetime(datetime.utcnow()), present_object(ctx.guild), present_object(ctx.channel),
+		present_object(ctx.author), str(ctx.message.id)
+	)
