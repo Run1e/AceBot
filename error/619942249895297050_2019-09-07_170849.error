@@ -1,0 +1,42 @@
+﻿TIME: 07. Sep 2019 17:08
+GUILD: AceBot Testing (517692823621861407)
+CHANNEL: #testing (612323195353169935)
+AUTHOR: RUNIE 🔥 (265644569784221696)
+MESSAGE ID: 619942249895297050
+
+MESSAGE CONTENT:
+.test
+
+COMMAND: test
+ARGS: []
+KWARGS: {}
+
+TRACEBACK:
+Traceback (most recent call last):
+  File "D:\Documents\Python\AceBot\venv\lib\site-packages\discord\ext\commands\core.py", line 79, in wrapped
+    ret = await coro(*args, **kwargs)
+  File "D:\Documents\Python\AceBot\cogs\owner.py", line 112, in test
+    po(ctx)
+  File "D:\Documents\Python\AceBot\cogs\owner.py", line 108, in po
+    print(indent(po(val), start_ind + ind))
+  File "D:\Documents\Python\AceBot\cogs\owner.py", line 108, in po
+    print(indent(po(val), start_ind + ind))
+  File "D:\Documents\Python\AceBot\cogs\owner.py", line 108, in po
+    print(indent(po(val), start_ind + ind))
+  [Previous line repeated 1 more time]
+  File "D:\Documents\Python\AceBot\cogs\owner.py", line 102, in indent
+    return '\n'.join(prefix + line for line in cont.split('\n'))
+AttributeError: 'NoneType' object has no attribute 'split'
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "D:/Documents/Python/AceBot/ace.py", line 192, in log_and_raise
+    raise exc
+  File "D:\Documents\Python\AceBot\venv\lib\site-packages\discord\ext\commands\bot.py", line 863, in invoke
+    await ctx.command.invoke(ctx)
+  File "D:\Documents\Python\AceBot\venv\lib\site-packages\discord\ext\commands\core.py", line 728, in invoke
+    await injected(*ctx.args, **ctx.kwargs)
+  File "D:\Documents\Python\AceBot\venv\lib\site-packages\discord\ext\commands\core.py", line 88, in wrapped
+    raise CommandInvokeError(exc) from exc
+discord.ext.commands.errors.CommandInvokeError: Command raised an exception: AttributeError: 'NoneType' object has no attribute 'split'

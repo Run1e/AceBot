@@ -162,17 +162,25 @@ class AceBot(commands.Bot):
 				if ctx.guild.me.permissions_in(ctx.channel).embed_links:
 					await ctx.send(embed=e)
 				else:
-					await ctx.send(
-						e.description if e.title is discord.Embed.Empty else '{}\n{}'.format(e.title, e.description)
-					)
+					content = ''
+					if isinstance(e.title, str):
+						content += e.title
+					elif isinstance(e.author.name, str):
+						content += e.author.name
+
+					if isinstance(e.description, str) and len(e.description):
+						content += '\n' + e.description
+
+					await ctx.send(content)
 			except discord.HTTPException:
 				pass
 
 		async def log_and_raise():
 			nonlocal send_error
 
+			e.set_author(name='An error occured.', icon_url=self.user.avatar_url)
 			e.description = (
-				'An error occured. The error has been saved and will hopefully be fixed. Thanks for using the bot!'
+				'The error has been saved and will hopefully be fixed. Thanks for using the bot!'
 			)
 
 			await send_error()
@@ -192,7 +200,7 @@ class AceBot(commands.Bot):
 				saferepr(ctx.args[2:]), saferepr(ctx.kwargs), tb
 			)
 
-			with open('exc/{}'.format(filename), 'w', encoding='utf-8-sig') as f:
+			with open('error/{}'.format(filename), 'w', encoding='utf-8-sig') as f:
 				f.write(content)
 
 			raise exc
@@ -202,7 +210,7 @@ class AceBot(commands.Bot):
 				return  # ignore forbidden errors
 			await log_and_raise()
 
-		if isinstance(exc, (commands.ConversionError, commands.UserInputError)):
+		elif isinstance(exc, (commands.ConversionError, commands.UserInputError)):
 			e.title = str(exc)
 			e.description = f'Usage: `{ctx.prefix}{ctx.command.qualified_name} {ctx.command.signature}`'
 
@@ -253,7 +261,7 @@ discord.Embed = Embed
 if __name__ == '__main__':
 
 	# create additional folders
-	for path in ('data', 'logs', 'exc', 'feedback'):
+	for path in ('data', 'logs', 'error', 'feedback'):
 		if not os.path.exists(path):
 			os.makedirs(path)
 
