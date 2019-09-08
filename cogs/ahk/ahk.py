@@ -132,7 +132,7 @@ class AutoHotkey(AceMixin, commands.Cog):
 	async def docs(self, ctx, *, query):
 		'''Search the AutoHotkey documentation. Enter multiple queries by separating with commas.'''
 
-		spl = set(st.strip().lower() for st in query.split(','))
+		spl = set(st.strip().lower() for st in reversed(query.split(',')))
 
 		if len(spl) > 3:
 			raise commands.CommandError('Maximum three different queries.')
