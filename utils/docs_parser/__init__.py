@@ -182,9 +182,4 @@ async def parse_docs(on_update, fetch=True):
 		len(aggregator.entries)
 	))
 
-	log.info('----')
-
-	for entry in aggregator.entries:
-		log.info(entry['names'])
-
 	return aggregator
