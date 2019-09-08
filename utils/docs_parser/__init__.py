@@ -2,6 +2,7 @@ import os
 import json
 import shutil
 import aiohttp
+import logging
 
 from zipfile import ZipFile
 
@@ -13,6 +14,8 @@ DOCS_BASE = f'{EXTRACT_TO}/AutoHotkey_L-Docs-master'
 DOCS_FOLDER = f'{DOCS_BASE}/docs'
 DOWNLOAD_FILE = f'{EXTRACT_TO}/docs.zip'
 DOWNLOAD_LINK = 'https://github.com/Lexikos/AutoHotkey_L-Docs/archive/master.zip'
+
+log = logging.getLogger(__name__)
 
 
 class DocsAggregator:
@@ -136,17 +139,19 @@ async def parse_docs(on_update, fetch=True):
 		VariablesParser('AHKL_Features.htm'),
 	)
 
-	for file in filter(lambda file: file.endswith('.htm'), os.listdir('{}/commands'.format(DOCS_FOLDER))):
-		for entry in CommandParser('commands/{}'.format(file)).run():
-			aggregator.add_entry(entry)
+	for file in sorted(os.listdir('{}/commands'.format(DOCS_FOLDER))):
+		if file.endswith('.htm'):
+			for entry in CommandParser('commands/{}'.format(file)).run():
+				aggregator.add_entry(entry)
 
 	for parser in parsers:
 		for entry in parser.run():
 			aggregator.add_entry(entry)
 
-	for file in filter(lambda file: file.endswith('.htm'), os.listdir('{}/misc'.format(DOCS_FOLDER))):
-		for entry in HeadersParser('misc/{}'.format(file)).run():
-			aggregator.add_entry(entry)
+	for file in sorted(os.listdir('{}/misc'.format(DOCS_FOLDER))):
+		if file.endswith('.htm'):
+			for entry in HeadersParser('misc/{}'.format(file)).run():
+				aggregator.add_entry(entry)
 
 	parsers[0].page = DOCS_URL
 
@@ -176,5 +181,10 @@ async def parse_docs(on_update, fetch=True):
 		sum(len(entry['names']) for entry in aggregator.entries),
 		len(aggregator.entries)
 	))
+
+	log.info('----')
+
+	for entry in aggregator.entries:
+		log.info(entry['names'])
 
 	return aggregator
