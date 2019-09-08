@@ -132,19 +132,19 @@ class AutoHotkey(AceMixin, commands.Cog):
 	async def docs(self, ctx, *, query):
 		'''Search the AutoHotkey documentation. Enter multiple queries by separating with commas.'''
 
-		spl = set(st.strip().lower() for st in reversed(query.split(',')))
+		spl = dict.fromkeys(st.strip().lower() for st in query.split(','))
 
 		if len(spl) > 3:
 			raise commands.CommandError('Maximum three different queries.')
 		elif len(spl) > 1:
-			for subquery in spl:
+			for subquery in spl.keys():
 				try:
 					await ctx.invoke(self.docs, query=subquery)
 				except commands.CommandError:
 					pass
 			return
 
-		docs_id, name = await self.get_docs(spl.pop())
+		docs_id, name = await self.get_docs(spl.popitem()[0])
 
 		e = discord.Embed()
 		e.color = 0x95CD95
