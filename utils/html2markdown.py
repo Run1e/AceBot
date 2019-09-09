@@ -173,10 +173,6 @@ class HTML2Markdown:
 
 	def get_content(self, tag):
 		content = self._get_content_meta(tag)
-
-		if not len(content):
-			return None
-
 		return content.strip()
 
 	def _get_content_meta(self, tag):
