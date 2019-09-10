@@ -17,6 +17,7 @@ from utils.pager import Pager
 from utils.time import pretty_datetime
 from utils.string_helpers import shorten
 from utils.lookup import DiscordLookup
+from config import BOT_ACTIVITY
 from cogs.mixins import AceMixin
 
 
@@ -262,6 +263,10 @@ class Owner(AceMixin, commands.Cog):
 			await ctx.send('User noticed.')
 		else:
 			await ctx.send('User not previously ignored.')
+
+	@commands.command(hidden=True)
+	async def status(self, ctx):
+		await self.bot.change_presence(activity=BOT_ACTIVITY)
 
 	@commands.command(hidden=True)
 	async def pm(self, ctx, user: discord.User, *, content: str):
