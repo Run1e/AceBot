@@ -36,8 +36,13 @@ class Welcome(AceMixin, commands.Cog):
 
 		channel = member.guild.get_channel(entry.channel_id)
 
-		if channel is not None:
+		if channel is None:
+			return
+
+		try:
 			await channel.send(craft_welcome(member, entry.content))
+		except discord.HTTPException:
+			pass
 
 	@commands.group(hidden=True)
 	async def welcome(self, ctx):
