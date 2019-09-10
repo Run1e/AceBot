@@ -137,23 +137,21 @@ class PaginatedHelpCommand(commands.HelpCommand):
 
 		await self.pager.go()
 
-	# pretty hacky solution but afaict I gotta do something like this
 	async def command_not_found(self, string):
-		return 'notfound.' + string
+		return commands.CommandNotFound(string)
 
 	async def send_error_message(self, error):
-		if not error.startswith('notfound.'):
+		if not isinstance(error, commands.CommandNotFound):
 			return
 
-		orig_query = error.split('.')[1]
-		query = orig_query.lower()
+		cmd = str(error)
 
 		for cog in self.context.bot.cogs:
-			if query == cog.lower():
+			if cmd == cog.lower():
 				await self.send_cog_help(self.context.bot.get_cog(cog))
 				return
 
-		await self.context.send('Command \'{}\' not found.'.format(orig_query))
+		await self.context.send('Command \'{}\' not found.'.format(cmd))
 
 
 class EditedMinimalHelpCommand(commands.MinimalHelpCommand):
@@ -171,6 +169,9 @@ class EditedMinimalHelpCommand(commands.MinimalHelpCommand):
 			'NOTE: The custom help command menu did not get sent because the bot is missing '
 			'the following permissions - ' + ', '.join(self.missing_perms)
 		)
+
+	async def send_error_message(self, error):
+		return
 
 
 # rip is just the signature command ripped from the lib, but with alias support removed.
