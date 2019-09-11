@@ -22,6 +22,7 @@ class DocsPagePager(Pager):
 	async def craft_page(self, e, page, entries):
 		e.title = self.header.get('page')
 		e.url = DOCS_FORMAT.format(self.header.get('link'))
+		e.color = 0x95CD95
 
 		e.description = self.header.get('content') + '\n\n' + '\n'.join(
 			'[`{}`]({})'.format(entry.get('fragment'), DOCS_FORMAT.format(entry.get('link'))) for entry in entries
@@ -194,7 +195,7 @@ class AutoHotkey(AceMixin, commands.Cog):
 	async def docslist(self, ctx, *, query):
 		'''Find all approximate matches in the AutoHotkey documentation.'''
 
-		results = await self.get_docs(query, count=7)
+		results = await self.get_docs(query, count=10)
 
 		if not results:
 			raise DOCS_NO_MATCH
@@ -232,6 +233,9 @@ class AutoHotkey(AceMixin, commands.Cog):
 			'SELECT * FROM docs_entry WHERE page=$1 AND fragment IS NOT NULL ORDER BY id',
 			header.get('page')
 		)
+
+		if not records:
+			raise DOCS_NO_MATCH
 
 		p = DocsPagePager(ctx, entries=records, per_page=12)
 		p.header = header

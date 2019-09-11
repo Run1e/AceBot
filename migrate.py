@@ -168,7 +168,7 @@ CREATE TABLE IF NOT EXISTS docs_entry (
 CREATE TABLE IF NOT EXISTS docs_name (
 	id			SERIAL UNIQUE,
 	docs_id		INT REFERENCES docs_entry (id) NOT NULL,
-	name		TEXT NOT NULL
+	name		TEXT UNIQUE NOT NULL
 );
 
 CREATE TABLE IF NOT EXISTS docs_syntax (

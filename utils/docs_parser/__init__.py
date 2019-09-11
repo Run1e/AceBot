@@ -52,15 +52,14 @@ class DocsAggregator:
 		for idx, name in enumerate(entry['names']):
 			if not self.name_check(name):
 				to_remove.append(idx)
+			else:
+				self.names.append(name.lower())
 
 		for idx in reversed(to_remove):
 			entry['names'].pop(idx)
 
 		if not len(entry['names']):
 			return
-
-		for name in entry['names']:
-			self.names.append(name.lower())
 
 		if entry['page'] is None:
 			similar_entry = None
