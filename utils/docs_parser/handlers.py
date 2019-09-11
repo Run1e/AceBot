@@ -49,25 +49,29 @@ class BaseParser:
 	def _set_prefix_and_prepend(self, name):
 		return self.prefix + name + self.postfix
 
-	def add(self, names, page, **kwargs):
+	def add(self, fill_names=None, force_names=None, page=None, desc=None, syntax=None):
+
+		#if page is None:
+		#	raise ValueError('Page is none for names ', fill_names, force_names)
+
+		fill_names = list() if fill_names is None else fill_names
+		force_names = list() if force_names is None else force_names
 
 		# remove unwanted names
-		for name in names:
+		for name in fill_names:
 			if name in self.ignores:
-				names.remove(name)
+				fill_names.remove(name)
 				return
 
-		# if no names left, return
-		if not len(names):
-			return
+		for idx, name in enumerate(fill_names):
+			fill_names[idx] = self._set_prefix_and_prepend(name)
+		for idx, name in enumerate(force_names):
+			force_names[idx] = self._set_prefix_and_prepend(name)
 
-		for idx, name in enumerate(names):
-			names[idx] = self._set_prefix_and_prepend(name)
+		self.add_force(fill_names=fill_names, force_names=force_names, page=page, desc=desc, syntax=syntax)
 
-		self.add_force(names, page, **kwargs)
-
-	def add_force(self, names, page=None, **kwargs):
-		self.entries.append(dict(names=names, page=page, **kwargs))
+	def add_force(self, **kwargs):
+		self.entries.append(dict(**kwargs))
 
 	def run(self):
 		self.go()
@@ -84,7 +88,7 @@ class BaseParser:
 
 		desc, syntax = self.get_desc_and_syntax(header)
 
-		self.add_force(names=names, page=self.page, desc=desc)
+		self.add_force(fill_names=list(), force_names=names, page=self.page, desc=desc)
 
 	def pretty_file_name(self):
 		finish = lambda name: re.sub(r' +', ' ', name).strip()
@@ -306,7 +310,7 @@ class HeadersParser(BaseParser):
 		names = self.tag_as_names(tag)
 		desc, syntax = self.get_desc_and_syntax(tag)
 
-		self.add(names, '{}#{}'.format(self.page, id), desc=desc, syntax=syntax)
+		self.add(fill_names=names, page='{}#{}'.format(self.page, id), desc=desc, syntax=syntax)
 
 	def go(self):
 		self.add_page_entry()
@@ -325,7 +329,8 @@ class CommandParser(HeadersParser):
 
 		names = self.tag_as_names(header)
 		desc, syntax = self.get_desc_and_syntax(header)
-		self.add(names, self.page, desc=desc, syntax=syntax)
+
+		self.add(force_names=names, page=self.page, desc=desc, syntax=syntax)
 
 
 class VariablesParser(BaseParser):
@@ -343,15 +348,15 @@ class VariablesParser(BaseParser):
 			if names is None:
 				continue
 
-			id = tr.get('id')
+			_id = tr.get('id')
 
-			if id is not None:
-				names.append(id)
-				page = '{}#{}'.format(self.page, id)
+			if _id is not None:
+				names.append(_id)
+				page = '{}#{}'.format(self.page, _id)
 			else:
 				page = None
 
-			self.add(names, page, desc=desc)
+			self.add(fill_names=names, page=page, desc=desc)
 
 
 class MethodListParser(BaseParser):
@@ -359,13 +364,13 @@ class MethodListParser(BaseParser):
 		self.add_page_entry()
 
 		for tag in self.bs.find_all('div', id=True):
-			id = tag.get('id')
+			_id = tag.get('id')
 			header = tag.find('h2')
 			names = self.tag_as_names(header)
 
 			desc, syntax = self.get_desc_and_syntax(header)
 
-			self.add(names, '{}#{}'.format(self.page, id), desc=desc, syntax=syntax)
+			self.add(force_names=names, page='{}#{}'.format(self.page, _id), desc=desc, syntax=syntax)
 
 
 class EnumeratorParser(HeadersParser):

@@ -24,9 +24,6 @@ class DocsPagePager(Pager):
 		e.url = DOCS_FORMAT.format(self.header.get('link'))
 		e.color = 0x95CD95
 
-		for entry in entries:
-			print(entry.get('title'))
-
 		e.description = '\n'.join(
 			'[`{}`]({})'.format(
 				entry.get('title'),
@@ -274,7 +271,6 @@ class AutoHotkey(AceMixin, commands.Cog):
 
 		async for entry in agg.get_all():
 			names = entry.pop('names')
-			all_names = entry.pop('all_names')
 			link = entry.pop('page')
 			desc = entry.pop('desc')
 			syntax = entry.pop('syntax', None)
@@ -291,7 +287,7 @@ class AutoHotkey(AceMixin, commands.Cog):
 			docs_id = await self.db.fetchval(
 				'INSERT INTO docs_entry (content, link, page, fragment, title) VALUES ($1, $2, $3, $4, $5) '
 				'RETURNING id',
-				desc, link, page, fragment, all_names[0]
+				desc, link, page, fragment, entry['main']
 			)
 
 			for name in names:

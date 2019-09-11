@@ -20,21 +20,35 @@ log = logging.getLogger(__name__)
 
 class DocsAggregator:
 	def __init__(self):
-		self.names = list()
+		self.force_names = list()
+		self.fill_names = list()
 		self.entries = list()
 
 	async def get_all(self):
 		for entry in self.entries:
 			yield entry
 
-	def name_check(self, name):
-		name = name.lower()
+	def name_check(self, orig_name, force=False):
+		name = orig_name.lower()
 
-		if name in self.names:
+		if name in self.force_names:
 			return False
 
-		if name.endswith('()') and name[:-2] in self.names:
-			return False
+		if name in self.fill_names:
+			if force:
+				self.force_names.append(name)
+				self.fill_names.remove(name)
+
+				for entry in self.entries:
+					for entry_name in entry['names']:
+						if entry_name.lower() == name:
+							entry['names'].remove(entry_name)
+							return True
+
+			else:
+				return False
+
+		self.fill_names.append(name)
 
 		return True
 
@@ -42,23 +56,41 @@ class DocsAggregator:
 		for entry in self.entries:
 			if entry['page'] == page:
 				return entry
+
 		return None
+
+	def treat_name(self, name):
+		if name.endswith('()'):
+			return name[:-2]
+
+		return name
 
 	def add_entry(self, entry):
 		if entry.get('desc', None) is None:
 			return
 
-		to_remove = list()
-		for idx, name in enumerate(entry['names']):
-			if not self.name_check(name):
-				to_remove.append(idx)
-			else:
-				self.names.append(name.lower())
+		names = list()
+		force_names = entry.get('force_names')
+		fill_names = entry.get('fill_names')
+		entry['main'] = force_names[0] if force_names else fill_names[0]
 
-		entry['all_names'] = [*entry['names']]
+		for name in force_names:
+			name = self.treat_name(name)
 
-		for idx in reversed(to_remove):
-			entry['names'].pop(idx)
+			if name in names or not self.name_check(name, force=True):
+				continue
+
+			names.append(name)
+
+		for name in fill_names:
+			name = self.treat_name(name)
+
+			if name in names or not self.name_check(name):
+				continue
+
+			names.append(name)
+
+		entry['names'] = names
 
 		if entry['page'] is None:
 			similar_entry = None
@@ -157,6 +189,7 @@ async def parse_docs(on_update, fetch=True):
 		j = json.loads(f.read()[12:-2])
 		for line in j:
 			name, page, *junk = line
+			name = aggregator.treat_name(name)
 
 			if not aggregator.name_check(name):
 				continue
@@ -172,8 +205,7 @@ async def parse_docs(on_update, fetch=True):
 				p = bs.find('p') if offs is None else bs.find(True, id=offs)
 				desc = None if p is None else parsers[0].pretty_desc(p)
 
-			entry = dict(names=parsers[0]._string_as_names(name), page=page, desc=desc)
-			aggregator.add_entry(entry)
+			aggregator.add_entry(dict(force_names=list(), fill_names=parsers[0]._string_as_names(name), page=page, desc=desc))
 
 	await on_update('List built. Total names: {} Unique entries: {}\n'.format(
 		sum(len(entry['names']) for entry in aggregator.entries),
