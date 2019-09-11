@@ -24,8 +24,14 @@ class DocsPagePager(Pager):
 		e.url = DOCS_FORMAT.format(self.header.get('link'))
 		e.color = 0x95CD95
 
-		e.description = self.header.get('content') + '\n\n' + '\n'.join(
-			'[`{}`]({})'.format(entry.get('fragment'), DOCS_FORMAT.format(entry.get('link'))) for entry in entries
+		for entry in entries:
+			print(entry.get('title'))
+
+		e.description = '\n'.join(
+			'[`{}`]({})'.format(
+				entry.get('title'),
+				DOCS_FORMAT.format(entry.get('link'))
+			) for entry in entries
 		)
 
 
@@ -97,7 +103,7 @@ class AutoHotkey(AceMixin, commands.Cog):
 			return
 
 		# command not found? docs search it. only if message string is not *only* dots though
-		if isinstance(error, commands.CommandNotFound) and len(ctx.message.content) > 3 and not ctx.message.content.startswith('..'):
+		if type(error) is commands.CommandNotFound and len(ctx.message.content) > 3 and not ctx.message.content.startswith('..'):
 			if not await self.bot.blacklist(ctx):
 				return
 
@@ -220,24 +226,33 @@ class AutoHotkey(AceMixin, commands.Cog):
 
 		query = query.lower()
 
-		header = await self.db.fetchrow(
-			'SELECT * FROM docs_entry WHERE fragment IS NULL AND page IS NOT NULL ORDER BY word_similarity($1, page) '
-			'DESC LIMIT 1',
-			query
-		)
+		entry = await self.get_docs(query, count=1)
 
-		if header is None:
+		if not entry:
 			raise DOCS_NO_MATCH
 
+		entry = entry[0]
+
+		subheader = await self.db.fetchrow('SELECT * FROM docs_entry WHERE id=$1', entry.get('docs_id'))
+
+		if subheader.get('fragment') is None:
+			header = subheader
+		else:
+			header = await self.db.fetchrow(
+				'SELECT * FROM docs_entry WHERE page=$1 AND fragment IS NULL', subheader.get('page')
+			)
+
+			if header is None:
+				raise commands.CommandError('Header for this entry not found.')
+
 		records = await self.db.fetch(
-			'SELECT * FROM docs_entry WHERE page=$1 AND fragment IS NOT NULL ORDER BY id',
-			header.get('page')
+			'SELECT * FROM docs_entry WHERE page=$1 AND fragment IS NOT NULL ORDER BY id', header.get('page')
 		)
 
 		if not records:
-			raise DOCS_NO_MATCH
+			raise commands.CommandError('Page has no fragments.')
 
-		p = DocsPagePager(ctx, entries=records, per_page=12)
+		p = DocsPagePager(ctx, entries=records, per_page=16)
 		p.header = header
 
 		await p.go()
@@ -259,6 +274,7 @@ class AutoHotkey(AceMixin, commands.Cog):
 
 		async for entry in agg.get_all():
 			names = entry.pop('names')
+			all_names = entry.pop('all_names')
 			link = entry.pop('page')
 			desc = entry.pop('desc')
 			syntax = entry.pop('syntax', None)
@@ -273,8 +289,9 @@ class AutoHotkey(AceMixin, commands.Cog):
 				fragment = split.pop(0) if split else None
 
 			docs_id = await self.db.fetchval(
-				'INSERT INTO docs_entry (content, link, page, fragment) VALUES ($1, $2, $3, $4) RETURNING id',
-				desc, link, page, fragment
+				'INSERT INTO docs_entry (content, link, page, fragment, title) VALUES ($1, $2, $3, $4, $5) '
+				'RETURNING id',
+				desc, link, page, fragment, all_names[0]
 			)
 
 			for name in names:

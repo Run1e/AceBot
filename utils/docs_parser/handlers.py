@@ -315,6 +315,19 @@ class HeadersParser(BaseParser):
 			self.handle(tag.get('id'), tag)
 
 
+class CommandParser(HeadersParser):
+	def add_page_entry(self):
+		body = self.bs.find('body')
+
+		header = body.find('h1')
+		if header is None:
+			return
+
+		names = self.tag_as_names(header)
+		desc, syntax = self.get_desc_and_syntax(header)
+		self.add(names, self.page, desc=desc, syntax=syntax)
+
+
 class VariablesParser(BaseParser):
 	def go(self):
 		for tr in self.bs.find_all('tr'):
@@ -353,19 +366,6 @@ class MethodListParser(BaseParser):
 			desc, syntax = self.get_desc_and_syntax(header)
 
 			self.add(names, '{}#{}'.format(self.page, id), desc=desc, syntax=syntax)
-
-
-class CommandParser(BaseParser):
-	def go(self):
-		body = self.bs.find('body')
-
-		header = body.find('h1')
-		if header is None:
-			return
-
-		names = self.tag_as_names(header)
-		desc, syntax = self.get_desc_and_syntax(header)
-		self.add(names, self.page, desc=desc, syntax=syntax)
 
 
 class EnumeratorParser(HeadersParser):

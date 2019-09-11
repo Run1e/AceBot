@@ -162,7 +162,8 @@ CREATE TABLE IF NOT EXISTS docs_entry (
 	content		TEXT NULL,
 	link		TEXT UNIQUE,
 	page		TEXT NULL,
-	fragment	TEXT NULL
+	fragment	TEXT NULL,
+	title		TEXT NOT NULL
 );
 
 CREATE TABLE IF NOT EXISTS docs_name (
