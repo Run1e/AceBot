@@ -8,17 +8,28 @@ from discord.ext import commands, tasks
 
 from cogs.ahk.ids import *
 from cogs.mixins import AceMixin
+from utils.pager import Pager
 from utils.docs_parser import parse_docs
 from utils.html2markdown import HTML2Markdown
 
 
 RSS_URL = 'https://www.autohotkey.com/boards/feed'
+DOCS_FORMAT = 'https://autohotkey.com/docs/{}'
+DOCS_NO_MATCH = commands.CommandError('Sorry, couldn\'t find an entry similar to that.')
+
+
+class DocsPagePager(Pager):
+	async def craft_page(self, e, page, entries):
+		e.title = self.header.get('page')
+		e.url = DOCS_FORMAT.format(self.header.get('link'))
+
+		e.description = self.header.get('content') + '\n\n' + '\n'.join(
+			'[`{}`]({})'.format(entry.get('fragment'), DOCS_FORMAT.format(entry.get('link'))) for entry in entries
+		)
 
 
 class AutoHotkey(AceMixin, commands.Cog):
 	'''Commands for the AutoHotkey guild.'''
-
-	DOCS_NO_MATCH = commands.CommandError('Sorry, couldn\'t find an entry similar to that.')
 
 	def __init__(self, bot):
 		super().__init__(bot)
@@ -91,41 +102,47 @@ class AutoHotkey(AceMixin, commands.Cog):
 
 			await ctx.send('If you meant to bring up the docs, please do `.d <query>` instead.')
 
-	async def get_docs(self, query):
+	async def get_docs(self, query, count=1):
 		query = query.lower()
 
-		match = await self.db.fetchrow('SELECT docs_id, name FROM docs_name WHERE LOWER(name)=$1', query)
+		results = list()
+		already_added = set()
+
+		match = await self.db.fetchrow('SELECT * FROM docs_name WHERE LOWER(name)=$1', query)
 
 		if match is not None:
-			return match.get('docs_id'), match.get('name')
+			results.append(match)
+
+			already_added.add(match.get('id'))
+
+			if count == 1:
+				return results
 
 		# get five results from docs_name
 		matches = await self.db.fetch(
-			"SELECT docs_id, name FROM docs_name ORDER BY word_similarity($1, name) DESC LIMIT 8",
-			query
+			'SELECT * FROM docs_name ORDER BY word_similarity($1, name) DESC LIMIT 8', query
 		)
 
 		if not matches:
-			raise self.DOCS_NO_MATCH
+			return results
 
-		result = process.extract(
-			query,
-			[tup.get('name') for tup in matches],
+		fuzzed = process.extract(
+			query=query,
+			choices=[tup.get('name') for tup in matches],
 			scorer=fuzz.ratio,
-			limit=1
+			limit=count - len(results)
 		)
 
-		name, score = result[0]
+		if not fuzzed:
+			return results
 
-		if score < 30:
-			raise self.DOCS_NO_MATCH
+		for res in fuzzed:
+			for match in matches:
+				if res[0] == match.get('name') and match.get('id') not in already_added:
+					results.append(match)
+					already_added.add(match.get('id'))
 
-		for match in matches:
-			if match[1] == name:
-				docs_id = match[0]
-				break
-
-		return docs_id, name
+		return results
 
 	@commands.command(aliases=['d', 'doc', 'rtfm'])
 	@commands.bot_has_permissions(embed_links=True)
@@ -144,20 +161,26 @@ class AutoHotkey(AceMixin, commands.Cog):
 					pass
 			return
 
-		docs_id, name = await self.get_docs(spl.popitem()[0])
+		query = spl.popitem()[0]
 
-		e = discord.Embed()
-		e.color = 0x95CD95
+		result = await self.get_docs(query, count=1)
+
+		if not result:
+			raise DOCS_NO_MATCH
+
+		docs_id, name = result[0].get('docs_id'), result[0].get('name')
 
 		docs = await self.db.fetchrow('SELECT * FROM docs_entry WHERE id=$1', docs_id)
 		syntax = await self.db.fetchrow('SELECT * FROM docs_syntax WHERE docs_id=$1', docs.get('id'))
 
 		page = docs.get('page')
-		if page is not None:
-			e.url = 'https://autohotkey.com/docs/{}'.format(docs.get('page'))
 
-		e.title = name
-		e.description = docs.get('content') or 'No description for this page.'
+		e = discord.Embed(
+			title=name,
+			description=docs.get('content') or 'No description for this page.',
+			color=0x95CD95,
+			url=None if page is None else DOCS_FORMAT.format(docs.get('link'))
+		)
 
 		e.set_footer(text='autohotkey.com', icon_url='https://www.autohotkey.com/favicon.ico')
 
@@ -165,6 +188,55 @@ class AutoHotkey(AceMixin, commands.Cog):
 			e.description += '\n```autoit\n{}```'.format(syntax.get('syntax'))
 
 		await ctx.send(embed=e)
+
+	@commands.command(aliases=['dl'])
+	@commands.bot_has_permissions(embed_links=True)
+	async def docslist(self, ctx, *, query):
+		'''Find all approximate matches in the AutoHotkey documentation.'''
+
+		results = await self.get_docs(query, count=7)
+
+		if not results:
+			raise DOCS_NO_MATCH
+
+		entries = list()
+
+		for res in results:
+			link = await self.db.fetchval('SELECT link FROM docs_entry WHERE id=$1', res.get('docs_id'))
+			entries.append('[`{}`]({})'.format(res.get('name'), DOCS_FORMAT.format(link)))
+
+		e = discord.Embed(
+			description='\n'.join(entries),
+			color=0x95CD95
+		)
+
+		await ctx.send(embed=e)
+
+	@commands.command(aliases=['dp'])
+	@commands.bot_has_permissions(embed_links=True)
+	async def docspage(self, ctx, *, query):
+		'''List entries of an AutoHotkey documentation page.'''
+
+		query = query.lower()
+
+		header = await self.db.fetchrow(
+			'SELECT * FROM docs_entry WHERE fragment IS NULL AND page IS NOT NULL ORDER BY word_similarity($1, page) '
+			'DESC LIMIT 1',
+			query
+		)
+
+		if header is None:
+			raise DOCS_NO_MATCH
+
+		records = await self.db.fetch(
+			'SELECT * FROM docs_entry WHERE page=$1 AND fragment IS NOT NULL ORDER BY id',
+			header.get('page')
+		)
+
+		p = DocsPagePager(ctx, entries=records, per_page=12)
+		p.header = header
+
+		await p.go()
 
 	@commands.command(hidden=True)
 	@commands.is_owner()
@@ -183,13 +255,22 @@ class AutoHotkey(AceMixin, commands.Cog):
 
 		async for entry in agg.get_all():
 			names = entry.pop('names')
-			page = entry.pop('page')
+			link = entry.pop('page')
 			desc = entry.pop('desc')
 			syntax = entry.pop('syntax', None)
 
+			if link is None:
+				page = None
+				fragment = None
+			else:
+				split = link.split('/')
+				split = split[len(split) - 1].split('#')
+				page = split.pop(0)[:-4]
+				fragment = split.pop(0) if split else None
+
 			docs_id = await self.db.fetchval(
-				'INSERT INTO docs_entry (page, content) VALUES ($1, $2) RETURNING id',
-				page, desc
+				'INSERT INTO docs_entry (content, link, page, fragment) VALUES ($1, $2, $3, $4) RETURNING id',
+				desc, link, page, fragment
 			)
 
 			for name in names:

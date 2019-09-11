@@ -160,7 +160,9 @@ CREATE TABLE IF NOT EXISTS log (
 CREATE TABLE IF NOT EXISTS docs_entry (
 	id			SERIAL UNIQUE,
 	content		TEXT NULL,
-	page		TEXT UNIQUE
+	link		TEXT UNIQUE,
+	page		TEXT NULL,
+	fragment	TEXT NULL
 );
 
 CREATE TABLE IF NOT EXISTS docs_name (
