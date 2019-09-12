@@ -42,7 +42,7 @@ class TagCreateConverter(commands.Converter):
 		'top', 'get', 'set', 'put', 'exec'
 	)
 
-	async def convert(self, ctx, tag_name: str):
+	async def convert(self, ctx, tag_name):
 		tag_name = tag_name.lower()
 
 		if len(tag_name) > self._length_max:
@@ -51,8 +51,10 @@ class TagCreateConverter(commands.Converter):
 			raise commands.CommandError(f'Tag names must be at least {self._length_min} characters long.')
 		if tag_name in self._reserved:
 			raise commands.CommandError('Sorry, that tag name is reserved.')
-		if tag_name != discord.utils.escape_markdown(tag_name):
-			raise commands.CommandError('Markdown not allowed in tag names.')
+
+		escape_converter = commands.clean_content(fix_channel_mentions=True, escape_markdown=True)
+		if tag_name != await escape_converter.convert(ctx, tag_name):
+			raise commands.CommandError('Tag name has disallowed formatting in it.')
 
 		exist_id = await ctx.bot.db.fetchval(
 			'SELECT id FROM tag WHERE guild_id=$1 AND (name=$2 OR alias=$2)',
@@ -68,7 +70,7 @@ class TagCreateConverter(commands.Converter):
 class TagEditConverter(commands.Converter):
 	access_error = commands.CommandError('Tag not found or you do not have edit permissions for it.')
 
-	async def convert(self, ctx, tag_name: str):
+	async def convert(self, ctx, tag_name):
 		tag_name = tag_name.lower()
 
 		rec = await ctx.bot.db.fetchrow(
@@ -89,7 +91,7 @@ class TagEditConverter(commands.Converter):
 
 
 class TagViewConverter(commands.Converter):
-	async def convert(self, ctx, tag_name: str):
+	async def convert(self, ctx, tag_name):
 		tag_name = tag_name.lower()
 
 		rec = await ctx.bot.db.fetchrow(
@@ -167,10 +169,10 @@ class Tags(AceMixin, commands.Cog):
 		except KeyError:
 			return
 
-		if len(being_made) < 2:
+		being_made.remove(tag_name)
+
+		if not being_made:
 			self._being_made.pop(guild_id)
-		else:
-			being_made.remove(tag_name)
 
 	@commands.group(invoke_without_command=True)
 	async def tag(self, ctx, *, tag_name: TagViewConverter):
@@ -185,25 +187,25 @@ class Tags(AceMixin, commands.Cog):
 		)
 
 	@tag.command(aliases=['add', 'new'])
-	async def create(self, ctx, tag_name: TagCreateConverter, *, content: str):
+	async def create(self, ctx, tag_name: TagCreateConverter, *, content: commands.clean_content):
 		'''Create a new tag.'''
 
 		await self.db.execute(
 			'INSERT INTO tag (name, guild_id, user_id, created_at, content) VALUES ($1, $2, $3, $4, $5)',
-			tag_name, ctx.guild.id, ctx.author.id, datetime.utcnow(), discord.utils.escape_mentions(content)
+			tag_name, ctx.guild.id, ctx.author.id, datetime.utcnow(), content
 		)
 
 		await ctx.send(f'Tag \'{tag_name}\' created.')
 
 	@tag.command()
-	async def edit(self, ctx, tag_name: TagEditConverter, *, new_content: str):
+	async def edit(self, ctx, tag_name: TagEditConverter, *, new_content: commands.clean_content):
 		'''Edit an existing tag.'''
 
 		tag_name, record = tag_name
 
 		await self.db.execute(
 			'UPDATE tag SET content=$2, edited_at=$3 WHERE id=$1',
-			record.get('id'), discord.utils.escape_mentions(new_content), datetime.utcnow()
+			record.get('id'), new_content, datetime.utcnow()
 		)
 
 		await ctx.send(f"Tag \'{record.get('name')}\' edited.")
@@ -281,7 +283,11 @@ class Tags(AceMixin, commands.Cog):
 
 			if name is None:
 				try:
+					old_message = ctx.message
+					ctx.message = message
 					await TagCreateConverter().convert(ctx, message.content)
+					ctx.message = old_message
+
 				except commands.CommandError as exc:
 					await ctx.send('Sorry! {} {}'.format(str(exc), name_prompt))
 					continue
@@ -297,11 +303,16 @@ class Tags(AceMixin, commands.Cog):
 
 				await ctx.send(
 					'Great! The tag name is `{}`. What would you like the tags content to be?\n'.format(name) +
-					'You can abort the tag creation by sending `{}abort` at any time.'.format(ctx.prefix))
+					'You can abort the tag creation by sending `{}abort` at any time.'.format(ctx.prefix)
+				)
+
 				continue
 
 			if content is None:
-				content = discord.utils.escape_mentions(message.content)
+				old_message = ctx.message
+				ctx.message = message
+				content = await commands.clean_content().convert(ctx, message.content)
+				ctx.message = old_message
 				break
 
 		await self.db.execute(
