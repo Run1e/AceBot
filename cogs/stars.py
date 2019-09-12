@@ -509,7 +509,7 @@ class Starboard(AceMixin, commands.Cog):
 			return
 
 		# run checks
-		fake_ctx = FakeContext(guild=channel.guild, author=starrer)
+		fake_ctx = FakeContext(guild=channel.guild, author=starrer, channel=channel)
 
 		if not await self.bot.blacklist(fake_ctx):
 			return
