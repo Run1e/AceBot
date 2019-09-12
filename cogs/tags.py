@@ -32,6 +32,7 @@ class TagCreateConverter(commands.Converter):
 		'edit', 'raw',
 		'delete', 'remove',
 		'list', 'all', 'browse',
+		'make',
 		'raw',
 		'rename',
 		'alias',
@@ -141,6 +142,36 @@ class TagPager(Pager):
 class Tags(AceMixin, commands.Cog):
 	'''Store and bring up text using tags.'''
 
+	def __init__(self, bot):
+		super().__init__(bot)
+
+		self._being_made = dict()
+
+	def is_being_made(self, guild_id, tag_name):
+		try:
+			being_made = self._being_made[guild_id]
+		except KeyError:
+			return False
+
+		return tag_name in being_made
+
+	def set_being_made(self, guild_id, tag_name):
+		if guild_id not in self._being_made:
+			self._being_made[guild_id] = {tag_name}
+		else:
+			self._being_made[guild_id].add(tag_name)
+
+	def unset_being_made(self, guild_id, tag_name):
+		try:
+			being_made = self._being_made[guild_id]
+		except KeyError:
+			return
+
+		if len(being_made) < 2:
+			self._being_made.pop(guild_id)
+		else:
+			being_made.remove(tag_name)
+
 	@commands.group(invoke_without_command=True)
 	async def tag(self, ctx, *, tag_name: TagViewConverter):
 		'''Retrieve a tags content.'''
@@ -219,10 +250,16 @@ class Tags(AceMixin, commands.Cog):
 		def msg_check(message):
 			return message.channel is ctx.channel and message.author is ctx.author
 
+		def cleanup():
+			if name is not None:
+				self.unset_being_made(ctx.guild.id, name)
+
 		name = None
 		content = None
 
-		await ctx.send('Hi there! What would you like the name of your tag to be?')
+		name_prompt = 'What would you like the name of your tag to be?'
+
+		await ctx.send('Hi there! ' + name_prompt)
 
 		while True:
 			try:
@@ -232,18 +269,35 @@ class Tags(AceMixin, commands.Cog):
 					'The tag make command timed out. Please try again by doing '
 					'`{}tag make`'.format(ctx.prefix)
 				)
+
+				cleanup()
+				return
+
+			if message.content == '{}abort'.format(ctx.prefix):
+				await ctx.send('Tag creation aborted.')
+
+				cleanup()
 				return
 
 			if name is None:
 				try:
 					await TagCreateConverter().convert(ctx, message.content)
 				except commands.CommandError as exc:
-					await ctx.send('Sorry! {} What would you like the contents of your tag to be?'.format(str(exc)))
+					await ctx.send('Sorry! {} {}'.format(str(exc), name_prompt))
 					continue
 
 				name = message.content.lower()
 
-				await ctx.send('Great! The tag name is `{}`. What would you like the tags content to be?'.format(name))
+				if self.is_being_made(ctx.guild.id, name):
+					await ctx.send('Sorry! That tag is currently being created elsewhere. {}'.format(name_prompt))
+					name = None
+					continue
+
+				self.set_being_made(ctx.guild.id, name)
+
+				await ctx.send(
+					'Great! The tag name is `{}`. What would you like the tags content to be?\n'.format(name) +
+					'You can abort the tag creation by sending `{}abort` at any time.'.format(ctx.prefix))
 				continue
 
 			if content is None:
@@ -254,6 +308,8 @@ class Tags(AceMixin, commands.Cog):
 			'INSERT INTO tag (name, guild_id, user_id, created_at, content) VALUES ($1, $2, $3, $4, $5)',
 			name, ctx.guild.id, ctx.author.id, datetime.utcnow(), content
 		)
+
+		cleanup()
 
 		await ctx.send('Tag `{0}` created! Bring up the tag contents by doing `{1}tag {0}`'.format(name, ctx.prefix))
 
