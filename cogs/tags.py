@@ -1,6 +1,7 @@
 import discord
 import logging
 import asyncio
+import asyncpg
 
 from discord.ext import commands
 from datetime import datetime
@@ -174,6 +175,27 @@ class Tags(AceMixin, commands.Cog):
 		if not being_made:
 			self._being_made.pop(guild_id)
 
+	def craft_tag_contents(self, ctx, content):
+		if ctx.message.attachments:
+			content = content or ''
+			content += ('\n' if len(content) else '') + ctx.message.attachments[0].url
+
+		if content is None:
+			raise commands.UserInputError('content is a required argument that is missing.')
+
+		return content
+
+	async def create_tag(self, ctx, tag_name, content):
+		try:
+			await self.db.execute(
+				'INSERT INTO tag (name, guild_id, user_id, created_at, content) VALUES ($1, $2, $3, $4, $5)',
+				tag_name, ctx.guild.id, ctx.author.id, datetime.utcnow(), content
+			)
+		except asyncpg.UniqueViolationError:
+			raise commands.CommandError('Tag already exists.')
+		except Exception:
+			raise commands.CommandError('Failed to create tag for unknown reasons.')
+
 	@commands.group(invoke_without_command=True)
 	async def tag(self, ctx, *, tag_name: TagViewConverter):
 		'''Retrieve a tags content.'''
@@ -187,21 +209,19 @@ class Tags(AceMixin, commands.Cog):
 		)
 
 	@tag.command(aliases=['add', 'new'])
-	async def create(self, ctx, tag_name: TagCreateConverter, *, content: commands.clean_content):
+	async def create(self, ctx, tag_name: TagCreateConverter, *, content: commands.clean_content = None):
 		'''Create a new tag.'''
 
-		await self.db.execute(
-			'INSERT INTO tag (name, guild_id, user_id, created_at, content) VALUES ($1, $2, $3, $4, $5)',
-			tag_name, ctx.guild.id, ctx.author.id, datetime.utcnow(), content
-		)
-
+		await self.create_tag(ctx, tag_name, self.craft_tag_contents(ctx, content))
 		await ctx.send(f'Tag \'{tag_name}\' created.')
 
 	@tag.command()
-	async def edit(self, ctx, tag_name: TagEditConverter, *, new_content: commands.clean_content):
+	async def edit(self, ctx, tag_name: TagEditConverter, *, new_content: commands.clean_content = None):
 		'''Edit an existing tag.'''
 
 		tag_name, record = tag_name
+
+		new_content = self.craft_tag_contents(ctx, new_content)
 
 		await self.db.execute(
 			'UPDATE tag SET content=$2, edited_at=$3 WHERE id=$1',
@@ -249,6 +269,8 @@ class Tags(AceMixin, commands.Cog):
 	async def make(self, ctx):
 		'''Interactively create a tag.'''
 
+		key = (ctx.channel.id, ctx.author.id)
+
 		def msg_check(message):
 			return message.channel is ctx.channel and message.author is ctx.author
 
@@ -256,10 +278,14 @@ class Tags(AceMixin, commands.Cog):
 			if name is not None:
 				self.unset_being_made(ctx.guild.id, name)
 
+			self.bot.make_tag.remove(key)
+
 		name = None
 		content = None
 
 		name_prompt = 'What would you like the name of your tag to be?'
+
+		self.bot.make_tag.add(key)
 
 		await ctx.send('Hi there! ' + name_prompt)
 
@@ -311,15 +337,11 @@ class Tags(AceMixin, commands.Cog):
 			if content is None:
 				old_message = ctx.message
 				ctx.message = message
-				content = await commands.clean_content().convert(ctx, message.content)
+				content = self.craft_tag_contents(ctx, await commands.clean_content().convert(ctx, message.content))
 				ctx.message = old_message
 				break
 
-		await self.db.execute(
-			'INSERT INTO tag (name, guild_id, user_id, created_at, content) VALUES ($1, $2, $3, $4, $5)',
-			name, ctx.guild.id, ctx.author.id, datetime.utcnow(), content
-		)
-
+		await self.create_tag(ctx, name, content)
 		cleanup()
 
 		await ctx.send('Tag `{0}` created! Bring up the tag contents by doing `{1}tag {0}`'.format(name, ctx.prefix))

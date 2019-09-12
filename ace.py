@@ -65,6 +65,7 @@ class AceBot(commands.Bot):
 		self.config = None
 		self.self_deleted = self_deleted
 		self.startup_time = datetime.utcnow()
+		self.make_tag = set()
 
 		# do blacklist check before all commands
 		self.add_check(self.blacklist, call_once=True)
@@ -150,6 +151,9 @@ class AceBot(commands.Bot):
 		# if we're in the ahk guild and the invoker doesn't have the member role, then ONLY
 		# allow the command to be run if the command is 'accept' (for #welcome)
 		if ctx.guild.id == AHK_GUILD_ID and not any(role.id == MEMBER_ROLE_ID for role in ctx.author.roles):
+			return False
+
+		if (ctx.channel.id, ctx.author.id) in self.make_tag:
 			return False
 
 		return True
