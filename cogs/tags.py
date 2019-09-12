@@ -1,5 +1,6 @@
 import discord
 import logging
+import asyncio
 
 from discord.ext import commands
 from datetime import datetime
@@ -210,6 +211,51 @@ class Tags(AceMixin, commands.Cog):
 		p.member = member
 
 		await p.go()
+
+	@tag.command()
+	async def make(self, ctx):
+		'''Interactively create a tag.'''
+
+		def msg_check(message):
+			return message.channel is ctx.channel and message.author is ctx.author
+
+		name = None
+		content = None
+
+		await ctx.send('Hi there! What would you like the name of your tag to be?')
+
+		while True:
+			try:
+				message = await ctx.bot.wait_for('message', check=msg_check, timeout=360.0)
+			except asyncio.TimeoutError:
+				await ctx.send(
+					'The tag make command timed out. Please try again by doing '
+					'`{}tag make`'.format(ctx.prefix)
+				)
+				return
+
+			if name is None:
+				try:
+					await TagCreateConverter().convert(ctx, message.content)
+				except commands.CommandError as exc:
+					await ctx.send('Sorry! {} What would you like the contents of your tag to be?'.format(str(exc)))
+					continue
+
+				name = message.content.lower()
+
+				await ctx.send('Great! The tag name is `{}`. What would you like the tags content to be?'.format(name))
+				continue
+
+			if content is None:
+				content = discord.utils.escape_mentions(message.content)
+				break
+
+		await self.db.execute(
+			'INSERT INTO tag (name, guild_id, user_id, created_at, content) VALUES ($1, $2, $3, $4, $5)',
+			name, ctx.guild.id, ctx.author.id, datetime.utcnow(), content
+		)
+
+		await ctx.send('Tag `{0}` created! Bring up the tag contents by doing `{1}tag {0}`'.format(name, ctx.prefix))
 
 	@tag.command()
 	async def raw(self, ctx, *, tag_name: TagViewConverter):
