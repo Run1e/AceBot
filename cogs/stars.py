@@ -655,8 +655,7 @@ class Starboard(AceMixin, commands.Cog):
 		embed = discord.Embed(description=message.content)
 
 		embed.description += '{}[Click for context!]({})'.format(
-			'\n\n' if len(embed.description) else '',
-			f'https://discordapp.com/channels/{message.guild.id}/{message.channel.id}/{message.id}'
+			'\n\n' if len(embed.description) else '', message.jump_url
 		)
 
 		if message.embeds:
@@ -675,16 +674,6 @@ class Starboard(AceMixin, commands.Cog):
 			name=message.author.display_name,
 			icon_url=message.author.avatar_url_as(format='png'),
 		)
-
-		'''
-		embed.add_field(
-			name='Context',
-			value='[{}]({})'.format(
-				'Click here!',
-				f'https://discordapp.com/channels/{message.guild.id}/{message.channel.id}/{message.id}'
-			)
-		)
-		'''
 
 		embed.set_footer(text=f'ID: {message.id}')
 		embed.timestamp = message.created_at

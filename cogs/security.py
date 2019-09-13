@@ -27,10 +27,6 @@ MENTION_LOCK = asyncio.Lock()
 log = logging.getLogger(__name__)
 
 
-def message_link(message):
-	return f'https://discordapp.com/channels/{message.guild.id}/{message.channel.id}/{message.id}'
-
-
 class PatternConverter(commands.Converter):
 	async def convert(self, ctx, pattern):
 		'''Tests if the pattern is valid.'''
@@ -150,7 +146,7 @@ class Security(AceMixin, commands.Cog):
 		e.set_footer(text='{} - ID: {}'.format(severity.name, member.id))
 
 		if message is not None:
-			e.add_field(name='Context', value='[Here]({})'.format(message_link(message)), inline=False)
+			e.add_field(name='Context', value='[Here]({})'.format(message.jump_url), inline=False)
 
 		await channel.send(embed=e)
 

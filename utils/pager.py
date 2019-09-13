@@ -58,7 +58,10 @@ class Pager:
 				emojis.remove(LAST_EMOJI)
 
 			for emoji in emojis:
-				await msg.add_reaction(emoji)
+				try:
+					await msg.add_reaction(emoji)
+				except discord.HTTPException:
+					pass
 
 		def pred(reaction, user):
 			return reaction.message.id == msg.id and user != self.bot.user
