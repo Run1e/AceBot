@@ -1,5 +1,6 @@
 import discord
 import re
+import html
 
 from bs4 import BeautifulSoup
 from fuzzywuzzy import process, fuzz
@@ -323,8 +324,8 @@ class AutoHotkey(AceMixin, commands.Cog):
 		result = json['results'][0]
 
 		e = discord.Embed(
-			title=result['title'],
-			description=result['description'],
+			title=html.unescape(result['title']),
+			description=html.unescape(result['description']),
 			color=0x95CD95,
 			url=result['url']
 		)
