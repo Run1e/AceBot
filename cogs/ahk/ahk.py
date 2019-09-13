@@ -299,12 +299,47 @@ class AutoHotkey(AceMixin, commands.Cog):
 		await on_update('Done!')
 
 	@commands.command()
+	async def msdn(self, ctx, *, query):
+		'''Search the Microsoft documentation.'''
+
+		url = 'https://docs.microsoft.com/api/search'
+		params = {
+			'filter': "category eq 'Documentation'",
+			'locale': 'en-us',
+			'scoringprofile': 'search_for_en_us_pageview',
+			'search': query,
+			'$top': 1,
+		}
+
+		async with self.bot.aiohttp.get(url, params=params) as resp:
+			if resp.status != 200:
+				raise commands.CommandError('Query failed.')
+
+			json = await resp.json()
+
+		if 'results' not in json or not json['results']:
+			raise commands.CommandError('No results.')
+
+		result = json['results'][0]
+
+		e = discord.Embed(
+			title=result['title'],
+			description=result['description'],
+			color=0x95CD95,
+			url=result['url']
+		)
+
+		e.set_footer(text='docs.microsoft.com', icon_url='https://i.imgur.com/UvkNAEh.png')
+
+		await ctx.send(embed=e)
+
+	@commands.command()
 	async def version(self, ctx):
 		'''Get changelog and download for the latest AutoHotkey_L version.'''
 
 		url = 'https://api.github.com/repos/Lexikos/AutoHotkey_L/releases'
 
-		async with self.bot.aiohttp.request('get', url) as resp:
+		async with self.bot.aiohttp.get(url) as resp:
 			if resp.status != 200:
 				raise commands.CommandError('Query failed.')
 
