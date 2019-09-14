@@ -150,30 +150,39 @@ class Tags(AceMixin, commands.Cog):
 
 		self._being_made = dict()
 
-	def is_being_made(self, guild_id, tag_name):
+	async def bot_check(self, ctx):
 		try:
-			being_made = self._being_made[guild_id]
+			being_made = self._being_made[ctx.guild.id]
+		except KeyError:
+			return True
+
+		return (ctx.channel.id, ctx.author.id) not in being_made
+
+	def tag_is_being_made(self, ctx, tag_name):
+		try:
+			being_made = self._being_made[ctx.guild.id]
 		except KeyError:
 			return False
 
-		return tag_name in being_made
+		return tag_name in being_made.values()
 
-	def set_being_made(self, guild_id, tag_name):
-		if guild_id not in self._being_made:
-			self._being_made[guild_id] = {tag_name}
+	def set_tag_being_made(self, ctx, tag_name):
+		key = (ctx.channel.id, ctx.author.id)
+
+		if ctx.guild.id in self._being_made:
+			self._being_made[ctx.guild.id][key] = tag_name
 		else:
-			self._being_made[guild_id].add(tag_name)
+			self._being_made[ctx.guild.id] = {key: tag_name}
 
-	def unset_being_made(self, guild_id, tag_name):
+	def unset_tag_being_made(self, ctx):
 		try:
-			being_made = self._being_made[guild_id]
+			being_made = self._being_made[ctx.guild.id]
 		except KeyError:
 			return
 
-		being_made.remove(tag_name)
-
+		being_made.pop((ctx.channel.id, ctx.author.id))
 		if not being_made:
-			self._being_made.pop(guild_id)
+			self._being_made.pop(ctx.guild.id)
 
 	def craft_tag_contents(self, ctx, content):
 		if ctx.message.attachments:
@@ -269,23 +278,15 @@ class Tags(AceMixin, commands.Cog):
 	async def make(self, ctx):
 		'''Interactively create a tag.'''
 
-		key = (ctx.channel.id, ctx.author.id)
-
 		def msg_check(message):
 			return message.channel is ctx.channel and message.author is ctx.author
-
-		def cleanup():
-			if name is not None:
-				self.unset_being_made(ctx.guild.id, name)
-
-			self.bot.make_tag.remove(key)
 
 		name = None
 		content = None
 
-		name_prompt = 'What would you like the name of your tag to be?'
+		self.set_tag_being_made(ctx, name)
 
-		self.bot.make_tag.add(key)
+		name_prompt = 'What would you like the name of your tag to be?'
 
 		await ctx.send('Hi there! ' + name_prompt)
 
@@ -298,13 +299,12 @@ class Tags(AceMixin, commands.Cog):
 					'`{}tag make`'.format(ctx.prefix)
 				)
 
-				cleanup()
+				self.unset_tag_being_made(ctx)
 				return
 
 			if message.content == '{}abort'.format(ctx.prefix):
 				await ctx.send('Tag creation aborted.')
-
-				cleanup()
+				self.unset_tag_being_made(ctx)
 				return
 
 			if name is None:
@@ -313,19 +313,18 @@ class Tags(AceMixin, commands.Cog):
 					ctx.message = message
 					await TagCreateConverter().convert(ctx, message.content)
 					ctx.message = old_message
-
 				except commands.CommandError as exc:
 					await ctx.send('Sorry! {} {}'.format(str(exc), name_prompt))
 					continue
 
 				name = message.content.lower()
 
-				if self.is_being_made(ctx.guild.id, name):
+				if self.tag_is_being_made(ctx, name):
 					await ctx.send('Sorry! That tag is currently being created elsewhere. {}'.format(name_prompt))
 					name = None
 					continue
 
-				self.set_being_made(ctx.guild.id, name)
+				self.set_tag_being_made(ctx, name)
 
 				await ctx.send(
 					'Great! The tag name is `{}`. What would you like the tags content to be?\n'.format(name) +
@@ -341,8 +340,8 @@ class Tags(AceMixin, commands.Cog):
 				ctx.message = old_message
 				break
 
+		self.unset_tag_being_made(ctx)
 		await self.create_tag(ctx, name, content)
-		cleanup()
 
 		await ctx.send('Tag `{0}` created! Bring up the tag contents by doing `{1}tag {0}`'.format(name, ctx.prefix))
 

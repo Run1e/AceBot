@@ -10,7 +10,8 @@ steps = dict(
 	day=timedelta(days=1),
 	hour=timedelta(hours=1),
 	minute=timedelta(minutes=1),
-	second=timedelta(seconds=1)
+	second=timedelta(seconds=1),
+	millisecond=timedelta(milliseconds=1)
 )
 
 

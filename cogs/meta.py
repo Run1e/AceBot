@@ -216,6 +216,17 @@ class Meta(AceMixin, commands.Cog):
 	async def hello(self, ctx):
 		await ctx.send(f'Hello {ctx.author.mention}!')
 
+	@commands.command(hidden=True)
+	async def speedtest(self, ctx):
+		'''Check response time.'''
+
+		msg = await ctx.send('Wait...')
+
+		await msg.edit(content='Response: {}.\nGateway: {}'.format(
+			pretty_timedelta(msg.created_at - ctx.message.created_at),
+			pretty_timedelta(timedelta(seconds=self.bot.latency))
+		))
+
 
 def setup(bot):
 	bot.add_cog(Meta(bot))
