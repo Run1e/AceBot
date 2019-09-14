@@ -47,7 +47,7 @@ class WhoIs(AceMixin, commands.Cog):
 		)
 
 		# insert all nicks in (beforenick, afternick) that does not equal to the previously stored nick
-		for nick in filter(lambda nick: nick != last_nick, [before.display_name, after.display_name]):
+		for nick in filter(lambda nick: nick != last_nick, (before.display_name, after.display_name)):
 			await self.db.execute(
 				'INSERT INTO nick (guild_id, user_id, nick, stored_at) VALUES ($1, $2, $3, $4)',
 				before.guild.id, before.id, nick, now

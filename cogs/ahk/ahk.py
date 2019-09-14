@@ -51,9 +51,6 @@ class AutoHotkey(AceMixin, commands.Cog):
 
 		self.rss.start()
 
-	async def bot_check(self, ctx):
-		return not (ctx.guild.id == AHK_GUILD_ID and not any(role.id == MEMBER_ROLE_ID for role in ctx.author.roles))
-
 	def parse_date(self, date_str):
 		date_str = date_str.strip()
 		return datetime.strptime(date_str[:-3] + date_str[-2:], "%Y-%m-%dT%H:%M:%S%z")

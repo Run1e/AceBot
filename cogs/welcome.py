@@ -35,7 +35,6 @@ class Welcome(AceMixin, commands.Cog):
 			return
 
 		channel = member.guild.get_channel(entry.channel_id)
-
 		if channel is None:
 			return
 
@@ -92,7 +91,7 @@ class Welcome(AceMixin, commands.Cog):
 			channel = False
 
 		if entry.enabled is False:
-			await ctx.send('Welcome message are disabled. Enable with `welcome enable`.')
+			await ctx.send('Welcome messages are disabled. Enable with `welcome enable`.')
 		elif entry.content is None:
 			await ctx.send('No welcome message set. Set with `welcome message <message>`')
 		elif channel is None:

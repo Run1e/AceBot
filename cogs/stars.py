@@ -17,6 +17,11 @@ log = logging.getLogger(__name__)
 STAR_EMOJI = '\N{WHITE MEDIUM STAR}'
 STAR_COOLDOWN = timedelta(minutes=3)
 
+SB_NOT_SET_ERROR = commands.CommandError('No starboard channel has been set yet.')
+SB_NOT_FOUND_ERROR = commands.CommandError('Starboard channel previously set but not found, please set it again.')
+SB_LOCKED_ERROR = commands.CommandError('Starboard has been locked and can not be used at the moment.')
+SB_ORIG_MSG_NOT_FOUND_ERROR = commands.CommandError('Could not find original message.')
+SB_STAR_MSG_NOT_FOUND_ERROR = commands.CommandError('Could not find starred message.')
 
 class StarConverter(commands.Converter):
 	async def convert(self, ctx, msg_id):
@@ -44,11 +49,6 @@ class Starboard(AceMixin, commands.Cog):
 	2. Getting the message ID and doing `star <message_id>`
 	'''
 
-	SB_NOT_SET_ERROR = commands.CommandError('No starboard channel has been set yet.')
-	SB_NOT_FOUND_ERROR = commands.CommandError('Starboard channel previously set but not found, please set it again.')
-	SB_LOCKED_ERROR = commands.CommandError('Starboard has been locked and can not be used at the moment.')
-	SB_ORIG_MSG_NOT_FOUND_ERROR = commands.CommandError('Could not find original message.')
-
 	def __init__(self, bot):
 		super().__init__(bot)
 
@@ -66,6 +66,8 @@ class Starboard(AceMixin, commands.Cog):
 
 	@tasks.loop(minutes=10)
 	async def purger(self):
+		'''Purges old and underperforming stars depending on guild starboard settings.'''
+
 		boards = await self.db.fetch(
 			'SELECT guild_id, channel_id, threshold, max_age FROM starboard WHERE locked=$1', False
 		)
@@ -122,10 +124,11 @@ class Starboard(AceMixin, commands.Cog):
 		row = message_id
 
 		star_channel = await self._get_star_channel(ctx.guild)
+
 		try:
 			message = await star_channel.fetch_message(row.get('star_message_id'))
 		except discord.HTTPException:
-			raise commands.CommandError('Starred message not found.')
+			raise SB_STAR_MSG_NOT_FOUND_ERROR
 
 		await ctx.send(content=message.content, embed=message.embeds[0])
 
@@ -206,11 +209,11 @@ class Starboard(AceMixin, commands.Cog):
 		if channel is None:
 			channel_id = sc.channel_id
 			if channel_id is None:
-				raise self.SB_NOT_SET_ERROR
+				raise SB_NOT_SET_ERROR
 
 			channel = ctx.guild.get_channel(channel_id)
 			if channel is None:
-				raise self.SB_NOT_FOUND_ERROR
+				raise SB_NOT_FOUND_ERROR
 
 		else:
 			await sc.update(channel_id=channel.id)
@@ -262,19 +265,19 @@ class Starboard(AceMixin, commands.Cog):
 
 		channel = ctx.guild.get_channel(row.get('channel_id'))
 		if channel is None:
-			raise self.SB_ORIG_MSG_NOT_FOUND_ERROR
+			raise SB_ORIG_MSG_NOT_FOUND_ERROR
 
 		try:
 			message = await channel.fetch_message(row.get('message_id'))
 		except discord.HTTPException:
-			raise self.SB_ORIG_MSG_NOT_FOUND_ERROR
+			raise SB_ORIG_MSG_NOT_FOUND_ERROR
 
 		star_channel = await self._get_star_channel(ctx.guild)
 
 		try:
 			star_message = await star_channel.fetch_message(row.get('star_message_id'))
 		except discord.HTTPException:
-			raise commands.CommandError('Couldn\'t find starred message.')
+			raise SB_STAR_MSG_NOT_FOUND_ERROR
 
 		added = 0
 
@@ -366,12 +369,21 @@ class Starboard(AceMixin, commands.Cog):
 
 	async def _on_star(self, starrer, star_channel, message, star_message, record):
 		if record is not None:
+			# this message has been starred before.
+
 			# original starrer can't restar
 			if starrer.id == record.get('starrer_id'):
 				return
 
+			# author if message can't star
+			if starrer.id == record.get('user_id'):
+				return
+
 			# can't restar if already starred
-			if await self.db.fetchval('SELECT user_id FROM starrers WHERE star_id=$1 AND user_id=$2', record.get('id'), starrer.id):
+			if await self.db.fetchval(
+					'SELECT user_id FROM starrers WHERE star_id=$1 AND user_id=$2',
+					record.get('id'), starrer.id
+			):
 				return
 
 			# insert into starrers table
@@ -386,7 +398,6 @@ class Starboard(AceMixin, commands.Cog):
 				record.get('id')
 			)
 
-			# and update message + db
 			await self.update_star_count(star_message, starrer_count + 1)
 
 		else:
@@ -404,6 +415,7 @@ class Starboard(AceMixin, commands.Cog):
 			if not len(message.content) and not len(message.attachments):
 				raise commands.CommandError('Can\'t star this message because it has no starrable content.')
 
+			# make sure the starrer isn't starring too quickly
 			prev_time = await self.db.fetchval(
 				'SELECT starred_at FROM star_msg WHERE guild_id=$1 AND starrer_id=$2 ORDER BY id DESC LIMIT 1',
 				message.guild.id, starrer.id
@@ -412,21 +424,21 @@ class Starboard(AceMixin, commands.Cog):
 			if prev_time is not None and datetime.utcnow() - prev_time < STAR_COOLDOWN:
 				raise commands.CommandError('Please wait a bit before starring again.')
 
+			# post it to the starboard
 			try:
 				star_message = await star_channel.send(self.get_header(1), embed=self.get_embed(message, 1))
 			except discord.HTTPException:
 				raise commands.CommandError('Failed posting to starboard.\nMake sure the bot has permissions to post there.')
 
+			# save it to db
 			await self.db.execute(
-				'''
-				INSERT INTO star_msg
-				(guild_id, channel_id, user_id, message_id, star_message_id, starred_at, starrer_id)
-				VALUES ($1, $2, $3, $4, $5, $6, $7)
-				''',
+				'INSERT INTO star_msg (guild_id, channel_id, user_id, message_id, star_message_id, starred_at, '
+				'starrer_id) VALUES ($1, $2, $3, $4, $5, $6, $7)',
 				message.guild.id, message.channel.id, message.author.id, message.id, star_message.id,
 				datetime.utcnow(), starrer.id
 			)
 
+			# add the star emoji reaction to the starboard message
 			try:
 				await star_message.add_reaction(STAR_EMOJI)
 			except discord.HTTPException:
@@ -443,12 +455,12 @@ class Starboard(AceMixin, commands.Cog):
 			if result == 'DELETE 0':
 				return
 
+			# otherwise we need to update the star count
 			starrer_count = await self.db.fetchval(
 				'SELECT COUNT(*) FROM starrers WHERE star_id=$1',
 				record.get('id')
 			)
 
-			# and update message + db
 			await self.update_star_count(star_message, starrer_count + 1)
 
 		else:
@@ -462,32 +474,43 @@ class Starboard(AceMixin, commands.Cog):
 
 		sc = await self.config.get_entry(message.guild.id)
 
+		# stop if starboard is not set up
 		if sc.channel_id is None:
-			raise self.SB_NOT_SET_ERROR
+			raise SB_NOT_SET_ERROR
 
+		# stop if starboard is locked
 		if sc.locked:
-			raise self.SB_LOCKED_ERROR
+			raise SB_LOCKED_ERROR
 
+		# stop if attempted star is too old
 		if datetime.utcnow() - sc.max_age > message.created_at:
 			raise commands.CommandError(
 				'Stars can\'t be added or removed from messages older than {}.'.format(pretty_timedelta(sc.max_age))
 			)
 
 		if message.channel.id == sc.channel_id:
+			# if the reaction even happened in the starboard channel we already have a reference
+			# to both the channel and starred message
 			star_channel = message.channel
 			star_message = message
 			message = None
 		else:
+			# otherwise we have to fetch the star channel from the db id
 			star_channel = message.guild.get_channel(sc.channel_id)
-			if star_channel is None:
-				raise self.SB_NOT_FOUND_ERROR
 
+			# fail if we can't find it...
+			if star_channel is None:
+				raise SB_NOT_FOUND_ERROR
+
+			# we should also find the starred message
 			if row is not None:
+				# if we have the record we catch fetch the starred message
 				try:
 					star_message = await star_channel.fetch_message(row.get('star_message_id'))
 				except discord.HTTPException:
-					return
+					raise SB_STAR_MSG_NOT_FOUND_ERROR
 			else:
+				# if row is none, this reaction did not happen in the starboard and we don't have a ref
 				star_message = None
 
 		# trigger event
@@ -519,15 +542,15 @@ class Starboard(AceMixin, commands.Cog):
 		except discord.HTTPException:
 			return
 
+		# pass event down to event_meta which handles the event but with actual discord models
+		# splitting this here has the added bonus of just being able to call event_meta in
+		# our command variants .star and .unstar
 		try:
 			await self._on_star_event_meta(event, message, starrer)
-		except commands.CommandError as exc:
-			sc = await self.config.get_entry(message.guild.id)
-			if channel.id != sc.channel_id:
-				try:
-					await channel.send(content=starrer.mention, embed=discord.Embed(description=str(exc)), delete_after=15)
-				except discord.HTTPException:
-					pass
+		except commands.CommandError:
+			# I've decided to suppress errors here. in order to see why a star fails it has to be invoked
+			# through the .star command
+			return
 
 	@commands.Cog.listener()
 	async def on_raw_reaction_add(self, payload):
@@ -541,9 +564,11 @@ class Starboard(AceMixin, commands.Cog):
 	async def on_raw_message_delete(self, payload):
 		sc = await self.config.get_entry(payload.guild_id, construct=False)
 
+		# don't do anything if starboard is not set up, or locked
 		if sc is None or sc.locked:
 			return
 
+		# see if the deleted message is stored in the database as a starred message
 		row = await self.db.fetchrow(
 			'SELECT * FROM star_msg WHERE message_id=$1 OR star_message_id=$1',
 			payload.message_id
@@ -558,10 +583,12 @@ class Starboard(AceMixin, commands.Cog):
 		# delete from db
 		await self.db.execute('DELETE FROM star_msg WHERE id=$1', row.get('id'))
 
+		# if the deleted message was the starboard message, stop here
 		if payload.message_id == row.get('star_message_id'):
 			return
 
-		# original message was deleted, attempt to delete the starred message
+		# if the deleted message was the original message, we should remove the starred message
+		# from the starboard
 
 		guild = self.bot.get_guild(payload.guild_id)
 		if guild is None:
@@ -577,7 +604,10 @@ class Starboard(AceMixin, commands.Cog):
 		except discord.HTTPException:
 			return
 
-		await star_message.delete()
+		try:
+			await star_message.delete()
+		except discord.HTTPException:
+			return
 
 	@commands.Cog.listener()
 	async def on_raw_bulk_message_delete(self, payload):
@@ -594,6 +624,7 @@ class Starboard(AceMixin, commands.Cog):
 		if not sms:
 			return
 
+		# if any of the bulk deleted message is stored as a star message, get their IDs
 		ids = list(sm.get('id') for sm in sms)
 
 		# delete from db
@@ -609,8 +640,8 @@ class Starboard(AceMixin, commands.Cog):
 		except commands.CommandError:
 			return
 
+		# fetch all the starboard messages from the related deleted messages
 		to_delete = list()
-
 		for sm in sms:
 			try:
 				message = await star_channel.fetch_message(sm.get('star_message_id'))
@@ -619,6 +650,7 @@ class Starboard(AceMixin, commands.Cog):
 
 			to_delete.append(message)
 
+		# bulk delete the starboard messages
 		try:
 			await star_channel.delete_messages(to_delete)
 		except discord.HTTPException:
@@ -627,11 +659,11 @@ class Starboard(AceMixin, commands.Cog):
 	async def _get_star_channel(self, guild):
 		sc = await self.config.get_entry(guild.id)
 		if sc.channel_id is None:
-			raise self.SB_NOT_SET_ERROR
+			raise SB_NOT_SET_ERROR
 
 		star_channel = guild.get_channel(sc.channel_id)
 		if star_channel is None:
-			raise self.SB_NOT_FOUND_ERROR
+			raise SB_NOT_FOUND_ERROR
 
 		return star_channel
 

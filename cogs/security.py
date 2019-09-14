@@ -153,6 +153,7 @@ class Security(AceMixin, commands.Cog):
 	async def _do_action(self, mc, member, action, reason=None, message=None):
 		'''Called when an event happens.'''
 
+		# if member is moderator, ignore the action
 		if message is not None and await is_mod_pred(message):
 			await self.log(
 				channel=mc.log_channel, action='IGNORED {} (MEMBER IS MOD)'.format(action.name), reason=reason,
@@ -166,6 +167,7 @@ class Security(AceMixin, commands.Cog):
 				if mc.mute_role is None:
 					raise ValueError('No mute role set.')
 
+				# on mute, save the mute to the db
 				try:
 					await self.db.execute(
 						'INSERT INTO muted (guild_id, user_id) VALUES ($1, $2)', member.guild.id, member.id
@@ -182,6 +184,7 @@ class Security(AceMixin, commands.Cog):
 				await member.ban(reason=reason)
 
 		except Exception as exc:
+			# log failures
 			await self.log(
 				channel=mc.log_channel, action='{} FAILED'.format(action.name), reason=str(exc),
 				severity=SeverityColors.HIGH, member=member, message=message
@@ -189,6 +192,7 @@ class Security(AceMixin, commands.Cog):
 
 			return
 
+		# otherwise, log success
 		await self.log(
 			channel=mc.log_channel, action=action.name, reason=reason,
 			severity=dict(MUTE=SeverityColors.LOW, KICK=SeverityColors.MEDIUM, BAN=SeverityColors.HIGH)[action.name],
@@ -203,36 +207,38 @@ class Security(AceMixin, commands.Cog):
 		if message.author.bot:
 			return
 
-		try:
-			mc = await self.get_config(message.guild.id)
-		except commands.CommandError:
-			return
+		mc = await self.get_config(message.guild.id)
 
 		if mc.spam_enabled:
 
+			# with a lock, figure out if user is spamming
 			async with SPAM_LOCK:
 				res = mc.spam_cooldown.update_rate_limit(message)
 				if res is not None:
 					mc.spam_cooldown._cache[mc.spam_cooldown._bucket_key(message)].reset()
 
+			# if so, perform the spam action
 			if res is not None:
 				await self._do_action(
 					mc, message.author, SecurityAction(mc.spam_action),
 					reason='Member is spamming', message=message
 				)
 
-		if mc.mention_enabled:
-			for mention in message.mentions:
-				async with MENTION_LOCK:
+		if mc.mention_enabled and message.mentions:
+
+			# same here. however run once for each mention
+			async with MENTION_LOCK:
+				for mention in message.mentions:
 					res = mc.mention_cooldown.update_rate_limit(message)
 					if res is not None:
 						mc.mention_cooldown._cache[mc.mention_cooldown._bucket_key(message)].reset()
+						break
 
-				if res is not None:
-					await self._do_action(
-						mc, message.author, SecurityAction(mc.mention_action),
-						reason='Member is spamming mentions', message=message
-					)
+			if res is not None:
+				await self._do_action(
+					mc, message.author, SecurityAction(mc.mention_action),
+					reason='Member is spamming mentions', message=message
+				)
 
 	@commands.Cog.listener()
 	async def on_member_join(self, member):
@@ -244,6 +250,7 @@ class Security(AceMixin, commands.Cog):
 
 		mc = await self.get_config(member.guild.id)
 
+		# if member is in the mute list and just joined, attempt to add the mute role again
 		if mc.mute_role_id is not None and await self.db.fetchval(
 				'SELECT id FROM muted WHERE guild_id=$1 AND user_id=$2', member.guild.id, member.id
 		):
@@ -264,6 +271,7 @@ class Security(AceMixin, commands.Cog):
 
 		key = (member.guild.id, member.id)
 
+		# kind of hacky fix. if user had an action performed on them in the last X minutes, ignore other rules
 		if mc.join_cooldown is not None and key in self.cooldown_users:
 			if (now - self.cooldown_users[key]) < mc.join_cooldown:
 				await self.log(
@@ -290,6 +298,7 @@ class Security(AceMixin, commands.Cog):
 				self.cooldown_users[key] = now
 				return
 
+		# get the kick patterns for this guild
 		pats = await self.db.fetch(
 			'SELECT * FROM kick_pattern WHERE guild_id=$1 AND disabled=$2',
 			member.guild.id, False
@@ -313,10 +322,13 @@ class Security(AceMixin, commands.Cog):
 
 	@commands.Cog.listener()
 	async def on_member_update(self, before, after):
-		try:
-			conf = await self.get_config(before.guild.id)
-		except commands.CommandError:
+		if before.guild.id not in ALLOWED_GUILDS:
 			return
+
+		# detect if the muted role was added or removed
+		# this is purely to keep the database updated.
+
+		conf = await self.get_config(before.guild.id)
 
 		br = set(before.roles)
 		ar = set(after.roles)
