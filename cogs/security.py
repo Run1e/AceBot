@@ -20,7 +20,6 @@ from utils.configtable import ConfigTable, SecurityConfigRecord
 
 ALLOWED_GUILDS = (AHK_GUILD_ID, 517692823621861407)
 SUBMODULES = ('join', 'mention', 'spam')
-LOCK = asyncio.Lock()
 SPAM_LOCK = asyncio.Lock()
 MENTION_LOCK = asyncio.Lock()
 

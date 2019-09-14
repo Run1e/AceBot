@@ -80,6 +80,17 @@ class Welcome(AceMixin, commands.Cog):
 		await ctx.send(f'Welcome channel set to {channel.mention}')
 
 	@welcome.command()
+	async def raw(self, ctx):
+		'''Get the raw contents of your welcome message. Useful for editing it.'''
+
+		entry = await self.config.get_entry(ctx.guild.id, construct=False)
+
+		if entry is None:
+			raise commands.CommandError('You don\'t seem to have set up a welcome message yet.')
+
+		await ctx.send(discord.utils.escape_markdown(entry.content))
+
+	@welcome.command()
 	async def test(self, ctx):
 		'''Test your welcome command.'''
 

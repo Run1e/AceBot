@@ -375,7 +375,7 @@ class Starboard(AceMixin, commands.Cog):
 			if starrer.id == record.get('starrer_id'):
 				return
 
-			# author if message can't star
+			# author of message can't star
 			if starrer.id == record.get('user_id'):
 				return
 
@@ -489,7 +489,7 @@ class Starboard(AceMixin, commands.Cog):
 			)
 
 		if message.channel.id == sc.channel_id:
-			# if the reaction even happened in the starboard channel we already have a reference
+			# if the reaction event happened in the starboard channel we already have a reference
 			# to both the channel and starred message
 			star_channel = message.channel
 			star_message = message
