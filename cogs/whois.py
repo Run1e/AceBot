@@ -103,13 +103,13 @@ class WhoIs(AceMixin, commands.Cog):
 		)
 
 		nicks = await self.db.fetch(
-			'SELECT nick FROM nick WHERE guild_id=$1 AND user_id=$2 GROUP BY nick ORDER BY id DESC LIMIT 3',
+			'SELECT nick FROM nick WHERE guild_id=$1 AND user_id=$2 GROUP BY nick LIMIT 3',
 			ctx.guild.id, member.id
 		)
 
 		e.add_field(
 			name='Last known nicknames',
-			value='None yet.' if not nicks else '\n'.join(record.get('nick') for record in nicks)
+			value='None yet.' if not nicks else '\n'.join(record.get('nick') for record in reversed(nicks))
 		)
 
 		if len(member.roles) > 1:
