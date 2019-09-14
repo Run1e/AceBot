@@ -97,22 +97,15 @@ class WhoIs(AceMixin, commands.Cog):
 			ctx.guild.id, member.id
 		)
 
-		print(now)
-		print(seen)
-		print(now - seen)
-		print(pretty_timedelta(now - seen))
-
 		e.add_field(
 			name='Last seen',
-			value='Not seen yet.' if seen is None else '{} ago'.format(pretty_timedelta(seen - now))
+			value='Not seen yet.' if seen is None else '{} ago'.format(pretty_timedelta(now - seen))
 		)
 
 		nicks = await self.db.fetch(
 			'SELECT nick FROM nick WHERE guild_id=$1 AND user_id=$2 ORDER BY id DESC LIMIT 3',
 			ctx.guild.id, member.id
 		)
-
-		print(nicks)
 
 		e.add_field(
 			name='Last known nicknames',

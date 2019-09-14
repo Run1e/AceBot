@@ -24,7 +24,7 @@ def pretty_timedelta(td: timedelta):
 			count = int(td / span)
 			td -= count * span
 			parts.append('{} {}{}'.format(count, name, 's' if count > 1 else ''))
-			if len(parts) >= 2:
+			if len(parts) >= 2 or name == 'second':
 				break
 		elif len(parts):
 			break
