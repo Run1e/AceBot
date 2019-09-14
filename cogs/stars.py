@@ -140,13 +140,22 @@ class Starboard(AceMixin, commands.Cog):
 			raise commands.CommandError('Starboard already exists -> {}'.format(sc.channel.mention))
 
 		if sc.channel_id is not None:
-			result = await prompter(
-				ctx, title='The previous starboard seems to have been deleted.',
-				prompt='Do you want to create a new one?'
+			prompt = (
+				'Do you want to create a new one?\n\n'
+				'NOTE: This will delete all data related to previously starred messages. If you\'re unsure '
+				'what to do, join the AceBot support server by aborting this prompt and typing '
+				'`{}support`'.format(ctx.prefix)
 			)
 
-			if not result:
+			result = await prompter(
+				ctx, title='The previous starboard seems to have been deleted.',
+				prompt=prompt
+			)
+
+			if result is not True:
 				raise commands.CommandError('Aborted starboard creation.')
+
+		await self.db.execute('DELETE FROM star_msg WHERE guild_id=$1', ctx.guild.id)
 
 		overwrites = {
 			ctx.me: discord.PermissionOverwrite(
@@ -633,9 +642,6 @@ class Starboard(AceMixin, commands.Cog):
 		if row is None:
 			return
 
-		# delete starrers
-		await self.db.execute('DELETE from starrers WHERE star_id=$1', row.get('id'))
-
 		# delete from db
 		await self.db.execute('DELETE FROM star_msg WHERE id=$1', row.get('id'))
 
@@ -684,7 +690,6 @@ class Starboard(AceMixin, commands.Cog):
 		ids = list(sm.get('id') for sm in sms)
 
 		# delete from db
-		await self.db.execute('DELETE FROM starrers WHERE star_id=ANY($1::bigint[])', ids)
 		await self.db.execute('DELETE FROM star_msg WHERE id=ANY($1::bigint[])', ids)
 
 		guild = self.bot.get_guild(payload.guild_id)
