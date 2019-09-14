@@ -18,16 +18,16 @@ async def prompter(ctx, title=None, prompt=None):
 	prompt = prompt or 'No description provided.'
 	prompt += '\n\nPress {} to continue, {} to abort.'.format(YES_EMOJI, NO_EMOJI)
 
-	e = discord.Embed(
-		description=prompt
-	)
+	e = discord.Embed(description=prompt)
 
 	e.set_author(name=title or 'Prompter', icon_url=ctx.bot.user.avatar_url)
 
-	msg = await ctx.send(embed=e)
-
-	await msg.add_reaction(YES_EMOJI)
-	await msg.add_reaction(NO_EMOJI)
+	try:
+		msg = await ctx.send(embed=e)
+		await msg.add_reaction(YES_EMOJI)
+		await msg.add_reaction(NO_EMOJI)
+	except discord.HTTPException:
+		return False
 
 	def check(reaction, user):
 		return str(reaction) in (YES_EMOJI, NO_EMOJI) and user == ctx.author and reaction.message.id == msg.id
@@ -35,8 +35,7 @@ async def prompter(ctx, title=None, prompt=None):
 	try:
 		reaction, user = await ctx.bot.wait_for('reaction_add', check=check, timeout=60.0)
 		return True if str(reaction) == YES_EMOJI else False
-	except asyncio.TimeoutError:
-		await ctx.send('Prompt timeout.')
+	except (asyncio.TimeoutError, discord.HTTPException):
 		return False
 	finally:
 		await msg.delete()

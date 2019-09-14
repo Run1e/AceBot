@@ -373,9 +373,12 @@ class Starboard(AceMixin, commands.Cog):
 
 		if ctx.author.id not in (row.get('user_id'), row.get('starrer_id')):
 			if not await is_mod_pred(ctx):
-				return
-			elif not await admin_prompter(ctx):
-				return
+				raise commands.CommandError(
+					'Only moderators, the original starrer and the original messages author '
+					'can remove this starred message.'
+				)
+
+			await admin_prompter(ctx)
 
 		await self.db.execute('DELETE FROM starrers WHERE star_id=$1', row.get('id'))
 		await self.db.execute('DELETE FROM star_msg WHERE id=$1', row.get('id'))

@@ -69,7 +69,7 @@ class TagCreateConverter(commands.Converter):
 
 
 class TagEditConverter(commands.Converter):
-	access_error = commands.CommandError('Tag not found or you do not have edit permissions for it.')
+	ACCESS_ERROR = commands.CommandError('Tag not found or you do not have edit permissions for it.')
 
 	async def convert(self, ctx, tag_name):
 		tag_name = tag_name.lower()
@@ -80,13 +80,12 @@ class TagEditConverter(commands.Converter):
 		)
 
 		if rec is None:
-			raise self.access_error
+			raise self.ACCESS_ERROR
 
 		if rec.get('user_id') != ctx.author.id:
-			if await is_mod_pred(ctx) and await admin_prompter(ctx):
-				return tag_name, rec
-			else:
-				raise self.access_error
+			if not await is_mod_pred(ctx):
+				raise self.ACCESS_ERROR
+			await admin_prompter(ctx)
 
 		return tag_name, rec
 
