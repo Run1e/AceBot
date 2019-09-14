@@ -24,7 +24,7 @@ class WhoIs(AceMixin, commands.Cog):
 		await self.db.execute(
 			'INSERT INTO seen (guild_id, user_id, seen) VALUES ($1, $2, $3) ON CONFLICT (guild_id, user_id) '
 			'DO UPDATE SET seen=$3',
-			message.guild.id, message.author.id, datetime.now()
+			message.guild.id, message.author.id, datetime.utcnow()
 		)
 
 	@commands.Cog.listener()
@@ -74,7 +74,7 @@ class WhoIs(AceMixin, commands.Cog):
 		e.add_field(name='Status', value=member.status)
 
 		if member.activity:
-			e.add_field(name='Activity', value=member.activity)
+			e.add_field(name='Activity', value=member.activity.name)
 
 		e.set_author(name=f'{member.name}#{member.discriminator}', icon_url=member.avatar_url)
 
@@ -90,6 +90,33 @@ class WhoIs(AceMixin, commands.Cog):
 		e.add_field(
 			name='Member for',
 			value=f'{pretty_timedelta(now - joined)}\nJoined {joined.day}/{joined.month}/{joined.year}'
+		)
+
+		seen = await self.db.fetchval(
+			'SELECT seen FROM seen WHERE guild_id=$1 AND user_id=$2',
+			ctx.guild.id, member.id
+		)
+
+		print(now)
+		print(seen)
+		print(now - seen)
+		print(pretty_timedelta(now - seen))
+
+		e.add_field(
+			name='Last seen',
+			value='Not seen yet.' if seen is None else '{} ago'.format(pretty_timedelta(seen - now))
+		)
+
+		nicks = await self.db.fetch(
+			'SELECT nick FROM nick WHERE guild_id=$1 AND user_id=$2 ORDER BY id DESC LIMIT 3',
+			ctx.guild.id, member.id
+		)
+
+		print(nicks)
+
+		e.add_field(
+			name='Last known nicknames',
+			value='None yet.' if not nicks else '\n'.join(record.get('nick') for record in nicks)
 		)
 
 		if len(member.roles) > 1:
