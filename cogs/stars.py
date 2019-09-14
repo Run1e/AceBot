@@ -418,18 +418,18 @@ class Starboard(AceMixin, commands.Cog):
 
 			# original starrer can't restar
 			if starrer.id == record.get('starrer_id'):
-				return
+				raise commands.CommandError('Original starrer can\'t restar.')
 
 			# author of message can't star
 			if starrer.id == record.get('user_id'):
-				return
+				raise commands.CommandError('Message authors can\'t star their own message.')
 
 			# can't restar if already starred
 			if await self.db.fetchval(
 					'SELECT user_id FROM starrers WHERE star_id=$1 AND user_id=$2',
 					record.get('id'), starrer.id
 			):
-				return
+				raise commands.CommandError('You have already added a star to this message.')
 
 			# insert into starrers table
 			await self.db.execute(
@@ -476,7 +476,9 @@ class Starboard(AceMixin, commands.Cog):
 					embed=self.get_embed(message, 1)
 				)
 			except discord.HTTPException:
-				raise commands.CommandError('Failed posting to starboard.\nMake sure the bot has permissions to post there.')
+				raise commands.CommandError(
+					'Failed posting to starboard.\nMake sure the bot has permissions to post there.'
+				)
 
 			# save it to db
 			await self.db.execute(
@@ -501,7 +503,7 @@ class Starboard(AceMixin, commands.Cog):
 
 			# if nothing was deleted, the star message doesn't need to be updated
 			if result == 'DELETE 0':
-				return
+				raise commands.CommandError('You have not previously starred this, or you are the original starrer.')
 
 			# otherwise we need to update the star count
 			starrer_count = await self.db.fetchval(
