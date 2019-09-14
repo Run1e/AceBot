@@ -103,7 +103,7 @@ class WhoIs(AceMixin, commands.Cog):
 		)
 
 		nicks = await self.db.fetch(
-			'SELECT nick FROM nick WHERE guild_id=$1 AND user_id=$2 ORDER BY id DESC LIMIT 3',
+			'SELECT nick FROM nick WHERE guild_id=$1 AND user_id=$2 GROUP BY nick ORDER BY id DESC LIMIT 3',
 			ctx.guild.id, member.id
 		)
 
@@ -142,7 +142,7 @@ class WhoIs(AceMixin, commands.Cog):
 		if seen is None:
 			e.description = 'Member has not been seen by the bot yet.'
 		else:
-			now = datetime.now()
+			now = datetime.utcnow()
 			e.description = f'Seen {pretty_timedelta(now - seen)} ago at {pretty_datetime(seen)}'
 
 		await ctx.send(embed=e)
@@ -157,44 +157,19 @@ class WhoIs(AceMixin, commands.Cog):
 		if member.bot:
 			raise commands.CommandError('I\'m not paying attention to bots.')
 
-		nicks_data = await self.db.fetch(
-			'SELECT nick, stored_at FROM nick WHERE guild_id=$1 AND user_id=$2',
+		nicks = await self.db.fetch(
+			'SELECT nick FROM nick WHERE guild_id=$1 AND user_id=$2 GROUP BY nick',
 			ctx.guild.id, member.id
 		)
 
-		e = discord.Embed()
+		if not nicks:
+			raise commands.CommandError('No nicks stored yet.')
 
-		e.set_author(
-			name=member.display_name,
-			icon_url=member.avatar_url
-		)
+		nik = list()
+		for record in reversed(nicks):
+			nik.append(discord.utils.escape_markdown(record.get('nick')))
 
-		nicks = []
-
-		# TODO: make paginated, low pri
-		# also, will actually fail on too many nicks. like 9?
-
-		for nick in reversed(nicks_data):
-			nick_actual = nick.get('nick')
-
-			if nick_actual not in nicks:
-				if len(nicks) >= MAX_NICKS:
-					e.description = f'{len(nicks_data) - MAX_NICKS - 1} more unlisted found...'
-					break
-
-				nicks.append(nick_actual)
-
-				e.add_field(
-					name=discord.utils.escape_markdown(nick_actual),
-					value='Stored at ' + pretty_datetime(nick.get('stored_at')),
-					inline=False
-				)
-
-		# else: doesn't work here for some reason, guess I just misunderstand what for: else: does lol
-		if not len(e.fields):
-			e.description = 'None stored yet.'
-
-		await ctx.send(embed=e)
+		await ctx.send(embed=discord.Embed(description='\n'.join(nik)))
 
 
 def setup(bot):
