@@ -340,6 +340,9 @@ class Starboard(AceMixin, commands.Cog):
 				if user.bot:
 					continue
 
+				if user.id == row.get('user_id'):
+					continue
+
 				if user.id == row.get('starrer_id'):
 					continue
 
