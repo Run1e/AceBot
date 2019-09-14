@@ -11,6 +11,7 @@ from utils.time import pretty_timedelta
 from utils.prompter import admin_prompter
 from utils.converters import TimeMultConverter, TimeDeltaConverter
 from utils.configtable import ConfigTable, StarboardConfigRecord
+from utils.prompter import prompter
 from cogs.mixins import AceMixin
 
 log = logging.getLogger(__name__)
@@ -22,6 +23,7 @@ SB_NOT_FOUND_ERROR = commands.CommandError('Starboard channel previously set but
 SB_LOCKED_ERROR = commands.CommandError('Starboard has been locked and can not be used at the moment.')
 SB_ORIG_MSG_NOT_FOUND_ERROR = commands.CommandError('Could not find original message.')
 SB_STAR_MSG_NOT_FOUND_ERROR = commands.CommandError('Could not find starred message.')
+
 
 class StarConverter(commands.Converter):
 	async def convert(self, ctx, msg_id):
@@ -102,6 +104,14 @@ class Starboard(AceMixin, commands.Cog):
 			await self.db.execute('DELETE FROM starrers WHERE star_id=ANY($1::bigint[])', to_delete)
 			await self.db.execute('DELETE FROM star_msg WHERE id=ANY($1::bigint[])', to_delete)
 
+	async def get_board(self, ctx):
+		sc = await self.config.get_entry(ctx.guild.id, construct=False)
+
+		if sc is None:
+			raise commands.CommandError('Please set up a starboard using `{}star create` first.'.format(ctx.prefix))
+
+		return sc
+
 	@commands.group(name='star', invoke_without_command=True)
 	@commands.bot_has_permissions(embed_links=True, add_reactions=True)
 	async def _star(self, ctx, *, message_id: discord.Message):
@@ -115,6 +125,57 @@ class Starboard(AceMixin, commands.Cog):
 		'''Unstar a message by ID.'''
 
 		await self._on_star_event_meta(self._on_unstar, message_id, ctx.author)
+
+	@_star.command()
+	@is_mod()
+	@commands.bot_has_permissions(
+		manage_messages=True, add_reactions=True, manage_channels=True, embed_links=True, manage_roles=True
+	)
+	async def create(self, ctx):
+		'''Creates a new starboard.'''
+
+		sc = await self.config.get_entry(ctx.guild.id)
+
+		if sc.channel is not None:
+			raise commands.CommandError('Starboard already exists -> {}'.format(sc.channel.mention))
+
+		if sc.channel_id is not None:
+			result = await prompter(
+				ctx, title='The previous starboard seems to have been deleted.',
+				prompt='Do you want to create a new one?'
+			)
+
+			if not result:
+				raise commands.CommandError('Aborted starboard creation.')
+
+		overwrites = {
+			ctx.me: discord.PermissionOverwrite(
+				read_messages=True,
+				send_messages=True,
+				manage_messages=True,
+				embed_links=True,
+				read_message_history=True,
+				add_reactions=True
+			),
+			ctx.guild.default_role: discord.PermissionOverwrite(
+				read_messages=True,
+				send_messages=False,
+				read_message_history=True,
+				add_reactions=True
+			)
+		}
+
+		reason = '{} (ID: {}) has created a starboard channel.'.format(ctx.author.display_name, ctx.author.id)
+
+		try:
+			channel = await ctx.guild.create_text_channel(name='starboard', overwrites=overwrites, reason=reason)
+		except discord.HTTPException:
+			raise commands.CommandError('An unexpected error happened when creating the starboard channel.')
+
+		await sc.update(channel_id=channel.id)
+
+		await ctx.send('Starboard channel created! {}'.format(channel.mention))
+
 
 	@_star.command()
 	@commands.bot_has_permissions(embed_links=True)
@@ -201,31 +262,12 @@ class Starboard(AceMixin, commands.Cog):
 
 	@_star.command()
 	@is_mod()
-	async def channel(self, ctx, *, channel: discord.TextChannel = None):
-		'''Set the starboard channel. Remember only the bot should be allowed to send messages in this channel!'''
-
-		sc = await self.config.get_entry(ctx.guild.id)
-
-		if channel is None:
-			channel_id = sc.channel_id
-			if channel_id is None:
-				raise SB_NOT_SET_ERROR
-
-			channel = ctx.guild.get_channel(channel_id)
-			if channel is None:
-				raise SB_NOT_FOUND_ERROR
-
-		else:
-			await sc.update(channel_id=channel.id)
-
-		await ctx.send(f'Starboard channel set to {channel.mention}')
-
-	@_star.command()
-	@is_mod()
 	async def threshold(self, ctx, *, limit: int = None):
 		'''Set the minimum amount of stars needed for a starred message to remain on the starboard after a week has passed'''
 
-		sc = await self.config.get_entry(ctx.guild.id)
+		sc = await self.get_board(ctx)
+
+		print(sc)
 
 		if limit is None:
 			limit = sc.threshold
@@ -242,7 +284,7 @@ class Starboard(AceMixin, commands.Cog):
 		if unit is None and amount is not None:
 			raise commands.CommandError('Malformed input.')
 
-		sc = await self.config.get_entry(ctx.guild.id)
+		sc = await self.get_board(ctx)
 
 		if unit is not None and amount is not None:
 			age = amount * unit
@@ -307,7 +349,10 @@ class Starboard(AceMixin, commands.Cog):
 		new_embed = self.get_embed(message, star_count + 1)
 		edited = new_embed.description != star_message.embeds[0].description
 
-		await star_message.edit(content=self.get_header(star_count + 1), embed=self.get_embed(message, star_count + 1))
+		await star_message.edit(
+			content=self.get_header(message.id, star_count + 1),
+			embed=self.get_embed(message, star_count + 1)
+		)
 
 		parts = list()
 		if edited:
@@ -350,7 +395,7 @@ class Starboard(AceMixin, commands.Cog):
 	async def lock(self, ctx):
 		'''Lock the starboard.'''
 
-		sc = await self.config.get_entry(ctx.guild.id)
+		sc = await self.get_board(ctx)
 
 		await sc.update(locked=True)
 
@@ -361,7 +406,7 @@ class Starboard(AceMixin, commands.Cog):
 	async def unlock(self, ctx):
 		'''Unlock the starboard.'''
 
-		sc = await self.config.get_entry(ctx.guild.id)
+		sc = await self.get_board(ctx)
 
 		await sc.update(locked=False)
 
@@ -398,7 +443,7 @@ class Starboard(AceMixin, commands.Cog):
 				record.get('id')
 			)
 
-			await self.update_star_count(star_message, starrer_count + 1)
+			await self.update_star_count(record.get('message_id'), star_message, starrer_count + 1)
 
 		else:
 			# new star. post it and store it
@@ -426,7 +471,10 @@ class Starboard(AceMixin, commands.Cog):
 
 			# post it to the starboard
 			try:
-				star_message = await star_channel.send(self.get_header(1), embed=self.get_embed(message, 1))
+				star_message = await star_channel.send(
+					self.get_header(message.id, 1),
+					embed=self.get_embed(message, 1)
+				)
 			except discord.HTTPException:
 				raise commands.CommandError('Failed posting to starboard.\nMake sure the bot has permissions to post there.')
 
@@ -461,7 +509,7 @@ class Starboard(AceMixin, commands.Cog):
 				record.get('id')
 			)
 
-			await self.update_star_count(star_message, starrer_count + 1)
+			await self.update_star_count(record.get('message_id'), star_message, starrer_count + 1)
 
 		else:
 			pass # ???
@@ -472,7 +520,10 @@ class Starboard(AceMixin, commands.Cog):
 			message.guild.id, message.id
 		)
 
-		sc = await self.config.get_entry(message.guild.id)
+		sc = await self.config.get_entry(message.guild.id, construct=False)
+
+		if sc is None:
+			return
 
 		# stop if starboard is not set up
 		if sc.channel_id is None:
@@ -657,8 +708,9 @@ class Starboard(AceMixin, commands.Cog):
 			pass
 
 	async def _get_star_channel(self, guild):
-		sc = await self.config.get_entry(guild.id)
-		if sc.channel_id is None:
+		sc = await self.config.get_entry(guild.id, construct=False)
+
+		if sc is None or sc.channel_id is None:
 			raise SB_NOT_SET_ERROR
 
 		star_channel = guild.get_channel(sc.channel_id)
@@ -667,16 +719,16 @@ class Starboard(AceMixin, commands.Cog):
 
 		return star_channel
 
-	async def update_star_count(self, star_message, stars):
+	async def update_star_count(self, message_id, star_message, stars):
 		if not len(star_message.embeds):
 			return
 
 		embed = star_message.embeds[0]
 		embed.colour = self.star_gradient_colour(stars)
-		await star_message.edit(content=self.get_header(stars), embed=embed)
+		await star_message.edit(content=self.get_header(message_id, stars), embed=embed)
 
-	def get_header(self, stars):
-		return f'{self.star_emoji(stars)} **{stars}**'
+	def get_header(self, message_id, stars):
+		return f'{self.star_emoji(stars)} **{stars}**  `ID: {message_id}`'
 
 	def get_embed(self, message, stars):
 		'''
@@ -707,7 +759,7 @@ class Starboard(AceMixin, commands.Cog):
 			icon_url=message.author.avatar_url_as(format='png'),
 		)
 
-		embed.set_footer(text=f'ID: {message.id}')
+		embed.set_footer(text='#' + message.channel.name)
 		embed.timestamp = message.created_at
 		embed.colour = self.star_gradient_colour(stars)
 

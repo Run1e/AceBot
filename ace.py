@@ -130,7 +130,7 @@ class AceBot(commands.Bot):
 	@property
 	def invite_link(self, perms=None):
 		if perms is None:
-			perms = 67497025
+			perms = 268823632
 		return f'https://discordapp.com/oauth2/authorize?&client_id={self.user.id}&scope=bot&permissions={perms}'
 
 	async def prefix_resolver(self, bot, message):
