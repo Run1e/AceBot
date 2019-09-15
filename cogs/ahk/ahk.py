@@ -270,7 +270,7 @@ class AutoHotkey(AceMixin, commands.Cog):
 
 		await self.db.execute('TRUNCATE docs_name, docs_syntax, docs_param, docs_entry RESTART IDENTITY')
 
-		async for entry in agg.get_all():
+		async for entry in agg:
 			names = entry.pop('names')
 			link = entry.pop('page')
 			desc = entry.pop('desc')

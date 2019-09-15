@@ -25,7 +25,7 @@ class DocsAggregator:
 		self.fill_names = list()
 		self.entries = list()
 
-	async def get_all(self):
+	async def __aiter__(self):
 		for entry in self.entries:
 			yield entry
 
