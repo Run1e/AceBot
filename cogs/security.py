@@ -98,13 +98,11 @@ class Security(AceMixin, commands.Cog):
 	def __init__(self, bot):
 		super().__init__(bot)
 
-		self.config = ConfigTable(bot, 'mod', 'guild_id', record_class=SecurityConfigRecord)
-
 		self.cooldown_users = dict()  # (guild_id, user_id): datetime
-		self.setup_configs.start()
+		self.config = ConfigTable(bot, 'mod', 'guild_id', record_class=SecurityConfigRecord)
+		self.bot.loop.create_task(self.setup_configs())
 
 	# init configs
-	@tasks.loop(count=1)
 	async def setup_configs(self):
 		records = await self.db.fetch('SELECT * FROM {}'.format(self.config.table))
 

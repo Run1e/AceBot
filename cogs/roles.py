@@ -60,10 +60,9 @@ class Roles(AceMixin, commands.Cog):
 		super().__init__(bot)
 
 		self.config = ConfigTable(bot, table='role', primary='guild_id')
-		self.setup_configs.start()
+		self.bot.loop.create_task(self.setup_configs())
 
 	# init configs
-	@tasks.loop(count=1)
 	async def setup_configs(self):
 		records = await self.db.fetch('SELECT * FROM {}'.format(self.config.table))
 
