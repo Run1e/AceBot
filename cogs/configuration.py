@@ -3,7 +3,7 @@ from discord.ext import commands
 
 from config import DEFAULT_PREFIX
 from cogs.mixins import AceMixin
-from utils.checks import is_mod
+from utils.checks import is_mod, is_mod_pred
 
 
 class PrefixConverter(commands.Converter):
@@ -25,8 +25,10 @@ class SettingConverter(commands.Converter):
 class Configuration(AceMixin, commands.Cog):
 	'''Bot configuration available to administrators and people in the moderator role.'''
 
+	async def cog_check(self, ctx):
+		return await is_mod_pred(ctx)
+
 	@commands.group(invoke_without_command=True)
-	@is_mod()
 	async def config(self, ctx):
 		'''Configuration commands.'''
 
