@@ -600,7 +600,6 @@ class Starboard(AceMixin, commands.Cog):
 		try:
 			await self._on_star_event_meta(event, board, message, starrer)
 		except commands.CommandError as exc:
-			print(exc)
 			# I've decided to suppress errors here. in order to see why a star fails it has to be invoked
 			# through the .star or .unstar commands
 			return
