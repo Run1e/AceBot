@@ -132,8 +132,7 @@ You can send thoughts, feedback and suggestions directly to me by using the `fee
 ## Installing the bot
 
 If you want this bot in your server, I would prefer if you invite the official instance using the
-[invite link](https://discordapp.com/oauth2/authorize?&client_id=367977994486022146&scope=bot&permissions=268823632)
-above.
+[invite link](https://discordapp.com/oauth2/authorize?&client_id=367977994486022146&scope=bot&permissions=268823632).
 Nevertheless, here's how to set it up!
 
 Create a PostgreSQL role and database:
@@ -167,6 +166,10 @@ APIXU_KEY       = None
 OXFORD_ID       = None
 OXFORD_KEY      = None
 ```
+
+Last step is to run the migrator. `python migrate.py` will set up the database tables needed. If you have data from a
+previous instance of the bot that ran on the old version, add your database bind from your old config to the
+`migrate_data.py` file and run that as well.
 
 ## Acknowledgements
 

@@ -6,9 +6,12 @@ from asyncpg.exceptions import UniqueViolationError
 from config import DB_BIND
 
 
+ORIGIN_BIND = 'db_bind'
+
+
 async def main():
 	target = await asyncpg.connect(DB_BIND)
-	origin = await asyncpg.connect('postgresql://ace:password@192.168.1.3/acebot')
+	origin = await asyncpg.connect(ORIGIN_BIND)
 
 	print('reminders...')
 
