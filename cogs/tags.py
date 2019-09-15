@@ -57,6 +57,9 @@ class TagCreateConverter(commands.Converter):
 		if tag_name != await escape_converter.convert(ctx, tag_name):
 			raise commands.CommandError('Tag name has disallowed formatting in it.')
 
+		if ctx.cog.tag_is_being_made(ctx, tag_name):
+			raise commands.CommandError('Tag is currently being made elsewhere.')
+
 		exist_id = await ctx.bot.db.fetchval(
 			'SELECT id FROM tag WHERE guild_id=$1 AND (name=$2 OR alias=$2)',
 			ctx.guild.id, tag_name
@@ -317,12 +320,6 @@ class Tags(AceMixin, commands.Cog):
 					continue
 
 				name = message.content.lower()
-
-				if self.tag_is_being_made(ctx, name):
-					await ctx.send('Sorry! That tag is currently being created elsewhere. {}'.format(name_prompt))
-					name = None
-					continue
-
 				self.set_tag_being_made(ctx, name)
 
 				await ctx.send(
