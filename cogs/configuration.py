@@ -25,10 +25,33 @@ class SettingConverter(commands.Converter):
 class Configuration(AceMixin, commands.Cog):
 	'''Bot configuration available to administrators and people in the moderator role.'''
 
-	@commands.command()
+	@commands.group(invoke_without_command=True)
 	@is_mod()
+	async def config(self, ctx):
+		'''Configuration commands.'''
+
+		gc = await self.bot.config.get_entry(ctx.guild.id)
+
+		e = discord.Embed(description='Bot configuration.')
+		e.set_author(name=ctx.guild.name, icon_url=ctx.guild.icon_url)
+
+		mod_role = gc.mod_role
+
+		e.add_field(name='Prefix', value='`{}`'.format(gc.prefix or DEFAULT_PREFIX))
+		e.add_field(
+			name='Moderation role',
+			value='None' if mod_role is None else '{}\nID: {}'.format(
+				mod_role.mention, mod_role.id
+			)
+		)
+
+		e.set_footer(text='ID: {}'.format(ctx.guild.id))
+
+		await ctx.send(embed=e)
+
+	@config.command()
 	async def prefix(self, ctx, *, prefix: PrefixConverter = None):
-		'''Set a guild-specific prefix. Call `prefix` to clear.'''
+		'''Set a guild-specific prefix. Leave argument empty to reset to default.'''
 
 		gc = await self.bot.config.get_entry(ctx.guild.id)
 
@@ -39,10 +62,10 @@ class Configuration(AceMixin, commands.Cog):
 			'simply mention the bot to open up the help menu.'
 		)
 
-	@commands.command()
+	@config.command()
 	@commands.has_permissions(administrator=True)  # only allow administrators to change the moderator role
 	async def modrole(self, ctx, *, role: discord.Role = None):
-		'''Set the moderator role. Only modifiable by server administrators. Call `modrole` to clear.'''
+		'''Set the moderator role. Only modifiable by server administrators. Leave argument empty to clear.'''
 
 		gc = await self.bot.config.get_entry(ctx.guild.id)
 
