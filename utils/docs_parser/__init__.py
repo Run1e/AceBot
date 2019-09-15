@@ -2,6 +2,7 @@ import os
 import json
 import shutil
 import aiohttp
+import asyncio
 import logging
 
 from zipfile import ZipFile
@@ -104,35 +105,7 @@ class DocsAggregator:
 				similar_entry['names'].append(name)
 
 
-async def parse_docs(on_update, fetch=True):
-	if fetch:
-		await on_update('Downloading...')
-
-		# delete old stuff
-		try:
-			os.remove(DOWNLOAD_FILE)
-		except FileNotFoundError:
-			pass
-
-		shutil.rmtree(DOCS_BASE, ignore_errors=True)
-
-		# fetch docs package
-		async with aiohttp.ClientSession() as session:
-			async with session.get(DOWNLOAD_LINK) as resp:
-				if resp.status != 200:
-					await on_update('download failed.')
-					return
-
-				with open(DOWNLOAD_FILE, 'wb') as f:
-					f.write(await resp.read())
-
-		# and extract it
-		zip_ref = ZipFile(DOWNLOAD_FILE, 'r')
-		zip_ref.extractall(EXTRACT_TO)
-		zip_ref.close()
-
-	await on_update('Building...')
-
+def build_docs():
 	aggregator = DocsAggregator()
 	BaseParser.DOCS_URL = DOCS_URL
 	BaseParser.DOCS_FOLDER = DOCS_FOLDER
@@ -205,7 +178,43 @@ async def parse_docs(on_update, fetch=True):
 				p = bs.find('p') if offs is None else bs.find(True, id=offs)
 				desc = None if p is None else parsers[0].pretty_desc(p)
 
-			aggregator.add_entry(dict(force_names=list(), fill_names=parsers[0]._string_as_names(name), page=page, desc=desc))
+			aggregator.add_entry(
+				dict(force_names=list(), fill_names=parsers[0]._string_as_names(name), page=page, desc=desc)
+			)
+
+	return aggregator
+
+
+async def parse_docs(on_update, fetch=True, loop=None):
+	if fetch:
+		await on_update('Downloading...')
+
+		# delete old stuff
+		try:
+			os.remove(DOWNLOAD_FILE)
+		except FileNotFoundError:
+			pass
+
+		shutil.rmtree(DOCS_BASE, ignore_errors=True)
+
+		# fetch docs package
+		async with aiohttp.ClientSession() as session:
+			async with session.get(DOWNLOAD_LINK) as resp:
+				if resp.status != 200:
+					await on_update('download failed.')
+					return
+
+				with open(DOWNLOAD_FILE, 'wb') as f:
+					f.write(await resp.read())
+
+		# and extract it
+		zip_ref = ZipFile(DOWNLOAD_FILE, 'r')
+		zip_ref.extractall(EXTRACT_TO)
+		zip_ref.close()
+
+	await on_update('Building...')
+
+	aggregator = await loop.run_in_executor(None, build_docs)
 
 	await on_update('List built. Total names: {} Unique entries: {}\n'.format(
 		sum(len(entry['names']) for entry in aggregator.entries),

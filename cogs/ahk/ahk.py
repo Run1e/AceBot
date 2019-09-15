@@ -262,7 +262,7 @@ class AutoHotkey(AceMixin, commands.Cog):
 			await ctx.send(text)
 
 		try:
-			agg = await parse_docs(on_update, download)
+			agg = await parse_docs(on_update, fetch=download, loop=ctx.bot.loop)
 		except Exception as exc:
 			raise commands.CommandError(str(exc))
 

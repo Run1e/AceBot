@@ -6,7 +6,6 @@ feedback
 logs
 venv
 config.py
-README_OLD.md
 
 test.py
 test_md.py
