@@ -13,7 +13,7 @@ The bot was initially made for the
 
 ### General commands
 
-The bot has a plethora of commands. The invoke these, send a message starting with `.` followed by the command name.
+The bot has a plethora of commands. To invoke these, send a message starting with `.` followed by the command name.
 For example, `.woof` would invoke the `woof` command.
 
 The `help` command can be ran at any point for reference how to use the bot. If you need help about a specific command,
