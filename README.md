@@ -125,7 +125,7 @@ Run `help roles` for a full list of commands.
 
 ### Feedback
 
-You can send thoughts, feedback and suggestions directly to me by using the `feedback` command.
+You can send thoughts, feedback and suggestions directly to me by using the `feedback` command!
 
 ## Installing the bot
 
