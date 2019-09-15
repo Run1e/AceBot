@@ -49,8 +49,10 @@ class DocsAggregator:
 			else:
 				return False
 
-		self.fill_names.append(name)
-
+		if force:
+			self.force_names.append(name)
+		else:
+			self.fill_names.append(name)
 		return True
 
 	def get_entry_by_page(self, page):
@@ -77,19 +79,13 @@ class DocsAggregator:
 
 		for name in force_names:
 			name = self.treat_name(name)
-
-			if name in names or not self.name_check(name, force=True):
-				continue
-
-			names.append(name)
+			if name not in names and self.name_check(name, force=True):
+				names.append(name)
 
 		for name in fill_names:
 			name = self.treat_name(name)
-
-			if name in names or not self.name_check(name):
-				continue
-
-			names.append(name)
+			if name not in names and self.name_check(name):
+				names.append(name)
 
 		entry['names'] = names
 
@@ -164,9 +160,6 @@ def build_docs():
 			name, page, *junk = line
 			name = aggregator.treat_name(name)
 
-			if not aggregator.name_check(name):
-				continue
-
 			if '#' in page:
 				page_base, offs = page.split('#')
 			else:
@@ -178,8 +171,10 @@ def build_docs():
 				p = bs.find('p') if offs is None else bs.find(True, id=offs)
 				desc = None if p is None else parsers[0].pretty_desc(p)
 
+			fill_names = parsers[0]._string_as_names(name)
+
 			aggregator.add_entry(
-				dict(force_names=list(), fill_names=parsers[0]._string_as_names(name), page=page, desc=desc)
+				dict(force_names=list(), fill_names=fill_names, page=page, desc=desc)
 			)
 
 	return aggregator
