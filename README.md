@@ -11,9 +11,11 @@ The bot was initially made for the
 
 ### General commands
 
-The bot has a plethora of commands. The invoke these, send a message starting with `.` followed by the command name. For example, `.woof` would invoke the `woof` command.
+The bot has a plethora of commands. The invoke these, send a message starting with `.` followed by the command name.
+For example, `.woof` would invoke the `woof` command.
 
-The `help` command can be ran at any point for reference how to use the bot. If you need help about a specific command, `help *command name here*` can be run.
+The `help` command can be ran at any point for reference how to use the bot. If you need help about a specific command,
+`help *command name here*` can be run.
 
 ```
 remindme    Have the bot remind you about something in the future
@@ -40,11 +42,14 @@ quack       Get a random duck picture
 
 Classic Starboard implementation.
 
-A starboard is a channel where "starred" messages are posted. A message can be starred by anyone by reacting to it with the :star: (⭐) emoji. At this point anyone can additionally star the message, giving it more stars. Starred messages with fewer than 5 stars after a week will be removed from the starboard. If it has 5 or more, it will be immortalized!
+A starboard is a channel where "starred" messages are posted. A message can be starred by anyone by reacting to it with
+the :star: emoji. At this point anyone can additionally star the message, giving it more stars. Starred messages with
+fewer than 5 stars after a week will be removed from the starboard. If it has 5 or more, it will be immortalized!
 
 To create a starboard use the `star create` command. This will create a channel where starred messages will be posted.
 
-To change the "5 stars in 1 week" values, use `star threshold` and `star lifespan`. The starboard can also be temporarily disabled (to clean it, for example) using `star lock` and enabled using `star unlock`.
+To change the "5 stars in 1 week" values, use `star threshold` and `star lifespan`. The starboard can also be
+temporarily disabled (to clean it, for example) using `star lock` and enabled using `star unlock`.
 
 Other misc. starboard commands:
 ```
@@ -56,6 +61,7 @@ star random     Bring up a random starred message in the current channel
 star delete     Delete a starred message from the starboard. Appropriate permissions/relations required to run this.
 ```
 Run `help starboard` for a complete list.
+
 ### Tags
 
 The tag system is immensively useful for bringing up text or images on demand.
@@ -133,27 +139,28 @@ Then in the root folder, make a file called `config.py` and insert, at minimum, 
 ```py
 import discord
 
-DESCRIPTION = 'A.C.E. - Autonomous Command Executor'
+DESCRIPTION     = 'A.C.E. - Autonomous Command Executor'
 
-BOT_TOKEN 		= 'your_bot_token'
-DEFAULT_PREFIX 	= '.'
-OWNER_ID 		= your_owner_id
-DB_BIND 		= 'your_db_bind'  # in the form of: postgresql://user:pass@host/database
-LOG_LEVEL 		= 'INFO'
+BOT_TOKEN       = 'your_bot_token'
+DEFAULT_PREFIX  = '.'
+OWNER_ID        = your_owner_id
+DB_BIND         = 'your_db_bind'  # in the form of: postgresql://user:pass@host/database
+LOG_LEVEL       = 'INFO'
 
 BOT_ACTIVITY    = discord.Game(name='@mention for help menu')
 
-DBL_KEY 		= None
-THECATAPI_KEY 	= None
-WOLFRAM_KEY 	= None
-APIXU_KEY 		= None
-OXFORD_ID 		= None
-OXFORD_KEY 		= None
+DBL_KEY         = None
+THECATAPI_KEY   = None
+WOLFRAM_KEY     = None
+APIXU_KEY       = None
+OXFORD_ID       = None
+OXFORD_KEY      = None
 ```
 
 ## Acknowledgements
 
 Avatar artwork: Vinter Borge
+
 Contributors: CloakerSmoker, sjc, Cap'n Odin, GeekDude
 
 
