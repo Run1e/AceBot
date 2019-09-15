@@ -4,7 +4,7 @@
 
 A fun, general purpose Discord bot!
 
-[Click here to add it to your server!](https://discordapp.com/oauth2/authorize?&client_id=367977994486022146&scope=bot&permissions=67497025)
+[Click here to add it to your server!](https://discordapp.com/oauth2/authorize?&client_id=367977994486022146&scope=bot&permissions=268823632)
 
 The bot was initially made for the
 [AutoHotkey server](https://discord.gg/tPGdSr2).
@@ -120,11 +120,19 @@ Run `help welcome` for a complete list of commands.
 The bot can create a role selector for you. Here's an example of such a selector:
 # ![Role selector](https://i.imgur.com/1RoSHLs.png)
 By clicking the reactions the user is given the corrolated role.
+
 Run `help roles` for a full list of commands.
+
+### Feedback
+
+You can send thoughts, feedback and suggestions directly to me by using the `feedback` command.
 
 ## Installing the bot
 
-If you want this bot in your server, I would prefer if you invite the official instance using the invite link above. Nevertheless, here's how to set it up!
+If you want this bot in your server, I would prefer if you invite the official instance using the
+[invite link](https://discordapp.com/oauth2/authorize?&client_id=367977994486022146&scope=bot&permissions=268823632)
+above.
+Nevertheless, here's how to set it up!
 
 Create a PostgreSQL role and database:
 ```sql
@@ -135,7 +143,8 @@ CREATE DATABASE acebot OWNER ace;
 CREATE EXTENSION pg_trgm;
 ```
 
-Then in the root folder, make a file called `config.py` and insert, at minimum, your bot token, postgresql bind and owner id:
+Then in the root folder, make a file called `config.py` and insert, at minimum, your bot token, PostgreSQL bind and
+owner id:
 ```py
 import discord
 
