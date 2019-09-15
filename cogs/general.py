@@ -24,7 +24,7 @@ class General(AceMixin, commands.Cog):
 		await asyncio.sleep(3)
 		await msg.edit(content=random.choice(('Heads!', 'Tails!')))
 
-	@commands.command()
+	@commands.command(aliases=['choice'])
 	async def choose(self, ctx, *choices: commands.clean_content):
 		'''Pick a random item from a list.'''
 
