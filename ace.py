@@ -141,7 +141,16 @@ class AceBot(commands.Bot):
 		return gc.prefix or DEFAULT_PREFIX
 
 	async def blacklist(self, ctx):
-		return ctx.guild is not None and not ctx.author.bot
+		if ctx.author.bot:
+			return False
+
+		if ctx.guild is None:
+			return False
+
+		if not ctx.guild.me.permissions_in(ctx.channel).send_messages:
+			return False
+
+		return True
 
 	async def on_command_error(self, ctx, exc):
 		e = discord.Embed()
