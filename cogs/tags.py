@@ -9,7 +9,7 @@ from datetime import datetime
 from cogs.mixins import AceMixin
 from utils.time import pretty_datetime
 from utils.pager import Pager
-from utils.prompter import admin_prompter
+from utils.prompter import admin_prompter, ADMIN_PROMPT_ABORTED
 from utils.checks import is_mod_pred
 
 
@@ -85,10 +85,17 @@ class TagEditConverter(commands.Converter):
 		if rec is None:
 			raise self.ACCESS_ERROR
 
+		# check if invoker owns tag
 		if rec.get('user_id') != ctx.author.id:
+
+			# if not, and user is not moderator, raise access error
 			if not await is_mod_pred(ctx):
 				raise self.ACCESS_ERROR
-			await admin_prompter(ctx)
+
+			# if user is moderator, run the admin prompt
+			if not await admin_prompter(ctx):
+				# if it returns false, abort
+				raise ADMIN_PROMPT_ABORTED
 
 		return tag_name, rec
 

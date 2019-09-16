@@ -3,20 +3,22 @@ import asyncio
 
 from discord.ext import commands
 
-YES_EMOJI = '\N{WHITE HEAVY CHECK MARK}'
-NO_EMOJI = '\N{CROSS MARK}'
+REQUIRED_PERMS = ('send_messages', 'embed_links', 'add_reactions')
+
+EMOJIS = ('\N{WHITE HEAVY CHECK MARK}', '\N{CROSS MARK}')
+
+ADMIN_PROMPT_ABORTED = commands.CommandError('Administrative action aborted.')
 
 
 async def prompter(ctx, title=None, prompt=None):
 	'''Creates a yes/no prompt.'''
 
-	# TODO: add check that bot can actually send embeds, add reactions, delete messages
-
-	#if ctx.author.id == ctx.bot.owner_id:
-	#	return True
+	perms = ctx.guild.me.permissions_in(ctx.channel)
+	if not all(getattr(perms, perm) for perm in REQUIRED_PERMS):
+		return False
 
 	prompt = prompt or 'No description provided.'
-	prompt += '\n\nPress {} to continue, {} to abort.'.format(YES_EMOJI, NO_EMOJI)
+	prompt += '\n\nPress {} to continue, {} to abort.'.format(*EMOJIS)
 
 	e = discord.Embed(description=prompt)
 
@@ -24,34 +26,31 @@ async def prompter(ctx, title=None, prompt=None):
 
 	try:
 		msg = await ctx.send(embed=e)
-		await msg.add_reaction(YES_EMOJI)
-		await msg.add_reaction(NO_EMOJI)
+		for emoji in EMOJIS:
+			await msg.add_reaction(emoji)
 	except discord.HTTPException:
 		return False
 
 	def check(reaction, user):
-		return str(reaction) in (YES_EMOJI, NO_EMOJI) and user == ctx.author and reaction.message.id == msg.id
+		return reaction.message.id == msg.id and user == ctx.author and str(reaction) in EMOJIS
 
 	try:
 		reaction, user = await ctx.bot.wait_for('reaction_add', check=check, timeout=60.0)
-		return True if str(reaction) == YES_EMOJI else False
+		return str(reaction) == EMOJIS[0]
 	except (asyncio.TimeoutError, discord.HTTPException):
 		return False
 	finally:
-		await msg.delete()
+		try:
+			await msg.delete()
+		except discord.HTTPException:
+			pass
 
 
 async def admin_prompter(ctx):
-	res = await prompter(
+	return await prompter(
 		ctx, title='Warning!',
 		prompt=(
 			'You are about to do an administrative action on an item you do not own.\n\n'
 			'Are you sure you want to continue?'
 		)
 	)
-
-	if res is True:
-		return True
-
-	raise commands.CommandError('Administrative action aborted.')
-

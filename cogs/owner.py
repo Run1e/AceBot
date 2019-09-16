@@ -12,6 +12,7 @@ from tabulate import tabulate
 from asyncpg.exceptions import UniqueViolationError
 from datetime import datetime
 
+from utils.prompter import admin_prompter
 from utils.google import google_parse
 from utils.pager import Pager
 from utils.time import pretty_datetime
@@ -94,23 +95,7 @@ class Owner(AceMixin, commands.Cog):
 
 	@commands.command(hidden=True)
 	async def test(self, ctx):
-		from pprint import saferepr, pprint
-
-		start_ind = '  '
-		seen = set()
-
-		def indent(cont, prefix):
-			return '\n'.join(prefix + line for line in cont.split('\n'))
-
-		def po(obj, ind=start_ind):
-			for key in vars(obj):
-				val = getattr(obj, key)
-				if isinstance(val, object) and hasattr(val, '__dict__'):
-					print(indent(po(val), start_ind + ind))
-				else:
-					print(ind + str(val))
-
-		po(ctx)
+		print(await admin_prompter(ctx))
 
 	@commands.command()
 	@commands.bot_has_permissions(embed_links=True)
