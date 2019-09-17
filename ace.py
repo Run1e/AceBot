@@ -246,6 +246,9 @@ class AceBot(commands.Bot):
 	async def update_dbl(self):
 		'''Sends an update on guild count to dbl.'''
 
+		if DBL_KEY is None:
+			return
+
 		url = 'https://discordbots.org/api/bots/{}/stats'.format(self.user.id)
 
 		server_count = len(self.guilds)
