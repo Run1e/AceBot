@@ -6,6 +6,7 @@ import traceback
 import logging.handlers
 import sys
 import os
+import json
 
 from discord.ext import commands
 from pprint import saferepr
@@ -13,7 +14,6 @@ from datetime import datetime
 
 from config import *
 from cogs.help import PaginatedHelpCommand, EditedMinimalHelpCommand
-from cogs.ahk.ids import AHK_GUILD_ID, MEMBER_ROLE_ID
 from utils.time import pretty_seconds
 from utils.string_helpers import repr_ctx
 from utils.configtable import ConfigTable, GuildConfigRecord
@@ -99,6 +99,8 @@ class AceBot(commands.Bot):
 			for extension in filter(lambda extension: os.path.isfile(extension.replace('.', '/') + '.py'), EXTENSIONS):
 				log.info(f'loading {extension}')
 				self.load_extension(extension)
+
+			self.loop.create_task(self.update_dbl())
 
 		await self.change_presence(activity=BOT_ACTIVITY)
 
@@ -233,6 +235,32 @@ class AceBot(commands.Bot):
 
 		await send_error()
 
+	async def on_guild_join(self, guild):
+		log.info('Join guild {0.name} {0.id}'.format(guild))
+		await self.update_dbl()
+
+	async def on_guild_remove(self, guild):
+		log.info('Left guild {0.name} {0.id}'.format(guild))
+		await self.update_dbl()
+
+	async def update_dbl(self):
+		'''Sends an update on guild count to dbl.'''
+
+		url = 'https://discordbots.org/api/bots/{}/stats'.format(self.user.id)
+
+		server_count = len(self.guilds)
+		data = dict(server_count=server_count)
+
+		headers = {
+			'Content-Type': 'application/json',
+			'Authorization': DBL_KEY
+		}
+
+		async with self.aiohttp.post(url, data=json.dumps(data), headers=headers) as resp:
+			if resp.status == 200:
+				log.info('Updated DBL with server count {}'.format(server_count))
+			else:
+				log.info('Failed updating DBL: {} - {}'.format(resp.reason, await resp.text()))
 
 # TODO: rely on logging to fetch self-deleted messages instead of monkey-patching?
 async def patched_delete(self, *, delay=None):
