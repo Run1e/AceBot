@@ -265,6 +265,7 @@ class AceBot(commands.Bot):
 			else:
 				log.info('Failed updating DBL: {} - {}'.format(resp.reason, await resp.text()))
 
+
 # TODO: rely on logging to fetch self-deleted messages instead of monkey-patching?
 async def patched_delete(self, *, delay=None):
 	self_deleted.insert(0, self.id)

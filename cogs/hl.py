@@ -25,7 +25,7 @@ class Highlighter(AceMixin, commands.Cog):
 	'''Create highlighted code-boxes with one command.'''
 
 	@commands.command(aliases=['h1'])
-	@commands.bot_has_permissions(add_reactions=True)
+	@commands.bot_has_permissions(manage_messages=True, add_reactions=True)
 	async def hl(self, ctx, *, code):
 		'''Highlight some code.'''
 
@@ -75,11 +75,15 @@ class Highlighter(AceMixin, commands.Cog):
 		if channel is None:
 			return
 
-		message = await channel.fetch_message(payload.message_id)
-		if message is None:
+		try:
+			message = await channel.fetch_message(payload.message_id)
+		except discord.HTTPException:
 			return
 
-		await message.delete()
+		try:
+			await message.delete()
+		except discord.HTTPException:
+			pass
 
 	@commands.command()
 	@commands.bot_has_permissions(embed_links=True)
