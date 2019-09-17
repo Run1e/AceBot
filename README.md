@@ -2,7 +2,6 @@
 
 [![Discord Bots](https://discordbots.org/api/widget/status/367977994486022146.svg)](https://discordbots.org/bot/367977994486022146)
 [![Discord Bots](https://discordbots.org/api/widget/servers/367977994486022146.svg)](https://discordbots.org/bot/367977994486022146)
-[![Discord Bots](https://discordbots.org/api/widget/lib/367977994486022146.svg)](https://discordbots.org/bot/367977994486022146)
 
 A fun, general purpose Discord bot!
 
