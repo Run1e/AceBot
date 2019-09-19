@@ -456,7 +456,7 @@ class Starboard(AceMixin, commands.Cog):
 				raise commands.CommandError('Can\'t star message from nsfw channel into non-nsfw starboard.')
 
 			if not len(message.content) and not len(message.attachments):
-				raise commands.CommandError('Can\'t star this message because it has no starrable content.')
+				raise commands.CommandError('Can\'t star this message because it has no embeddable content.')
 
 			# make sure the starrer isn't starring too quickly
 			prev_time = await self.db.fetchval(
