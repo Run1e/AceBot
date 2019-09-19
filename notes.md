@@ -1,3 +1,6 @@
+disable starboard "autoclean" by default
+allow people to enable it themselves, interactively maybe?
+
 docs for ahk v2
 
 autohotkey specific:

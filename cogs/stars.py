@@ -6,8 +6,6 @@ from datetime import datetime, timedelta
 from asyncpg.exceptions import UniqueViolationError
 
 from utils.checks import is_mod, is_mod_pred
-from utils.time import pretty_timedelta
-from utils.converters import TimeMultConverter, TimeDeltaConverter
 from utils.configtable import ConfigTable, StarboardConfigRecord
 from utils.prompter import prompter, admin_prompter, ADMIN_PROMPT_ABORTED
 from cogs.mixins import AceMixin
@@ -15,6 +13,7 @@ from cogs.mixins import AceMixin
 log = logging.getLogger(__name__)
 STAR_EMOJI = '\N{WHITE MEDIUM STAR}'
 STAR_COOLDOWN = timedelta(minutes=3)
+STAR_CUTOFF = timedelta(days=7)
 
 SB_NOT_EXIST_ERROR = commands.CommandError('Please set up a starboard using `star create` first.')
 SB_NOT_SET_ERROR = commands.CommandError('No starboard channel has been set yet.')
@@ -70,15 +69,15 @@ class Starboard(AceMixin, commands.Cog):
 		'''Purges old and underperforming stars depending on guild starboard settings.'''
 
 		boards = await self.db.fetch(
-			'SELECT guild_id, channel_id, threshold, max_age FROM starboard WHERE locked=$1', False
+			'SELECT guild_id, channel_id, threshold FROM starboard WHERE locked IS FALSE AND threshold IS NOT NULL'
 		)
 
-		now = datetime.utcnow()
+		pivot = datetime.utcnow() - STAR_CUTOFF
 		to_delete = list()
 
 		for board in boards:
 			rows = await self.db.fetch(
-				self.purge_query, board.get('guild_id'), now - board.get('max_age'), board.get('threshold') - 1
+				self.purge_query, board.get('guild_id'), pivot, board.get('threshold') - 1
 			)
 
 			if not rows:
@@ -268,42 +267,6 @@ class Starboard(AceMixin, commands.Cog):
 
 	@_star.command()
 	@is_mod()
-	async def threshold(self, ctx, *, limit: int = None):
-		'''Set the minimum amount of stars needed for a starred message to be immortalized.'''
-
-		board = await self.get_board(ctx.guild.id)
-
-		if limit is None:
-			limit = board.threshold
-		else:
-			await board.update(threshold=limit)
-
-		await ctx.send(f'Star threshold set to `{limit}`')
-
-	@_star.command()
-	@is_mod()
-	async def lifespan(self, ctx, amount: TimeMultConverter = None, *, unit: TimeDeltaConverter = None):
-		'''Starred messages with less than `threshold` stars after this period are deleted from the starboard. Messages older than this can not be starred.'''
-
-		if unit is None and amount is not None:
-			raise commands.CommandError('Malformed input.')
-
-		board = await self.get_board(ctx.guild.id)
-
-		if unit is not None and amount is not None:
-			age = amount * unit
-
-			if age < timedelta(days=1):
-				raise commands.CommandError('Please set to at least more than 1 day.')
-
-			await board.update(max_age=age)
-		else:
-			age = board.max_age
-
-		await ctx.send(f'Star lifespan set to {pretty_timedelta(age)}')
-
-	@_star.command()
-	@is_mod()
 	async def fix(self, ctx, *, message_id: StarConverter):
 		'''Refreshes message content and re-counts starrers.'''
 
@@ -403,6 +366,29 @@ class Starboard(AceMixin, commands.Cog):
 			pass
 
 		await ctx.send('Star deleted.')
+
+	@_star.command()
+	@is_mod()
+	async def threshold(self, ctx, threshold: int = None):
+		'''Starred messages with fewer than `threshold` stars will be removed from the starboard after a week has passed. To disable auto-cleaning completely, leave argument blank.'''
+
+		board = await self.get_board(ctx.guild.id)
+
+		if threshold is None:
+			if board.threshold is None:
+				raise commands.CommandError('Auto-cleaning is already disabled.')
+			await board.update(threshold=None)
+			await ctx.send('Starboard auto-cleaning disabled.')
+		else:
+			if not 0 < threshold < 32767:
+				raise commands.CommandError('Auto-clean star threshold has to be between 0 and 32767.')
+
+			await board.update(threshold=threshold)
+			await ctx.send(
+				'Starred messages with fewer than {} stars after a week will now be removed from the starboard.'.format(
+					threshold
+				)
+			)
 
 	@_star.command()
 	@is_mod()
@@ -530,10 +516,8 @@ class Starboard(AceMixin, commands.Cog):
 
 	async def _on_star_event_meta(self, event, board, message, starrer):
 		# stop if attempted star is too old
-		if datetime.utcnow() - board.max_age > message.created_at:
-			raise commands.CommandError(
-				'Stars can\'t be added or removed from messages older than {}.'.format(pretty_timedelta(board.max_age))
-			)
+		if datetime.utcnow() - STAR_CUTOFF > message.created_at:
+			raise commands.CommandError('Stars can\'t be added or removed from messages older than a week.')
 
 		# get the starmessage record if it exists
 		row = await self.db.fetchrow(

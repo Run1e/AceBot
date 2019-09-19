@@ -155,7 +155,7 @@ class AceBot(commands.Bot):
 		return True
 
 	async def on_command_error(self, ctx, exc):
-		e = discord.Embed()
+		e = discord.Embed(color=0x36393E)
 
 		async def send_error():
 			try:
@@ -236,11 +236,11 @@ class AceBot(commands.Bot):
 		await send_error()
 
 	async def on_guild_join(self, guild):
-		log.info('Join guild {0.name} {0.id}'.format(guild))
+		log.info('Join guild {0.name} ({0.id})'.format(guild))
 		await self.update_dbl()
 
 	async def on_guild_remove(self, guild):
-		log.info('Left guild {0.name} {0.id}'.format(guild))
+		log.info('Left guild {0.name} ({0.id})'.format(guild))
 		await self.update_dbl()
 
 	async def update_dbl(self):
@@ -281,7 +281,7 @@ discord.Message.delete = patched_delete
 
 # monkey-patched Embed class to force embed color
 class Embed(discord.Embed):
-	def __init__(self, color=0x2E4D83, **attrs):
+	def __init__(self, color=discord.Color.blue(), **attrs):
 		attrs['color'] = color
 		super().__init__(**attrs)
 

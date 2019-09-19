@@ -44,8 +44,7 @@ CREATE TABLE IF NOT EXISTS starboard (
 	guild_id	BIGINT UNIQUE NOT NULL,
 	channel_id	BIGINT NULL,
 	locked		BOOLEAN NOT NULL DEFAULT FALSE,
-	threshold	SMALLINT NOT NULL DEFAULT '3',
-	max_age		INTERVAL NOT NULL DEFAULT '7 days'
+	threshold	SMALLINT NULL
 );
 
 -- join kick patterns
