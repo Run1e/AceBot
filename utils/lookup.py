@@ -9,6 +9,10 @@ def past(*args, **kwargs):
 	return datetime.utcnow() - timedelta(*args, **kwargs)
 
 
+def excel_time(dt):
+	return dt.strftime('%d.%m.%y %H:%M')
+
+
 class Context(Enum):
 	NONE = 1
 	FUNC = 2
@@ -36,7 +40,8 @@ class DiscordLookup:
 
 		self.funcs = dict(
 			st=discord.utils.snowflake_time,
-			dt=datetime.utcnow,
+			now=datetime.utcnow,
+			dt=datetime,
 			td=timedelta,
 			str=str,
 			list=list,
@@ -44,6 +49,7 @@ class DiscordLookup:
 			repr=repr,
 			len=len,
 			sorted=sorted,
+			excel_time=excel_time,
 			past=past,
 			guild=lambda ident: self.get_object(ctx.bot.guilds, ident),
 			role=lambda ident: self.get_object(all_roles, ident),
@@ -78,7 +84,14 @@ class DiscordLookup:
 			func = self.traverse(node.func, Context.FUNC)
 			args = [self.traverse(arg_val) for arg_val in node.args]
 			kwargs = {kw.arg: self.traverse(kw.value) for kw in node.keywords}
-			return func(*args, **kwargs)
+
+			if not kwargs and len(args) == 1 and isinstance(args[0], list):
+				processed_list = list()
+				for item in args[0]:
+					processed_list.append(func(item))
+				return processed_list
+			else:
+				return func(*args, **kwargs)
 
 		elif isinstance(node, ast.Subscript):
 			if hasattr(node, 'value'):

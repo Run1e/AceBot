@@ -154,11 +154,11 @@ class Meta(AceMixin, commands.Cog):
 		'''Give me some feedback about the bot!'''
 
 		timestamp = str(datetime.utcnow()).split('.')[0].replace(' ', '_').replace(':', '')
-		filename = str(ctx.message.id) + '_' + timestamp + '.feedback'
+		filename = str(ctx.message.id) + '_' + timestamp
 
 		content = '{}\n\n{}'.format(repr_ctx(ctx), feedback)
 
-		with open('feedback/{}'.format(filename), 'w', encoding='utf-8-sig') as f:
+		with open('feedback/{}.feedback'.format(filename), 'w', encoding='utf-8-sig') as f:
 			f.write(content)
 
 		await ctx.send('Feedback sent. Thanks for helping improve the bot!')

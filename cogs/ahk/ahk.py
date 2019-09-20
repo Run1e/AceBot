@@ -14,6 +14,7 @@ from utils.docs_parser import parse_docs
 from utils.html2markdown import HTML2Markdown
 
 
+AHK_COLOR = 0x95CD95
 RSS_URL = 'https://www.autohotkey.com/boards/feed'
 DOCS_FORMAT = 'https://autohotkey.com/docs/{}'
 DOCS_NO_MATCH = commands.CommandError('Sorry, couldn\'t find an entry similar to that.')
@@ -23,7 +24,7 @@ class DocsPagePager(Pager):
 	async def craft_page(self, e, page, entries):
 		e.title = self.header.get('page')
 		e.url = DOCS_FORMAT.format(self.header.get('link'))
-		e.color = 0x95CD95
+		e.color = AHK_COLOR
 
 		e.description = '\n'.join(
 			'[`{}`]({})'.format(
@@ -80,7 +81,8 @@ class AutoHotkey(AceMixin, commands.Cog):
 				e = discord.Embed(
 					title=title,
 					description=content,
-					url=str(entry.id.text)
+					url=str(entry.id.text),
+					color=AHK_COLOR
 				)
 
 				e.add_field(name='Author', value=str(entry.author.text))
@@ -185,7 +187,7 @@ class AutoHotkey(AceMixin, commands.Cog):
 		e = discord.Embed(
 			title=name,
 			description=docs.get('content') or 'No description for this page.',
-			color=0x95CD95,
+			color=AHK_COLOR,
 			url=None if page is None else DOCS_FORMAT.format(docs.get('link'))
 		)
 
@@ -214,7 +216,7 @@ class AutoHotkey(AceMixin, commands.Cog):
 
 		e = discord.Embed(
 			description='\n'.join(entries),
-			color=0x95CD95
+			color=AHK_COLOR
 		)
 
 		await ctx.send(embed=e)
@@ -328,7 +330,7 @@ class AutoHotkey(AceMixin, commands.Cog):
 		e = discord.Embed(
 			title=html.unescape(result['title']),
 			description=html.unescape(result['description']),
-			color=0x95CD95,
+			color=AHK_COLOR,
 			url=result['url']
 		)
 
