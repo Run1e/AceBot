@@ -77,7 +77,7 @@ A few of the tag commands:
 tag             Bring up a tag
 tag create      Create a new tag
 tag make        Create a new tag interactively (recommended!)
-tag edit        Edit one of your tags.
+tag edit        Edit one of your tags
 tag delete      Delete one of your tags
 tag list        List a members tags, or all the server tags
 tag info        Extensive information about a tag
@@ -107,9 +107,9 @@ The bot can be configured to send a message each time a new member joins your se
 
 To set this up, first specify a channel the messages should be sent in using `welcome channel`. Then set up a welcome message using `welcome message`. A list of replacements is listed here:
 ```
-{user}          Replaced with a mention of the member that joined.
-{guild}         Replaced with the server name.
-{member_count}  Replaced with the server member count.
+{user}          Replaced with a mention of the member that joined
+{guild}         Replaced with the server name
+{member_count}  Replaced with the server member count
 ```
 
 To see that the welcome system works you can run `welcome test`. If it fails it will tell you what to fix!
