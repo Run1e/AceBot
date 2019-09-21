@@ -2,10 +2,13 @@ import discord
 import re
 import html
 
+from discord.ext import commands, tasks
+from collections import OrderedDict
 from bs4 import BeautifulSoup
 from fuzzywuzzy import process, fuzz
 from datetime import datetime, timedelta, timezone
-from discord.ext import commands, tasks
+from urlextract import URLExtract
+from urllib.parse import urlparse, parse_qs
 
 from cogs.ahk.ids import *
 from cogs.mixins import AceMixin
@@ -45,6 +48,8 @@ class AutoHotkey(AceMixin, commands.Cog):
 			big_box=True, lang='autoit',
 			max_len=2000
 		)
+
+		self.url_extractor = URLExtract()
 
 		self.forum_thread_channel = self.bot.get_channel(FORUM_THRD_CHAN_ID)
 		self.forum_reply_channel = self.bot.get_channel(FORUM_REPLY_CHAN_ID)
@@ -109,6 +114,62 @@ class AutoHotkey(AceMixin, commands.Cog):
 
 			await ctx.send('If you meant to bring up the docs, please do `.d <query>` instead.')
 
+	@commands.Cog.listener()
+	async def on_message(self, message):
+		return # disabled for now. unsure if this should be enabled or not
+
+		if message.guild is None or message.author.bot:
+			return
+
+		if message.guild.id not in (AHK_GUILD_ID, 517692823621861407):
+			return
+
+		urls = self.url_extractor.find_urls(message.content, only_unique=True)
+
+		sent = 0
+
+		for url in urls:
+			if sent >= 2:
+				return
+
+			parsed = urlparse(url)
+			if not (parsed.netloc.endswith('autohotkey.com') and parsed.path.startswith('/docs')):
+				continue
+
+			page = parsed.path[6:]
+			if parsed.fragment != '':
+				page += '#{}'.format(parsed.fragment)
+
+			record = await self.db.fetchrow(
+				'SELECT * FROM docs_entry DE LEFT OUTER JOIN docs_syntax DS ON DE.id = DS.docs_id WHERE DE.link = $1',
+				page
+			)
+
+			if record is None:
+				return
+
+			await message.channel.send(embed=self.craft_docs_page(record.get('title'), record))
+
+			sent += 1
+
+	def craft_docs_page(self, name, record):
+		page = record.get('page')
+
+		e = discord.Embed(
+			title=name,
+			description=record.get('content') or 'No description for this page.',
+			color=AHK_COLOR,
+			url=None if page is None else DOCS_FORMAT.format(record.get('link'))
+		)
+
+		e.set_footer(text='autohotkey.com', icon_url='https://www.autohotkey.com/favicon.ico')
+
+		syntax = record.get('syntax')
+		if syntax is not None:
+			e.description += '\n```autoit\n{}```'.format(syntax)
+
+		return e
+
 	async def get_docs(self, query, count=1):
 		query = query.lower()
 
@@ -156,7 +217,7 @@ class AutoHotkey(AceMixin, commands.Cog):
 	async def docs(self, ctx, *, query):
 		'''Search the AutoHotkey documentation. Enter multiple queries by separating with commas.'''
 
-		spl = dict.fromkeys(st.strip() for st in query.lower().split(','))
+		spl = OrderedDict.fromkeys(st.strip() for st in query.lower().split(','))
 
 		if len(spl) > 3:
 			raise commands.CommandError('Maximum three different queries.')
@@ -179,24 +240,13 @@ class AutoHotkey(AceMixin, commands.Cog):
 
 		docs_id, name = result[0].get('docs_id'), result[0].get('name')
 
-		docs = await self.db.fetchrow('SELECT * FROM docs_entry WHERE id=$1', docs_id)
-		syntax = await self.db.fetchrow('SELECT * FROM docs_syntax WHERE docs_id=$1', docs.get('id'))
-
-		page = docs.get('page')
-
-		e = discord.Embed(
-			title=name,
-			description=docs.get('content') or 'No description for this page.',
-			color=AHK_COLOR,
-			url=None if page is None else DOCS_FORMAT.format(docs.get('link'))
+		record = await self.db.fetchrow(
+			'SELECT * FROM docs_entry LEFT OUTER JOIN docs_syntax ON docs_entry.id = docs_syntax.docs_id '
+			'WHERE docs_entry.id = $1',
+			docs_id
 		)
 
-		e.set_footer(text='autohotkey.com', icon_url='https://www.autohotkey.com/favicon.ico')
-
-		if syntax is not None:
-			e.description += '\n```autoit\n{}```'.format(syntax.get('syntax'))
-
-		await ctx.send(embed=e)
+		await ctx.send(embed=self.craft_docs_page(name, record))
 
 	@commands.command(aliases=['dl'])
 	@commands.bot_has_permissions(embed_links=True)
