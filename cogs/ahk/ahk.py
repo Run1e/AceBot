@@ -7,8 +7,6 @@ from collections import OrderedDict
 from bs4 import BeautifulSoup
 from fuzzywuzzy import process, fuzz
 from datetime import datetime, timedelta, timezone
-from urlextract import URLExtract
-from urllib.parse import urlparse, parse_qs
 
 from cogs.ahk.ids import *
 from cogs.mixins import AceMixin
@@ -48,8 +46,6 @@ class AutoHotkey(AceMixin, commands.Cog):
 			big_box=True, lang='autoit',
 			max_len=2000
 		)
-
-		self.url_extractor = URLExtract()
 
 		self.forum_thread_channel = self.bot.get_channel(FORUM_THRD_CHAN_ID)
 		self.forum_reply_channel = self.bot.get_channel(FORUM_REPLY_CHAN_ID)
@@ -113,44 +109,6 @@ class AutoHotkey(AceMixin, commands.Cog):
 				return
 
 			await ctx.send('If you meant to bring up the docs, please do `.d <query>` instead.')
-
-	@commands.Cog.listener()
-	async def on_message(self, message):
-		return # disabled for now. unsure if this should be enabled or not
-
-		if message.guild is None or message.author.bot:
-			return
-
-		if message.guild.id not in (AHK_GUILD_ID, 517692823621861407):
-			return
-
-		urls = self.url_extractor.find_urls(message.content, only_unique=True)
-
-		sent = 0
-
-		for url in urls:
-			if sent >= 2:
-				return
-
-			parsed = urlparse(url)
-			if not (parsed.netloc.endswith('autohotkey.com') and parsed.path.startswith('/docs')):
-				continue
-
-			page = parsed.path[6:]
-			if parsed.fragment != '':
-				page += '#{}'.format(parsed.fragment)
-
-			record = await self.db.fetchrow(
-				'SELECT * FROM docs_entry DE LEFT OUTER JOIN docs_syntax DS ON DE.id = DS.docs_id WHERE DE.link = $1',
-				page
-			)
-
-			if record is None:
-				return
-
-			await message.channel.send(embed=self.craft_docs_page(record.get('title'), record))
-
-			sent += 1
 
 	def craft_docs_page(self, name, record):
 		page = record.get('page')
