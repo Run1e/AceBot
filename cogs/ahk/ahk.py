@@ -110,11 +110,11 @@ class AutoHotkey(AceMixin, commands.Cog):
 
 			await ctx.send('If you meant to bring up the docs, please do `.d <query>` instead.')
 
-	def craft_docs_page(self, name, record):
+	def craft_docs_page(self, record):
 		page = record.get('page')
 
 		e = discord.Embed(
-			title=name,
+			title=record.get('name'),
 			description=record.get('content') or 'No description for this page.',
 			color=AHK_COLOR,
 			url=None if page is None else DOCS_FORMAT.format(record.get('link'))
@@ -128,35 +128,33 @@ class AutoHotkey(AceMixin, commands.Cog):
 
 		return e
 
-	async def get_docs(self, query, count=1):
+	async def get_docs(self, query, count=1, entry=False, syntax=False):
 		query = query.lower()
 
 		results = list()
 		already_added = set()
 
-		match = await self.db.fetchrow('SELECT * FROM docs_name WHERE LOWER(name)=$1', query)
+		sql = 'SELECT * FROM docs_name '
 
-		if match is not None:
-			results.append(match)
+		if entry:
+			sql += 'INNER JOIN docs_entry ON docs_name.docs_id = docs_entry.id '
+		if syntax:
+			sql += 'LEFT OUTER JOIN docs_syntax ON docs_name.docs_id = docs_syntax.docs_id '
 
-			already_added.add(match.get('id'))
+		sql += 'ORDER BY word_similarity(name, $1) DESC, LOWER(name)=$1 DESC LIMIT $2'
 
-			if count == 1:
-				return results
-
-		# get five results from docs_name
-		matches = await self.db.fetch(
-			'SELECT * FROM docs_name ORDER BY word_similarity($1, name) DESC LIMIT 8', query
-		)
+		# get 8 closes matches according to trigram matching
+		matches = await self.db.fetch(sql, query, max(count, 8))
 
 		if not matches:
 			return results
 
+		# further fuzzy search it using fuzzywuzzy ratio matching
 		fuzzed = process.extract(
 			query=query,
 			choices=[tup.get('name') for tup in matches],
 			scorer=fuzz.ratio,
-			limit=count - len(results)
+			limit=count
 		)
 
 		if not fuzzed:
@@ -175,7 +173,7 @@ class AutoHotkey(AceMixin, commands.Cog):
 	async def docs(self, ctx, *, query):
 		'''Search the AutoHotkey documentation. Enter multiple queries by separating with commas.'''
 
-		spl = OrderedDict.fromkeys(st.strip() for st in query.lower().split(','))
+		spl = OrderedDict.fromkeys(sq.strip() for sq in query.lower().split(','))
 
 		if len(spl) > 3:
 			raise commands.CommandError('Maximum three different queries.')
@@ -191,27 +189,19 @@ class AutoHotkey(AceMixin, commands.Cog):
 
 		query = spl.popitem()[0]
 
-		result = await self.get_docs(query, count=1)
+		result = await self.get_docs(query, count=1, entry=True, syntax=True)
 
 		if not result:
 			raise DOCS_NO_MATCH
 
-		docs_id, name = result[0].get('docs_id'), result[0].get('name')
-
-		record = await self.db.fetchrow(
-			'SELECT * FROM docs_entry LEFT OUTER JOIN docs_syntax ON docs_entry.id = docs_syntax.docs_id '
-			'WHERE docs_entry.id = $1',
-			docs_id
-		)
-
-		await ctx.send(embed=self.craft_docs_page(name, record))
+		await ctx.send(embed=self.craft_docs_page(result[0]))
 
 	@commands.command(aliases=['dl'])
 	@commands.bot_has_permissions(embed_links=True)
 	async def docslist(self, ctx, *, query):
 		'''Find all approximate matches in the AutoHotkey documentation.'''
 
-		results = await self.get_docs(query, count=10)
+		results = await self.get_docs(query, count=10, entry=True)
 
 		if not results:
 			raise DOCS_NO_MATCH
@@ -219,8 +209,7 @@ class AutoHotkey(AceMixin, commands.Cog):
 		entries = list()
 
 		for res in results:
-			link = await self.db.fetchval('SELECT link FROM docs_entry WHERE id=$1', res.get('docs_id'))
-			entries.append('[`{}`]({})'.format(res.get('name'), DOCS_FORMAT.format(link)))
+			entries.append('[`{}`]({})'.format(res.get('name'), DOCS_FORMAT.format(res.get('link'))))
 
 		e = discord.Embed(
 			description='\n'.join(entries),
@@ -236,20 +225,18 @@ class AutoHotkey(AceMixin, commands.Cog):
 
 		query = query.lower()
 
-		entry = await self.get_docs(query, count=1)
+		entry = await self.get_docs(query, count=1, entry=True)
 
 		if not entry:
 			raise DOCS_NO_MATCH
 
 		entry = entry[0]
 
-		subheader = await self.db.fetchrow('SELECT * FROM docs_entry WHERE id=$1', entry.get('docs_id'))
-
-		if subheader.get('fragment') is None:
-			header = subheader
+		if entry.get('fragment') is None:
+			header = entry
 		else:
 			header = await self.db.fetchrow(
-				'SELECT * FROM docs_entry WHERE page=$1 AND fragment IS NULL', subheader.get('page')
+				'SELECT * FROM docs_entry WHERE page=$1 AND fragment IS NULL', entry.get('page')
 			)
 
 			if header is None:
