@@ -323,9 +323,16 @@ class AutoHotkey(AceMixin, commands.Cog):
 
 		result = json['results'][0]
 
+		print(result['description'])
+
+		if result['description'] is None:
+			description = 'No description for this page.'
+		else:
+			description = html.unescape(result['description'])
+
 		e = discord.Embed(
 			title=html.unescape(result['title']),
-			description=html.unescape(result['description']),
+			description= description,
 			color=AHK_COLOR,
 			url=result['url']
 		)
