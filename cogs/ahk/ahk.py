@@ -138,6 +138,7 @@ class AutoHotkey(AceMixin, commands.Cog):
 
 		if entry:
 			sql += 'INNER JOIN docs_entry ON docs_name.docs_id = docs_entry.id '
+
 		if syntax:
 			sql += 'LEFT OUTER JOIN docs_syntax ON docs_name.docs_id = docs_syntax.docs_id '
 

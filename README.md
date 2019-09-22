@@ -44,12 +44,12 @@ quack       Get a random duck picture
 Classic Starboard implementation.
 
 A starboard is a channel where "starred" messages are posted. A message can be starred by anyone by reacting to it with
-the :star: emoji. At this point anyone can additionally star the message, giving it more stars. Starred messages with
-fewer than 5 stars after a week will be removed from the starboard. If it has 5 or more, it will be immortalized!
+the :star: emoji. At this point anyone can additionally star the message, giving it more stars.
 
 To create a starboard use the `star create` command. This will create a channel where starred messages will be posted.
 
-To change the "5 stars in 1 week" values, use `star threshold` and `star lifespan`. The starboard can also be
+Automatic starboard cleaning can be enabled using `star threshold`. To have starred messages with fewer than 5 stars be
+removed after a week, do `star threshold 5`. To disable auto-cleaning, do `star threshold`. The starboard can also be
 temporarily disabled (to clean it, for example) using `star lock` and enabled using `star unlock`.
 
 Other misc. starboard commands:
