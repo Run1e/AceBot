@@ -323,8 +323,6 @@ class AutoHotkey(AceMixin, commands.Cog):
 
 		result = json['results'][0]
 
-		print(result['description'])
-
 		if result['description'] is None:
 			description = 'No description for this page.'
 		else:
