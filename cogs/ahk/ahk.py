@@ -304,6 +304,7 @@ class AutoHotkey(AceMixin, commands.Cog):
 		'''Search the Microsoft documentation.'''
 
 		url = 'https://docs.microsoft.com/api/search'
+
 		params = {
 			'filter': "category eq 'Documentation'",
 			'locale': 'en-us',
