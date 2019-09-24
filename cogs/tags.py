@@ -38,7 +38,7 @@ class TagCreateConverter(commands.Converter):
 		'rename',
 		'alias',
 		'transfer',
-		'search',
+		'search', 'find',
 		'info', 'stats',
 		'top', 'get', 'set', 'put', 'exec'
 	)
@@ -448,7 +448,7 @@ class Tags(AceMixin, commands.Cog):
 		else:
 			raise commands.CommandError('Unknown error occured.')
 
-	@tag.command()
+	@tag.command(aliases=['find'])
 	@commands.bot_has_permissions(embed_links=True)
 	async def search(self, ctx, *, query: str):
 		'''Search for a tag.'''
