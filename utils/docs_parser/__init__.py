@@ -19,6 +19,11 @@ DOWNLOAD_LINK = 'https://github.com/Lexikos/AutoHotkey_L-Docs/archive/master.zip
 log = logging.getLogger(__name__)
 
 
+ALIASES = {
+	'commands/For.htm': ['For']
+}
+
+
 class DocsAggregator:
 	def __init__(self):
 		self.force_names = list()
@@ -76,6 +81,11 @@ class DocsAggregator:
 		force_names = entry.get('force_names')
 		fill_names = entry.get('fill_names')
 		entry['main'] = force_names[0] if force_names else fill_names[0]
+
+		for append_page, append_list in ALIASES.items():
+			if entry['page'] == append_page:
+				for name_to_add in append_list:
+					force_names.append(name_to_add)
 
 		for name in force_names:
 			name = self.treat_name(name)
