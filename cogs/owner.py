@@ -251,6 +251,7 @@ class Owner(AceMixin, commands.Cog):
 
 	@commands.command(hidden=True)
 	async def status(self, ctx):
+		await self.bot.change_presence()
 		await self.bot.change_presence(activity=BOT_ACTIVITY)
 
 	@commands.command(hidden=True)

@@ -58,6 +58,7 @@ class AceBot(commands.Bot):
 			description=DESCRIPTION,
 			help_command=EditedMinimalHelpCommand(),
 			max_messages=20000,
+			activity=BOT_ACTIVITY,
 		)
 
 		self.aiohttp = None
@@ -73,7 +74,6 @@ class AceBot(commands.Bot):
 		'''Called on connection with the Discord gateway.'''
 
 		log.info('Connected to Discord...')
-		await self.change_presence(activity=BOT_ACTIVITY)
 
 	async def on_ready(self):
 		'''Called when discord.py has finished connecting to the gateway.'''
@@ -102,10 +102,10 @@ class AceBot(commands.Bot):
 
 			self.loop.create_task(self.update_dbl())
 
-		await self.change_presence(activity=BOT_ACTIVITY)
-
 	async def on_resumed(self):
 		log.info('Resumed...')
+
+		# re-set presence on connection resumed
 		await self.change_presence(activity=BOT_ACTIVITY)
 
 	async def on_guild_unavailable(self, guild):
