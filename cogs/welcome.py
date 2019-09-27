@@ -85,7 +85,7 @@ class Welcome(AceMixin, commands.Cog):
 
 		entry = await self.config.get_entry(ctx.guild.id, construct=False)
 
-		if entry is None:
+		if entry is None or entry.content is None:
 			raise commands.CommandError('You don\'t seem to have set up a welcome message yet.')
 
 		await ctx.send(discord.utils.escape_markdown(entry.content))
