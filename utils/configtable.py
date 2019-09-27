@@ -182,6 +182,20 @@ class StarboardConfigRecord(ConfigTableRecord):
 		return guild.get_channel(self.channel_id)
 
 
+class WelcomeRecord(ConfigTableRecord):
+
+	@property
+	def channel(self):
+		if self.channel_id is None:
+			return None
+
+		guild = self._config.bot.get_guild(self.guild_id)
+		if guild is None:
+			return None
+
+		return guild.get_channel(self.channel_id)
+
+
 class SecurityConfigRecord(ConfigTableRecord):
 
 	def __init__(self, *args, **kwargs):

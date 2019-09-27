@@ -7,7 +7,12 @@ from discord.ext import commands
 from cogs.mixins import AceMixin
 from utils.checks import is_mod_pred
 from utils.string_helpers import craft_welcome
-from utils.configtable import ConfigTable
+from utils.configtable import ConfigTable, WelcomeRecord
+
+
+WELCOME_NOT_SET_UP_ERROR = commands.CommandError(
+	'You don\'t seem to have set up a welcome message yet, do `welcome` to see available commands.'
+)
 
 
 class Welcome(AceMixin, commands.Cog):
@@ -22,7 +27,7 @@ class Welcome(AceMixin, commands.Cog):
 	def __init__(self, bot):
 		super().__init__(bot)
 
-		self.config = ConfigTable(bot, 'welcome', 'guild_id')
+		self.config = ConfigTable(bot, 'welcome', 'guild_id', WelcomeRecord)
 
 	async def cog_check(self, ctx):
 		return await is_mod_pred(ctx)
@@ -31,10 +36,17 @@ class Welcome(AceMixin, commands.Cog):
 	async def on_member_join(self, member):
 		entry = await self.config.get_entry(member.guild.id, construct=False)
 
-		if entry is None or entry.enabled is False or entry.content is None or entry.channel_id is None:
+		if entry is None:
 			return
 
-		channel = member.guild.get_channel(entry.channel_id)
+		if entry.enabled is False:
+			return
+
+		if entry.content is None:
+			return
+
+		channel = entry.channel
+
 		if channel is None:
 			return
 
@@ -43,9 +55,10 @@ class Welcome(AceMixin, commands.Cog):
 		except discord.HTTPException:
 			pass
 
-	@commands.group(hidden=True)
+	@commands.group(hidden=True, invoke_without_command=True)
 	async def welcome(self, ctx):
-		pass
+		help_command = self.bot.help_command._command_impl
+		await ctx.invoke(help_command, command='welcome')
 
 	@welcome.command(aliases=['msg'])
 	async def message(self, ctx, *, message: str):
@@ -70,7 +83,7 @@ class Welcome(AceMixin, commands.Cog):
 			if entry.channel_id is None:
 				raise commands.CommandError('Welcome channel not yet set.')
 
-			channel = ctx.guild.get_channel(entry.channel_id)
+			channel = entry.channel
 			if channel is None:
 				raise commands.CommandError('Channel previously set but not found, try setting a new one.')
 
@@ -81,12 +94,12 @@ class Welcome(AceMixin, commands.Cog):
 
 	@welcome.command()
 	async def raw(self, ctx):
-		'''Get the raw contents of your welcome message. Useful for editing it.'''
+		'''Get the raw contents of your welcome message. Useful for editing.'''
 
 		entry = await self.config.get_entry(ctx.guild.id, construct=False)
 
 		if entry is None or entry.content is None:
-			raise commands.CommandError('You don\'t seem to have set up a welcome message yet.')
+			raise WELCOME_NOT_SET_UP_ERROR
 
 		await ctx.send(discord.utils.escape_markdown(entry.content))
 
@@ -94,23 +107,30 @@ class Welcome(AceMixin, commands.Cog):
 	async def test(self, ctx):
 		'''Test your welcome command.'''
 
-		entry = await self.config.get_entry(ctx.guild.id)
+		entry = await self.config.get_entry(ctx.guild.id, construct=False)
 
-		if entry.channel_id is not None:
-			channel = ctx.guild.get_channel(entry.channel_id)
-		else:
-			channel = False
+		if entry is None:
+			raise WELCOME_NOT_SET_UP_ERROR
+
+		channel = entry.channel
+
+		if channel is None:
+			if entry.channel_id is None:
+				raise commands.CommandError(
+					'You haven\'t set up a welcome channel yet.\nSet up with `welcome channel [channel]`'
+				)
+			else:
+				raise commands.CommandError(
+					'Welcome channel previously set but not found.\nPlease set again using `welcome channel [channel]`'
+				)
 
 		if entry.enabled is False:
-			await ctx.send('Welcome messages are disabled. Enable with `welcome enable`.')
-		elif entry.content is None:
-			await ctx.send('No welcome message set. Set with `welcome message <message>`')
-		elif channel is None:
-			await ctx.send('Welcome channel set but not found. Set a new one with `welcome channel <channel>`')
-		elif channel is False:
-			await ctx.send('No welcome channel set. Set with `welcome channel <channel>`')
-		else:
-			await self.on_member_join(ctx.author)
+			raise commands.CommandError('Welcome messages are disabled.\nEnable with `welcome enable`')
+
+		if entry.content is None:
+			raise commands.CommandError('No welcome message set.\nSet with `welcome message <message>`')
+
+		await self.on_member_join(ctx.author)
 
 	@welcome.command()
 	async def enable(self, ctx):
