@@ -147,7 +147,7 @@ class Security(AceMixin, commands.Cog):
 
 		await channel.send(embed=e)
 
-	async def _do_action(self, mc, member, action, reason=None, message=None):
+	async def do_action(self, mc, member, action, reason=None, message=None):
 		'''Called when an event happens.'''
 
 		# if member is moderator, ignore the action
@@ -216,7 +216,7 @@ class Security(AceMixin, commands.Cog):
 
 			# if so, perform the spam action
 			if res is not None:
-				await self._do_action(
+				await self.do_action(
 					mc, message.author, SecurityAction(mc.spam_action),
 					reason='Member is spamming', message=message
 				)
@@ -232,7 +232,7 @@ class Security(AceMixin, commands.Cog):
 						break
 
 			if res is not None:
-				await self._do_action(
+				await self.do_action(
 					mc, message.author, SecurityAction(mc.mention_action),
 					reason='Member is spamming mentions', message=message
 				)
@@ -251,7 +251,7 @@ class Security(AceMixin, commands.Cog):
 		if mc.mute_role_id is not None and await self.db.fetchval(
 				'SELECT id FROM muted WHERE guild_id=$1 AND user_id=$2', member.guild.id, member.id
 		):
-			await self._do_action(
+			await self.do_action(
 				mc, member, SecurityAction.MUTE, reason='Re-muting new member who was previously muted',
 			)
 
@@ -283,7 +283,7 @@ class Security(AceMixin, commands.Cog):
 		# do action if below minimum account age
 		if mc.join_age is not None and member.created_at is not None:
 			if mc.join_age > age:
-				await self._do_action(
+				await self.do_action(
 					mc, member, SecurityAction(mc.join_action),
 					reason='Account age {}, which is {} younger than the limit of {}'.format(
 						pretty_timedelta(age),
@@ -309,7 +309,7 @@ class Security(AceMixin, commands.Cog):
 
 			if re.fullmatch(pattern, member.name):
 
-				await self._do_action(
+				await self.do_action(
 					mc, member, SecurityAction(mc.join_action),
 					reason='Member name matched pattern #{}'.format(pattern_id)
 				)
