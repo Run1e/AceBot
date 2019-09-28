@@ -48,6 +48,7 @@ class DiscordLookup:
 			int=int,
 			repr=repr,
 			len=len,
+			sum=sum,
 			sorted=sorted,
 			excel_time=excel_time,
 			past=past,
@@ -76,7 +77,7 @@ class DiscordLookup:
 
 	def run(self):
 		self.ast = ast.parse(self.query)
-		#print(ast.dump(self.ast))
+		print(ast.dump(self.ast))
 		return self.traverse(self.ast.body[0].value, Context.NONE)
 
 	def traverse(self, node, context=Context.NONE):
@@ -84,14 +85,7 @@ class DiscordLookup:
 			func = self.traverse(node.func, Context.FUNC)
 			args = [self.traverse(arg_val) for arg_val in node.args]
 			kwargs = {kw.arg: self.traverse(kw.value) for kw in node.keywords}
-
-			if not kwargs and len(args) == 1 and isinstance(args[0], list):
-				processed_list = list()
-				for item in args[0]:
-					processed_list.append(func(item))
-				return processed_list
-			else:
-				return func(*args, **kwargs)
+			return func(*args, **kwargs)
 
 		elif isinstance(node, ast.Subscript):
 			if hasattr(node, 'value'):
@@ -108,8 +102,8 @@ class DiscordLookup:
 
 		elif isinstance(node, ast.Attribute):
 			val = self.traverse(node.value)
-			if isinstance(val, list):
-				return list(getattr(item, node.attr) for item in val)
+			#if isinstance(val, list):
+			#	return list(getattr(item, node.attr) for item in val)
 			return getattr(val, node.attr)
 
 		elif isinstance(node, ast.BinOp):
@@ -128,6 +122,14 @@ class DiscordLookup:
 				return left // right
 			else:
 				raise NotImplementedError('Operator: {}'.format(node.op))
+
+		elif isinstance(node, ast.ListComp):
+			l = []
+			gen = node.generators[0]
+			for item in self.traverse(gen.iter):
+				self.namespace[gen.target.id] = item
+				l.append(self.traverse(node.elt))
+			return l
 
 		elif isinstance(node, ast.Str):
 			return node.s
@@ -207,7 +209,7 @@ class DiscordLookup:
 				return self.get_namespace(node)
 		else:
 			# recursing deeper than one step and we go back to no context
-			return self.traverse(node)
+			return self.traverse(node, Context.FUNC)
 
 	def perform_compare(self, item, ops, left, comparators):
 		left = self.get_compare_value(item, left)
