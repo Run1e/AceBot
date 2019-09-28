@@ -106,6 +106,7 @@ class AceBot(commands.Bot):
 		log.info('Resumed...')
 
 		# re-set presence on connection resumed
+		await self.change_presence()
 		await self.change_presence(activity=BOT_ACTIVITY)
 
 	async def on_guild_unavailable(self, guild):

@@ -13,6 +13,7 @@ from cogs.mixins import AceMixin
 from utils.pager import Pager
 from utils.docs_parser import parse_docs
 from utils.html2markdown import HTML2Markdown
+from utils.string_helpers import shorten
 
 
 AHK_COLOR = 0x95CD95
@@ -45,6 +46,11 @@ class AutoHotkey(AceMixin, commands.Cog):
 			escaper=discord.utils.escape_markdown,
 			big_box=True, lang='autoit',
 			max_len=2000
+		)
+
+		self.h2m_version = HTML2Markdown(
+			escaper=discord.utils.escape_markdown,
+			big_box=False, max_len=512
 		)
 
 		self.forum_thread_channel = self.bot.get_channel(FORUM_THRD_CHAN_ID)
@@ -355,9 +361,9 @@ class AutoHotkey(AceMixin, commands.Cog):
 		latest = js[0]
 		asset = latest['assets'][0]
 
-		e = discord.Embed(
-			description='Update notes:\n```\n' + latest['body'] + '\n```'
-		)
+		content = self.h2m_version.convert(latest['body'])
+
+		e = discord.Embed(description=content)
 
 		e.set_author(
 			name='AutoHotkey_L ' + latest['name'],
