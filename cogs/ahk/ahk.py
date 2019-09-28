@@ -363,7 +363,7 @@ class AutoHotkey(AceMixin, commands.Cog):
 
 		content = self.h2m_version.convert(latest['body'])
 
-		e = discord.Embed(description=content)
+		e = discord.Embed(description=content, color=discord.Color.green())
 
 		e.set_author(
 			name='AutoHotkey_L ' + latest['name'],
