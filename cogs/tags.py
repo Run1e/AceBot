@@ -215,8 +215,12 @@ class Tags(AceMixin, commands.Cog):
 			raise commands.CommandError('Failed to create tag for unknown reasons.')
 
 	@commands.group(invoke_without_command=True)
-	async def tag(self, ctx, *, tag_name: TagViewConverter):
+	async def tag(self, ctx, *, tag_name: TagViewConverter = None):
 		'''Retrieve a tags content.'''
+
+		if tag_name is None:
+			await self.bot.invoke_help(ctx, 'tag')
+			return
 
 		tag_name, record = tag_name
 		await ctx.send(record.get('content'))

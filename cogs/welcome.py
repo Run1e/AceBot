@@ -57,8 +57,7 @@ class Welcome(AceMixin, commands.Cog):
 
 	@commands.group(hidden=True, invoke_without_command=True)
 	async def welcome(self, ctx):
-		help_command = self.bot.help_command._command_impl
-		await ctx.invoke(help_command, command='welcome')
+		await self.bot.invoke_help(ctx, 'welcome')
 
 	@welcome.command(aliases=['msg'])
 	async def message(self, ctx, *, message: str):

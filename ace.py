@@ -155,6 +155,10 @@ class AceBot(commands.Bot):
 
 		return True
 
+	async def invoke_help(self, ctx, command):
+		help_command = self.help_command._command_impl
+		await ctx.invoke(help_command, command=command)
+
 	async def on_command_error(self, ctx, exc):
 		e = discord.Embed(color=0x36393E)
 

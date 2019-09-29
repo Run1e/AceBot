@@ -112,8 +112,12 @@ class Starboard(AceMixin, commands.Cog):
 
 	@commands.group(name='star', invoke_without_command=True)
 	@commands.bot_has_permissions(embed_links=True, add_reactions=True)
-	async def _star(self, ctx, *, message_id: discord.Message):
+	async def _star(self, ctx, *, message_id: discord.Message = None):
 		'''Star a message by ID.'''
+
+		if message_id is None:
+			await self.bot.invoke_help(ctx, 'star')
+			return
 
 		board = await self.get_board(ctx.guild.id)
 		await self._on_star_event_meta(self._on_star, board, message_id, ctx.author)

@@ -72,9 +72,9 @@ class Roles(AceMixin, commands.Cog):
 	async def cog_check(self, ctx):
 		return await is_mod_pred(ctx)
 
-	@commands.group(hidden=True)
+	@commands.group(hidden=True, invoke_without_command=True)
 	async def roles(self, ctx):
-		pass
+		await self.bot.invoke_help(ctx, 'roles')
 
 	@roles.command()
 	@commands.bot_has_permissions(add_reactions=True, embed_links=True)
