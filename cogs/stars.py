@@ -173,7 +173,9 @@ class Starboard(AceMixin, commands.Cog):
 
 		reason = '{} (ID: {}) has created a starboard channel.'.format(ctx.author.display_name, ctx.author.id)
 
-		topic = 'Star a message by adding a :star: reaction to it!'
+		topic = (
+			'Star a message by adding a :star: reaction to it! Do "help star" to see all starboard related commands.'
+		)
 
 		try:
 			channel = await ctx.guild.create_text_channel(
