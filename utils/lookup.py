@@ -77,7 +77,7 @@ class DiscordLookup:
 
 	def run(self):
 		self.ast = ast.parse(self.query)
-		print(ast.dump(self.ast))
+		#print(ast.dump(self.ast))
 		return self.traverse(self.ast.body[0].value, Context.NONE)
 
 	def traverse(self, node, context=Context.NONE):

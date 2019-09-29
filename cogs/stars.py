@@ -173,8 +173,12 @@ class Starboard(AceMixin, commands.Cog):
 
 		reason = '{} (ID: {}) has created a starboard channel.'.format(ctx.author.display_name, ctx.author.id)
 
+		topic = 'Star a message by adding a :star: reaction to it!'
+
 		try:
-			channel = await ctx.guild.create_text_channel(name='starboard', overwrites=overwrites, reason=reason)
+			channel = await ctx.guild.create_text_channel(
+				name='starboard', overwrites=overwrites, reason=reason, topic=topic
+			)
 		except discord.HTTPException:
 			raise commands.CommandError('An unexpected error happened when creating the starboard channel.')
 
