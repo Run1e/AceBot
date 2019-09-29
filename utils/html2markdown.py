@@ -12,7 +12,7 @@ WRAP = dict(
 )
 
 MULTIWRAP = dict(
-	li=(' - ', '\n'),  # list item
+	li=(' • ', '\n'),  # list item
 )
 
 SPACING = dict(
