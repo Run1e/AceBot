@@ -28,7 +28,7 @@ EXTENSIONS = (
 	'cogs.tags',
 	'cogs.stars',
 	'cogs.meta',
-	'cogs.trivia',
+	'cogs.games',
 	'cogs.remind',
 	'cogs.hl',
 	'cogs.welcome',
@@ -119,7 +119,7 @@ class AceBot(commands.Bot):
 				ctx.guild.id, ctx.channel.id, ctx.author.id, datetime.utcnow(), ctx.command.qualified_name
 			)
 
-	async def on_message(self, message):
+	async def on_message(self, message: discord.Message):
 		if self.db is not None and self.db._initialized:
 			if message.content.startswith(f'<@{self.user.id}>'):
 				ctx = await self.get_context(message)
@@ -185,7 +185,7 @@ class AceBot(commands.Bot):
 
 			e.set_author(name='An error occured.', icon_url=self.user.avatar_url)
 			e.description = (
-				'The error has been saved and will hopefully be fixed. Thanks for using the bot!'
+				'The error has been saved and will hopefully be fixed.\nThanks for using the bot!'
 			)
 
 			await send_error()

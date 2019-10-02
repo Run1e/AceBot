@@ -322,7 +322,7 @@ class Owner(AceMixin, commands.Cog):
 
 			if ret is None:
 				if value:
-					if len(value) > 1994:
+					if len(value) > 1990:
 						fp = io.BytesIO(value.encode('utf-8'))
 						await ctx.send('Log too large...', file=discord.File(fp, 'results.txt'))
 					else:
