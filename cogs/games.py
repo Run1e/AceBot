@@ -125,6 +125,7 @@ class Games(AceMixin, commands.Cog):
 
 	@commands.group(invoke_without_command=True)
 	@commands.bot_has_permissions(embed_links=True, add_reactions=True)
+	@commands.cooldown(rate=1, per=300.0, commands.BucketType.member)
 	async def trivia(self, ctx, *, difficulty: DifficultyConverter = None):
 		'''Trivia time! Optionally specify a difficulty as argument. Valid difficulties are `easy`, `medium` and `hard`.'''
 
