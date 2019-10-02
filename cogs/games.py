@@ -124,7 +124,7 @@ class Games(AceMixin, commands.Cog):
 		return self._create_key(ctx) in self.playing
 
 	@commands.group(invoke_without_command=True)
-	@commands.bot_has_permissions(embed_links=True, add_reactions=True)
+	@commands.bot_has_permissions(embed_links=True)
 	@commands.cooldown(rate=1, per=300.0, type=commands.BucketType.member)
 	async def trivia(self, ctx, *, difficulty: DifficultyConverter = None):
 		'''Trivia time! Optionally specify a difficulty as argument. Valid difficulties are `easy`, `medium` and `hard`.'''
@@ -212,7 +212,7 @@ class Games(AceMixin, commands.Cog):
 								color=discord.Color.green()
 							)
 
-							e.set_footer(text='Score: {}'.format(current_score))
+							e.set_footer(text='Score: {}. You can go again in 5 minutes.'.format(current_score))
 							await ctx.send(embed=e)
 						else:
 							score = int(score / PENALTY_DIV)
@@ -224,7 +224,7 @@ class Games(AceMixin, commands.Cog):
 								color=discord.Color.red()
 							)
 
-							e.set_footer(text='Score: {}'.format(current_score))
+							e.set_footer(text='Score: {}. You can go again in 5 minutes.'.format(current_score))
 
 							if question_type == 'multiple':
 								e.description += '\nThe correct answer is ***`{}`***'.format(correct_answer)
