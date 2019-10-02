@@ -198,10 +198,13 @@ class Games(AceMixin, commands.Cog):
 
 				for idx, responses in enumerate(option_reference.keys()):
 					if msg.content.lower() in responses:
-						score = self._calculate_score(SCORE_POT[diff], datetime.utcnow() - now)
+						answered_at = datetime.utcnow()
+
+						score = self._calculate_score(SCORE_POT[diff], answered_at - now)
 
 						if idx == correct_pos:
-							current_score = await self._on_correct(ctx, question_hash, score)
+							current_score = await self._on_correct(ctx, answered_at, question_hash, score)
+
 							e = discord.Embed(
 								title='{}  {}'.format(CORRECT_EMOJI, choice(CORRECT_MESSAGES)),
 								description='You gained {} points.'.format(score),
@@ -212,7 +215,7 @@ class Games(AceMixin, commands.Cog):
 							await ctx.send(embed=e)
 						else:
 							score = int(score / PENALTY_DIV)
-							current_score = await self._on_wrong(ctx, question_hash, score)
+							current_score = await self._on_wrong(ctx, answered_at, question_hash, score)
 
 							e = discord.Embed(
 								title='{}  {}'.format(WRONG_EMOJI, choice(WRONG_MESSAGES)),
@@ -242,28 +245,28 @@ class Games(AceMixin, commands.Cog):
 	def _calculate_score(self, pot, time_spent):
 		return int(pot * (QUESTION_TIMEOUT - time_spent.total_seconds() / 2) / QUESTION_TIMEOUT)
 
-	async def _on_correct(self, ctx, question_hash, add_score):
+	async def _on_correct(self, ctx, answered_at, question_hash, add_score):
 		entry = await self.config.get_entry(ctx.guild.id, ctx.author.id)
 
 		await entry.update(score=entry.score + add_score, correct_count=entry.correct_count + 1)
-		await self._insert_question(ctx, question_hash, True)
+		await self._insert_question(ctx, answered_at, question_hash, True)
 
 		self.unset_playing(ctx)
 		return entry.score
 
-	async def _on_wrong(self, ctx, question_hash, remove_score):
+	async def _on_wrong(self, ctx, answered_at, question_hash, remove_score):
 		entry = await self.config.get_entry(ctx.guild.id, ctx.author.id)
 
 		await entry.update(score=entry.score - remove_score, wrong_count=entry.wrong_count + 1)
-		await self._insert_question(ctx, question_hash, False)
+		await self._insert_question(ctx, answered_at, question_hash, False)
 
 		self.unset_playing(ctx)
 		return entry.score
 
-	async def _insert_question(self, ctx, question_hash, result):
+	async def _insert_question(self, ctx, answered_at, question_hash, result):
 		await self.db.execute(
-			'INSERT INTO trivia_stats (guild_id, user_id, question_hash, result) VALUES ($1, $2, $3, $4)',
-			ctx.guild.id, ctx.author.id, question_hash, result
+			'INSERT INTO trivia_stats (guild_id, user_id, timestamp, question_hash, result) VALUES ($1, $2, $3, $4, $5)',
+			ctx.guild.id, ctx.author.id, answered_at, question_hash, result
 		)
 
 	@trivia.command()

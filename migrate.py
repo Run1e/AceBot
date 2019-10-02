@@ -233,6 +233,7 @@ CREATE TABLE IF NOT EXISTS trivia_stats (
 	id				SERIAL UNIQUE,
 	guild_id		BIGINT NOT NULL,
 	user_id			BIGINT NOT NULL,
+	timestamp		TIMESTAMP NOT NULL,
 	question_hash	BIGINT NOT NULL,
 	result			BOOL NOT NULL
 );
