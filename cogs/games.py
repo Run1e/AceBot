@@ -52,17 +52,17 @@ DIFFICULTY_COLORS = {
 API_URL = 'https://opentdb.com/api.php'
 QUESTION_TIMEOUT = 20.0
 
-MULTIPLE_MAP = {
-	('1', 'one'): '1️⃣',
-	('2', 'two'): '2️⃣',
-	('3', 'three'): '3️⃣',
-	('4', 'four'): '4️⃣'
-}
+MULTIPLE_MAP = (
+	'\N{Digit One}\N{Combining Enclosing Keycap}',
+	'\N{Digit Two}\N{Combining Enclosing Keycap}',
+	'\N{Digit Three}\N{Combining Enclosing Keycap}',
+	'\N{Digit Four}\N{Combining Enclosing Keycap}'
+)
 
-BOOLEAN_MAP = {
-	('y', 'yes', 't', 'true', '1'): '\N{REGIONAL INDICATOR SYMBOL LETTER Y}',
-	('n', 'no', 'f', 'false', '0', '2'): '\N{REGIONAL INDICATOR SYMBOL LETTER N}'
-}
+BOOLEAN_MAP = (
+	'\N{REGIONAL INDICATOR SYMBOL LETTER Y}',
+	'\N{REGIONAL INDICATOR SYMBOL LETTER N}'
+)
 
 SCORE_POT = {
 	Difficulty.EASY: 400,
@@ -125,7 +125,7 @@ class Games(AceMixin, commands.Cog):
 		return self._create_key(ctx) in self.playing
 
 	@commands.group(invoke_without_command=True)
-	@commands.bot_has_permissions(embed_links=True)
+	@commands.bot_has_permissions(embed_links=True, add_reactions=True)
 	@commands.cooldown(rate=1, per=300.0, type=commands.BucketType.member)
 	async def trivia(self, ctx, *, difficulty: DifficultyConverter = None):
 		'''Trivia time! Optionally specify a difficulty as argument. Valid difficulties are `easy`, `medium` and `hard`.'''
@@ -165,18 +165,21 @@ class Games(AceMixin, commands.Cog):
 		if question_type == 'multiple':
 			options = list(unquote(option) for option in result['incorrect_answers'])
 			correct_pos = randrange(0, len(options) + 1)
+			correct_emoji = MULTIPLE_MAP[correct_pos]
 			options.insert(correct_pos, correct_answer)
+
 		elif question_type == 'boolean':
 			options = ('True', 'False')
-			correct_pos = int(correct_answer == 'False')
+			correct_emoji = BOOLEAN_MAP[int(correct_answer == 'False')]
+
 		else:
 			raise ValueError('Unknown question type: {}'.format(question_type))
 
-		option_reference = BOOLEAN_MAP if question_type == 'boolean' else MULTIPLE_MAP
+		option_emojis = BOOLEAN_MAP if question_type == 'boolean' else MULTIPLE_MAP
 
 		question_string = '{}\n\n{}\n'.format(
 			question,
-			'\n'.join('{} {}'.format(emoji, option) for emoji, option in zip(option_reference.values(), options))
+			'\n'.join('{} {}'.format(emoji, option) for emoji, option in zip(option_emojis, options))
 		)
 
 		e = discord.Embed(
@@ -185,54 +188,54 @@ class Games(AceMixin, commands.Cog):
 			color=DIFFICULTY_COLORS[diff]
 		)
 		e.add_field(name='Question', value=question_string, inline=False)
-		e.set_footer(text='Answer by sending a message with the correct option.')
+		e.set_footer(text='Answer by pressing a reaction after all options have appeared.')
 
-		await ctx.send(embed=e)
+		msg = await ctx.send(embed=e)
+
+		for emoji in option_emojis:
+			await msg.add_reaction(emoji)
 
 		now = datetime.utcnow()
 
-		def check(message):
-			return message.channel == ctx.channel and message.author == ctx.author
+		def check(reaction, user):
+			return reaction.message.id == msg.id and user is ctx.author and str(reaction) in option_emojis
 
 		while True:
 			try:
-				msg = await self.bot.wait_for('message', check=check, timeout=QUESTION_TIMEOUT)
+				reaction, user = await self.bot.wait_for('reaction_add', check=check, timeout=QUESTION_TIMEOUT)
 
-				for idx, responses in enumerate(option_reference.keys()):
-					if msg.content.lower() in responses:
-						answered_at = datetime.utcnow()
+				answered_at = datetime.utcnow()
+				score = self._calculate_score(SCORE_POT[diff], answered_at - now)
 
-						score = self._calculate_score(SCORE_POT[diff], answered_at - now)
+				if str(reaction) == correct_emoji:
+					current_score = await self._on_correct(ctx, answered_at, question_hash, score)
 
-						if idx == correct_pos:
-							current_score = await self._on_correct(ctx, answered_at, question_hash, score)
+					e = discord.Embed(
+						title='{}  {}'.format(CORRECT_EMOJI, choice(CORRECT_MESSAGES)),
+						description='You gained {} points.'.format(score),
+						color=discord.Color.green()
+					)
 
-							e = discord.Embed(
-								title='{}  {}'.format(CORRECT_EMOJI, choice(CORRECT_MESSAGES)),
-								description='You gained {} points.'.format(score),
-								color=discord.Color.green()
-							)
+					e.set_footer(text=FOOTER_FORMAT.format(current_score))
+					await ctx.send(embed=e)
+				else:
+					score = int(score / PENALTY_DIV)
+					current_score = await self._on_wrong(ctx, answered_at, question_hash, score)
 
-							e.set_footer(text=FOOTER_FORMAT.format(current_score))
-							await ctx.send(embed=e)
-						else:
-							score = int(score / PENALTY_DIV)
-							current_score = await self._on_wrong(ctx, answered_at, question_hash, score)
+					e = discord.Embed(
+						title='{}  {}'.format(WRONG_EMOJI, choice(WRONG_MESSAGES)),
+						description='You lost {} points.'.format(score),
+						color=discord.Color.red()
+					)
 
-							e = discord.Embed(
-								title='{}  {}'.format(WRONG_EMOJI, choice(WRONG_MESSAGES)),
-								description='You lost {} points.'.format(score),
-								color=discord.Color.red()
-							)
+					e.set_footer(text=FOOTER_FORMAT.format(current_score))
 
-							e.set_footer(text=FOOTER_FORMAT.format(current_score))
+					if question_type == 'multiple':
+						e.description += '\nThe correct answer is ***`{}`***'.format(correct_answer)
 
-							if question_type == 'multiple':
-								e.description += '\nThe correct answer is ***`{}`***'.format(correct_answer)
+					await ctx.send(embed=e)
 
-							await ctx.send(embed=e)
-
-						return
+				return
 
 			except asyncio.TimeoutError:
 				score = int(SCORE_POT[diff] / 4)
