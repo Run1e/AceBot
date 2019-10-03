@@ -12,6 +12,8 @@ from cogs.mixins import AceMixin
 from utils.configtable import ConfigTable
 
 
+REQUEST_FAILED = commands.CommandError('Request failed, try again later.')
+
 # TRIVIA CONSTANTS
 
 class Difficulty(Enum):
@@ -130,6 +132,8 @@ class Games(AceMixin, commands.Cog):
 	async def trivia(self, ctx, *, difficulty: DifficultyConverter = None):
 		'''Trivia time! Optionally specify a difficulty as argument. Valid difficulties are `easy`, `medium` and `hard`.'''
 
+		print(self.trivia._buckets)
+
 		if self.is_playing(ctx):
 			return
 
@@ -147,11 +151,16 @@ class Games(AceMixin, commands.Cog):
 			#type='boolean'
 		)
 
-		async with self.bot.aiohttp.get(API_URL, params=params) as resp:
-			if resp.status != 200:
-				raise commands.CommandError('Request failed, try again later.')
+		try:
+			async with self.bot.aiohttp.get(API_URL, params=params) as resp:
+				if resp.status != 200:
+					self.trivia.reset_cooldown(ctx)
+					raise REQUEST_FAILED
 
-			res = await resp.json()
+				res = await resp.json()
+		except asyncio.TimeoutError:
+			self.trivia.reset_cooldown(ctx)
+			raise REQUEST_FAILED
 
 		result = res['results'][0]
 
@@ -173,6 +182,7 @@ class Games(AceMixin, commands.Cog):
 			correct_emoji = BOOLEAN_MAP[int(correct_answer == 'False')]
 
 		else:
+			self.trivia.reset_cooldown(ctx)
 			raise ValueError('Unknown question type: {}'.format(question_type))
 
 		option_emojis = BOOLEAN_MAP if question_type == 'boolean' else MULTIPLE_MAP
