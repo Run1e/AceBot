@@ -200,53 +200,54 @@ class Games(AceMixin, commands.Cog):
 		def check(reaction, user):
 			return reaction.message.id == msg.id and user is ctx.author and str(reaction) in option_emojis
 
-		while True:
+		try:
+			reaction, user = await self.bot.wait_for('reaction_add', check=check, timeout=QUESTION_TIMEOUT)
+
+			answered_at = datetime.utcnow()
+			score = self._calculate_score(SCORE_POT[diff], answered_at - now)
+
+			if str(reaction) == correct_emoji:
+				current_score = await self._on_correct(ctx, answered_at, question_hash, score)
+
+				e = discord.Embed(
+					title='{}  {}'.format(CORRECT_EMOJI, choice(CORRECT_MESSAGES)),
+					description='You gained {} points.'.format(score),
+					color=discord.Color.green()
+				)
+
+				e.set_footer(text=FOOTER_FORMAT.format(current_score))
+				await ctx.send(embed=e)
+			else:
+				score = int(score / PENALTY_DIV)
+				current_score = await self._on_wrong(ctx, answered_at, question_hash, score)
+
+				e = discord.Embed(
+					title='{}  {}'.format(WRONG_EMOJI, choice(WRONG_MESSAGES)),
+					description='You lost {} points.'.format(score),
+					color=discord.Color.red()
+				)
+
+				e.set_footer(text=FOOTER_FORMAT.format(current_score))
+
+				if question_type == 'multiple':
+					e.description += '\nThe correct answer is ***`{}`***'.format(correct_answer)
+
+				await ctx.send(embed=e)
+
+		except asyncio.TimeoutError:
+			score = int(SCORE_POT[diff] / 4)
+			answered_at = datetime.utcnow()
+
 			try:
-				reaction, user = await self.bot.wait_for('reaction_add', check=check, timeout=QUESTION_TIMEOUT)
+				await msg.clear_reactions()
+			except discord.HTTPException:
+				pass
 
-				answered_at = datetime.utcnow()
-				score = self._calculate_score(SCORE_POT[diff], answered_at - now)
+			await ctx.send('Question timed out and you lost {} points. Answer within {} seconds next time!'.format(
+					score, int(QUESTION_TIMEOUT)
+			))
 
-				if str(reaction) == correct_emoji:
-					current_score = await self._on_correct(ctx, answered_at, question_hash, score)
-
-					e = discord.Embed(
-						title='{}  {}'.format(CORRECT_EMOJI, choice(CORRECT_MESSAGES)),
-						description='You gained {} points.'.format(score),
-						color=discord.Color.green()
-					)
-
-					e.set_footer(text=FOOTER_FORMAT.format(current_score))
-					await ctx.send(embed=e)
-				else:
-					score = int(score / PENALTY_DIV)
-					current_score = await self._on_wrong(ctx, answered_at, question_hash, score)
-
-					e = discord.Embed(
-						title='{}  {}'.format(WRONG_EMOJI, choice(WRONG_MESSAGES)),
-						description='You lost {} points.'.format(score),
-						color=discord.Color.red()
-					)
-
-					e.set_footer(text=FOOTER_FORMAT.format(current_score))
-
-					if question_type == 'multiple':
-						e.description += '\nThe correct answer is ***`{}`***'.format(correct_answer)
-
-					await ctx.send(embed=e)
-
-				return
-
-			except asyncio.TimeoutError:
-				score = int(SCORE_POT[diff] / 4)
-				answered_at = datetime.utcnow()
-
-				await ctx.send('Question timed out and you lost {} points. Answer within {} seconds next time!'.format(
-						score, int(QUESTION_TIMEOUT)
-				))
-
-				await self._on_wrong(ctx, answered_at, question_hash, score)
-				return
+			await self._on_wrong(ctx, answered_at, question_hash, score)
 
 	def _calculate_score(self, pot, time_spent):
 		return int(pot * (QUESTION_TIMEOUT - time_spent.total_seconds() / 2) / QUESTION_TIMEOUT)
