@@ -41,6 +41,7 @@ WRONG_MESSAGES = (
 	'That\'s incorrect!',
 )
 
+FOOTER_FORMAT = 'Score: {} • You can go again in 5 minutes.'
 
 DIFFICULTY_COLORS = {
 	Difficulty.EASY: discord.Color.blue(),
@@ -212,7 +213,7 @@ class Games(AceMixin, commands.Cog):
 								color=discord.Color.green()
 							)
 
-							e.set_footer(text='Score: {}. You can go again in 5 minutes.'.format(current_score))
+							e.set_footer(text=FOOTER_FORMAT.format(current_score))
 							await ctx.send(embed=e)
 						else:
 							score = int(score / PENALTY_DIV)
@@ -224,7 +225,7 @@ class Games(AceMixin, commands.Cog):
 								color=discord.Color.red()
 							)
 
-							e.set_footer(text='Score: {}. You can go again in 5 minutes.'.format(current_score))
+							e.set_footer(text=FOOTER_FORMAT.format(current_score))
 
 							if question_type == 'multiple':
 								e.description += '\nThe correct answer is ***`{}`***'.format(correct_answer)
@@ -235,12 +236,13 @@ class Games(AceMixin, commands.Cog):
 
 			except asyncio.TimeoutError:
 				score = int(SCORE_POT[diff] / 4)
+				answered_at = datetime.utcnow()
 
 				await ctx.send('Question timed out and you lost {} points. Answer within {} seconds next time!'.format(
 						score, int(QUESTION_TIMEOUT)
 				))
 
-				await self._on_wrong(ctx, question_hash, score)
+				await self._on_wrong(ctx, answered_at, question_hash, score)
 				return
 
 	def _calculate_score(self, pot, time_spent):
@@ -295,6 +297,29 @@ class Games(AceMixin, commands.Cog):
 		e.add_field(name='Wrong', value='{} games'.format(str(entry.wrong_count)))
 		e.add_field(name='Games played', value='{} games'.format(str(total_games)))
 		e.add_field(name='Correct percentage', value='{}%'.format(str(win_rate)))
+
+		await ctx.send(embed=e)
+
+	@trivia.command()
+	@commands.bot_has_permissions(embed_links=True)
+	async def ranks(self, ctx):
+		'''See trivia leaderboard.'''
+
+		leaders = await self.db.fetch(
+			'SELECT * FROM trivia WHERE guild_id=$1 ORDER BY score DESC LIMIT 8',
+			ctx.guild.id
+		)
+
+		e = discord.Embed(
+			title='Trivia leaderboard',
+			color=DIFFICULTY_COLORS[Difficulty.MEDIUM]
+		)
+
+		mentions = '\n'.join('<@{}>'.format(leader.get('user_id')) for leader in leaders)
+		scores = '\n'.join(str(leader.get('score')) for leader in leaders)
+
+		e.add_field(name='User', value=mentions)
+		e.add_field(name='Score', value=scores)
 
 		await ctx.send(embed=e)
 
