@@ -104,18 +104,6 @@ class AutoHotkey(AceMixin, commands.Cog):
 
 				self.rss_time = time
 
-	@commands.Cog.listener()
-	async def on_command_error(self, ctx, error):
-		if not hasattr(ctx, 'guild') or ctx.guild.id not in (AHK_GUILD_ID, 517692823621861407):
-			return
-
-		# command not found? docs search it. only if message string is not *only* dots though
-		if type(error) is commands.CommandNotFound and len(ctx.message.content) > 3 and not ctx.message.content.startswith('..'):
-			if not await self.bot.blacklist(ctx):
-				return
-
-			await ctx.send('If you meant to bring up the docs, please do `.d <query>` instead.')
-
 	def craft_docs_page(self, record):
 		page = record.get('page')
 
