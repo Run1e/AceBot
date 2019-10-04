@@ -4,6 +4,7 @@ from discord.ext import commands
 from datetime import datetime
 
 from cogs.mixins import AceMixin
+from cogs.ahk.ids import AHK_GUILD_ID
 from utils.time import pretty_timedelta, pretty_datetime
 
 MAX_NICKS = 6
@@ -18,7 +19,10 @@ class WhoIs(AceMixin, commands.Cog):
 
 	@commands.Cog.listener()
 	async def on_message(self, message):
-		if message.guild is None or message.author.bot:
+		if message.guild is None or message.guild.id != AHK_GUILD_ID:
+			return
+
+		if message.author.bot:
 			return
 
 		await self.db.execute(
@@ -29,6 +33,9 @@ class WhoIs(AceMixin, commands.Cog):
 
 	@commands.Cog.listener()
 	async def on_member_update(self, before, after):
+		if before.guild.id != AHK_GUILD_ID:
+			return
+
 		if before.bot:
 			return
 
@@ -92,25 +99,26 @@ class WhoIs(AceMixin, commands.Cog):
 			value=f'{pretty_timedelta(now - joined)}\nJoined {joined.day}/{joined.month}/{joined.year}'
 		)
 
-		seen = await self.db.fetchval(
-			'SELECT seen FROM seen WHERE guild_id=$1 AND user_id=$2',
-			ctx.guild.id, member.id
-		)
+		if ctx.guild.id == AHK_GUILD_ID:
+			seen = await self.db.fetchval(
+				'SELECT seen FROM seen WHERE guild_id=$1 AND user_id=$2',
+				ctx.guild.id, member.id
+			)
 
-		e.add_field(
-			name='Last seen',
-			value='Not seen yet.' if seen is None else '{} ago'.format(pretty_timedelta(now - seen))
-		)
+			e.add_field(
+				name='Last seen',
+				value='Not seen yet.' if seen is None else '{} ago'.format(pretty_timedelta(now - seen))
+			)
 
-		nicks = await self.db.fetch(
-			'SELECT nick FROM nick WHERE guild_id=$1 AND user_id=$2 GROUP BY nick LIMIT 3',
-			ctx.guild.id, member.id
-		)
+			nicks = await self.db.fetch(
+				'SELECT nick FROM nick WHERE guild_id=$1 AND user_id=$2 GROUP BY nick LIMIT 3',
+				ctx.guild.id, member.id
+			)
 
-		e.add_field(
-			name='Last known nicknames',
-			value='None yet.' if not nicks else '\n'.join(record.get('nick') for record in reversed(nicks))
-		)
+			e.add_field(
+				name='Last known nicknames',
+				value='None yet.' if not nicks else '\n'.join(record.get('nick') for record in reversed(nicks))
+			)
 
 		if len(member.roles) > 1:
 			e.add_field(name='Roles', value=' '.join(role.mention for role in reversed(member.roles[1:])))

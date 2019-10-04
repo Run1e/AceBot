@@ -284,6 +284,15 @@ discord.Message.real_delete = discord.Message.delete
 discord.Message.delete = patched_delete
 
 
+async def patched_execute(self, query, args, limit, timeout, return_status=False):
+	print(query)
+	return await self._real_execute(query, args, limit, timeout, return_status)
+
+
+#asyncpg.Connection._real_execute = asyncpg.Connection._execute
+#asyncpg.Connection._execute = patched_execute
+
+
 # monkey-patched Embed class to force embed color
 class Embed(discord.Embed):
 	def __init__(self, color=discord.Color.blue(), **attrs):

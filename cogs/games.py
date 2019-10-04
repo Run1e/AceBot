@@ -132,8 +132,6 @@ class Games(AceMixin, commands.Cog):
 	async def trivia(self, ctx, *, difficulty: DifficultyConverter = None):
 		'''Trivia time! Optionally specify a difficulty as argument. Valid difficulties are `easy`, `medium` and `hard`.'''
 
-		print(self.trivia._buckets)
-
 		if self.is_playing(ctx):
 			return
 
