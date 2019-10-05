@@ -108,34 +108,11 @@ class Games(AceMixin, commands.Cog):
 		self.config = ConfigTable(bot, 'trivia', ('guild_id', 'user_id'))
 		self.playing = set()
 
-	def _create_key(self, ctx):
-		return (ctx.guild.id, ctx.author.id)
-
-	def set_playing(self, ctx):
-		key = self._create_key(ctx)
-
-		if key not in self.playing:
-			self.playing.add(key)
-
-	def unset_playing(self, ctx):
-		key = self._create_key(ctx)
-
-		if key in self.playing:
-			self.playing.remove(key)
-
-	def is_playing(self, ctx):
-		return self._create_key(ctx) in self.playing
-
-	@commands.group(invoke_without_command=True)
+	@commands.group(invoke_without_command=True, cooldown_after_parsing=True)
 	@commands.bot_has_permissions(embed_links=True, add_reactions=True)
 	@commands.cooldown(rate=1, per=300.0, type=commands.BucketType.member)
 	async def trivia(self, ctx, *, difficulty: DifficultyConverter = None):
 		'''Trivia time! Optionally specify a difficulty as argument. Valid difficulties are `easy`, `medium` and `hard`.'''
-
-		if self.is_playing(ctx):
-			return
-
-		self.set_playing(ctx)
 
 		diff = difficulty
 
@@ -266,7 +243,6 @@ class Games(AceMixin, commands.Cog):
 		await entry.update(score=entry.score + add_score, correct_count=entry.correct_count + 1)
 		await self._insert_question(ctx, answered_at, question_hash, True)
 
-		self.unset_playing(ctx)
 		return entry.score
 
 	async def _on_wrong(self, ctx, answered_at, question_hash, remove_score):
@@ -275,7 +251,6 @@ class Games(AceMixin, commands.Cog):
 		await entry.update(score=entry.score - remove_score, wrong_count=entry.wrong_count + 1)
 		await self._insert_question(ctx, answered_at, question_hash, False)
 
-		self.unset_playing(ctx)
 		return entry.score
 
 	async def _insert_question(self, ctx, answered_at, question_hash, result):
