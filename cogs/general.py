@@ -9,6 +9,7 @@ from bs4 import BeautifulSoup
 
 from config import WOLFRAM_KEY, APIXU_KEY
 from cogs.mixins import AceMixin
+from utils.time import pretty_datetime
 
 
 class General(AceMixin, commands.Cog):
@@ -96,16 +97,26 @@ class General(AceMixin, commands.Cog):
 					statuses[status] += 1
 
 		att = dict()
+		guild = ctx.guild
 
 		att['Online'] = (
-			f'{sum(member.status is not discord.Status.offline for member in ctx.guild.members)}'
-			f'/{len(ctx.guild.members)}'
+			f'{sum(member.status is not discord.Status.offline for member in guild.members)}'
+			f'/{len(guild.members)}'
 		)
 
-		att['Owner'] = ctx.guild.owner.mention
-		att['Channels'] = len(ctx.guild.text_channels) + len(ctx.guild.voice_channels)
-		att['Region'] = str(ctx.guild.region)
-		att['Created at'] = str(ctx.guild.created_at).split(' ')[0]
+		att['Owner'] = guild.owner.mention
+		att['Channels'] = len(guild.text_channels) + len(guild.voice_channels)
+		att['Region'] = str(guild.region)
+		att['Created at'] = pretty_datetime(guild.created_at)
+
+		if guild.emojis:
+			att['Emojis'] = len(guild.emojis)
+
+		if guild.premium_subscription_count is None or guild.premium_subscription_count > 0:
+			att['Boosters'] = guild.premium_subscription_count
+
+		if guild.premium_tier is None or guild.premium_subscription_count > 0:
+			att['Premium tier'] = guild.premium_tier
 
 		e = discord.Embed(title=ctx.guild.name, description='\n'.join(f'**{a}**: {b}' for a, b in att.items()))
 		e.set_thumbnail(url=ctx.guild.icon_url)
