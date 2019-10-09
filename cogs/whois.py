@@ -10,6 +10,12 @@ from utils.time import pretty_timedelta, pretty_datetime
 MAX_NICKS = 6
 
 
+def is_ahk_guild():
+	async def pred(ctx):
+		return ctx.guild.id == AHK_GUILD_ID
+	return commands.check(pred)
+
+
 class WhoIs(AceMixin, commands.Cog):
 	'''Keeps track of when members was last seen.'''
 
@@ -128,6 +134,7 @@ class WhoIs(AceMixin, commands.Cog):
 		await ctx.send(embed=e)
 
 	@commands.command()
+	@is_ahk_guild()
 	@commands.bot_has_permissions(embed_links=True)
 	async def seen(self, ctx, member: discord.Member):
 		'''Check when a member last sent a message.'''
@@ -156,6 +163,7 @@ class WhoIs(AceMixin, commands.Cog):
 		await ctx.send(embed=e)
 
 	@commands.command()
+	@is_ahk_guild()
 	@commands.bot_has_permissions(embed_links=True)
 	async def nicks(self, ctx, member: discord.Member = None):
 		'''Lists all known usernames of a member.'''

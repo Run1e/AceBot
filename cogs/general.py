@@ -112,10 +112,10 @@ class General(AceMixin, commands.Cog):
 		if guild.emojis:
 			att['Emojis'] = len(guild.emojis)
 
-		if guild.premium_subscription_count is None or guild.premium_subscription_count > 0:
+		if guild.premium_subscription_count is not None and guild.premium_subscription_count > 0:
 			att['Boosters'] = guild.premium_subscription_count
 
-		if guild.premium_tier is None or guild.premium_subscription_count > 0:
+		if guild.premium_tier is not None and guild.premium_tier > 0:
 			att['Premium tier'] = guild.premium_tier
 
 		e = discord.Embed(title=ctx.guild.name, description='\n'.join(f'**{a}**: {b}' for a, b in att.items()))

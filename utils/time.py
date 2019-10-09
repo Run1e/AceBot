@@ -1,4 +1,10 @@
+import math
+
 from datetime import datetime, timedelta
+
+
+ordinal = lambda n: "%d%s" % (n,"tsnrhtdd"[(math.floor(n/10)%10!=1)*(n%10<4)*n%10::4])
+
 
 steps = dict(
 	year=timedelta(days=365),
@@ -40,4 +46,4 @@ def pretty_datetime(dt: datetime):
 	if not isinstance(dt, datetime):
 		raise ValueError('datetime expected, \'{}\' given'.format(type(dt)))
 
-	return dt.strftime('%d. %b %Y %H:%M')
+	return '{} {}'.format(ordinal(int(dt.strftime('%d'))), dt.strftime('%b %Y %H:%M'))

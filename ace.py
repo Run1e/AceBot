@@ -11,6 +11,7 @@ import json
 from discord.ext import commands
 from pprint import saferepr
 from datetime import datetime
+from enum import Enum
 
 from config import *
 from cogs.help import PaginatedHelpCommand, EditedMinimalHelpCommand
@@ -23,16 +24,16 @@ EXTENSIONS = (
 	'cogs.general',
 	'cogs.images',
 	'cogs.configuration',
-	'cogs.mod',
-	'cogs.whois',
 	'cogs.tags',
 	'cogs.stars',
 	'cogs.meta',
+	'cogs.mod',
 	'cogs.games',
 	'cogs.remind',
 	'cogs.hl',
 	'cogs.welcome',
 	'cogs.roles',
+	'cogs.whois',
 	'cogs.ahk.ahk',
 	'cogs.security',
 	'cogs.ahk.logger',
@@ -40,6 +41,7 @@ EXTENSIONS = (
 	'cogs.dwitter',
 	'cogs.owner',
 )
+
 
 self_deleted = list()
 
@@ -270,6 +272,55 @@ class AceBot(commands.Bot):
 			else:
 				log.info('Failed updating DBL: {} - {}'.format(resp.reason, await resp.text()))
 
+	async def security_log(self, target, action=None, reason=None, message=None, member=None, severity=0):
+		if message is None and member is None:
+			return
+
+		if member is None:
+			member = message.author
+
+		if isinstance(target, GuildConfigRecord):
+			log_channel = target.log_channel
+		elif isinstance(target, discord.Guild):
+			gc = await self.config.get_entry(target.id)
+			log_channel = gc.log_channel
+		elif isinstance(target, int):
+			gc = await self.config.get_entry(target, construct=False)
+			if gc is None:
+				return
+			log_channel = gc.log_channel
+		else:
+			return
+
+		if log_channel is None:
+			return
+
+		desc = 'ID: `{0.id}`\nNAME: {1}\nMENTION: <@{0.id}>'.format(
+			member,
+			getattr(member, 'display_name', 'Unknown'),
+		)
+
+		color = [discord.Embed().color, 0xFF8C00, 0xFF2000][severity]
+
+		e = discord.Embed(
+			title=action or 'INFO',
+			description=desc,
+			color=color,
+			timestamp=datetime.utcnow()
+		)
+
+		e.add_field(name='Reason', value=reason)
+
+		if hasattr(member, 'avatar_url'):
+			e.set_thumbnail(url=member.avatar_url)
+
+		e.set_footer(text='{} - ID: {}'.format(['LOW', 'MEDIUM', 'HIGH'][severity], member.id))
+
+		if message is not None:
+			e.add_field(name='Context', value='[Click here]({})'.format(message.jump_url), inline=False)
+
+		await log_channel.send(embed=e)
+
 
 # TODO: rely on logging to fetch self-deleted messages instead of monkey-patching?
 async def patched_delete(self, *, delay=None):
@@ -289,8 +340,8 @@ async def patched_execute(self, query, args, limit, timeout, return_status=False
 	return await self._real_execute(query, args, limit, timeout, return_status)
 
 
-#asyncpg.Connection._real_execute = asyncpg.Connection._execute
-#asyncpg.Connection._execute = patched_execute
+asyncpg.Connection._real_execute = asyncpg.Connection._execute
+asyncpg.Connection._execute = patched_execute
 
 
 # monkey-patched Embed class to force embed color

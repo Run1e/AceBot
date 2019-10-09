@@ -10,22 +10,15 @@ CREATE TABLE IF NOT EXISTS config (
 	id 					SERIAL UNIQUE,
 	guild_id 			BIGINT UNIQUE NOT NULL,
 	prefix 				VARCHAR(8) NULL,
-	mod_role_id			BIGINT NULL
+	log_channel_id		BIGINT NULL,
+	mod_role_id			BIGINT NULL,
+	mute_role_id		BIGINT NULL
 );
 
 -- moderation values
-CREATE TABLE IF NOT EXISTS mod (
+CREATE TABLE IF NOT EXISTS security (
 	id 					SERIAL UNIQUE,
 	guild_id 			BIGINT UNIQUE NOT NULL,
-	
-	mute_role_id		BIGINT NULL,
-	log_channel_id		BIGINT NULL,
-	
-	join_enabled		BOOLEAN NOT NULL DEFAULT FALSE,
-	join_action			SMALLINT NOT NULL DEFAULT 0 CHECK (join_action >= 0 AND join_action <= 2),
-	join_age			INTERVAL NULL,
-	join_ignore_age		INTERVAL NULL,
-	join_cooldown		INTERVAL NULL,
 	
 	spam_enabled		BOOLEAN NOT NULL DEFAULT FALSE,
 	spam_action			SMALLINT NOT NULL DEFAULT 0 CHECK (spam_action >= 0 AND spam_action <= 2),
@@ -47,20 +40,26 @@ CREATE TABLE IF NOT EXISTS starboard (
 	threshold	SMALLINT NULL
 );
 
--- join kick patterns
-CREATE TABLE IF NOT EXISTS kick_pattern (
-	id			SERIAL UNIQUE,
-	guild_id	BIGINT NOT NULL,
-	pattern		TEXT NOT NULL,
-	disabled	BOOLEAN NOT NULL DEFAULT FALSE
-);
-
 -- list of muted people
 CREATE TABLE IF NOT EXISTS muted (
 	id			SERIAL UNIQUE,
 	guild_id	BIGINT NOT NULL,
 	user_id		BIGINT NOT NULL,
-	UNIQUE (guild_id, user_id)
+	mod_id		BIGINT NULL,
+	until		TIMESTAMP NULL,
+	UNIQUE 		(guild_id, user_id)
+);
+
+-- list of banned people
+CREATE TABLE IF NOT EXISTS banned (
+	id			SERIAL UNIQUE,
+	guild_id	BIGINT NOT NULL,
+	user_id		BIGINT NOT NULL,
+	mod_id		BIGINT NOT NULL,
+	until		TIMESTAMP NOT NULL,
+	name		TEXT NOT NULL,
+	avatar_url	TEXT NOT NULL,
+	UNIQUE 		(guild_id, user_id)
 );
 
 -- ignore list
@@ -75,7 +74,7 @@ CREATE TABLE IF NOT EXISTS seen (
 	guild_id	BIGINT NOT NULL,
 	user_id		BIGINT NOT NULL,
 	seen		TIMESTAMP NOT NULL,
-	UNIQUE (guild_id, user_id)
+	UNIQUE 		(guild_id, user_id)
 );
 
 -- nicks table
@@ -93,7 +92,7 @@ CREATE TABLE IF NOT EXISTS highlight_lang (
 	guild_id	BIGINT NOT NULL,
 	user_id		BIGINT NOT NULL DEFAULT 0,
 	lang		VARCHAR(32) NOT NULL,
-	UNIQUE (guild_id, user_id)
+	UNIQUE 		(guild_id, user_id)
 );
 
 -- highlighter messages
@@ -243,6 +242,7 @@ CREATE TABLE IF NOT EXISTS trivia_stats (
 
 def log(connection, message):
 	print(message)
+
 
 async def main():
 	db = await asyncpg.connect(DB_BIND)

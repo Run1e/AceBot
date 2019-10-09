@@ -167,6 +167,29 @@ class GuildConfigRecord(ConfigTableRecord):
 
 		return guild.get_role(self.mod_role_id)
 
+	@property
+	def mute_role(self):
+		if self.mute_role_id is None:
+			return None
+
+		guild = self._config.bot.get_guild(self.guild_id)
+
+		if guild is None:
+			return None
+
+		return guild.get_role(self.mute_role_id)
+
+	@property
+	def log_channel(self):
+		if self.log_channel_id is None:
+			return None
+
+		guild = self._config.bot.get_guild(self.guild_id)
+		if guild is None:
+			return None
+
+		return guild.get_channel(self.log_channel_id)
+
 
 class StarboardConfigRecord(ConfigTableRecord):
 
@@ -206,28 +229,6 @@ class SecurityConfigRecord(ConfigTableRecord):
 	@property
 	def guild(self):
 		return self._config.bot.get_guild(self.guild_id)
-
-	@property
-	def mute_role(self):
-		if self.mute_role_id is None:
-			return None
-
-		guild = self._config.bot.get_guild(self.guild_id)
-		if guild is None:
-			return None
-
-		return guild.get_role(self.mute_role_id)
-
-	@property
-	def log_channel(self):
-		if self.log_channel_id is None:
-			return None
-
-		guild = self._config.bot.get_guild(self.guild_id)
-		if guild is None:
-			return None
-
-		return guild.get_channel(self.log_channel_id)
 
 	def create_spam_cooldown(self):
 		self.spam_cooldown = commands.CooldownMapping.from_cooldown(

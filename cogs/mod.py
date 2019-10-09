@@ -1,41 +1,340 @@
 import discord
 import logging
+import asyncpg
 
 from discord.ext import commands
+from datetime import datetime
 
 from cogs.mixins import AceMixin
 from cogs.ahk.ids import RULES_MSG_ID
-from utils.checks import is_mod_pred
+from utils.databasetimer import DatabaseTimer
+from utils.time import pretty_datetime, pretty_timedelta
+from utils.converters import TimeMultConverter, TimeDeltaConverter
+from utils.checks import is_mod, is_mutable
 
 log = logging.getLogger(__name__)
+
+OK_EMOJI = '\U00002705'
+
+MOD_PERMS = (
+	'administrator',
+	'kick_members',
+	'ban_members',
+	'manage_guild',
+	'manage_roles',
+	'manage_channels',
+	'manage_messages',
+	'manage_nicknames',
+	'manage_webhooks',
+	'manage_emojis',
+	'mention_everyone',
+	'mute_members',
+	'move_members',
+	'view_audit_log',
+	'deafen_members',
+	'priority_speaker'
+)
+
+
+# stolen from Rapptz, thanks :ok_hand:
+class BannedMember(commands.Converter):
+	async def convert(self, ctx, argument):
+		ban_list = await ctx.guild.bans()
+		try:
+			member_id = int(argument, base=10)
+			entity = discord.utils.find(lambda u: u.user.id == member_id, ban_list)
+		except ValueError:
+			entity = discord.utils.find(lambda u: str(u.user) == argument, ban_list)
+
+		if entity is None:
+			raise commands.BadArgument("Not a valid previously-banned member.")
+		return entity
+
+
+class FakeMember:
+	def __init__(self, id, name, avatar_url):
+		self.id = id
+		self.nick = name
+		self.display_name = name
+		self.avatar_url = avatar_url
+		self.mention = '<@{0.id}>'.format(self)
 
 
 class Moderator(AceMixin, commands.Cog):
 	'''Simple moderation commands.'''
 
-	mod_perms = (
-		'administrator',
-		'kick_members',
-		'ban_members',
-		'manage_guild',
-		'manage_roles',
-		'manage_channels',
-		'manage_messages',
-		'manage_nicknames',
-		'manage_webhooks',
-		'manage_emojis',
-		'mention_everyone',
-		'mute_members',
-		'move_members',
-		'view_audit_log',
-		'deafen_members',
-		'priority_speaker'
-	)
+	def __init__(self, bot):
+		super().__init__(bot)
 
-	async def cog_check(self, ctx):
-		return await is_mod_pred(ctx)
+		self.ban_timer = DatabaseTimer(self.bot, 'banned', 'until', self.timer_unban)
+		self.mute_timer = DatabaseTimer(self.bot, 'muted', 'until', self.timer_unmute)
+
+	def _issuer_text(self, guild, user_id):
+		if isinstance(user_id, discord.Member):
+			mod = user_id
+		else:
+			mod = guild.get_member(user_id)
+
+		if mod is None:
+			return '(ID: {})'.format(user_id)
+		else:
+			return '{} (ID: {})'.format(mod.display_name, mod.id)
+
+	async def timer_unban(self, record):
+		await self.db.execute('DELETE FROM banned WHERE id=$1', record.get('id'))
+
+		guild = self.bot.get_guild(record.get('guild_id'))
+		if guild is None:
+			return
+
+		issuer = self._issuer_text(guild, record.get('mod_id'))
+		reason = 'Completed tempban issued by {}'.format(issuer)
+
+		user_id = record.get('user_id')
+
+		member = self.bot.get_user(user_id)
+		if member is None:
+			member = FakeMember(id=user_id, name=record.get('name'), avatar_url=record.get('avatar_url'))
+
+		await guild.unban(member, reason=reason)
+
+		await self.bot.security_log(target=guild, action='UNBAN', reason=reason, member=member, severity=2)
+
+	async def timer_unmute(self, record):
+		await self.db.execute('DELETE FROM muted WHERE id=$1', record.get('id'))
+
+		conf = await self.bot.config.get_entry(record.get('guild_id'))
+		mute_role = conf.mute_role
+
+		if mute_role is None:
+			return
+
+		guild = self.bot.get_guild(record.get('guild_id'))
+		if guild is None:
+			return
+
+		member = guild.get_member(record.get('user_id'))
+		if member is None:
+			return
+
+		issuer = self._issuer_text(guild, record.get('mod_id'))
+		reason = 'Completed tempmute issued by {}'.format(issuer)
+
+		await member.remove_roles(mute_role, reason=reason)
+
+		await self.bot.security_log(target=conf, action='UNMUTE', reason=reason, member=member, severity=0)
 
 	@commands.command()
+	@commands.has_permissions(kick_members=True)
+	@commands.bot_has_permissions(manage_roles=True)
+	async def tempmute(self, ctx, member: discord.Member, amount: TimeMultConverter, unit: TimeDeltaConverter, *, reason=None):
+		'''Temporarily mute a member. Kick permissions required.'''
+
+		reason = reason or 'No reason provided.'
+		now = datetime.utcnow()
+		delta = amount * unit
+		until = now + delta
+
+		if not await is_mutable(member):
+			raise commands.CommandError('Can\'t mute this member.')
+
+		conf = await self.bot.config.get_entry(ctx.guild.id)
+		mute_role = conf.mute_role
+
+		if mute_role is None:
+			raise commands.CommandError('Mute role not set or not found.')
+
+		await self.db.execute(
+			'INSERT INTO muted (guild_id, user_id, mod_id, until) VALUES ($1, $2, $3, $4) '
+			'ON CONFLICT (guild_id, user_id) DO UPDATE SET mod_id=$3, until=$4',
+			ctx.guild.id, member.id, ctx.author.id, until
+		)
+
+		try:
+			await member.add_roles(mute_role)
+		except discord.HTTPException:
+			raise commands.CommandError('Failed adding mute role.')
+
+		mute_msg = '{} You have been muted until the {}.\n\nReason:\n```\n{}\n```'.format(
+			member.mention, pretty_datetime(until), reason
+		)
+
+		await ctx.send(mute_msg)
+
+		self.mute_timer.maybe_restart(until)
+
+		issuer = self._issuer_text(ctx.guild, ctx.author)
+
+		await self.bot.security_log(
+			target=conf, action='MUTE',
+			reason='tempmute by {} lasting {}\n\nMeta-reason:\n```\n{}\n```'.format(issuer, pretty_timedelta(delta), reason),
+			member=member, message=ctx.message, severity=0
+		)
+
+	@commands.command()
+	@commands.has_permissions(ban_members=True)
+	@commands.bot_has_permissions(ban_members=True)
+	async def tempban(self, ctx, member: discord.Member, amount: TimeMultConverter, unit: TimeDeltaConverter, *, reason=None):
+		'''Tempban a member. Ban permissions required.'''
+
+		if not await is_mutable(member):
+			raise commands.CommandError('Can\'t tempban this member.')
+
+		reason = reason or 'No reason provided.'
+		now = datetime.utcnow()
+		delta = amount * unit
+		until = now + delta
+
+		ban_msg = 'You have been banned from {} until the {}.\n\nReason:\n```\n{}\n```'.format(
+			ctx.guild.name, pretty_datetime(until), reason
+		)
+
+		try:
+			await member.send(ban_msg)
+		except discord.HTTPException:
+			pass  # can't send, not much we can do about it
+
+		try:
+			await ctx.guild.ban(member, delete_message_days=0, reason=reason)
+		except discord.HTTPException as exc:
+			raise commands.CommandError('Ban failed:\n{}'.format(exc))
+
+		await self.db.execute(
+			'INSERT INTO banned (guild_id, user_id, mod_id, until, name, avatar_url) VALUES ($1, $2, $3, $4, $5, $6)',
+			ctx.guild.id, member.id, ctx.author.id, until, member.display_name, str(member.avatar_url)
+		)
+
+		self.ban_timer.maybe_restart(until)
+
+		await ctx.send('{0.display_name} banned until {1}'.format(member, pretty_datetime(until)))
+
+		issuer = self._issuer_text(ctx.guild, ctx.author)
+		await self.bot.security_log(
+			target=ctx.guild, action='TEMPBAN',
+			reason='tempban by {} lasting {}\n\nMeta-reason:\n```\n{}\n```'.format(issuer, pretty_timedelta(delta), reason),
+			member=member, message=ctx.message, severity=2
+		)
+
+	@commands.command()
+	@commands.has_permissions(kick_members=True)
+	@commands.bot_has_permissions(manage_roles=True)
+	async def mute(self, ctx, *, member: discord.Member):
+		'''Mute a member. Kick permissions required.'''
+
+		if not await is_mutable(member):
+			raise commands.CommandError('Can\'t mute this member.')
+
+		conf = await self.bot.config.get_entry(ctx.guild.id)
+		mute_role = conf.mute_role
+
+		if mute_role is None:
+			raise commands.CommandError('Mute role not set or not found.')
+
+		if mute_role in member.roles:
+			raise commands.CommandError('Member already muted.')
+
+		reason = 'Muted by {0.display_name} (ID: {0.id})'.format(ctx.author)
+
+		await member.add_roles(mute_role, reason=reason)
+		await ctx.send('{0.display_name} muted.'.format(member))
+
+		await self.bot.security_log(
+			target=conf, action='MUTE', reason=reason, message=ctx.message, member=member, severity=0
+		)
+
+	@commands.command()
+	@commands.has_permissions(kick_members=True)
+	@commands.bot_has_permissions(manage_roles=True)
+	async def unmute(self, ctx, *, member: discord.Member):
+		'''Unmute a member. Kick permissions required.'''
+
+		if not await is_mutable(member):
+			raise commands.CommandError('Can\'t unmute this member.')
+
+		conf = await self.bot.config.get_entry(ctx.guild.id)
+		mute_role = conf.mute_role
+
+		if mute_role is None:
+			raise commands.CommandError('Mute role not set or not found.')
+
+		if mute_role not in member.roles:
+			raise commands.CommandError('Member not previously muted.')
+
+		reason = 'Unmuted by {0.mention} (ID: {0.id})'.format(ctx.author)
+
+		await member.remove_roles(mute_role, reason=reason)
+		await ctx.send('{0.display_name} unmuted.'.format(member))
+
+		await self.bot.security_log(
+			target=conf, action='UNMUTE', reason=reason, message=ctx.message, member=member, severity=0
+		)
+
+	@commands.Cog.listener()
+	async def on_member_unban(self, guild, member):
+		_id = await self.db.fetchval(
+			'DELETE FROM banned WHERE guild_id=$1 AND user_id=$2 RETURNING id',
+			guild.id, member.id
+		)
+
+		if _id is not None:
+			self.ban_timer.restart_if(lambda r: r.get('id') == _id)
+
+	@commands.Cog.listener()
+	async def on_member_update(self, before, after):
+		# detect if the muted role was added or removed
+		# this is purely to keep the database updated.
+
+		br = set(before.roles)
+		ar = set(after.roles)
+
+		if br == ar:
+			return
+
+		conf = await self.bot.config.get_entry(before.guild.id)
+		mute_role = conf.mute_role
+
+		if mute_role in br - ar:
+			_id = await self.db.fetchval(
+				'DELETE FROM muted WHERE guild_id=$1 AND user_id=$2 RETURNING id',
+				before.guild.id, before.id
+			)
+
+			self.mute_timer.restart_if(lambda r: r.get('id') == _id)
+
+		elif mute_role in ar - br:
+			if not await is_mutable(after):
+				return
+
+			try:
+				await self.db.execute(
+					'INSERT INTO muted (guild_id, user_id) VALUES ($1, $2)',
+					before.guild.id, before.id
+				)
+			except asyncpg.UniqueViolationError:
+				pass
+
+	@commands.Cog.listener()
+	async def on_member_join(self, member):
+		if member.bot:
+			return
+
+		conf = await self.bot.config.get_entry(member.guild.id)
+		mute_role = conf.mute_role
+
+		if mute_role is not None:
+
+			# check if member was previously muted
+			already_muted = await self.db.fetchval(
+				'SELECT id FROM muted WHERE guild_id=$1 AND user_id=$2',
+				member.guild.id, member.id
+			)
+
+			if already_muted:
+				reason = 'Re-muting new member who was previously muted'
+				await member.add_roles(mute_role, reason=reason)
+
+	@commands.command()
+	@commands.has_permissions(manage_messages=True)
 	@commands.bot_has_permissions(manage_messages=True)
 	async def clear(self, ctx, message_count: int, user: discord.Member = None):
 		'''Clear messages, either from user or indiscriminately.'''
@@ -66,6 +365,7 @@ class Moderator(AceMixin, commands.Cog):
 		await ctx.send(f'Deleted {count} message{"s" if count > 1 else ""}.', delete_after=5)
 
 	@commands.command()
+	@is_mod()
 	async def perms(self, ctx, user: discord.Member = None, channel: discord.TextChannel = None):
 		'''Lists a users permissions in a channel.'''
 
@@ -84,7 +384,7 @@ class Moderator(AceMixin, commands.Cog):
 			if slot.startswith('_'):
 				continue
 			if getattr(perms, slot) is True:
-				if slot in self.mod_perms:
+				if slot in MOD_PERMS:
 					mod_perms.append(slot)
 				else:
 					general_perms.append(slot)
@@ -101,7 +401,6 @@ class Moderator(AceMixin, commands.Cog):
 			content = f'No permissions in channel {channel.mention}'
 
 		await ctx.send(content)
-
 
 
 def setup(bot):
