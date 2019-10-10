@@ -5,27 +5,31 @@ PREPEND = dict(
 	br='\n',  # linebreak
 )
 
-PREPEND_LINES = dict(
-	blockquote='> '
-)
 
 WRAP = dict(
 	b='**',  # bold
 	em='*',  # emphasis
 	i='*',  # italics
+	blockquote='*',
 )
+
 
 MULTIWRAP = dict(
 	li=(' • ', '\n'),  # list item
 )
 
+
 SPACING = dict(
 	p=2,
 	div=2,
-	ul=2
+	ul=2,
 )
 
-CODEBOX_NAMES = ('code', 'pre')
+
+CODEBOX_NAMES = (
+	'code',
+	'pre'
+)
 
 
 class CreditsEmpty(Exception):
@@ -36,7 +40,6 @@ class Result:
 	def __init__(self, credits):
 		self.credits = credits
 		self.content = ''
-		self.prepender = None
 
 	def __str__(self):
 		return self.content
@@ -66,9 +69,6 @@ class Result:
 		self.content += string
 
 	def add_and_consume(self, string, trunc=False):
-		if self.prepender is not None and string != '\n':
-			string = '\n'.join('{}{}'.format(self.prepender, text) for text in string.split('\n') if len(text))
-
 		to_consume = len(string)
 		do_raise = False
 
@@ -83,12 +83,6 @@ class Result:
 		if do_raise:
 			raise CreditsEmpty()
 
-	def set_prepend(self, prepender):
-		self.prepender = prepender
-
-	def clear_prepend(self):
-		self.prepender = None
-
 
 class HTML2Markdown:
 	def __init__(self, escaper=None, big_box=False, lang=None, max_len=2000, base_url=None):
@@ -101,14 +95,8 @@ class HTML2Markdown:
 
 		self.cutoff = '...'
 
-	def convert(self, html, temp_url=None):
+	def convert(self, html):
 		self.result = Result(max(self.max_len, 8) - len(self.cutoff) - 1)
-
-		if temp_url is not None:
-			old_url = self.base_url
-			self.base_url = temp_url
-		else:
-			old_url = None
 
 		try:
 			self.traverse(BeautifulSoup(html, 'html.parser'))
@@ -118,15 +106,18 @@ class HTML2Markdown:
 			else:
 				self.result.add(' ' + self.cutoff)
 
-		if old_url is not None:
-			self.base_url = old_url
+		content = str(self.result)
 
-		ret = str(self.result)
+		# shorten groups of more than 2 newlines to just 2 newlines
+		content = re.sub('\n\n+', '\n\n', content)
 
-		ret = re.sub('\n\n+', '\n\n', ret)
-		ret = re.sub('\n```\n+', '\n```\n', ret)
+		# remove multiple newlines after triple backticks
+		if self.big_box:
+			# always only one newline at the side of either triple backtick
+			content = re.sub('\n+```\n+', '\n```\n', content)
 
-		return ret.strip('\n')
+		# strip of trailing/leading newlines and return
+		return content.strip('\n')
 
 	def traverse(self, tag):
 		for node in tag.contents:
@@ -168,21 +159,12 @@ class HTML2Markdown:
 				if back_required:
 					self.result.consume(len(back))
 
-				if node.name in PREPEND_LINES:
-					prepend_all_mode = True
-					self.result.set_prepend(PREPEND_LINES[node.name])
-				else:
-					prepend_all_mode = False
-
 				try:
 					self.traverse(node)
 				except CreditsEmpty as exc:
 					if back_required:
 						self.result.add(back)
 					raise exc
-
-				if prepend_all_mode:
-					self.result.clear_prepend()
 
 				if back_required:
 					self.result.add(back)

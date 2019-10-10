@@ -1,5 +1,4 @@
 import discord
-import re
 import html
 
 from discord.ext import commands, tasks
@@ -13,7 +12,6 @@ from cogs.mixins import AceMixin
 from utils.pager import Pager
 from utils.docs_parser import parse_docs
 from utils.html2markdown import HTML2Markdown
-from utils.string_helpers import shorten
 
 
 AHK_COLOR = 0x95CD95
