@@ -5,6 +5,10 @@ PREPEND = dict(
 	br='\n',  # linebreak
 )
 
+PREPEND_LINES = dict(
+	blockquote='> '
+)
+
 WRAP = dict(
 	b='**',  # bold
 	em='*',  # emphasis
@@ -32,6 +36,7 @@ class Result:
 	def __init__(self, credits):
 		self.credits = credits
 		self.content = ''
+		self.prepender = None
 
 	def __str__(self):
 		return self.content
@@ -61,6 +66,9 @@ class Result:
 		self.content += string
 
 	def add_and_consume(self, string, trunc=False):
+		if self.prepender is not None and string != '\n':
+			string = '\n'.join('{}{}'.format(self.prepender, text) for text in string.split('\n') if len(text))
+
 		to_consume = len(string)
 		do_raise = False
 
@@ -74,6 +82,12 @@ class Result:
 
 		if do_raise:
 			raise CreditsEmpty()
+
+	def set_prepend(self, prepender):
+		self.prepender = prepender
+
+	def clear_prepend(self):
+		self.prepender = None
 
 
 class HTML2Markdown:
@@ -108,6 +122,10 @@ class HTML2Markdown:
 			self.base_url = old_url
 
 		ret = str(self.result)
+
+		ret = re.sub('\n\n+', '\n\n', ret)
+		ret = re.sub('\n```\n+', '\n```\n', ret)
+
 		return ret.strip('\n')
 
 	def traverse(self, tag):
@@ -150,12 +168,21 @@ class HTML2Markdown:
 				if back_required:
 					self.result.consume(len(back))
 
+				if node.name in PREPEND_LINES:
+					prepend_all_mode = True
+					self.result.set_prepend(PREPEND_LINES[node.name])
+				else:
+					prepend_all_mode = False
+
 				try:
 					self.traverse(node)
 				except CreditsEmpty as exc:
 					if back_required:
 						self.result.add(back)
 					raise exc
+
+				if prepend_all_mode:
+					self.result.clear_prepend()
 
 				if back_required:
 					self.result.add(back)
@@ -166,10 +193,8 @@ class HTML2Markdown:
 						self.result.add_and_consume(back)
 
 	def navigable_string(self, node):
-		node = str(node)
-		if node == '\n':
-			return
-		self.result.add_and_consume(self.escaper(node) if callable(self.escaper) else node, True)
+		content = str(node)
+		self.result.add_and_consume(self.escaper(content) if callable(self.escaper) else content, True)
 
 	def get_content(self, tag):
 		content = self._get_content_meta(tag)

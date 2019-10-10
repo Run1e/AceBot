@@ -80,10 +80,7 @@ class AutoHotkey(AceMixin, commands.Cog):
 			if time > self.rss_time:
 				content = str(entry.content.text).split('Statistics: ')[0]
 				content = self.h2m.convert(content)
-
 				content = content.replace('CODE: ', '')
-				content = re.sub('\n\n+', '\n\n', content)
-				content = re.sub('\n```\n+', '\n```\n', content)
 
 				e = discord.Embed(
 					title=title,

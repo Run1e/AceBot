@@ -201,8 +201,8 @@ class Moderator(AceMixin, commands.Cog):
 			await member.send(ban_msg)
 			send_success = True
 		except discord.HTTPException:
+			# can't send, not much we can do about it
 			send_success = False
-			pass  # can't send, not much we can do about it
 
 		try:
 			await ctx.guild.ban(member, delete_message_days=0, reason=reason)
