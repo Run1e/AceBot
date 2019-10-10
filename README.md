@@ -101,6 +101,24 @@ Members with the mod role can delete any tag, delete starred messages, change th
 ```
 To see what the current configuration is, run `config`.
 
+
+### Moderation
+
+To enable member muting, create a role that prohibits sending messages and set it with `config muterole <role>`.
+To mute a member do `mute <member>` and to unmute use `unmute <member>`.
+
+You can also issue tempbans and tempmutes:
+```
+tempban <member> <amount> <unit> [reason]
+tempmute <member> <amount> <unit> [reason]
+
+examples:
+tempban @dave 5 days Stop spamming!
+tempmute @bobby 1 hr Read rules again.
+```
+
+Tempbanning will make the bot attempt to send a DM to the banned member with the reasoning for the ban, if provided.
+
 ### Welcome
 
 The bot can be configured to send a message each time a new member joins your server.
@@ -162,8 +180,6 @@ DBL_KEY         = None
 THECATAPI_KEY   = None
 WOLFRAM_KEY     = None
 APIXU_KEY       = None
-OXFORD_ID       = None
-OXFORD_KEY      = None
 ```
 
 Last step is to run the migrator. `python migrate.py` will set up the database tables needed. If you have data from a

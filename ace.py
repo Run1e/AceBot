@@ -340,8 +340,8 @@ async def patched_execute(self, query, args, limit, timeout, return_status=False
 	return await self._real_execute(query, args, limit, timeout, return_status)
 
 
-asyncpg.Connection._real_execute = asyncpg.Connection._execute
-asyncpg.Connection._execute = patched_execute
+#asyncpg.Connection._real_execute = asyncpg.Connection._execute
+#asyncpg.Connection._execute = patched_execute
 
 
 # monkey-patched Embed class to force embed color

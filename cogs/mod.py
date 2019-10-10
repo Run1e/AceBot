@@ -3,7 +3,7 @@ import logging
 import asyncpg
 
 from discord.ext import commands
-from datetime import datetime
+from datetime import datetime, timedelta
 
 from cogs.mixins import AceMixin
 from cogs.ahk.ids import RULES_MSG_ID
@@ -14,6 +14,7 @@ from utils.checks import is_mod, is_mutable
 
 log = logging.getLogger(__name__)
 
+MAX_DELTA = timedelta(days=365 * 10)
 OK_EMOJI = '\U00002705'
 
 MOD_PERMS = (
@@ -138,6 +139,9 @@ class Moderator(AceMixin, commands.Cog):
 		if not await is_mutable(member):
 			raise commands.CommandError('Can\'t mute this member.')
 
+		if delta > MAX_DELTA:
+			raise commands.CommandError('Can\'t tempmute for longer than {}.'.format(pretty_timedelta(MAX_DELTA)))
+
 		conf = await self.bot.config.get_entry(ctx.guild.id)
 		mute_role = conf.mute_role
 
@@ -164,11 +168,12 @@ class Moderator(AceMixin, commands.Cog):
 		self.mute_timer.maybe_restart(until)
 
 		issuer = self._issuer_text(ctx.guild, ctx.author)
+		full_reason = 'Invoked by: {}\nDuration: {}\n\nMeta-reason:\n```\n{}\n```'.format(
+			issuer, pretty_timedelta(delta), reason
+		)
 
 		await self.bot.security_log(
-			target=conf, action='MUTE',
-			reason='tempmute by {} lasting {}\n\nMeta-reason:\n```\n{}\n```'.format(issuer, pretty_timedelta(delta), reason),
-			member=member, message=ctx.message, severity=0
+			target=conf, action='MUTE', reason=full_reason, member=member, message=ctx.message, severity=0
 		)
 
 	@commands.command()
@@ -177,13 +182,16 @@ class Moderator(AceMixin, commands.Cog):
 	async def tempban(self, ctx, member: discord.Member, amount: TimeMultConverter, unit: TimeDeltaConverter, *, reason=None):
 		'''Tempban a member. Ban permissions required.'''
 
-		if not await is_mutable(member):
-			raise commands.CommandError('Can\'t tempban this member.')
-
 		reason = reason or 'No reason provided.'
 		now = datetime.utcnow()
 		delta = amount * unit
 		until = now + delta
+
+		if not await is_mutable(member):
+			raise commands.CommandError('Can\'t tempban this member.')
+
+		if delta > MAX_DELTA:
+			raise commands.CommandError('Can\'t tempban for longer than {}.'.format(pretty_timedelta(MAX_DELTA)))
 
 		ban_msg = 'You have been banned from {} until the {}.\n\nReason:\n```\n{}\n```'.format(
 			ctx.guild.name, pretty_datetime(until), reason
@@ -191,7 +199,9 @@ class Moderator(AceMixin, commands.Cog):
 
 		try:
 			await member.send(ban_msg)
+			send_success = True
 		except discord.HTTPException:
+			send_success = False
 			pass  # can't send, not much we can do about it
 
 		try:
@@ -209,9 +219,13 @@ class Moderator(AceMixin, commands.Cog):
 		await ctx.send('{0.display_name} banned until {1}'.format(member, pretty_datetime(until)))
 
 		issuer = self._issuer_text(ctx.guild, ctx.author)
+		full_reason = 'Invoked by: {}\nDuration: {}\nUser messaged: {}\n\nMeta-reason:\n```\n{}\n```'.format(
+			issuer, pretty_timedelta(delta), 'yes' if send_success else 'no', reason
+		)
+
 		await self.bot.security_log(
 			target=ctx.guild, action='TEMPBAN',
-			reason='tempban by {} lasting {}\n\nMeta-reason:\n```\n{}\n```'.format(issuer, pretty_timedelta(delta), reason),
+			reason=full_reason,
 			member=member, message=ctx.message, severity=2
 		)
 
