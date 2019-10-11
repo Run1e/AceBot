@@ -10,7 +10,7 @@ WRAP = dict(
 	b='**',  # bold
 	em='*',  # emphasis
 	i='*',  # italics
-	blockquote='*',
+	#blockquote='*',
 )
 
 
@@ -112,9 +112,12 @@ class HTML2Markdown:
 		content = re.sub('\n\n+', '\n\n', content)
 
 		# remove multiple newlines after triple backticks
-		if self.big_box:
+		if self.big_box is not None:
 			# always only one newline at the side of either triple backtick
 			content = re.sub('\n+```\n+', '\n```\n', content)
+
+			if self.lang is not None:
+				content = re.sub('\n+```{}\n+'.format(self.lang), '\n```{}\n'.format(self.lang), content)
 
 		# strip of trailing/leading newlines and return
 		return content.strip('\n')
