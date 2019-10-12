@@ -29,12 +29,26 @@ class General(AceMixin, commands.Cog):
 	async def choose(self, ctx, *choices: commands.clean_content):
 		'''Pick a random item from a list.'''
 
+		choose_prompts = (
+			'I have chosen',
+			'I have a great feeling about',
+			'I\'ve decided on',
+			'Easy choice',
+			'I think',
+		)
+
 		if len(choices) < 2:
 			raise commands.CommandError('At least two choices are necessary.')
 
+		e = discord.Embed(
+			description=random.choice(choices)
+		)
+
+		e.set_author(name=random.choice(choose_prompts) + ':', icon_url=self.bot.user.avatar_url)
+
 		msg = await ctx.send(':thinking:')
 		await asyncio.sleep(3)
-		await msg.edit(content=random.choice(choices))
+		await msg.edit(content=None, embed=e)
 
 	@commands.command()
 	@commands.cooldown(rate=3, per=10.0, type=commands.BucketType.user)
@@ -58,8 +72,14 @@ class General(AceMixin, commands.Cog):
 	async def fact(self, ctx):
 		'''Get a random fact.'''
 
-		fact = await self.db.fetchval('SELECT content FROM facts ORDER BY random()')
-		await ctx.send(fact)
+		fact = await self.db.fetchrow('SELECT * FROM facts ORDER BY random()')
+
+		e = discord.Embed(
+			title='Fact #{}'.format(fact.get('id')),
+			description=fact.get('content')
+		)
+
+		await ctx.send(embed=e)
 
 	@commands.command(name='8', aliases=['8ball'])
 	async def ball(self, ctx, *, question):
@@ -77,7 +97,7 @@ class General(AceMixin, commands.Cog):
 
 		await ctx.trigger_typing()
 		await asyncio.sleep(3)
-		await ctx.send(random.choice(responses))
+		await ctx.send('\N{BILLIARDS} ' + random.choice(responses))
 
 	@commands.command(aliases=['guild'])
 	@commands.bot_has_permissions(embed_links=True)
@@ -174,11 +194,11 @@ class General(AceMixin, commands.Cog):
 		if APIXU_KEY is None:
 			raise commands.CommandError('The host has not set up an API key.')
 
-		url = 'http://api.apixu.com/v1/current.json'
+		url = 'http://api.weatherstack.com/current'
 
 		params = {
-			'key': APIXU_KEY,
-			'q': location
+			'access_key': APIXU_KEY,
+			'query': location
 		}
 
 		async with ctx.channel.typing():
@@ -191,21 +211,31 @@ class General(AceMixin, commands.Cog):
 				raise self.query_error
 
 			location = data['location']
-
-			locmsg = f'{location["name"]}, {location["region"]} {location["country"].upper()}'
 			current = data['current']
 
-			embed = discord.Embed(title=f'Weather for {locmsg}', description=f'*{current["condition"]["text"]}*')
-			embed.set_thumbnail(url=f'http:{current["condition"]["icon"]}')
-			embed.add_field(name='Temperature', value=f'{current["temp_c"]}°C | {current["temp_f"]}°F')
-			embed.add_field(name='Feels Like', value=f'{current["feelslike_c"]}°C | {current["feelslike_f"]}°F')
-			embed.add_field(name='Precipitation', value=f'{current["precip_mm"]} mm')
-			embed.add_field(name='Humidity', value=f'{current["humidity"]}%')
-			embed.add_field(name='Windspeed', value=f'{current["wind_kph"]} kph | {current["wind_mph"]} mph')
-			embed.add_field(name='Wind Direction', value=current['wind_dir'])
-			embed.timestamp = datetime.utcnow()
+			from datetime import date
 
-			await ctx.send(embed=embed)
+			observation_time = datetime.strptime(current['observation_time'], '%I:%M %p').time()
+
+			e = discord.Embed(
+				title='Weather for {}, {} {}'.format(location['name'], location['region'], location['country'].upper()),
+				description='*{}*'.format(' / '.join(current["weather_descriptions"])),
+				timestamp=datetime.combine(date.today(), observation_time),
+			)
+
+			e.set_footer(text='Observed')
+
+			if current['weather_icons']:
+				e.set_thumbnail(url=current['weather_icons'][0])
+
+			e.add_field(name='Temperature', value='{}°C'.format(current['temperature']))
+			e.add_field(name='Feels Like', value='{}°C'.format(current['feelslike']))
+			e.add_field(name='Precipitation', value='{} mm'.format(current['precip']))
+			e.add_field(name='Humidity', value='{}%'.format(current['humidity']))
+			e.add_field(name='Wind Speed', value='{} kph'.format(current['wind_speed']))
+			e.add_field(name='Wind Direction', value=current['wind_dir'])
+
+			await ctx.send(embed=e)
 
 	@commands.command()
 	@commands.cooldown(rate=3, per=10.0, type=commands.BucketType.user)

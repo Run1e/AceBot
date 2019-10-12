@@ -46,5 +46,5 @@ def is_mod():
 	return commands.check(is_mod_pred)
 
 
-async def is_mutable(member):
+async def member_is_mod(member):
 	return not (member.guild.channels and await is_mod_pred_meta(member, member.guild.channels[0]))
