@@ -123,6 +123,8 @@ class Games(AceMixin, commands.Cog):
 		asyncio.run_coroutine_threadsafe(self.get_trivia_categories(), self.bot.loop)
 
 	async def get_trivia_categories(self):
+		global TRIVIA_CATEGORIES
+
 		try:
 			async with self.bot.aiohttp.get(API_CATEGORY_LIST_URL) as resp:
 				if resp.status != 200:
@@ -139,6 +141,9 @@ class Games(AceMixin, commands.Cog):
 			colon_pos = name.find(':')
 			trimmed_name = name[0 if colon_pos == -1 else colon_pos + 2:].lower()
 
+			if trimmed_name != name:
+				categories_id_map[name] = category['id'] # However, if it is a XXX: YYY category, we do include both names
+
 			categories_id_map[trimmed_name] = category['id'] # Map the name to ID, so a user can enter a name instead of an ID
 
 		TRIVIA_CATEGORIES = categories_id_map
@@ -146,7 +151,7 @@ class Games(AceMixin, commands.Cog):
 	@commands.group(invoke_without_command=True, cooldown_after_parsing=True)
 	@commands.bot_has_permissions(embed_links=True, add_reactions=True)
 	@commands.cooldown(rate=1, per=300.0, type=commands.BucketType.member)
-	async def trivia(self, ctx, *, difficulty: DifficultyConverter = None, category: CategoryConverter = None):
+	async def trivia(self, ctx, category: CategoryConverter = None, *, difficulty: DifficultyConverter = None):
 		'''Trivia time! Optionally specify a difficulty as argument. Valid difficulties are `easy`, `medium` and `hard`.'''
 
 		diff = difficulty
@@ -160,6 +165,9 @@ class Games(AceMixin, commands.Cog):
 			difficulty=diff.name.lower(),
 			#type='boolean'
 		)
+
+		if category is not None:
+			params['category'] = category
 
 		try:
 			async with self.bot.aiohttp.get(API_URL, params=params) as resp:
