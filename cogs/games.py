@@ -51,7 +51,9 @@ DIFFICULTY_COLORS = {
 	Difficulty.HARD: discord.Color.red()
 }
 
-API_URL = 'https://opentdb.com/api.php'
+API_BASE = 'https://opentdb.com/'
+API_CATEGORY_LIST_URL = f'{API_BASE}api_category.php'
+API_URL = f'{API_BASE}api.php'
 QUESTION_TIMEOUT = 20.0
 
 MULTIPLE_MAP = (
@@ -85,6 +87,16 @@ PHONETICS = (
 LETTERS = list(string.ascii_lowercase)
 NATO = {x[0]: x[1] for x in zip(LETTERS, PHONETICS)}
 
+TRIVIA_CATEGORIES = {}
+
+class CategoryConverter(commands.Converter):
+	async def convert(self, ctx, argument):
+		category_name = argument.lower()
+
+		try:
+			return TRIVIA_CATEGORIES[category_name]
+		except KeyError:
+			raise commands.CommandError('\'{}\' is not a valid trivia category, see the categories command.'.format(argument.lower()))
 
 class DifficultyConverter(commands.Converter):
 	async def convert(self, ctx, argument):
@@ -108,10 +120,33 @@ class Games(AceMixin, commands.Cog):
 		self.config = ConfigTable(bot, 'trivia', ('guild_id', 'user_id'))
 		self.playing = set()
 
+		asyncio.run_coroutine_threadsafe(self.get_trivia_categories(), self.bot.loop)
+
+	async def get_trivia_categories(self):
+		try:
+			async with self.bot.aiohttp.get(API_CATEGORY_LIST_URL) as resp:
+				if resp.status != 200:
+					return
+		
+				res = await resp.json()
+		except asyncio.TimeoutError:
+			return
+
+		categories_id_map = {}
+
+		for category in res['trivia_categories']:
+			name = category['name'] # Name is sometimes something like `GeneralCategory: SpecificCategory`, like `Entertainment: Books`, so we just trim that out if it's there
+			colon_pos = name.find(':')
+			trimmed_name = name[0 if colon_pos == -1 else colon_pos + 2:].lower()
+
+			categories_id_map[trimmed_name] = category['id'] # Map the name to ID, so a user can enter a name instead of an ID
+
+		TRIVIA_CATEGORIES = categories_id_map
+
 	@commands.group(invoke_without_command=True, cooldown_after_parsing=True)
 	@commands.bot_has_permissions(embed_links=True, add_reactions=True)
 	@commands.cooldown(rate=1, per=300.0, type=commands.BucketType.member)
-	async def trivia(self, ctx, *, difficulty: DifficultyConverter = None):
+	async def trivia(self, ctx, *, difficulty: DifficultyConverter = None, category: CategoryConverter = None):
 		'''Trivia time! Optionally specify a difficulty as argument. Valid difficulties are `easy`, `medium` and `hard`.'''
 
 		diff = difficulty
