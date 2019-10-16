@@ -91,16 +91,18 @@ TRIVIA_CATEGORIES = {}
 
 class CategoryConverter(commands.Converter):
 	async def convert(self, ctx, argument):
-		category_name = argument.lower()
+		cleaner = commands.clean_content(escape_markdown=True)
+
+		category_name = await cleaner.convert(ctx, argument.lower())
 
 		try:
 			return TRIVIA_CATEGORIES[category_name]
 		except KeyError:
 			try:
-				if Difficulty[argument.upper()]:
-					return argument
+				if Difficulty[category_name.upper()]:
+					return category_name
 			except:
-				raise commands.CommandError('\'{}\' is not a valid trivia category, see the categories command.'.format(argument.lower()))
+				raise commands.CommandError('\'{}\' is not a valid trivia category, see the categories command.'.format(category_name))
 
 class DifficultyConverter(commands.Converter):
 	async def convert(self, ctx, argument):
@@ -114,7 +116,7 @@ class DifficultyConverter(commands.Converter):
 		try:
 			return Difficulty(int(name))
 		except ValueError:
-			raise commands.CommandError('\'{}\' is not a valid difficulty.'.format(argument.lower()))
+			raise commands.CommandError('\'{}\' is not a valid difficulty.'.format(discord.escape_markdown(argument.lower())))
 
 
 class Games(AceMixin, commands.Cog):
@@ -146,7 +148,7 @@ class Games(AceMixin, commands.Cog):
 			trimmed_name = name[0 if colon_pos == -1 else colon_pos + 2:] # Cut out both the colon, and the space after it
 
 			if trimmed_name != name:
-				categories_id_map[name] = category['id'] # However, if it is a XXX: YYY category, we do include both names
+				categories_id_map[name] = category['id'] # However, if it is a XXXX: YYY category, we do include both names
 
 			categories_id_map[trimmed_name] = category['id'] # Map the name to ID, so a user can enter a name instead of an ID
 
@@ -162,8 +164,10 @@ class Games(AceMixin, commands.Cog):
 		'''Trivia time! Optionally specify a difficulty or category and difficulty as arguments. Valid difficulties are `easy`, `medium` and `hard`. Valid categories can be listed with `trivia categories`.'''
 
 		if (category is not None) and (type(category) != int):
-			# If the category converter was called, and didn't return an int, then it actually return the difficulty (which can optionally be the first param)
-			diff = await DifficultyConverter.convert(DifficultyConverter, ctx, category) # So we convert the difficulty string with the difficulty converter
+			# If the category converter was called, and didn't return an int, then it actually returned the difficulty (which can optionally be the first param)
+			diff_converter = DifficultyConverter()
+
+			diff = await diff_converter.convert(ctx, category) # So we convert the difficulty string with the difficulty converter
 		else:
 			diff = difficulty
 
