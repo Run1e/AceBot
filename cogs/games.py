@@ -143,14 +143,14 @@ class Games(AceMixin, commands.Cog):
 		for category in res['trivia_categories']:
 			name = category['name'].lower() # Name is sometimes something like `GeneralCategory: SpecificCategory`, like `Entertainment: Books`, so we just trim that out if it's there
 			colon_pos = name.find(':')
-			trimmed_name = name[0 if colon_pos == -1 else colon_pos + 2:]
+			trimmed_name = name[0 if colon_pos == -1 else colon_pos + 2:] # Cut out both the colon, and the space after it
 
 			if trimmed_name != name:
 				categories_id_map[name] = category['id'] # However, if it is a XXX: YYY category, we do include both names
 
 			categories_id_map[trimmed_name] = category['id'] # Map the name to ID, so a user can enter a name instead of an ID
 
-		categories_id_map['anime'] = categories_id_map['japanese anime & manga']
+		categories_id_map['anime'] = categories_id_map['japanese anime & manga'] # Some manual entries, since the API picks dumb long names for everything
 		categories_id_map['science'] = categories_id_map['science & nature']
 
 		TRIVIA_CATEGORIES = categories_id_map
@@ -162,7 +162,8 @@ class Games(AceMixin, commands.Cog):
 		'''Trivia time! Optionally specify a difficulty as argument. Valid difficulties are `easy`, `medium` and `hard`.'''
 
 		if (category is not None) and (type(category) != int):
-			diff = await DifficultyConverter.convert(ctx, category, category)
+			# If the category converter was called, and didn't return an int, then it actually return the difficulty (which can optionally be the first param)
+			diff = await DifficultyConverter.convert(DifficultyConverter, ctx, category) # So we convert the difficulty string with the difficulty converter
 		else:
 			diff = difficulty
 
@@ -177,6 +178,7 @@ class Games(AceMixin, commands.Cog):
 		)
 
 		if type(category) == int:
+			# if we have a category ID, insert it into the query params for the question request
 			params['category'] = category
 
 		try:
@@ -314,14 +316,15 @@ class Games(AceMixin, commands.Cog):
 
 	@trivia.command()
 	async def categories(self, ctx):
-		entries = list()
+		# Just dump the list of valid categories into an embed and send it
+		description = ''
 
 		for category_name in TRIVIA_CATEGORIES:
 			if category_name.find(':') == -1: # Only show the trimmed categories, since the other ones are redundent and both work
-				entries.append('`{}`'.format(category_name))
+				description += '`{}`\n'.format(category_name)
 
 		e = discord.Embed(
-			description='\n'.join(entries),
+			description=description
 		)
 
 		await ctx.send(embed=e)
