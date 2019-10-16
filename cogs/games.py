@@ -106,7 +106,9 @@ class CategoryConverter(commands.Converter):
 
 class DifficultyConverter(commands.Converter):
 	async def convert(self, ctx, argument):
-		name = argument.upper()
+		cleaner = commands.clean_content(escape_markdown=True)
+
+		name = await cleaner.convert(ctx, argument.upper())
 
 		try:
 			return Difficulty[name]
@@ -116,7 +118,7 @@ class DifficultyConverter(commands.Converter):
 		try:
 			return Difficulty(int(name))
 		except ValueError:
-			raise commands.CommandError('\'{}\' is not a valid difficulty.'.format(discord.escape_markdown(argument.lower())))
+			raise commands.CommandError('\'{}\' is not a valid difficulty.'.format(name))
 
 
 class Games(AceMixin, commands.Cog):
