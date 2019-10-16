@@ -52,8 +52,8 @@ DIFFICULTY_COLORS = {
 }
 
 API_BASE = 'https://opentdb.com/'
-API_CATEGORY_LIST_URL = f'{API_BASE}api_category.php'
-API_URL = f'{API_BASE}api.php'
+API_CATEGORY_LIST_URL = '{}api_category.php'.format(API_BASE)
+API_URL = '{}api.php'.format(API_BASE)
 QUESTION_TIMEOUT = 20.0
 
 MULTIPLE_MAP = (
@@ -96,7 +96,11 @@ class CategoryConverter(commands.Converter):
 		try:
 			return TRIVIA_CATEGORIES[category_name]
 		except KeyError:
-			raise commands.CommandError('\'{}\' is not a valid trivia category, see the categories command.'.format(argument.lower()))
+			try:
+				if Difficulty[argument.upper()]:
+					return argument
+			except:
+				raise commands.CommandError('\'{}\' is not a valid trivia category, see the categories command.'.format(argument.lower()))
 
 class DifficultyConverter(commands.Converter):
 	async def convert(self, ctx, argument):
@@ -157,7 +161,10 @@ class Games(AceMixin, commands.Cog):
 	async def trivia(self, ctx, category: CategoryConverter = None, *, difficulty: DifficultyConverter = None):
 		'''Trivia time! Optionally specify a difficulty as argument. Valid difficulties are `easy`, `medium` and `hard`.'''
 
-		diff = difficulty
+		if (category is not None) and (type(category) != int):
+			diff = await DifficultyConverter.convert(ctx, category, category)
+		else:
+			diff = difficulty
 
 		if diff is None:
 			diff = choice(list(Difficulty))
@@ -169,7 +176,7 @@ class Games(AceMixin, commands.Cog):
 			#type='boolean'
 		)
 
-		if category is not None:
+		if type(category) == int:
 			params['category'] = category
 
 		try:
@@ -311,7 +318,7 @@ class Games(AceMixin, commands.Cog):
 
 		for category_name in TRIVIA_CATEGORIES:
 			if category_name.find(':') == -1: # Only show the trimmed categories, since the other ones are redundent and both work
-				entries.append(f'`{category_name}`')
+				entries.append('`{}`'.format(category_name))
 
 		e = discord.Embed(
 			description='\n'.join(entries),
