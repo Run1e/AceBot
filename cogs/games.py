@@ -137,14 +137,17 @@ class Games(AceMixin, commands.Cog):
 		categories_id_map = {}
 
 		for category in res['trivia_categories']:
-			name = category['name'] # Name is sometimes something like `GeneralCategory: SpecificCategory`, like `Entertainment: Books`, so we just trim that out if it's there
+			name = category['name'].lower() # Name is sometimes something like `GeneralCategory: SpecificCategory`, like `Entertainment: Books`, so we just trim that out if it's there
 			colon_pos = name.find(':')
-			trimmed_name = name[0 if colon_pos == -1 else colon_pos + 2:].lower()
+			trimmed_name = name[0 if colon_pos == -1 else colon_pos + 2:]
 
 			if trimmed_name != name:
 				categories_id_map[name] = category['id'] # However, if it is a XXX: YYY category, we do include both names
 
 			categories_id_map[trimmed_name] = category['id'] # Map the name to ID, so a user can enter a name instead of an ID
+
+		categories_id_map['anime'] = categories_id_map['japanese anime & manga']
+		categories_id_map['science'] = categories_id_map['science & nature']
 
 		TRIVIA_CATEGORIES = categories_id_map
 
@@ -301,6 +304,20 @@ class Games(AceMixin, commands.Cog):
 			'INSERT INTO trivia_stats (guild_id, user_id, timestamp, question_hash, result) VALUES ($1, $2, $3, $4, $5)',
 			ctx.guild.id, ctx.author.id, answered_at, question_hash, result
 		)
+
+	@trivia.command()
+	async def categories(self, ctx):
+		entries = list()
+
+		for category_name in TRIVIA_CATEGORIES:
+			if category_name.find(':') == -1: # Only show the trimmed categories, since the other ones are redundent and both work
+				entries.append(f'`{category_name}`')
+
+		e = discord.Embed(
+			description='\n'.join(entries),
+		)
+
+		await ctx.send(embed=e)
 
 	@trivia.command()
 	@commands.bot_has_permissions(embed_links=True)
