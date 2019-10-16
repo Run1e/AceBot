@@ -159,7 +159,7 @@ class Games(AceMixin, commands.Cog):
 	@commands.bot_has_permissions(embed_links=True, add_reactions=True)
 	@commands.cooldown(rate=1, per=300.0, type=commands.BucketType.member)
 	async def trivia(self, ctx, category: CategoryConverter = None, *, difficulty: DifficultyConverter = None):
-		'''Trivia time! Optionally specify a difficulty as argument. Valid difficulties are `easy`, `medium` and `hard`.'''
+		'''Trivia time! Optionally specify a difficulty or category and difficulty as arguments. Valid difficulties are `easy`, `medium` and `hard`. Valid categories can be listed with `trivia categories`.'''
 
 		if (category is not None) and (type(category) != int):
 			# If the category converter was called, and didn't return an int, then it actually return the difficulty (which can optionally be the first param)
@@ -316,6 +316,7 @@ class Games(AceMixin, commands.Cog):
 
 	@trivia.command()
 	async def categories(self, ctx):
+		'''Get a list of valid categories for the trivia command.'''
 		# Just dump the list of valid categories into an embed and send it
 		description = ''
 
