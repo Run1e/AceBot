@@ -16,7 +16,7 @@ log = logging.getLogger(__name__)
 SUCCESS_EMOJI = '\U00002705'
 DEFAULT_REMINDER_MESSAGE = 'Hey, wake up!'
 MIN_DELTA = timedelta(minutes=1)
-MAX_DELTA = timedelta(days=365)
+MAX_DELTA = timedelta(days=365 * 10)
 MAX_REMINDERS = 9
 
 
