@@ -7,6 +7,8 @@ from datetime import datetime
 from urllib.parse import unquote
 from random import randrange, choice, sample
 from enum import Enum
+from functools import reduce
+from typing import Optional
 
 from cogs.mixins import AceMixin
 from utils.configtable import ConfigTable
@@ -51,7 +53,9 @@ DIFFICULTY_COLORS = {
 	Difficulty.HARD: discord.Color.red()
 }
 
-API_URL = 'https://opentdb.com/api.php'
+API_BASE = 'https://opentdb.com/'
+API_CATEGORY_LIST_URL = '{}api_category.php'.format(API_BASE)
+API_URL = '{}api.php'.format(API_BASE)
 QUESTION_TIMEOUT = 20.0
 
 MULTIPLE_MAP = (
@@ -73,6 +77,7 @@ SCORE_POT = {
 }
 
 PENALTY_DIV = 2
+CATEGORY_PENALTY = 3 # When the user provides a category, their score will be divided by this after all other math is done on it, to limit people from abusing a single category they know about
 
 # NATO CONSTANTS
 
@@ -85,6 +90,15 @@ PHONETICS = (
 LETTERS = list(string.ascii_lowercase)
 NATO = {x[0]: x[1] for x in zip(LETTERS, PHONETICS)}
 
+class CategoryConverter(commands.Converter):
+	async def convert(self, ctx, argument):
+		category_name = argument.lower()
+
+		try:
+			return ctx.cog.trivia_categories[category_name]
+		except KeyError:
+			cleaner = commands.clean_content(escape_markdown=True)
+			raise commands.CommandError('\'{}\' is not a valid trivia category, see the categories command.'.format(await cleaner.convert(ctx, category_name)))
 
 class DifficultyConverter(commands.Converter):
 	async def convert(self, ctx, argument):
@@ -98,7 +112,8 @@ class DifficultyConverter(commands.Converter):
 		try:
 			return Difficulty(int(name))
 		except ValueError:
-			raise commands.CommandError('\'{}\' is not a valid difficulty.'.format(argument.lower()))
+			cleaner = commands.clean_content(escape_markdown=True)
+			raise commands.CommandError('\'{}\' is not a valid difficulty.'.format(await cleaner.convert(ctx, name)))
 
 
 class Games(AceMixin, commands.Cog):
@@ -108,11 +123,46 @@ class Games(AceMixin, commands.Cog):
 		self.config = ConfigTable(bot, 'trivia', ('guild_id', 'user_id'))
 		self.playing = set()
 
+		self.bot.loop.create_task(self.get_trivia_categories())
+
+	async def get_trivia_categories(self):
+		self.trivia_categories = {}
+		self.trivia_categories_str = 'None, an error occurred while fetching the trivia categories' 
+		# When there is an error with the request, this message won't change, and will show up for the category command
+
+		try:
+			async with self.bot.aiohttp.get(API_CATEGORY_LIST_URL) as resp:
+				if resp.status != 200:
+					return
+		
+				res = await resp.json()
+		except asyncio.TimeoutError:
+			return
+
+		categories_id_map = {}
+
+		for category in res['trivia_categories']:
+			name = category['name'].lower()
+			categories_id_map[name] = category['id']
+
+			split_name = name.split(':')
+
+			if len(split_name) == 2:
+				categories_id_map[split_name[1][1:]] = category['id']
+
+		categories_id_map['anime'] = categories_id_map['japanese anime & manga'] # Some manual entries, since the API picks dumb long names for everything
+		categories_id_map['science'] = categories_id_map['science & nature']
+
+		self.trivia_categories = categories_id_map
+		self.trivia_categories_str = reduce(lambda x, y: '{}\n{}'.format(x, y), filter(lambda x: x.find(':') == -1, self.trivia_categories))
+		# A list of the categories, excluding the AAAAA: BBBBB ones, since they would be a pain to type, and need quotes around them
+
 	@commands.group(invoke_without_command=True, cooldown_after_parsing=True)
 	@commands.bot_has_permissions(embed_links=True, add_reactions=True)
 	@commands.cooldown(rate=1, per=300.0, type=commands.BucketType.member)
-	async def trivia(self, ctx, *, difficulty: DifficultyConverter = None):
-		'''Trivia time! Optionally specify a difficulty as argument. Valid difficulties are `easy`, `medium` and `hard`.'''
+	async def trivia(self, ctx, category: Optional[CategoryConverter] = None, *, difficulty: DifficultyConverter = None):
+		'''Trivia time! Optionally specify a difficulty or category and difficulty as arguments. Valid difficulties are `easy`, `medium` and `hard`. Valid categories can be listed with `trivia categories`.'''
+		category_passed = False
 
 		diff = difficulty
 
@@ -125,6 +175,11 @@ class Games(AceMixin, commands.Cog):
 			difficulty=diff.name.lower(),
 			#type='boolean'
 		)
+
+		if category is not None:
+			# if we have a category ID, insert it into the query params for the question request
+			category_passed = True
+			params['category'] = category
 
 		try:
 			async with self.bot.aiohttp.get(API_URL, params=params) as resp:
@@ -189,7 +244,7 @@ class Games(AceMixin, commands.Cog):
 			reaction, user = await self.bot.wait_for('reaction_add', check=check, timeout=QUESTION_TIMEOUT)
 
 			answered_at = datetime.utcnow()
-			score = self._calculate_score(SCORE_POT[diff], answered_at - now)
+			score = self._calculate_score(SCORE_POT[diff], answered_at - now, category_passed)
 
 			if str(reaction) == correct_emoji:
 				current_score = await self._on_correct(ctx, answered_at, question_hash, score)
@@ -234,8 +289,8 @@ class Games(AceMixin, commands.Cog):
 
 			await self._on_wrong(ctx, answered_at, question_hash, score)
 
-	def _calculate_score(self, pot, time_spent):
-		return int(pot * (QUESTION_TIMEOUT - time_spent.total_seconds() / 2) / QUESTION_TIMEOUT)
+	def _calculate_score(self, pot, time_spent, category_passed):
+		return int((pot * (QUESTION_TIMEOUT - time_spent.total_seconds() / 2) / QUESTION_TIMEOUT) / (CATEGORY_PENALTY if category_passed else 1))
 
 	async def _on_correct(self, ctx, answered_at, question_hash, add_score):
 		entry = await self.config.get_entry(ctx.guild.id, ctx.author.id)
@@ -258,6 +313,17 @@ class Games(AceMixin, commands.Cog):
 			'INSERT INTO trivia_stats (guild_id, user_id, timestamp, question_hash, result) VALUES ($1, $2, $3, $4, $5)',
 			ctx.guild.id, ctx.author.id, answered_at, question_hash, result
 		)
+
+	@trivia.command()
+	@commands.bot_has_permissions(embed_links=True)
+	async def categories(self, ctx):
+		'''Get a list of valid categories for the trivia command.'''
+
+		e = discord.Embed(
+			description=self.trivia_categories_str
+		)
+
+		await ctx.send(embed=e)
 
 	@trivia.command()
 	@commands.bot_has_permissions(embed_links=True)
