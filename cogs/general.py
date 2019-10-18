@@ -4,7 +4,7 @@ from discord.ext import commands
 import asyncio
 import random
 
-from datetime import datetime
+from datetime import datetime, date
 from bs4 import BeautifulSoup
 
 from config import WOLFRAM_KEY, APIXU_KEY
@@ -212,8 +212,6 @@ class General(AceMixin, commands.Cog):
 
 			location = data['location']
 			current = data['current']
-
-			from datetime import date
 
 			observation_time = datetime.strptime(current['observation_time'], '%I:%M %p').time()
 
