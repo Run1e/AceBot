@@ -470,7 +470,7 @@ class Starboard(AceMixin, commands.Cog):
 		else:
 			# new star. post it and store it
 
-			if message is None:
+			if message is None or star_channel is None:
 				return # undef behaviour
 
 			if message.author == starrer:
