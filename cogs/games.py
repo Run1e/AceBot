@@ -3,10 +3,12 @@ import asyncio
 import string
 
 from discord.ext import commands
+from fuzzywuzzy import process, fuzz
 from datetime import datetime
 from urllib.parse import unquote
 from random import randrange, choice, sample
 from enum import Enum
+from typing import Optional, Union
 
 from cogs.mixins import AceMixin
 from utils.configtable import ConfigTable
@@ -15,6 +17,7 @@ from utils.configtable import ConfigTable
 REQUEST_FAILED = commands.CommandError('Request failed, try again later.')
 
 # TRIVIA CONSTANTS
+
 
 class Difficulty(Enum):
 	EASY = 1
@@ -51,7 +54,9 @@ DIFFICULTY_COLORS = {
 	Difficulty.HARD: discord.Color.red()
 }
 
-API_URL = 'https://opentdb.com/api.php'
+API_BASE = 'https://opentdb.com/'
+API_CATEGORY_LIST_URL = API_BASE + 'api_category.php'
+API_URL = API_BASE + 'api.php'
 QUESTION_TIMEOUT = 20.0
 
 MULTIPLE_MAP = (
@@ -73,6 +78,7 @@ SCORE_POT = {
 }
 
 PENALTY_DIV = 2
+CATEGORY_PENALTY = 2.5
 
 # NATO CONSTANTS
 
@@ -84,6 +90,27 @@ PHONETICS = (
 
 LETTERS = list(string.ascii_lowercase)
 NATO = {x[0]: x[1] for x in zip(LETTERS, PHONETICS)}
+
+
+class CategoryConverter(commands.Converter):
+	async def convert(self, ctx, argument):
+		category_name = argument.lower()
+
+		fuzzed = process.extract(
+			query=argument,
+			choices=ctx.cog.trivia_categories.keys(),
+			scorer=fuzz.ratio,
+			limit=1,
+		)
+
+		res, score = fuzzed[0]
+
+		if score < 76:
+			# will never be shown so no need to prettify it
+			raise ValueError()
+
+		_id = ctx.cog.trivia_categories[res]
+		return choice(_id) if isinstance(_id, list) else _id
 
 
 class DifficultyConverter(commands.Converter):
@@ -98,7 +125,8 @@ class DifficultyConverter(commands.Converter):
 		try:
 			return Difficulty(int(name))
 		except ValueError:
-			raise commands.CommandError('\'{}\' is not a valid difficulty.'.format(argument.lower()))
+			cleaner = commands.clean_content(escape_markdown=True)
+			raise commands.CommandError('\'{}\' is not a valid difficulty.'.format(await cleaner.convert(ctx, name)))
 
 
 class Games(AceMixin, commands.Cog):
@@ -106,13 +134,50 @@ class Games(AceMixin, commands.Cog):
 		super().__init__(bot)
 
 		self.config = ConfigTable(bot, 'trivia', ('guild_id', 'user_id'))
-		self.playing = set()
+
+		self.trivia_categories = None
+		self.bot.loop.create_task(self.get_trivia_categories())
+
+	async def get_trivia_categories(self):
+		try:
+			async with self.bot.aiohttp.get(API_CATEGORY_LIST_URL) as resp:
+				if resp.status != 200:
+					return
+		
+				res = await resp.json()
+		except asyncio.TimeoutError:
+			return
+
+		categories = dict()
+
+		for category in res['trivia_categories']:
+			name = category['name'].lower()
+
+			if ':' in name:
+				spl = name.split(':')
+				cat = spl[0].strip()
+				name = spl[1].strip()
+
+				if cat not in categories:
+					categories[cat] = list()
+
+				if isinstance(categories[cat], list):
+					categories[cat].append(category['id'])
+
+			categories[name] = category['id']
+
+		categories['anime'] = categories.pop('japanese anime & manga')
+		categories['science'].append(categories.pop('science & nature'))
+		categories['musicals'] = categories.pop('musicals & theatres')
+		categories['cartoons'] = categories.pop('cartoon & animations')
+
+		self.trivia_categories = categories
 
 	@commands.group(invoke_without_command=True, cooldown_after_parsing=True)
 	@commands.bot_has_permissions(embed_links=True, add_reactions=True)
-	@commands.cooldown(rate=1, per=300.0, type=commands.BucketType.member)
-	async def trivia(self, ctx, *, difficulty: DifficultyConverter = None):
-		'''Trivia time! Optionally specify a difficulty as argument. Valid difficulties are `easy`, `medium` and `hard`.'''
+	#@commands.cooldown(rate=1, per=300.0, type=commands.BucketType.member)
+	async def trivia(self, ctx, category: Optional[CategoryConverter] = None, *, difficulty: DifficultyConverter = None):
+		'''Trivia time! Optionally specify a difficulty or category and difficulty as arguments. Valid difficulties are `easy`, `medium` and `hard`. Valid categories can be listed with `trivia categories`.'''
 
 		diff = difficulty
 
@@ -123,8 +188,11 @@ class Games(AceMixin, commands.Cog):
 			amount=1,
 			encode='url3986',
 			difficulty=diff.name.lower(),
-			#type='boolean'
 		)
+
+		# if we have a category ID, insert it into the query params for the question request
+		if category is not None:
+			params['category'] = choice(category) if category is list else category
 
 		try:
 			async with self.bot.aiohttp.get(API_URL, params=params) as resp:
@@ -192,6 +260,10 @@ class Games(AceMixin, commands.Cog):
 			score = self._calculate_score(SCORE_POT[diff], answered_at - now)
 
 			if str(reaction) == correct_emoji:
+				# apply penalty if category was specified
+				if 'category' in params:
+					score = int(score / CATEGORY_PENALTY)
+
 				current_score = await self._on_correct(ctx, answered_at, question_hash, score)
 
 				e = discord.Embed(
@@ -229,13 +301,15 @@ class Games(AceMixin, commands.Cog):
 				pass
 
 			await ctx.send('Question timed out and you lost {} points. Answer within {} seconds next time!'.format(
-					score, int(QUESTION_TIMEOUT)
+				score, int(QUESTION_TIMEOUT)
 			))
 
 			await self._on_wrong(ctx, answered_at, question_hash, score)
 
 	def _calculate_score(self, pot, time_spent):
-		return int(pot * (QUESTION_TIMEOUT - time_spent.total_seconds() / 2) / QUESTION_TIMEOUT)
+		time_div = QUESTION_TIMEOUT - time_spent.total_seconds() / 2
+		points = pot * time_div / QUESTION_TIMEOUT
+		return int(points)
 
 	async def _on_correct(self, ctx, answered_at, question_hash, add_score):
 		entry = await self.config.get_entry(ctx.guild.id, ctx.author.id)
@@ -258,6 +332,16 @@ class Games(AceMixin, commands.Cog):
 			'INSERT INTO trivia_stats (guild_id, user_id, timestamp, question_hash, result) VALUES ($1, $2, $3, $4, $5)',
 			ctx.guild.id, ctx.author.id, answered_at, question_hash, result
 		)
+
+	@trivia.command()
+	@commands.bot_has_permissions(embed_links=True)
+	async def categories(self, ctx):
+		'''Get a list of valid categories for the trivia command.'''
+
+		e = discord.Embed(description='\n'.join(self.trivia_categories.keys()))
+		e.set_footer(text='Specifying a category halves your winnings.')
+
+		await ctx.send(embed=e)
 
 	@trivia.command()
 	@commands.bot_has_permissions(embed_links=True)
