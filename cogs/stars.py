@@ -6,7 +6,7 @@ from datetime import datetime, timedelta
 from asyncpg.exceptions import UniqueViolationError
 
 from utils.checks import is_mod, is_mod_pred
-from utils.configtable import ConfigTable, StarboardConfigRecord
+from utils.configtable import ConfigTable, ConfigTableRecord
 from utils.prompter import prompter, admin_prompter, ADMIN_PROMPT_ABORTED
 from cogs.mixins import AceMixin
 
@@ -21,6 +21,20 @@ SB_NOT_FOUND_ERROR = commands.CommandError('Starboard channel set but not found.
 SB_LOCKED_ERROR = commands.CommandError('Starboard has been locked and can not be used at the moment.')
 SB_ORIG_MSG_NOT_FOUND_ERROR = commands.CommandError('Could not find original message.')
 SB_STAR_MSG_NOT_FOUND_ERROR = commands.CommandError('Could not find starred message.')
+
+
+class StarboardConfigRecord(ConfigTableRecord):
+
+	@property
+	def channel(self):
+		if self.channel_id is None:
+			return None
+
+		guild = self._config.bot.get_guild(self.guild_id)
+		if guild is None:
+			return None
+
+		return guild.get_channel(self.channel_id)
 
 
 class StarConverter(commands.Converter):

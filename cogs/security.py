@@ -8,7 +8,7 @@ from enum import IntEnum
 
 from cogs.mixins import AceMixin
 from utils.checks import is_mod_pred
-from utils.configtable import ConfigTable, SecurityConfigRecord
+from utils.configtable import ConfigTable, ConfigTableRecord
 
 
 SUBMODULES = ('mention', 'spam')
@@ -16,6 +16,28 @@ SPAM_LOCK = asyncio.Lock()
 MENTION_LOCK = asyncio.Lock()
 
 log = logging.getLogger(__name__)
+
+
+class SecurityConfigRecord(ConfigTableRecord):
+
+	def __init__(self, *args, **kwargs):
+		super().__init__(*args, **kwargs)
+		self.create_spam_cooldown()
+		self.create_mention_cooldown()
+
+	@property
+	def guild(self):
+		return self._config.bot.get_guild(self.guild_id)
+
+	def create_spam_cooldown(self):
+		self.spam_cooldown = commands.CooldownMapping.from_cooldown(
+			self.spam_count, self.spam_per, commands.BucketType.user
+		)
+
+	def create_mention_cooldown(self):
+		self.mention_cooldown = commands.CooldownMapping.from_cooldown(
+			self.mention_count, self.mention_per, commands.BucketType.user
+		)
 
 
 class SecurityAction(IntEnum):

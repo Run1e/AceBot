@@ -7,13 +7,14 @@ import copy
 
 from discord.ext import commands
 from discord.mixins import Hashable
+from bs4 import BeautifulSoup
 from contextlib import redirect_stdout
 from tabulate import tabulate
 from asyncpg.exceptions import UniqueViolationError
 from datetime import datetime
+from urllib.parse import urlparse
 
 from utils.prompter import admin_prompter
-from utils.google import google_parse
 from utils.pager import Pager
 from utils.time import pretty_datetime
 from utils.string_helpers import shorten
@@ -188,20 +189,35 @@ class Owner(AceMixin, commands.Cog):
 			'Accept:': 'text/html'
 		}
 
+		params = dict(
+			hl='en',
+			safe='on',
+			q=query
+		)
+
 		async with ctx.channel.typing():
 			try:
-				async with self.bot.aiohttp.get(f'http://google.com/search', params=dict(hl='en', safe='on', q=query),
-												headers=headers) as resp:
+				async with self.bot.aiohttp.get(f'http://google.com/search', params=params, headers=headers) as resp:
 					if resp.status != 200:
 						raise commands.CommandError(f'Query returned status {resp.status} {resp.reason}')
-					result = google_parse(await resp.text())
-					if not result:
-						raise commands.CommandError('No results.')
-					else:
-						embed = discord.Embed(title=result[0], url=result[1], description=result[2])
-						embed.set_footer(text=result[3])
-						# embed.set_image(url=f'https://{result[3]}/favicon.ico')
-						await ctx.send(embed=embed)
+
+					text = await resp.text()
+
+				soup = BeautifulSoup(text, 'lxml')
+
+				g = soup.find(class_='g')
+
+				if g is None:
+					raise commands.CommandError('No results found.')
+
+				title = g.h3.string
+				link = g.a['href']
+				desc = g.find(class_='st').text
+				site = urlparse(link).netloc
+
+				embed = discord.Embed(title=title, url=link, description=desc)
+				embed.set_footer(text=site)
+				await ctx.send(embed=embed)
 
 			except asyncio.TimeoutError:
 				raise commands.CommandError('Query timed out.')

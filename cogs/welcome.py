@@ -7,12 +7,26 @@ from discord.ext import commands
 from cogs.mixins import AceMixin
 from utils.checks import is_mod_pred
 from utils.string_helpers import craft_welcome
-from utils.configtable import ConfigTable, WelcomeRecord
+from utils.configtable import ConfigTable, ConfigTableRecord
 
 
 WELCOME_NOT_SET_UP_ERROR = commands.CommandError(
 	'You don\'t seem to have set up a welcome message yet, do `welcome` to see available commands.'
 )
+
+
+class WelcomeRecord(ConfigTableRecord):
+
+	@property
+	def channel(self):
+		if self.channel_id is None:
+			return None
+
+		guild = self._config.bot.get_guild(self.guild_id)
+		if guild is None:
+			return None
+
+		return guild.get_channel(self.channel_id)
 
 
 class Welcome(AceMixin, commands.Cog):
