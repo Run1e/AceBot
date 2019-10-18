@@ -55,6 +55,7 @@ class Dwitter(AceMixin, commands.Cog):
 		e.add_field(name='Link', value='[d/{}]({})'.format(dweet['id'], dweet['link']))
 
 		remix_of = dweet['remix_of']
+
 		if remix_of is not None:
 			e.add_field(
 				name='Remix of',

@@ -179,6 +179,8 @@ class HTML2Markdown:
 
 	def navigable_string(self, node):
 		content = str(node)
+		if content == '\n':
+			return
 		self.result.add_and_consume(self.escaper(content) if callable(self.escaper) else content, True)
 
 	def get_content(self, tag):
