@@ -9,7 +9,7 @@ from bs4 import BeautifulSoup
 
 from config import WOLFRAM_KEY, APIXU_KEY
 from cogs.mixins import AceMixin
-from utils.time import pretty_datetime
+from utils.time import pretty_datetime, pretty_timedelta
 
 
 class General(AceMixin, commands.Cog):
@@ -104,45 +104,106 @@ class General(AceMixin, commands.Cog):
 	async def server(self, ctx):
 		"""Show various information about the server."""
 
-		statuses = {
-			discord.Status.online: 0,
-			discord.Status.idle: 0,
-			discord.Status.dnd: 0,
-			discord.Status.offline: 0
-		}
-
-		for member in ctx.guild.members:
-			for status in statuses:
-				if member.status is status:
-					statuses[status] += 1
-
-		att = dict()
 		guild = ctx.guild
 
-		att['Online'] = (
-			f'{sum(member.status is not discord.Status.offline for member in guild.members)}'
-			f'/{len(guild.members)}'
+		desc = dict(
+			ID=guild.id,
+			Region=str(guild.region),
 		)
 
-		att['Owner'] = guild.owner.mention
-		att['Channels'] = len(guild.text_channels) + len(guild.voice_channels)
-		att['Region'] = str(guild.region)
-		att['Created at'] = pretty_datetime(guild.created_at)
+		e = discord.Embed(
+			title=guild.name,
+			description='\n'.join('**{}**: {}'.format(key, value) for key, value in desc.items()),
+			timestamp=guild.created_at
+		)
 
-		if guild.emojis:
-			att['Emojis'] = len(guild.emojis)
+		e.add_field(
+			name='Owner',
+			value=guild.owner.mention
+		)
 
-		if guild.premium_subscription_count > 0:
-			att['Boosters'] = guild.premium_subscription_count
+		e.add_field(
+			name='Region',
+			value=str(guild.region)
+		)
 
-		if guild.premium_tier > 0:
-			att['Premium tier'] = guild.premium_tier
+		# CHANNELS
 
-		e = discord.Embed(title=ctx.guild.name, description='\n'.join(f'**{a}**: {b}' for a, b in att.items()))
-		e.set_thumbnail(url=ctx.guild.icon_url)
-		e.set_footer(text=f'ID: {ctx.guild.id}')
-		e.add_field(name='Status', value='\n'.join(str(status) for status in statuses))
-		e.add_field(name='Users', value='\n'.join(str(count) for status, count in statuses.items()))
+		channels = {
+			discord.TextChannel: 0,
+			discord.VoiceChannel: 0,
+		}
+
+		for channel in guild.channels:
+			for channel_type in channels:
+				if isinstance(channel, channel_type):
+					channels[channel_type] += 1
+
+		channel_desc = '{} {}\n{} {}'.format(
+			'<:text_channel:635021087247171584>',
+			channels[discord.TextChannel],
+			'<:voice_channel:635021113134546944>',
+			channels[discord.VoiceChannel]
+		)
+
+		e.add_field(
+			name='Channels',
+			value=channel_desc
+		)
+
+		# FEATURES
+
+		if guild.features:
+			e.add_field(
+				name='Features',
+				value='\n'.join('• ' + feature.replace('_', ' ').title() for feature in guild.features)
+			)
+
+		# MEMBERS
+
+		statuses = dict(
+			online=0,
+			idle=0,
+			dnd=0,
+			offline=0
+		)
+
+		for member in guild.members:
+			statuses[str(member.status)] += 1
+
+		member_desc = '{} {} {} {} {} {} {} {}'.format(
+			'<:online:635022092903120906>',
+			statuses['online'],
+			'<:idle:635022068290813952>',
+			statuses['idle'],
+			'<:dnd:635022045952081941>',
+			statuses['dnd'],
+			'<:offline:635022116462264320>',
+			statuses['offline']
+		)
+
+		e.add_field(
+			name='Members ({})'.format(len(guild.members)),
+			value=member_desc, inline=False
+		)
+
+		# SERVER BOOST
+
+		boost_desc = 'Level {} - {} Boosts'.format(guild.premium_tier, guild.premium_subscription_count)
+
+		if guild.premium_subscribers:
+			booster = guild.premium_subscribers[-1]
+			boost_desc += '\nLast boost by {} {} ago'.format(
+				booster.mention, pretty_timedelta(datetime.utcnow() - booster.premium_since)
+			)
+
+		e.add_field(
+			name='Server boost',
+			value=boost_desc
+		)
+
+		e.set_thumbnail(url=guild.icon_url)
+		e.set_footer(text='Created')
 
 		await ctx.send(embed=e)
 
