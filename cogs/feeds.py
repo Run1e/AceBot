@@ -1,25 +1,258 @@
 import discord
+import asyncpg
 
 from discord.ext import commands
 
 from cogs.mixins import AceMixin
+from utils.checks import is_mod
 
 
 class FeedConverter(commands.Converter):
-	async def convert(self, ctx, argument):
-		pass
+	async def convert(self, ctx, feed):
+		record = await ctx.bot.db.fetchrow(
+			'SELECT * FROM feed WHERE guild_id=$1 AND LOWER(name) = $2',
+			ctx.guild.id, feed
+		)
+
+		if record is None:
+			raise commands.CommandError('No feed by that name found.')
+
+		return record
+
+
+class FeedNameConverter(commands.Converter):
+	async def convert(self, ctx, name):
+		if len(name) > 32:
+			raise commands.CommandError('Feed names can\'t be longer than 32 characters.')
+
+		escape_converter = commands.clean_content(fix_channel_mentions=True, escape_markdown=True)
+		if name != await escape_converter.convert(ctx, name):
+			raise commands.CommandError('Feed name has disallowed formatting in it.')
+
+		return name
 
 
 class Feeds(AceMixin, commands.Cog):
-	def __init__(self, bot):
-		super().__init__(bot)
+	'''Feed system.
 
+	When creating a feed, a new role is created. This role is given to people who subscribe to the feed. When a new
+	message is published to the feed, the bot makes the role mentionable for a split second while publishing the
+	message, mentioning all the subscribers of the feed.
+	'''
+
+	@commands.Cog.listener()
+	async def on_guild_role_delete(self, role):
+		await self.db.execute('DELETE FROM feed WHERE role_id=$1', role.id)
+
+	@commands.command()
+	@commands.bot_has_permissions(embed_links=True)
+	async def feeds(self, ctx):
+		'''List all feeds in this guild.'''
+
+		records = await self.db.fetch('SELECT name, role_id FROM feed WHERE guild_id=$1', ctx.guild.id)
+
+		if not records:
+			raise commands.CommandError('No feeds set up in this server.')
+
+		role_ids = list(role.id for role in ctx.author.roles)
+
+		subbed = list()
+		unsubbed = list()
+
+		for r in records:
+			if r.get('role_id') in role_ids:
+				subbed.append(r.get('name'))
+			else:
+				unsubbed.append(r.get('name'))
+
+		e = discord.Embed(title=ctx.guild.name + ' Feeds')
+
+		e.add_field(
+			name='\N{WHITE HEAVY CHECK MARK} Subscribed',
+			value='\n'.join(' • ' + name for name in subbed) if subbed else 'None yet!',
+			inline=False
+		)
+
+		e.add_field(
+			name='\N{CROSS MARK} Unsubscribed',
+			value='\n'.join(' • ' + name for name in unsubbed) if unsubbed else 'None!',
+			inline=False
+		)
+
+		e.set_footer(text='{}sub <feed> to subscribe to a feed.'.format(ctx.prefix))
+		e.set_thumbnail(url=ctx.guild.icon_url)
+
+		await ctx.send(embed=e)
+
+	@commands.command()
+	@commands.bot_has_permissions(manage_roles=True)
 	async def sub(self, ctx, *, feed: FeedConverter):
 		'''Subscribe to a feed.'''
 
-	async def publish(self, ctx, feed: FeedConverter, *, content: str):
+		role_id = feed.get('role_id')
+		name = feed.get('name')
+		channel_id = feed.get('channel_id')
+
+		role = await self._get_role(ctx, role_id)
+
+		if role in ctx.author.roles:
+			raise commands.CommandError('You are already subscribed to this feed.')
+
+		try:
+			await ctx.author.add_roles(role, reason='Subscribed to feed.')
+		except discord.HTTPException:
+			raise commands.CommandError('Failed adding role, make sure bot has Manage Roles permissions.')
+
+		await ctx.send('Subscribed to `{}`. Feed is published in <#{}>'.format(name, channel_id))
+
+	@commands.command()
+	@commands.bot_has_permissions(manage_roles=True)
+	async def unsub(self, ctx, *, feed: FeedConverter):
+		'''Unsubscribe from a feed.'''
+
+		role_id = feed.get('role_id')
+		name = feed.get('name')
+
+		role = await self._get_role(ctx, role_id)
+
+		if role not in ctx.author.roles:
+			raise commands.CommandError('You aren\'t currently subscribed to this feed.')
+
+		try:
+			await ctx.author.remove_roles(role, reason='Unsubscribed from feed.')
+		except discord.HTTPException:
+			raise commands.CommandError('Failed removing role, make sure bot has Manage Roles permissions.')
+
+		await ctx.send('Unsubscribed from `{}`.'.format(name))
+
+	@commands.group(hidden=True)
+	async def feed(self, ctx):
+		pass
+
+	@feed.command()
+	@is_mod()
+	@commands.has_permissions(manage_roles=True)
+	@commands.bot_has_permissions(manage_roles=True)
+	async def create(self, ctx, feed_name: FeedNameConverter, *, channel: discord.TextChannel):
+		'''Create a new feed.'''
+
+		try:
+			role = await ctx.guild.create_role(
+				name=feed_name,
+				reason='New feed created by {0.name}#{0.discriminator}'.format(ctx.author)
+			)
+		except discord.HTTPException:
+			raise commands.CommandError('Unable to create role ``. Make sure bot has Manage Roles permissions.')
+
+		try:
+			await self.db.execute(
+				'INSERT INTO feed (guild_id, channel_id, role_id, name) VALUES ($1, $2, $3, $4)',
+				ctx.guild.id, channel.id, role.id, feed_name
+			)
+		except asyncpg.UniqueViolationError:
+			await role.delete()
+			raise commands.CommandError('Feed named `{}` already exists.'.format(role.name))
+
+		await ctx.send('Created feed `{}`'.format(feed_name))
+
+	@feed.command()
+	@is_mod()
+	@commands.has_permissions(manage_roles=True)
+	@commands.bot_has_permissions(manage_roles=True)
+	async def delete(self, ctx, *, feed: FeedConverter):
+		'''Delete a feed.'''
+
+		role_id = await self.db.fetchval('DELETE FROM feed WHERE id=$1 RETURNING role_id', feed.get('id'))
+
+		role = ctx.guild.get_role(role_id)
+
+		if role is not None:
+			try:
+				await role.delete(reason='Feed deleted.')
+			except discord.HTTPException:
+				pass
+
+		await ctx.send('Feed deleted.')
+
+	@feed.group(hidden=True)
+	async def edit(self, ctx):
+		pass
+
+	@edit.command()
+	@is_mod()
+	@commands.has_permissions(manage_roles=True)
+	@commands.bot_has_permissions(manage_roles=True)
+	async def name(self, ctx, feed: FeedConverter, *, feed_name: FeedNameConverter):
+		'''Edit the name of a feed.'''
+
+		await self.db.execute('UPDATE feed SET name=$1 WHERE id=$2', feed_name, feed.get('id'))
+		await ctx.send('Feed name updated to `{}`'.format(feed_name))
+
+	@edit.command()
+	@is_mod()
+	@commands.has_permissions(manage_roles=True)
+	@commands.bot_has_permissions(manage_roles=True)
+	async def channel(self, ctx, feed: FeedConverter, *, channel: discord.TextChannel):
+		'''Edit the publishing channel of a feed.'''
+
+		await self.db.execute('UPDATE feed SET channel_id=$1 WHERE id=$2', channel.id, feed.get('id'))
+		await ctx.send('Publishing channel of feed `{}` changed to {}'.format(feed.get('name'), channel.mention))
+
+	async def _get_role(self, ctx, role_id):
+		role = ctx.guild.get_role(role_id)
+
+		if role is None:
+			raise commands.CommandError('Couldn\'t find the feed role. Has it been deleted?')
+
+		return role
+
+	@commands.command()
+	@is_mod()
+	@commands.has_permissions(manage_roles=True)
+	@commands.bot_has_permissions(manage_roles=True, manage_messages=True, embed_links=True)
+	async def pub(self, ctx, feed: FeedConverter, *, content: str):
 		'''Publish to a feed.'''
 
+		role_id = feed.get('role_id')
+		channel_id = feed.get('channel_id')
+
+		role = await self._get_role(ctx, role_id)
+
+		channel = ctx.guild.get_channel(channel_id)
+		if channel is None:
+			raise commands.CommandError('Feed publish channel not found. Has it been deleted?')
+
+		message = role.mention + '\n\n' + content
+
+		if len(message) > 2000:
+			raise commands.CommandError('Final message ends up being above 2000 characters. Please shave off a few.')
+
+		try:
+			await role.edit(mentionable=True)
+		except discord.HTTPException:
+			raise commands.CommandError('Failed making role mentionable, publish aborted.')
+
+		try:
+			msg = await channel.send(message)
+		except discord.HTTPException:
+			await role.edit(mentionable=False)
+			raise commands.CommandError(
+				'Message failed to send. Make sure bot has permissions to send in the feed channel.'
+			)
+
+		try:
+			await role.edit(mentionable=False)
+		except discord.HTTPException:
+			raise commands.CommandError(
+				'Message sent successfully, but failed to make role unmentionable. Please do this manually.'
+			)
+
+		try:
+			await ctx.message.delete()
+		except discord.HTTPException:
+			pass
+
+		await ctx.send(embed=discord.Embed(description='[Published here!]({})'.format(msg.jump_url)))
 
 
 def setup(bot):

@@ -110,6 +110,10 @@ class PaginatedHelpCommand(commands.HelpCommand):
 		if self.pager.static:
 			return
 
+		if group.cog_name.lower() == group.name.lower():
+			await self.send_cog_help(group.cog)
+			return
+
 		added = []
 		cmds = []
 
@@ -127,7 +131,12 @@ class PaginatedHelpCommand(commands.HelpCommand):
 		if self.pager.static:
 			return
 
-		cog_name = command.cog.__class__.__name__
+		cog_name = command.cog_name
+
+		if cog_name.lower() == command.name:
+			await self.send_cog_help(command.cog)
+			return
+
 		cog_desc = command.cog.__doc__
 
 		cmds = []

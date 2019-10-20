@@ -30,6 +30,7 @@ EXTENSIONS = (
 	'cogs.mod',
 	'cogs.games',
 	'cogs.remind',
+	'cogs.feeds',
 	'cogs.hl',
 	'cogs.welcome',
 	'cogs.roles',

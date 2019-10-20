@@ -108,7 +108,6 @@ class General(AceMixin, commands.Cog):
 
 		desc = dict(
 			ID=guild.id,
-			Region=str(guild.region),
 		)
 
 		e = discord.Embed(
