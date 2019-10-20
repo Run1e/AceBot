@@ -2,9 +2,10 @@ import discord
 import asyncpg
 
 from discord.ext import commands
+from typing import Union
 
 from cogs.mixins import AceMixin
-from utils.checks import is_mod
+from utils.checks import is_mod, is_mod_pred
 
 
 class FeedConverter(commands.Converter):
@@ -33,11 +34,9 @@ class FeedNameConverter(commands.Converter):
 
 
 class Feeds(AceMixin, commands.Cog):
-	'''Feed system.
+	'''Newsletter/feed system.
 
-	When creating a feed, a new role is created. This role is given to people who subscribe to the feed. When a new
-	message is published to the feed, the bot makes the role mentionable for a split second while publishing the
-	message, mentioning all the subscribers of the feed.
+	When creating a feed a new role is created. This role is given to members who subscribe to the feed. Upon publishing, the published message is posted along with a role mention.
 	'''
 
 	@commands.Cog.listener()
@@ -91,7 +90,6 @@ class Feeds(AceMixin, commands.Cog):
 
 		role_id = feed.get('role_id')
 		name = feed.get('name')
-		channel_id = feed.get('channel_id')
 
 		role = await self._get_role(ctx, role_id)
 
@@ -103,7 +101,7 @@ class Feeds(AceMixin, commands.Cog):
 		except discord.HTTPException:
 			raise commands.CommandError('Failed adding role, make sure bot has Manage Roles permissions.')
 
-		await ctx.send('Subscribed to `{}`. Feed is published in <#{}>'.format(name, channel_id))
+		await ctx.send('Subscribed to `{}`.'.format(name))
 
 	@commands.command()
 	@commands.bot_has_permissions(manage_roles=True)
@@ -124,6 +122,66 @@ class Feeds(AceMixin, commands.Cog):
 			raise commands.CommandError('Failed removing role, make sure bot has Manage Roles permissions.')
 
 		await ctx.send('Unsubscribed from `{}`.'.format(name))
+
+	@commands.command()
+	@commands.bot_has_permissions(manage_roles=True, manage_messages=True, embed_links=True)
+	async def pub(self, ctx, feed: FeedConverter, *, content: str):
+		'''Publish to a feed.'''
+
+		role_id = feed.get('role_id')
+		channel_id = feed.get('channel_id')
+		publisher_id = feed.get('publisher_id')
+
+		async def can_pub():
+			if publisher_id is not None:
+				if publisher_id == ctx.author.id:
+					return True
+				elif any(role.id == publisher_id for role in ctx.author.roles):
+					return True
+
+			if await is_mod_pred(ctx):
+				return True
+
+			return False
+
+		if not await can_pub():
+			raise commands.CommandError('You can\'t publish to this feed.')
+
+		role = await self._get_role(ctx, role_id)
+
+		channel = ctx.guild.get_channel(channel_id)
+		if channel is None:
+			raise commands.CommandError('Feed publish channel not found. Has it been deleted?')
+
+		message = '{0.mention} • *Published by {1.mention}*\n\n{2}'.format(role, ctx.author, content)
+
+		if len(message) > 2000:
+			raise commands.CommandError('Final message ends up being above 2000 characters. Please shave off a few.')
+
+		try:
+			await role.edit(mentionable=True)
+		except discord.HTTPException:
+			raise commands.CommandError('Failed making role mentionable, publish aborted.')
+
+		try:
+			await channel.send(message)
+		except discord.HTTPException:
+			await role.edit(mentionable=False)
+			raise commands.CommandError(
+				'Message failed to send. Make sure bot has permissions to send in the feed channel.'
+			)
+
+		try:
+			await role.edit(mentionable=False)
+		except discord.HTTPException:
+			raise commands.CommandError(
+				'Message sent successfully, but failed to make role unmentionable. Please do this manually.'
+			)
+
+		try:
+			await ctx.message.delete()
+		except discord.HTTPException:
+			pass
 
 	@commands.group(hidden=True)
 	async def feed(self, ctx):
@@ -198,6 +256,22 @@ class Feeds(AceMixin, commands.Cog):
 		await self.db.execute('UPDATE feed SET channel_id=$1 WHERE id=$2', channel.id, feed.get('id'))
 		await ctx.send('Publishing channel of feed `{}` changed to {}'.format(feed.get('name'), channel.mention))
 
+	@edit.command()
+	@is_mod()
+	@commands.has_permissions(manage_roles=True)
+	@commands.bot_has_permissions(manage_roles=True)
+	async def publisher(self, ctx, feed: FeedConverter, *, publisher: Union[discord.Member, discord.Role] = None):
+		'''Set a member or role that can publish to a feed.'''
+
+		value = publisher.id if publisher is not None else None
+		await self.db.execute('UPDATE feed SET publisher_id=$1 WHERE id=$2', value, feed.get('id'))
+
+		if value is None:
+			await ctx.send('Publisher cleared for this feed.')
+		else:
+			fmt = '{0.display_name}#{0.discriminator}' if isinstance(publisher, discord.Member) else '@\u200b{0.name}'
+			await ctx.send('{} can now publish to the `{}` feed.'.format(fmt.format(publisher), feed.get('name')))
+
 	async def _get_role(self, ctx, role_id):
 		role = ctx.guild.get_role(role_id)
 
@@ -205,54 +279,6 @@ class Feeds(AceMixin, commands.Cog):
 			raise commands.CommandError('Couldn\'t find the feed role. Has it been deleted?')
 
 		return role
-
-	@commands.command()
-	@is_mod()
-	@commands.has_permissions(manage_roles=True)
-	@commands.bot_has_permissions(manage_roles=True, manage_messages=True, embed_links=True)
-	async def pub(self, ctx, feed: FeedConverter, *, content: str):
-		'''Publish to a feed.'''
-
-		role_id = feed.get('role_id')
-		channel_id = feed.get('channel_id')
-
-		role = await self._get_role(ctx, role_id)
-
-		channel = ctx.guild.get_channel(channel_id)
-		if channel is None:
-			raise commands.CommandError('Feed publish channel not found. Has it been deleted?')
-
-		message = role.mention + '\n\n' + content
-
-		if len(message) > 2000:
-			raise commands.CommandError('Final message ends up being above 2000 characters. Please shave off a few.')
-
-		try:
-			await role.edit(mentionable=True)
-		except discord.HTTPException:
-			raise commands.CommandError('Failed making role mentionable, publish aborted.')
-
-		try:
-			msg = await channel.send(message)
-		except discord.HTTPException:
-			await role.edit(mentionable=False)
-			raise commands.CommandError(
-				'Message failed to send. Make sure bot has permissions to send in the feed channel.'
-			)
-
-		try:
-			await role.edit(mentionable=False)
-		except discord.HTTPException:
-			raise commands.CommandError(
-				'Message sent successfully, but failed to make role unmentionable. Please do this manually.'
-			)
-
-		try:
-			await ctx.message.delete()
-		except discord.HTTPException:
-			pass
-
-		await ctx.send(embed=discord.Embed(description='[Published here!]({})'.format(msg.jump_url)))
 
 
 def setup(bot):

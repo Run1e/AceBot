@@ -126,12 +126,13 @@ CREATE TABLE IF NOT EXISTS starrers (
 
 -- feeds
 CREATE TABLE IF NOT EXISTS feed (
-	id			SERIAL UNIQUE,
-	guild_id	BIGINT NOT NULL,
-	channel_id	BIGINT NOT NULL,
-	role_id		BIGINT NOT NULL,
-	name		TEXT NOT NULL,
-	UNIQUE		(guild_id, name)
+	id				SERIAL UNIQUE,
+	guild_id		BIGINT NOT NULL,
+	channel_id		BIGINT NOT NULL,
+	role_id			BIGINT NOT NULL,
+	publisher_id	BIGINT NULL,
+	name			TEXT NOT NULL,
+	UNIQUE			(guild_id, name)
 );
 
 -- fact list
