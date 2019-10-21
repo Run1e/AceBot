@@ -74,7 +74,7 @@ class Reminders(AceMixin, commands.Cog):
 
 		await self.db.execute('DELETE FROM remind WHERE id=$1', _id)
 
-	@commands.command()
+	@commands.command(aliases=['remind'])
 	@commands.bot_has_permissions(add_reactions=True)
 	async def remindme(self, ctx, amount: TimeMultConverter, unit: TimeDeltaConverter, *, message=None):
 		'''Create a new reminder.'''
