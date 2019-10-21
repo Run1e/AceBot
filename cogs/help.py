@@ -133,7 +133,7 @@ class PaginatedHelpCommand(commands.HelpCommand):
 
 		cog_name = command.cog_name
 
-		if cog_name.lower() == command.name:
+		if cog_name is not None and cog_name.lower() == command.name:
 			await self.send_cog_help(command.cog)
 			return
 
