@@ -1,5 +1,6 @@
 import discord
 import logging
+import parsewhen
 
 from discord.ext import commands
 from datetime import datetime, timedelta
@@ -38,6 +39,28 @@ class RemindPager(Pager):
 			)
 
 
+class ReminderConverter(commands.Converter):
+	async def convert(self, ctx, argument):
+		rem = str()
+		when = None
+
+		for segment in parsewhen.generate(argument):
+			if isinstance(segment, str):
+				rem += segment
+			else:
+				if when is not None:
+					raise ValueError('Multiple dates found in reminder string.')
+
+				if isinstance(segment, datetime):
+					when = segment
+				elif isinstance(segment, timedelta):
+					when = datetime.utcnow() + segment
+				else:
+					raise TypeError('expected datetime or timedelta, got {}'.format(type(segment).__name__))
+
+		return when, rem
+
+
 class Reminders(AceMixin, commands.Cog):
 	'''Set, view and delete reminders.
 
@@ -70,14 +93,17 @@ class Reminders(AceMixin, commands.Cog):
 			elif user is not None:
 				await user.send(embed=e)
 		except discord.HTTPException as exc:
-			log.info(f'Failed sending reminder #{id} for {user.id} - {exc}')
+			log.info(f'Failed sending reminder #{_id} for {user.id} - {exc}')
 
 		await self.db.execute('DELETE FROM remind WHERE id=$1', _id)
 
 	@commands.command(aliases=['remind'])
 	@commands.bot_has_permissions(add_reactions=True)
-	async def remindme(self, ctx, amount: TimeMultConverter, unit: TimeDeltaConverter, *, message=None):
+	async def remindme(self, ctx, asd: ReminderConverter):
 		'''Create a new reminder.'''
+
+		print(asd)
+		return
 
 		now = datetime.utcnow()
 		delta = unit * amount

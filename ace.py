@@ -203,6 +203,9 @@ class AceBot(commands.Bot):
 	async def on_command_error(self, ctx, exc):
 		e = discord.Embed(color=0x36393E)
 
+		print(type(exc))
+		print(exc)
+
 		async def send_error():
 			try:
 				if ctx.guild.me.permissions_in(ctx.channel).embed_links:
@@ -256,7 +259,10 @@ class AceBot(commands.Bot):
 				return  # ignore forbidden errors
 			await log_and_raise()
 
-		elif isinstance(exc, (commands.ConversionError, commands.UserInputError)):
+		elif isinstance(exc, commands.ConversionError):
+			await log_and_raise()
+
+		elif isinstance(exc, commands.UserInputError):
 			e.title = str(exc)
 			e.description = f'Usage: `{ctx.prefix}{ctx.command.qualified_name} {ctx.command.signature}`'
 
