@@ -4,12 +4,12 @@ import parsewhen
 
 from discord.ext import commands
 from datetime import datetime, timedelta
+from enum import IntEnum
 
 from cogs.mixins import AceMixin
 from utils.databasetimer import DatabaseTimer
-from utils.converters import TimeMultConverter, TimeDeltaConverter
 from utils.string_helpers import shorten
-from utils.time import pretty_timedelta
+from utils.time import pretty_timedelta, pretty_datetime
 from utils.pager import Pager
 
 log = logging.getLogger(__name__)
@@ -39,32 +39,92 @@ class RemindPager(Pager):
 			)
 
 
+def dt_factory():
+	return datetime.utcnow().replace(hour=0, minute=0, second=0, microsecond=0)
+
+
+class Timescale(IntEnum):
+	TIME = 0
+	DAY = 1
+	MONTH = 2
+	YEAR = 3
+
+
+class CustomEvaluator(parsewhen.eval.Evaluator):
+	def __init__(self, *args, **kwargs):
+		self.scale = None
+		super().__init__(*args, **kwargs)
+
+	def check_scale(self, scale):
+		if self.scale is None or scale > self.scale:
+			self.scale = scale
+
+	def eval_datetime(self, *args, **kwargs):
+		now = datetime.utcnow()
+		dt = super().eval_datetime(*args, **kwargs)
+
+		if dt < now:
+			if self.scale is Timescale.MONTH:
+				dt = dt.replace(year=dt.year + 1)
+			if self.scale is Timescale.DAY:
+				dt = dt.replace(month=dt.month + 1)
+
+		return dt
+
+	def eval_time(self, *args, **kwargs):
+		self.check_scale(Timescale.TIME)
+		return super().eval_time(*args, **kwargs)
+
+	def eval_day(self, *args, **kwargs):
+		self.check_scale(Timescale.DAY)
+		return super().eval_day(*args, **kwargs)
+
+	def eval_date(self, *args, **kwargs):
+		self.check_scale(Timescale.DAY)
+		return super().eval_date(*args, **kwargs)
+
+	def eval_month(self, *args, **kwargs):
+		self.check_scale(Timescale.MONTH)
+		return super().eval_month(*args, **kwargs)
+
+	def eval_year(self, *args, **kwargs):
+		self.check_scale(Timescale.YEAR)
+		return super().eval_year(*args, **kwargs)
+
+
 class ReminderConverter(commands.Converter):
 	async def convert(self, ctx, argument):
-		rem = str()
+		text = list()
 		when = None
 
-		for segment in parsewhen.generate(argument):
-			if isinstance(segment, str):
-				rem += segment
-			else:
-				if when is not None:
-					raise ValueError('Multiple dates found in reminder string.')
-
-				if isinstance(segment, datetime):
-					when = segment
-				elif isinstance(segment, timedelta):
-					when = datetime.utcnow() + segment
+		try:
+			for segment in parsewhen.generate(argument, dates=dt_factory, _evaler=CustomEvaluator):
+				if isinstance(segment, str):
+					text.append(segment.strip())
 				else:
-					raise TypeError('expected datetime or timedelta, got {}'.format(type(segment).__name__))
+					if when is not None:
+						raise commands.CommandError('Multiple times/dates found in reminder string.')
 
-		return when, rem
+					if isinstance(segment, datetime):
+						when = segment
+					elif isinstance(segment, timedelta):
+						when = datetime.utcnow() + segment
+					else:
+						raise TypeError('expected datetime or timedelta, got {}'.format(type(segment).__name__))
+		except parsewhen.errors.ErrorSource:
+			raise commands.CommandError('Failed parsing time.')
+
+		return when, ' '.join(text)
 
 
 class Reminders(AceMixin, commands.Cog):
 	'''Set, view and delete reminders.
 
-	Valid time units are: `minutes`, `hours`, `days` or `weeks`
+	Examples:
+	`.remindme in 3 days do the laundry`
+	`.remindme next tuesday at 10am call back david`
+	`.remindme apply for job 17th of august`
+	`.remindme tomorrow take out trash`
 	'''
 
 	def __init__(self, bot):
@@ -99,17 +159,16 @@ class Reminders(AceMixin, commands.Cog):
 
 	@commands.command(aliases=['remind'])
 	@commands.bot_has_permissions(add_reactions=True)
-	async def remindme(self, ctx, asd: ReminderConverter):
+	async def remindme(self, ctx, *, when_and_what: ReminderConverter):
 		'''Create a new reminder.'''
 
-		print(asd)
-		return
-
+		when, message = when_and_what
 		now = datetime.utcnow()
-		delta = unit * amount
-		remind_on = now + delta
 
-		if delta > MAX_DELTA:
+		if when < now:
+			raise commands.CommandError('Specified time is in the past.')
+
+		if when - now > MAX_DELTA:
 			raise commands.CommandError('Sorry, can\'t remind in more than a year in the future.')
 
 		if message is not None and len(message) > 512:
@@ -121,12 +180,13 @@ class Reminders(AceMixin, commands.Cog):
 
 		await self.db.execute(
 			'INSERT INTO remind (guild_id, channel_id, user_id, made_on, remind_on, message) VALUES ($1, $2, $3, $4, $5, $6)',
-			ctx.guild.id, ctx.channel.id, ctx.author.id, now, remind_on, message
+			ctx.guild.id, ctx.channel.id, ctx.author.id, now, when, message
 		)
 
-		self.timer.maybe_restart(remind_on)
+		self.timer.maybe_restart(when)
 
-		await ctx.message.add_reaction(SUCCESS_EMOJI)
+		#await ctx.message.add_reaction(SUCCESS_EMOJI)
+		await ctx.send('You will be reminded the {} UTC'.format(pretty_datetime(when)))
 
 	@commands.command()
 	@commands.bot_has_permissions(embed_links=True)

@@ -167,8 +167,13 @@ class General(AceMixin, commands.Cog):
 			offline=0
 		)
 
+		total_online = 0
+
 		for member in guild.members:
-			statuses[str(member.status)] += 1
+			status_str = str(member.status)
+			if status_str != "offline":
+				total_online += 1
+			statuses[status_str] += 1
 
 		member_desc = '{} {} {} {} {} {} {} {}'.format(
 			'<:online:635022092903120906>',
@@ -182,7 +187,7 @@ class General(AceMixin, commands.Cog):
 		)
 
 		e.add_field(
-			name='Members ({})'.format(len(guild.members)),
+			name='Members ({}/{})'.format(total_online, len(guild.members)),
 			value=member_desc, inline=False
 		)
 

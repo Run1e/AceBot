@@ -23,6 +23,8 @@ class FeedConverter(commands.Converter):
 
 class FeedNameConverter(commands.Converter):
 	async def convert(self, ctx, name):
+		name = name.lower()
+
 		if len(name) > 32:
 			raise commands.CommandError('Feed names can\'t be longer than 32 characters.')
 

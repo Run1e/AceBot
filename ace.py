@@ -203,9 +203,6 @@ class AceBot(commands.Bot):
 	async def on_command_error(self, ctx, exc):
 		e = discord.Embed(color=0x36393E)
 
-		print(type(exc))
-		print(exc)
-
 		async def send_error():
 			try:
 				if ctx.guild.me.permissions_in(ctx.channel).embed_links:
