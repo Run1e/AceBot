@@ -13,8 +13,8 @@ from utils.configtable import ConfigTable
 # TODO: role add rate limiting?
 
 VALID_FIELDS = dict(
-	emoji=8,
-	name=248,
+	emoji=56,
+	name=200,
 	description=1024
 )
 
@@ -36,7 +36,8 @@ class RolePager(Pager):
 class EmojiConverter(commands.Converter):
 	async def convert(self, ctx, emoj):
 		if emoj not in emoji.UNICODE_EMOJI:
-			raise commands.CommandError('Unknown emoji.')
+			if emoj not in list(str(e) for e in ctx.guild.emojis):
+				raise commands.CommandError('Unknown emoji.')
 		return emoj
 
 
@@ -142,8 +143,8 @@ class Roles(AceMixin, commands.Cog):
 		if len(description) < 1 or len(description) > 1024:
 			raise commands.CommandError('Description has to be between 1 and 1024 characters long.')
 
-		if len(name) < 1 or len(name) > 248:
-			raise commands.CommandError('Name has to be between 1 and 250 characters long.')
+		if len(name) < 1 or len(name) > VALID_FIELDS['name']:
+			raise commands.CommandError('Name has to be between 1 and 200 characters long.')
 
 		gc = await self.bot.config.get_entry(ctx.guild.id)
 		if role.id == gc.mod_role_id:
