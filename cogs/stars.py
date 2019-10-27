@@ -446,20 +446,14 @@ class Starboard(AceMixin, commands.Cog):
 			if starrer.id == record.get('user_id'):
 				raise commands.CommandError('Message authors can\'t star their own message.')
 
-			# can't restar if already starred
-			if await self.db.fetchval(
-					'SELECT user_id FROM starrers WHERE star_id=$1 AND user_id=$2',
+			try:
+				await self.db.fetchval(
+					'INSERT INTO starrers (star_id, user_id) VALUES ($1, $2)',
 					record.get('id'), starrer.id
-			):
+				)
+			except UniqueViolationError:
 				raise commands.CommandError('You have already added a star to this message.')
 
-			# insert into starrers table
-			await self.db.execute(
-				'INSERT INTO starrers (star_id, user_id) VALUES ($1, $2)',
-				record.get('id'), starrer.id
-			)
-
-			# and update the starred message
 			starrer_count = await self.db.fetchval(
 				'SELECT COUNT(*) FROM starrers WHERE star_id=$1',
 				record.get('id')
@@ -607,7 +601,9 @@ class Starboard(AceMixin, commands.Cog):
 		# our command variants .star and .unstar
 		try:
 			await self._on_star_event_meta(event, board, message, starrer)
-		except commands.CommandError as exc:
+		except commands.CommandError:
+			# remove reaction as "feedback" to starring being rejected
+			await message.remove_reaction(payload.emoji, starrer)
 			# I've decided to suppress errors here. in order to see why a star fails it has to be invoked
 			# through the .star or .unstar commands
 			return
