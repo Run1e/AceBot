@@ -533,10 +533,6 @@ class Starboard(AceMixin, commands.Cog):
 			pass # ???
 
 	async def _on_star_event_meta(self, event, board, message, starrer):
-		# stop if attempted star is too old
-		if datetime.utcnow() - STAR_CUTOFF > message.created_at:
-			raise commands.CommandError('Stars can\'t be added or removed from messages older than a week.')
-
 		# get the starmessage record if it exists
 		row = await self.db.fetchrow(
 			'SELECT * FROM star_msg WHERE guild_id=$1 AND (message_id=$2 OR star_message_id=$2)',
@@ -555,15 +551,21 @@ class Starboard(AceMixin, commands.Cog):
 			star_channel = await self._get_star_channel(message.guild, board=board)
 
 			# we should also find the starred message
-			if row is not None:
+			if row is None:
+				# if row is none, this is a new star - and no starred message exists
+				star_message = None
+			else:
 				# if we have the record we catch fetch the starred message
 				try:
 					star_message = await star_channel.fetch_message(row.get('star_message_id'))
 				except discord.HTTPException:
 					raise SB_STAR_MSG_NOT_FOUND_ERROR
-			else:
-				# if row is none, this is a new star
-				star_message = None
+
+		# stop if attempted star is too old
+		# if star_message was not found (star is new) then use the original messages timestamp
+		# if a star_message *was* found, use that instead as it's the new basis of "star message age"
+		if datetime.utcnow() - STAR_CUTOFF > (star_message or message).created_at:
+			raise commands.CommandError('Stars can\'t be added or removed from messages older than a week.')
 
 		# trigger event
 		# message and star_message can be populated, or *one* of them can be None
@@ -603,7 +605,9 @@ class Starboard(AceMixin, commands.Cog):
 			await self._on_star_event_meta(event, board, message, starrer)
 		except commands.CommandError:
 			# remove reaction as "feedback" to starring being rejected
-			await message.remove_reaction(payload.emoji, starrer)
+			# obviously, there's only a reaction to remove if this was the on_star event
+			if event == self._on_star:
+				await message.remove_reaction(payload.emoji, starrer)
 			# I've decided to suppress errors here. in order to see why a star fails it has to be invoked
 			# through the .star or .unstar commands
 			return
