@@ -447,12 +447,12 @@ class Starboard(AceMixin, commands.Cog):
 				raise commands.CommandError('Message authors can\'t star their own message.')
 
 			try:
-				await self.db.fetchval(
+				await self.db.execute(
 					'INSERT INTO starrers (star_id, user_id) VALUES ($1, $2)',
 					record.get('id'), starrer.id
 				)
 			except UniqueViolationError:
-				raise commands.CommandError('You have already added a star to this message.')
+				return
 
 			starrer_count = await self.db.fetchval(
 				'SELECT COUNT(*) FROM starrers WHERE star_id=$1',
