@@ -476,7 +476,7 @@ class Starboard(AceMixin, commands.Cog):
 			if message.author == starrer:
 				raise commands.CommandError('Can\'t star your own message.')
 
-			if message.channel.is_nsfw() and not star_message.channel.is_nsfw():
+			if message.channel.is_nsfw() and not star_channel.is_nsfw():
 				raise commands.CommandError('Can\'t star message from nsfw channel into non-nsfw starboard.')
 
 			if not len(message.content) and not len(message.attachments):
