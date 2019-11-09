@@ -171,12 +171,14 @@ class Games(AceMixin, commands.Cog):
 				if isinstance(categories[cat], list):
 					categories[cat].append(category['id'])
 
+			name = name.replace(' ', '_')
+
 			categories[name] = category['id']
 
-		categories['anime'] = categories.pop('japanese anime & manga')
-		categories['science'].append(categories.pop('science & nature'))
-		categories['musicals'] = categories.pop('musicals & theatres')
-		categories['cartoons'] = categories.pop('cartoon & animations')
+		categories['anime'] = categories.pop('japanese_anime_&_manga')
+		categories['science'].append(categories.pop('science_&_nature'))
+		categories['musicals'] = categories.pop('musicals_&_theatres')
+		categories['cartoons'] = categories.pop('cartoon_&_animations')
 
 		self.trivia_categories = categories
 
