@@ -205,7 +205,7 @@ class Owner(AceMixin, commands.Cog):
 
 				soup = BeautifulSoup(text, 'lxml')
 
-				g = soup.find(class_='g')
+				g = soup.find(class_='g', lang=None)
 
 				if g is None:
 					raise commands.CommandError('No results found.')
