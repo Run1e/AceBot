@@ -94,7 +94,7 @@ class AutoHotkey(AceMixin, commands.Cog):
 				if self.forum_thread_channel is not None:
 					await self.forum_thread_channel.send(embed=e)
 
-			self.rss_time = time
+				self.rss_time = time
 
 	def craft_docs_page(self, record):
 		page = record.get('page')
