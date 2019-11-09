@@ -373,7 +373,10 @@ class Moderator(AceMixin, commands.Cog):
 			return msg.author == user and all_check(msg)
 
 		await ctx.message.delete()
-		deleted = await ctx.channel.purge(limit=message_count, check=all_check if user is None else user_check)
+		try:
+			deleted = await ctx.channel.purge(limit=message_count, check=all_check if user is None else user_check)
+		except discord.HTTPException:
+			raise commands.CommandError('Failed deleting messages. Does the bot have the necessary permissions?')
 
 		count = len(deleted)
 

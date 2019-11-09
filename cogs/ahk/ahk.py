@@ -43,7 +43,7 @@ class AutoHotkey(AceMixin, commands.Cog):
 		self.h2m = HTML2Markdown(
 			escaper=discord.utils.escape_markdown,
 			big_box=True, lang='autoit',
-			max_len=2000
+			max_len=512
 		)
 
 		self.h2m_version = HTML2Markdown(
@@ -52,7 +52,6 @@ class AutoHotkey(AceMixin, commands.Cog):
 		)
 
 		self.forum_thread_channel = self.bot.get_channel(FORUM_THRD_CHAN_ID)
-		self.forum_reply_channel = self.bot.get_channel(FORUM_REPLY_CHAN_ID)
 		self.rss_time = datetime.now(tz=timezone(timedelta(hours=1))) - timedelta(minutes=1)
 
 		self.rss.start()
@@ -75,10 +74,10 @@ class AutoHotkey(AceMixin, commands.Cog):
 			time = self.parse_date(str(entry.updated.text))
 			title = self.h2m.convert(str(entry.title.text))
 
-			if time > self.rss_time:
+			if time > self.rss_time and '• Re: ' not in title:
 				content = str(entry.content.text).split('Statistics: ')[0]
 				content = self.h2m.convert(content)
-				content = content.replace('CODE: ', '')
+				content = content.replace('\nCODE: ', '')
 
 				e = discord.Embed(
 					title=title,
@@ -92,12 +91,10 @@ class AutoHotkey(AceMixin, commands.Cog):
 				e.set_footer(text='autohotkey.com', icon_url='https://www.autohotkey.com/favicon.ico')
 				e.timestamp = time
 
-				if '• Re: ' in title and self.forum_reply_channel is not None:
-					await self.forum_reply_channel.send(embed=e)
-				elif self.forum_thread_channel is not None:
+				if self.forum_thread_channel is not None:
 					await self.forum_thread_channel.send(embed=e)
 
-				self.rss_time = time
+			self.rss_time = time
 
 	def craft_docs_page(self, record):
 		page = record.get('page')
