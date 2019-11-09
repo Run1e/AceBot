@@ -69,7 +69,7 @@ class AutoHotkey(AceMixin, commands.Cog):
 
 		xml = BeautifulSoup(xml_rss, 'xml')
 
-		for entry in xml.find_all('entry')[::-1]:
+		for entry in reversed(xml.find_all('entry')):
 
 			time = self.parse_date(str(entry.updated.text))
 			title = self.h2m.convert(str(entry.title.text))

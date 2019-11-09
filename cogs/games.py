@@ -1,4 +1,5 @@
 import discord
+import logging
 import asyncio
 import string
 
@@ -12,6 +13,9 @@ from typing import Optional, Union
 
 from cogs.mixins import AceMixin
 from utils.configtable import ConfigTable
+
+
+log = logging.getLogger(__name__)
 
 
 REQUEST_FAILED = commands.CommandError('Request failed, try again later.')
@@ -142,6 +146,9 @@ class Games(AceMixin, commands.Cog):
 		try:
 			async with self.bot.aiohttp.get(API_CATEGORY_LIST_URL) as resp:
 				if resp.status != 200:
+					log.info('Failed getting trivia categories, trying again in 10 seconds...')
+					await asyncio.sleep(10)
+					asyncio.create_task(self.get_trivia_categories())
 					return
 		
 				res = await resp.json()
