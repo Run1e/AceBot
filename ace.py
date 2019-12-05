@@ -191,7 +191,9 @@ class AceBot(commands.Bot):
 		if ctx.guild is None:
 			return False
 
-		if not ctx.guild.me.permissions_in(ctx.channel).send_messages:
+		perms = ctx.guild.me.permissions_in(ctx.channel)
+
+		if not (perms.send_messages and perms.read_message_history):
 			return False
 
 		return True
