@@ -28,8 +28,7 @@ async def prompter(ctx, title=None, prompt=None):
 		msg = await ctx.send(embed=e)
 		for emoji in EMOJIS:
 			await msg.add_reaction(emoji)
-	except discord.HTTPException as e:
-		print(e)
+	except discord.HTTPException:
 		return False
 
 	def check(reaction, user):

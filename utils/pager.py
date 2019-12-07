@@ -1,7 +1,6 @@
 import discord
 import asyncio
 
-from discord.ext import commands
 from math import ceil
 
 STATIC_PERMS = ('add_reactions', 'manage_messages')

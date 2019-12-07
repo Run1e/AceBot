@@ -604,10 +604,15 @@ class Starboard(AceMixin, commands.Cog):
 		try:
 			await self._on_star_event_meta(event, board, message, starrer)
 		except commands.CommandError:
+
 			# remove reaction as "feedback" to starring being rejected
 			# obviously, there's only a reaction to remove if this was the on_star event
 			if event == self._on_star:
-				await message.remove_reaction(payload.emoji, starrer)
+				try:
+					await message.remove_reaction(payload.emoji, starrer)
+				except discord.HTTPException:
+					pass
+
 			# I've decided to suppress errors here. in order to see why a star fails it has to be invoked
 			# through the .star or .unstar commands
 			return
