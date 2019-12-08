@@ -225,7 +225,7 @@ CREATE TABLE IF NOT EXISTS role_selector (
 	guild_id	BIGINT NOT NULL,
 	title		VARCHAR(256) NOT NULL,
 	description	VARCHAR(1024) NULL,
-	image		TEXT NULL,
+	icon		VARCHAR(256) NULL,
 	roles		INTEGER[25] NOT NULL DEFAULT ARRAY[]::INTEGER[25]
 );
 

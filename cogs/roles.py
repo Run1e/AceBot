@@ -15,9 +15,7 @@ from utils.string_helpers import shorten
 from utils.prompter import prompter
 
 # TODO: role add rate limiting?
-# TODO: don't allow the @everyone role
 # TODO: ignore command input when being prompted
-# TODO: transfer roles between selectors
 
 log = logging.getLogger(__name__)
 
@@ -45,26 +43,14 @@ MOVEDOWN_EMOJI = '⏬'
 ADD_ROLE_EMOJI = '🇷'
 ADD_SEL_EMOJI = '🇸'
 DEL_EMOJI = '➖'
-STOP_EMOJI = '✏️'
+EDIT_EMOJI = '✏️'
+SAVE_EMOJI = '💾'
+ABORT_EMOJI = '🚮'
 
 EMBED_EMOJIS = (
-	UP_EMOJI, DOWN_EMOJI, MOVEUP_EMOJI, MOVEDOWN_EMOJI,
-	ADD_SEL_EMOJI, ADD_ROLE_EMOJI, DEL_EMOJI, STOP_EMOJI
+	ADD_SEL_EMOJI, ADD_ROLE_EMOJI, UP_EMOJI, DOWN_EMOJI,
+	MOVEUP_EMOJI, MOVEDOWN_EMOJI, EDIT_EMOJI, DEL_EMOJI, ABORT_EMOJI, SAVE_EMOJI
 )
-
-
-class RolePager(Pager):
-	async def craft_page(self, e, page, entries):
-		for role in entries:
-			e.add_field(
-				name=role.name,
-				value='ID: {}'.format(str(role.id))
-			)
-
-		e.set_author(
-			name=self.ctx.guild.name,
-			icon_url=self.ctx.guild.icon_url
-		)
 
 
 class EmojiConverter(commands.Converter):
@@ -73,24 +59,6 @@ class EmojiConverter(commands.Converter):
 			if emoj not in list(str(e) for e in ctx.guild.emojis):
 				raise commands.CommandError('Unknown emoji.')
 		return emoj
-
-
-class RoleIDConverter(commands.Converter):
-	async def convert(self, ctx, arg):
-		try:
-			role = await commands.RoleConverter().convert(ctx, arg)
-			_id = role.id
-		except commands.BadArgument:
-			try:
-				ret = int(arg)
-				_id = ret
-			except ValueError:
-				raise commands.CommandError('Input has to be a role or an integer.')
-
-		if await ctx.bot.db.fetchval('SELECT id FROM role_entry WHERE guild_id=$1 AND role_id=$2', ctx.guild.id, _id):
-			raise commands.CommandError('This role already exists in a selector somewhere.')
-
-		return _id
 
 
 class RoleTitleConverter(commands.Converter):
@@ -145,18 +113,33 @@ class SelectorConverter(commands.Converter):
 		return row
 
 
+class CustomRoleConverter(commands.RoleConverter):
+	async def convert(self, ctx, argument):
+		try:
+			role = await super().convert(ctx, argument)
+		except commands.ConversionError as exc:
+			raise commands.CommandError(str(exc))
+
+		if role == ctx.guild.default_role:
+			raise commands.CommandError('The *everyone* role is not allowed.')
+
+		return role.id
+
+
 NEW_ROLE_PREDS = (
-	('What role do you want to add? (Send a role mention or just the role ID)', RoleIDConverter),
+	('What role do you want to add? (Send a role mention or just the role ID)', CustomRoleConverter),
 	('What name should this role entry have?', RoleTitleConverter),
 	('What emoji should be associated with this role?', EmojiConverter),
-	('What description should this role have?', RoleDescConverter)
+	('What description should this role have?', RoleDescConverter),
 )
 
 NEW_SEL_PREDS = (
 	('What should the name of the selector be?', SelectorTitleConverter),
-	('What should the description of this selector be?', SelectorDescConverter)
+	#('What should the description of this selector be?', SelectorDescConverter),
 )
 
+EDIT_FOOTER = 'Send a message with your answer! Send \'exit\' to cancel.'
+RETRY_MSG = 'Please try again!'
 
 class MaybeDirty:
 	dirty = False
@@ -180,14 +163,14 @@ class Role(MaybeDirty, MaybeNew):
 		self.role_id = role_id
 		self.name = name
 		self.emoji = emoji
-		self.desc = desc
+		self.description = desc
 
 
 class Selector(MaybeDirty, MaybeNew):
 	def __init__(self, _id, title, desc, roles: list):
 		self.id = _id
 		self.title = title
-		self.desc = desc
+		self.description = desc
 		self.roles = roles
 
 	def add_role(self, index, role):
@@ -209,13 +192,6 @@ class RoleHead(MaybeDirty):
 
 		self.selector_pos = 0
 		self.role_pos = None
-
-	@property
-	def selected(self):
-		if self.role_pos is None:
-			return self.selector
-		else:
-			return self.selector.roles[self.role_pos]
 
 	@property
 	def selector(self):
@@ -255,23 +231,25 @@ class RoleHead(MaybeDirty):
 		new_sel_pos = (self.selector_pos + direction) % (self.selector_max + 1)
 		new_sel = self.selectors[new_sel_pos]
 
+		selector_count = len(self.selectors)
+
 		# if this is the last role in this selector and we're moving down
-		if direction == 1 and self.role_pos == self.role_max:
+		if selector_count > 1 and direction == 1 and self.role_pos == self.role_max:
 			# move the role to the first role slot in the selector below
 			new_sel.add_role(0, sel.roles.pop(self.role_pos))
 			self.selector_pos = new_sel_pos
 			self.role_pos = 0
 
 		# if this is the first role in this selector and we're moving up
-		elif direction == -1 and self.role_pos == 0:
+		elif selector_count > 1 and direction == -1 and self.role_pos == 0:
 			# move the role to the last role slot in the selector above
 			new_role_pos = len(new_sel.roles)
 			new_sel.add_role(new_role_pos, sel.roles.pop(self.role_pos))
 			self.selector_pos = new_sel_pos
-			self.role_pos = new_role_pos - 1
+			self.role_pos = new_role_pos
 
 		# otherwise, just swap the two roles in this selector
-		else:
+		elif len(self.selector.roles) > 1:
 			swap_with = (self.role_pos + direction) % len(sel.roles)
 			sel.roles[self.role_pos], sel.roles[swap_with] = sel.roles[swap_with], sel.roles[self.role_pos]
 			self.role_pos = swap_with
@@ -320,7 +298,13 @@ class RoleHead(MaybeDirty):
 	def embed(self, footer=''):
 		self.updated = False
 
-		e = discord.Embed()
+		e = discord.Embed(
+			description=(
+				f'{ADD_SEL_EMOJI} Add selector\n{ADD_ROLE_EMOJI} Add role\n{UP_EMOJI} {DOWN_EMOJI} Move up/down\n'
+				f'{MOVEUP_EMOJI} {MOVEDOWN_EMOJI} Move item up/down\n{EDIT_EMOJI} Edit item\n'
+				f'{DEL_EMOJI} Delete item\n{ABORT_EMOJI} Discard changes\n{SAVE_EMOJI} Save changes\n\nEditor:'
+			)
+		)
 
 		if not self.selectors:
 			e.description = 'Click {} to create your first role selector!'.format(ADD_SEL_EMOJI)
@@ -345,6 +329,71 @@ class RoleHead(MaybeDirty):
 			)
 
 		return e
+
+	async def store(self, ctx):
+		db = ctx.bot.db
+
+		# delete role entries
+
+		selector_ids = list(selector.id for selector in self.selectors if selector.id is not None)
+		role_ids = list(role.id for selector in self.selectors for role in selector.roles if role.id is not None)
+
+		print(selector_ids)
+		print(role_ids)
+
+		# delete role entries that don't exist anymore
+		print(await db.execute(
+			'DELETE FROM role_entry WHERE guild_id=$1 AND id!=ALL($2::INTEGER[])',
+			ctx.guild.id, role_ids
+		))
+
+		# delete role selectors that don't exist anymore
+		print(await db.execute(
+			'DELETE FROM role_selector WHERE guild_id=$1 AND id!=ALL($2::INTEGER[])',
+			ctx.guild.id, selector_ids
+		))
+
+		# delete selectors
+
+		sel_ids = list()
+
+		for selector in self.selectors:
+			ids = list()
+
+			for role in selector.roles:
+				if role.is_new:
+					ids.append(await db.fetchval(
+						'INSERT INTO role_entry (guild_id, role_id, name, emoji, description) values ($1, $2, $3, $4, $5) RETURNING id',
+						ctx.guild.id, role.role_id, role.name, role.emoji, role.description
+					))
+				else:
+					if role.dirty:
+						await db.execute(
+							'UPDATE role_entry SET name=$2, emoji=$3, description=$4 WHERE id=$1',
+							role.id, role.name, role.emoji, role.description
+						)
+
+					ids.append(role.id)
+
+			print('role ids for selector {}'.format(selector.id), ids)
+
+			if selector.is_new:
+				sel_ids.append(await db.fetchval(
+					'INSERT INTO role_selector (guild_id, title, description, roles) VALUES ($1, $2, $3, $4) RETURNING id',
+					ctx.guild.id, selector.title, selector.description, ids
+				))
+			else:
+				if selector.dirty:
+					await db.execute(
+						'UPDATE role_selector SET title=$2, description=$3, roles=$4 WHERE id=$1',
+						selector.id, selector.title, selector.description, ids
+					)
+
+				sel_ids.append(selector.id)
+
+		print('selector ids:', sel_ids)
+
+		await self.conf.update(selectors=sel_ids)
 
 
 class Roles(AceMixin, commands.Cog):
@@ -416,7 +465,7 @@ class Roles(AceMixin, commands.Cog):
 
 		head = RoleHead(conf, selectors)
 
-		msg = await ctx.send(embed=head.embed())
+		msg = await ctx.send(embed=discord.Embed(description='Please wait while reactions are being added...'))
 
 		for emoji in EMBED_EMOJIS:
 			await msg.add_reaction(emoji)
@@ -427,7 +476,6 @@ class Roles(AceMixin, commands.Cog):
 		async def close():
 			try:
 				await msg.delete()
-				await ctx.send('Use `roles spawn` to see new selector(s).')
 			except discord.HTTPException:
 				pass
 
@@ -436,37 +484,44 @@ class Roles(AceMixin, commands.Cog):
 			await msg.edit(embed=head.embed())
 
 			try:
-				reaction, user = await self.bot.wait_for('reaction_add', check=pred, timeout=60.0)
+				reaction, user = await self.bot.wait_for('reaction_add', check=pred, timeout=300.0)
 			except asyncio.TimeoutError:
 				await close()
-				break
+				raise commands.CommandError('Role editor closed after 5 minutes of inactivity.')
 			else:
 				await msg.remove_reaction(reaction.emoji, user)
 
 				reac = str(reaction)
-				print(reac)
 
 				if reac == ADD_SEL_EMOJI:
 					selector_data = await self._multiprompt(ctx, msg, NEW_SEL_PREDS)
 					if selector_data is None:
 						continue
 
-					selector = Selector(None, *selector_data, list())
+					selector = Selector(None, selector_data[0], None, list())
 					selector.set_dirty()
 
-					head.add_selector(head.selector_pos + 1, selector)
+					new_pos = 0 if not head.selectors else head.selector_pos + 1
+					head.add_selector(new_pos, selector)
 
-				elif reac == ADD_ROLE_EMOJI:
+					head.selector_pos = new_pos
+					head.role_pos = None
+
+				# rest of the actions assume at least one item (selector) is present
+				if not head.selectors:
+					continue
+
+				if reac == ADD_ROLE_EMOJI:
 					role_data = await self._multiprompt(ctx, msg, NEW_ROLE_PREDS)
 					if role_data is None:
 						continue
 
 					role = Role(None, *role_data)
-					head.selector.add_role(0 if head.role_pos is None else head.role_pos + 1, role)
 
-				# rest of the actions assume at least one item (selector) is present
-				if not head.selectors:
-					continue
+					new_pos = 0 if head.role_pos is None else head.role_pos + 1
+					head.selector.add_role(new_pos, role)
+
+					head.role_pos = new_pos
 
 				if reac == DOWN_EMOJI:
 					head.down()
@@ -474,16 +529,45 @@ class Roles(AceMixin, commands.Cog):
 					head.up()
 
 				if reac in (MOVEUP_EMOJI, MOVEDOWN_EMOJI):
-					direction = 1 if reac == MOVEUP_EMOJI else -1
+					direction = -1 if reac == MOVEUP_EMOJI else 1
 
 					if head.role_pos is None:
 						head.move_selector(direction)
 					else:
 						head.move_role(direction)
 
+				if reac == DEL_EMOJI:
+					if head.role_pos is None:
+						# delete selector
+						head.selectors.pop(head.selector_pos)
+						if head.selector_pos > head.selector_max:
+							head.selector_pos = head.selector_max
+						head.role_pos = None
+					else:
+						head.selector.roles.pop(head.role_pos)
+						if len(head.selector.roles) == 0:
+							head.role_pos = None
+						elif head.role_pos > head.role_max:
+							head.role_pos = head.role_max
+
+				if reac == EDIT_EMOJI:
+					await self._edit_item(
+						ctx,
+						msg,
+						head.selector if head.role_pos is None else head.selector.roles[head.role_pos]
+					)
+
+				if reac == ABORT_EMOJI:
+					await close()
+					raise commands.CommandError('Editing aborted, no changes saved.')
+
+				if reac == SAVE_EMOJI:
+					await head.store(ctx)
+					await close()
+					await ctx.send('Saved.')
+					break
 
 	async def _multiprompt(self, ctx, msg, preds):
-		retry = 'Please try again!'
 		outs = list()
 
 		def pred(message):
@@ -491,7 +575,7 @@ class Roles(AceMixin, commands.Cog):
 
 		def new_embed(question):
 			e = discord.Embed(description=question)
-			e.set_footer(text='Send a message below with your answer!')
+			e.set_footer(text=EDIT_FOOTER)
 			return e
 
 		for question, test in preds:
@@ -504,11 +588,14 @@ class Roles(AceMixin, commands.Cog):
 				except asyncio.TimeoutError:
 					return None
 
+				if message.content.lower() == 'exit':
+					return None
+
 				try:
 					value = await test().convert(ctx, message.content)
 				except commands.CommandError as exc:
 					e = msg.embeds[0]
-					e.set_footer(text='NOTE: ' + str(exc) + ' ' + retry)
+					e.set_footer(text='NOTE: ' + str(exc) + ' ' + RETRY_MSG)
 					await msg.edit(embed=e)
 					continue
 
@@ -516,6 +603,73 @@ class Roles(AceMixin, commands.Cog):
 				break
 
 		return outs
+
+	async def _edit_item(self, ctx, msg, item):
+		if isinstance(item, Selector):
+			questions = dict(
+				title=SelectorTitleConverter,
+				description=SelectorDescConverter
+			)
+		elif isinstance(item, Role):
+			questions = dict(
+				name=RoleTitleConverter,
+				description=RoleDescConverter,
+				emoji=EmojiConverter
+			)
+
+		e = discord.Embed(
+			description='What would you like to edit?\n\nOptions: ' + ', '.join('`' + q + '`' for q in questions.keys())
+		)
+
+		e.set_footer(text=EDIT_FOOTER)
+
+		await msg.edit(embed=e)
+
+		def pred(message):
+			return message.author.id == ctx.author.id and ctx.channel.id == ctx.channel.id
+
+		try:
+			message = await self.bot.wait_for('message', check=pred, timeout=60.0)
+		except asyncio.TimeoutError:
+			return
+
+		await message.delete()
+
+		if message.content.lower() == 'exit':
+			return
+
+		elif message.content.lower() not in questions.keys():
+			await ctx.send(
+				embed=discord.Embed(description='Sorry, that is not a valid attribute of this item.'),
+				delete_after=6
+			)
+			return
+
+		attr = message.content.lower()
+		test = questions[attr]
+
+		e.description = 'Please input a new value for this field.'
+		await msg.edit(embed=e)
+
+		while True:
+			try:
+				message = await self.bot.wait_for('message', check=pred, timeout=60.0)
+			except asyncio.TimeoutError:
+				return
+
+			await message.delete()
+
+			try:
+				value = await test().convert(ctx, message.content)
+			except commands.CommandError as exc:
+				e = msg.embeds[0]
+				e.set_footer(text='NOTE: ' + str(exc) + ' ' + RETRY_MSG)
+				await msg.edit(embed=e)
+				continue
+
+			setattr(item, attr, value)
+			item.set_dirty()
+			return
 
 	@roles.command()
 	@commands.bot_has_permissions(embed_links=True, add_reactions=True, manage_messages=True)
@@ -569,7 +723,7 @@ class Roles(AceMixin, commands.Cog):
 			if not roles:
 				continue
 
-			e = discord.Embed(description=selector.get('description') or None)
+			e = discord.Embed(description=selector.get('description') or 'Click the reactions to give or remove roles.')
 
 			icon = selector.get('icon')
 
@@ -669,456 +823,5 @@ class Roles(AceMixin, commands.Cog):
 			await channel.send(embed=e, delete_after=30)
 
 
-"""
-	async def _add_selector(self, conf, title, description=None, roles=None, pos=None):
-		if len(conf.selectors) == 8:
-			raise commands.CommandError('Selector count of 8 reached. Aborting.')
-
-		selector_id = await self.db.fetchval(
-			'INSERT INTO role_selector (guild_id, title, description, roles) VALUES ($1, $2, $3, $4) RETURNING id',
-			conf.guild_id, title, description, roles
-		)
-
-		if pos is None:
-			conf.selectors.append(selector_id)
-		else:
-			conf.selectors.insert(pos, selector_id)
-
-		conf._set_dirty('selectors')
-
-		await conf.update()
-
-		return selector_id
-
-	async def _rm_selector(self, conf, selector_id):
-		selector = await self.db.fetchrow('SELECT * FROM role_selector WHERE id=$1', selector_id)
-		if selector is None:
-			raise commands.CommandError('Failed to find selector.')
-
-		await self.db.execute('DELETE FROM role_entry WHERE id=ANY($1::INTEGER[])', selector.get('roles'))
-		await self.db.execute('DELETE FROM role_selector WHERE id=$1', selector_id)
-
-		conf.selectors.remove(selector_id)
-		conf._set_dirty('selectors')
-
-		await conf.update()
-
-	async def _add_role(self, guild_id, role_id, name, emoji, description):
-		row_id = await self.db.fetchval(
-			'INSERT INTO role_entry (guild_id, role_id, name, emoji, description) VALUES ($1, $2, $3, $4, $5) RETURNING id',
-			guild_id, role_id, name, emoji, description
-		)
-
-		return row_id
-
-	async def _multiprompt(self, ctx, msg, questions, tests):
-		retry = 'Please try again!'
-		outs = list()
-
-		def pred(message):
-			return message.author.id == ctx.author.id and ctx.channel.id == ctx.channel.id
-
-		def new_embed(question):
-			e = discord.Embed(description=question)
-			e.set_footer(text='Send a message below with your answer!')
-			return e
-
-		for question, test in zip(questions, tests):
-			await msg.edit(embed=new_embed(question))
-
-			while True:
-				try:
-					message = await self.bot.wait_for('message', check=pred, timeout=60.0)
-					await message.delete()
-				except asyncio.TimeoutError:
-					return None
-
-				try:
-					value = await test().convert(ctx, message.content)
-				except commands.CommandError as exc:
-					e = msg.embeds[0]
-					e.set_footer(text='NOTE: ' + str(exc) + ' ' + retry)
-					await msg.edit(embed=e)
-					continue
-
-				outs.append(value)
-				break
-
-		return outs
-
-	async def _reorder_selector(self, selector_id, roles):
-		await self.db.execute(
-			'UPDATE role_selector SET roles=$1 WHERE id=$2',
-			[role['id'] for role in roles], selector_id
-		)
-
-	@roles.command()
-	async def edit(self, ctx):
-		'''Reorder selectors or roles.'''
-
-		conf = await self.config.get_entry(ctx.guild.id)
-
-		selectors = await self.db.fetch(
-			'''SELECT rs.*
-			FROM role_selector as rs
-			JOIN unnest($1::INTEGER[]) WITH ORDINALITY t(id, ord) USING (id)
-			WHERE id=ANY($1::INTEGER[])
-			ORDER BY t.ord
-			''',
-			conf.selectors
-		)
-
-		pointer = [0, None]
-		data = list()
-
-		for slc in selectors:
-
-			roles = await self.db.fetch(
-				'''
-				SELECT re.* 
-				FROM role_entry as re 
-				JOIN unnest($1::INTEGER[]) WITH ORDINALITY t(id, ord) USING (id) 
-				WHERE id=ANY($1::INTEGER[])
-				ORDER BY t.ord
-				''',
-				slc.get('roles')
-			)
-
-			val = dict(
-				id=slc.get('id'),
-				title=slc.get('title'),
-				roles=[dict(id=r.get('id'), emoji=r.get('emoji'), name=r.get('name')) for r in roles]
-			)
-
-			data.append(val)
-
-		msg = await ctx.send(embed=self._craft_embed(data, pointer))
-
-		for emoji in (UP_EMOJI, DOWN_EMOJI, MOVEUP_EMOJI, MOVEDOWN_EMOJI, ADD_EMOJI, DEL_EMOJI, STOP_EMOJI):
-			await msg.add_reaction(emoji)
-
-		def pred(reaction, user):
-			return reaction.message.id == msg.id and user != self.bot.user
-
-		async def close():
-			try:
-				await msg.delete()
-				await ctx.send('Use `roles spawn` to see new selector(s).')
-			except discord.HTTPException:
-				pass
-
-		while True:
-			await msg.edit(embed=self._craft_embed(data, pointer))
-
-			try:
-				reaction, user = await self.bot.wait_for('reaction_add', check=pred, timeout=60.0)
-			except asyncio.TimeoutError:
-				await close()
-				break
-			else:
-				await msg.remove_reaction(reaction.emoji, user)
-
-				str_reac = str(reaction)
-
-				if str_reac == ADD_EMOJI:
-					# new selector
-					if pointer[1] is None:
-						role_data = await self._multiprompt(ctx, msg, NEWSEL_VARS, NEWSEL_TESTS)
-						if role_data is None:
-							return
-
-						sel_name, role_id, role_name, role_emoji, role_desc = role_data
-
-						try:
-							role_row_id = await self._add_role(
-								ctx.guild.id,
-								role_id,
-								role_name,
-								role_emoji,
-								role_desc
-							)
-						except UniqueViolationError:
-							await ctx.send('This role already exists in some other selector.', delete_after=6)
-							continue
-
-						selector_id = await self._add_selector(
-							conf,
-							title=sel_name,
-							roles=[role_row_id],
-							pos=pointer[0]
-						)
-
-						sel_role_data = dict(id=role_row_id, emoji=role_emoji, name=role_name)
-						new_pos = 0 if not data else pointer[0] + 1
-
-						data.insert(
-							new_pos,
-							dict(id=selector_id, title=sel_name, roles=[sel_role_data])
-						)
-
-						pointer[0] = new_pos
-						pointer[1] = None
-
-					# new role
-					else:
-						role_data = await self._multiprompt(ctx, msg, ROLE_VARS, ROLE_TESTS)
-						if role_data is None:
-							continue
-
-						role_id, role_name, role_emoji, role_desc = role_data
-
-						try:
-							role_row_id = await self._add_role(
-								ctx.guild.id,
-								role_id,
-								role_name,
-								role_emoji,
-								role_desc
-							)
-						except UniqueViolationError:
-							await ctx.send('This role already exists in some other selector.', delete_after=6)
-							continue
-
-						data[pointer[0]]['roles'].insert(
-							pointer[1] + 1,
-							dict(id=role_row_id, emoji=role_emoji, name=role_name)
-						)
-
-						await self._reorder_selector(data[pointer[0]]['id'], data[pointer[0]]['roles'])
-
-						pointer[1] += 1
-
-
-				if str_reac == STOP_EMOJI:
-					try:
-						await close()
-					except discord.HTTPException:
-						pass
-
-					break
-
-				if not data:
-					continue
-
-				# assume some data exists if reached here
-
-				if str_reac == DEL_EMOJI:
-					if pointer[1] is None:
-						p = prompter(
-							ctx,
-							'Delete selector?',
-							'This selector has {} role(s).'.format(len(data[pointer[0]]['roles']))
-						)
-
-						if not await p:
-							continue
-
-						# remove current selector
-						selector_id = data[pointer[0]]['id']
-						await self._rm_selector(conf, selector_id)
-						data.pop(pointer[0])
-					else:
-						# delete current role
-						selector_id = data[pointer[0]]['id']
-
-						# if this is the only role in the selector, remove the whole selector
-						if len(data[pointer[0]]['roles']) == 1:
-							await self._rm_selector(conf, selector_id)
-							data.pop(pointer[0])
-
-						# remove only one role
-						else:
-							role = data[pointer[0]]['roles'].pop(pointer[1])
-
-							# delete role
-							await self.db.execute('DELETE FROM role_entry WHERE id=$1', role['id'])
-							await self._reorder_selector(data[pointer[0]]['id'], data[pointer[0]]['roles'])
-
-					# clamp pointer if we deleted anything
-					if not data:
-						# reset if "empty"
-						pointer[0] = 0
-						pointer[1] = None
-					else:
-						# otherwise, jump to closest selector or role
-						sl = len(data) - 1
-
-						# jump to last selector if beyond last selector
-						if pointer[0] > sl:
-							pointer[0] = sl
-							pointer[1] = None
-
-						# if current selector is valid, jump to the closest role
-						elif pointer[1] is not None:
-							rl = len(data[pointer[0]]['roles'])
-							pointer[1] = min(max(pointer[1], rl - 1), 0)
-
-				if str_reac in (UP_EMOJI, DOWN_EMOJI):
-					_dir = -1 if str_reac == UP_EMOJI else 1
-					self._move(data, pointer, _dir)
-
-				if str_reac in (MOVEUP_EMOJI, MOVEDOWN_EMOJI):
-					_dir = -1 if str_reac == MOVEUP_EMOJI else 1
-
-					# move selectors
-					if pointer[1] is None:
-						selector_pos = pointer[0]
-
-						# nothing to reorder if less than two selectors
-						if len(data) < 2:
-							continue
-
-						if (_dir == -1 and selector_pos == 0) or (_dir == 1 and selector_pos == len(data) - 1):
-							continue
-
-						data[selector_pos], data[selector_pos + _dir] = data[selector_pos + _dir], data[selector_pos]
-						conf.selectors[selector_pos], conf.selectors[selector_pos + _dir] = conf.selectors[selector_pos + _dir], conf.selectors[selector_pos]
-						conf._set_dirty('selectors')
-						await conf.update()
-
-						pointer[0] += _dir
-
-					# move roles
-					else:
-						role_pos = pointer[1]
-
-						roles = data[pointer[0]]['roles']
-
-						if len(roles) < 2:
-							continue
-
-						if (_dir == -1 and role_pos == 0) or (_dir == 1 and role_pos == len(roles) - 1):
-							continue
-
-						roles[role_pos], roles[role_pos + _dir] = roles[role_pos + _dir], roles[role_pos]
-						await self._reorder_selector(data[pointer[0]]['id'], roles)
-
-						pointer[1] += _dir
-
-"""
-
 def setup(bot):
 	bot.add_cog(Roles(bot))
-
-"""
-	@roles.command()
-	@commands.bot_has_permissions(embed_links=True)
-	async def list(self, ctx):
-		'''List/print all selectors and roles.'''
-
-		conf = await self.config.get_entry(ctx.guild.id)
-
-		selectors = await self.db.fetch('SELECT * FROM role_selector WHERE id=ANY($1::INTEGER[])', conf.selectors)
-
-		if not selectors:
-			raise commands.CommandError('No selectors created yet. Create one using `roles create`.')
-
-		e = discord.Embed(title='Role selectors')
-
-		for selector in selectors:
-			title = selector.get('title')
-
-			roles = await self.db.fetch('SELECT * FROM role_entry WHERE id=ANY($1::INTEGER[])', selector.get('roles'))
-
-			roles_list = '\n\t'.join('{0} <@{1}> (ID: {1})'.format(role.get('emoji'), role.get('role_id')) for role in roles)
-
-			e.add_field(
-				name='ID: {} {}'.format(selector.get('id'), 'No title' if title is None else shorten(title, 128)),
-				value=roles_list if len(roles_list) else 'No roles.',
-				inline=False
-			)
-
-		await ctx.send(embed=e)
-
-	@roles.command()
-	async def create(self, ctx, *, title: TitleConverter = None):
-		'''Create a new role selector.'''
-
-		conf = await self.config.get_entry(ctx.guild.id)
-
-		if len(conf.selectors) == 8:
-			raise commands.CommandError('Selector count of 8 reached. Aborting.')
-
-		selector_id = await self.db.fetchval(
-			'INSERT INTO role_selector (guild_id, title) VALUES ($1, $2) RETURNING id',
-			ctx.guild.id, title
-		)
-
-		conf.selectors.append(selector_id)
-		conf._set_dirty('selectors')
-
-		await conf.update()
-
-		await ctx.send('The ID of the new role selector is `{}`'.format(selector_id))
-
-	@roles.command()
-	async def delete(self, ctx, *, selector: SelectorConverter):
-		'''Remove a role selector.'''
-
-		p = prompter(
-			ctx,
-			title='Are you sure you want to delete this selector?',
-			prompt='It contains {} role(s).'.format(len(selector.get('roles')))
-		)
-
-		if not await p:
-			raise commands.CommandError('Aborted.')
-
-		await self.db.execute('DELETE FROM role_entry WHERE id = ANY($1::INTEGER[])', selector.get('roles'))
-		await self.db.execute('DELETE FROM role_selector WHERE id=$1', selector.get('id'))
-
-		conf = await self.config.get_entry(ctx.guild.id)
-		conf.selectors.remove(selector.get('id'))
-
-		conf._set_dirty('selectors')
-		await conf.update()
-
-		await ctx.send('Selector deleted. ' + RERUN_PROMPT)
-
-	@roles.command()
-	async def add(self, ctx, selector: SelectorConverter, role: discord.Role, emoji: EmojiConverter, name: str, *, description: str):
-		'''Add a role to a selector.'''
-
-		if len(description) < 1 or len(description) > 1024:
-			raise commands.CommandError('Description has to be between 1 and 1024 characters long.')
-
-		if len(name) < 1 or len(name) > VALID_FIELDS['name']:
-			raise commands.CommandError('Name has to be between 1 and 200 characters long.')
-
-		print(selector, role, emoji, name, description)
-
-		row_id = await self.db.fetchval(
-			'INSERT INTO role_entry (role_id, emoji, name, description) VALUES ($1, $2, $3, $4) RETURNING id',
-			role.id, emoji, name, description
-		)
-
-		selector.get('roles').append(row_id)
-
-		await self.db.execute(
-			'UPDATE role_selector SET roles=ARRAY_APPEND(roles, $1) WHERE id=$2',
-			row_id, selector.get('id')
-		)
-
-		await ctx.send('Role \'{}\' added to selector {}. '.format(role.name, selector.get('id')) + RERUN_PROMPT)
-
-	@roles.command()
-	async def remove(self, ctx, selector: SelectorConverter, *, role: discord.Role):
-		'''Remove a role from a selector.'''
-
-		row_id = await self.db.fetchval(
-			'DELETE FROM role_entry WHERE role_id=$1 AND id=ANY($2::INTEGER[]) RETURNING id',
-			role.id, selector.get('roles')
-		)
-
-		if row_id is None:
-			raise commands.CommandError('Role not found in specified selector.')
-
-		await self.db.execute(
-			'UPDATE role_selector SET roles=ARRAY_REMOVE(roles, $1) WHERE id=$2',
-			row_id, selector.get('id')
-		)
-
-		await ctx.send('Removed role \'{}\' from selector {}.'.format(role.name, selector.get('id')))
-
-
-"""
