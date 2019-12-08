@@ -299,6 +299,8 @@ class Tags(AceMixin, commands.Cog):
 
 		self.set_tag_being_made(ctx, name)
 
+		raise commands.CommandError('TEST!')
+
 		name_prompt = 'What would you like the name of your tag to be?'
 
 		await ctx.send('Hi there! ' + name_prompt)
@@ -351,6 +353,11 @@ class Tags(AceMixin, commands.Cog):
 		await self.create_tag(ctx, name, content)
 
 		await ctx.send('Tag `{0}` created! Bring up the tag contents by doing `{1}tag {0}`'.format(name, ctx.prefix))
+
+	# unset tag being made if make errors out
+	@make.error
+	async def make_error(self, ctx, error):
+		self.unset_tag_being_made(ctx)
 
 	@tag.command()
 	async def raw(self, ctx, *, tag_name: TagViewConverter):

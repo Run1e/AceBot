@@ -2,7 +2,7 @@ discord.py
 asyncpg
 aiohttp
 fuzzywuzzy
-parsewhen
+parsedatetime
 python-Levenshtein
 lxml
 beautifulsoup4
