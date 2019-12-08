@@ -482,6 +482,13 @@ class Roles(AceMixin, commands.Cog):
 				reac = str(reaction)
 
 				if reac == ADD_SEL_EMOJI:
+					if len(head.selectors) > 7:
+						await ctx.send(
+							embed=discord.Embed(description='No more than 8 selectors, sorry!'),
+							delete_after=6
+						)
+						continue
+
 					selector_data = await self._multiprompt(ctx, msg, NEW_SEL_PREDS)
 					if selector_data is None:
 						continue
@@ -510,6 +517,13 @@ class Roles(AceMixin, commands.Cog):
 					continue
 
 				if reac == ADD_ROLE_EMOJI:
+					if len(head.selector.roles) > 24:
+						await ctx.send(
+							embed=discord.Embed(description='No more than 25 roles in one selector, sorry!'),
+							delete_after=6
+						)
+						continue
+
 					role_data = await self._multiprompt(ctx, msg, NEW_ROLE_PREDS)
 					if role_data is None:
 						continue
