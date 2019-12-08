@@ -299,8 +299,6 @@ class Tags(AceMixin, commands.Cog):
 
 		self.set_tag_being_made(ctx, name)
 
-		raise commands.CommandError('TEST!')
-
 		name_prompt = 'What would you like the name of your tag to be?'
 
 		await ctx.send('Hi there! ' + name_prompt)
