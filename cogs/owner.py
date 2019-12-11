@@ -14,7 +14,6 @@ from asyncpg.exceptions import UniqueViolationError
 from datetime import datetime
 from urllib.parse import urlparse
 
-from utils.prompter import admin_prompter
 from utils.pager import Pager
 from utils.time import pretty_datetime
 from utils.string_helpers import shorten
@@ -96,7 +95,11 @@ class Owner(AceMixin, commands.Cog):
 
 	@commands.command(hidden=True)
 	async def test(self, ctx):
-		print(await admin_prompter(ctx))
+		pass
+
+	@commands.command(hidden=True)
+	async def ping(self, ctx):
+		await ctx.send('`{}ms`'.format(int(self.bot.latency * 1000)))
 
 	@commands.command()
 	@commands.bot_has_permissions(embed_links=True)

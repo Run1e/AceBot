@@ -3,7 +3,8 @@ import asyncio
 
 from discord.ext import commands
 
-REQUIRED_PERMS = ('send_messages', 'embed_links', 'add_reactions')
+REQUIRED_PERMS = ('embed_links', 'add_reactions')
+PROMPT_PERMS = {perm: True for perm in REQUIRED_PERMS}
 
 EMOJIS = ('\N{WHITE HEAVY CHECK MARK}', '\N{CROSS MARK}')
 

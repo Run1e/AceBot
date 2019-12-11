@@ -410,7 +410,7 @@ class Roles(AceMixin, commands.Cog):
 		await self.bot.invoke_help(ctx, 'roles')
 
 	@roles.command()
-	@commands.bot_has_permissions(embed_links=True, add_reactions=True, manage_messages=True)
+	@commands.bot_has_permissions(embed_links=True, add_reactions=True, manage_messages=True) # already has PROMPT_PERMS
 	async def editor(self, ctx):
 		'''Editor for selectors and roles.'''
 

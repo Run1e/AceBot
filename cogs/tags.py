@@ -9,7 +9,7 @@ from datetime import datetime
 from cogs.mixins import AceMixin
 from utils.time import pretty_datetime
 from utils.pager import Pager
-from utils.prompter import admin_prompter, ADMIN_PROMPT_ABORTED
+from utils.prompter import prompter, admin_prompter, ADMIN_PROMPT_ABORTED, PROMPT_PERMS
 from utils.checks import is_mod_pred
 
 
@@ -238,6 +238,7 @@ class Tags(AceMixin, commands.Cog):
 		await ctx.send(f'Tag \'{tag_name}\' created.')
 
 	@tag.command()
+	@commands.bot_has_permissions(**PROMPT_PERMS)
 	async def edit(self, ctx, tag_name: TagEditConverter, *, new_content: commands.clean_content = None):
 		'''Edit an existing tag.'''
 
@@ -253,8 +254,12 @@ class Tags(AceMixin, commands.Cog):
 		await ctx.send(f"Tag \'{record.get('name')}\' edited.")
 
 	@tag.command(aliases=['remove'])
+	@commands.bot_has_permissions(**PROMPT_PERMS)
 	async def delete(self, ctx, *, tag_name: TagEditConverter):
 		'''Delete a tag.'''
+
+		if not await prompter(ctx, title='Are you sure?', prompt='This will delete the tag permanently.'):
+			raise commands.CommandError('Tag deletion aborted.')
 
 		tag_name, record = tag_name
 		await self.db.execute('DELETE FROM tag WHERE id=$1', record.get('id'))
@@ -365,6 +370,7 @@ class Tags(AceMixin, commands.Cog):
 		await ctx.send(discord.utils.escape_markdown(record.get('content')))
 
 	@tag.command()
+	@commands.bot_has_permissions(**PROMPT_PERMS)
 	async def rename(self, ctx, old_name: TagEditConverter, *, new_name: TagCreateConverter):
 		'''Rename a tag.'''
 
@@ -378,6 +384,7 @@ class Tags(AceMixin, commands.Cog):
 		await ctx.send(f"Tag \'{record.get('name')}\' renamed to \'{new_name}\'.")
 
 	@tag.command()
+	@commands.bot_has_permissions(**PROMPT_PERMS)
 	async def alias(self, ctx, tag_name: TagEditConverter, *, alias: TagCreateConverter = None):
 		'''Give a tag an alias. Omit the alias parameter to clear existing alias.'''
 
@@ -439,6 +446,7 @@ class Tags(AceMixin, commands.Cog):
 		await ctx.send(embed=e)
 
 	@tag.command()
+	@commands.bot_has_permissions(**PROMPT_PERMS)
 	async def transfer(self, ctx, tag_name: TagEditConverter, *, new_owner: discord.Member):
 		'''Transfer a tag to another member.'''
 

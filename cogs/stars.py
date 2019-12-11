@@ -7,7 +7,7 @@ from asyncpg.exceptions import UniqueViolationError
 
 from utils.checks import is_mod, is_mod_pred
 from utils.configtable import ConfigTable, ConfigTableRecord
-from utils.prompter import prompter, admin_prompter, ADMIN_PROMPT_ABORTED
+from utils.prompter import prompter, admin_prompter, ADMIN_PROMPT_ABORTED, PROMPT_PERMS
 from cogs.mixins import AceMixin
 
 log = logging.getLogger(__name__)
@@ -148,7 +148,7 @@ class Starboard(AceMixin, commands.Cog):
 
 	@_star.command()
 	@is_mod()
-	@commands.bot_has_permissions(add_reactions=True, manage_channels=True, embed_links=True, manage_roles=True)
+	@commands.bot_has_permissions(manage_channels=True, manage_roles=True, **PROMPT_PERMS)
 	async def create(self, ctx):
 		'''Creates a new starboard.'''
 
@@ -359,7 +359,7 @@ class Starboard(AceMixin, commands.Cog):
 		await ctx.send(', '.join(parts) + '.')
 
 	@_star.command()
-	@commands.bot_has_permissions(manage_messages=True)
+	@commands.bot_has_permissions(manage_messages=True, **PROMPT_PERMS)
 	async def delete(self, ctx, *, message_id: StarConverter):
 		'''Remove a starred message. The author, starrer or any moderator can use this on any given starred message.'''
 
