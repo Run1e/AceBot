@@ -372,7 +372,11 @@ class Moderator(AceMixin, commands.Cog):
 		def user_check(msg):
 			return msg.author == user and all_check(msg)
 
-		await ctx.message.delete()
+		try:
+			await ctx.message.delete()
+		except discord.HTTPException:
+			pass
+
 		try:
 			deleted = await ctx.channel.purge(limit=message_count, check=all_check if user is None else user_check)
 		except discord.HTTPException:
