@@ -125,7 +125,7 @@ class Meta(AceMixin, commands.Cog):
 
 		return value[1:]
 
-	@commands.command()
+	@commands.command(hidden=True)
 	@commands.bot_has_permissions(embed_links=True)
 	async def about(self, ctx, command_name: str = None):
 		'''See the aliases for a given command.'''

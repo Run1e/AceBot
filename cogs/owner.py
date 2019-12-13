@@ -95,7 +95,7 @@ class Owner(AceMixin, commands.Cog):
 
 	@commands.command(hidden=True)
 	async def test(self, ctx):
-		pass
+		print('hi!')
 
 	@commands.command(hidden=True)
 	async def ping(self, ctx):
