@@ -51,17 +51,22 @@ class Timescale(IntEnum):
 
 
 class ReminderConverter(commands.Converter):
+	NO_DT_FOUND = commands.CommandError('No time/date found in input.')
+
 	async def convert(self, ctx, argument):
 
 		cal = parsedatetime.Calendar()
 		now = datetime.utcnow()
 
-		when, when_type = cal.parseDT(argument, now)
+		try:
+			when, when_type = cal.parseDT(argument, now)
+		except Exception:
+			raise self.NO_DT_FOUND
 
 		if when_type == 0:
-			raise commands.CommandError('No time/date found in input.')
+			raise self.NO_DT_FOUND
 
-		return (now, when, argument)
+		return now, when, argument
 
 
 class Reminders(AceMixin, commands.Cog):
@@ -131,8 +136,10 @@ class Reminders(AceMixin, commands.Cog):
 
 		self.timer.maybe_restart(when)
 
-		#await ctx.message.add_reaction(SUCCESS_EMOJI)
-		await ctx.send('You will be reminded in approximately {}.'.format(pretty_timedelta(when - now)))
+		remind_in = when - now
+		remind_in += timedelta(microseconds=1000000 - (remind_in.microseconds % 1000000))
+
+		await ctx.send('You will be reminded in {}.'.format(pretty_timedelta(remind_in)))
 
 	@commands.command()
 	@commands.bot_has_permissions(embed_links=True)
