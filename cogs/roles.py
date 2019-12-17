@@ -159,7 +159,7 @@ class Selector(MaybeDirty, MaybeNew):
 
 	@classmethod
 	def from_record(cls, record, roles):
-		self = cls(record.get('title'), record.get('desc'), roles)
+		self = cls(record.get('title'), record.get('description'), roles)
 		self.inline = record.get('inline')
 		self.id = record.get('id')
 		return self
