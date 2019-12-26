@@ -39,6 +39,7 @@ EXTENSIONS = (
 	'cogs.security',
 	'cogs.ahk.logger',
 	'cogs.ahk.security',
+	'cogs.ahk.challenges',
 	'cogs.dwitter',
 	'cogs.owner',
 )
