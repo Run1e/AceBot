@@ -1,6 +1,7 @@
 import discord
 import os
 import shutil
+import subprocess
 
 from discord.ext import commands
 from datetime import datetime
@@ -24,8 +25,6 @@ class SubmissionType(Enum):
 class Challenges(AceMixin, commands.Cog):
 	@commands.Cog.listener()
 	async def on_message(self, message):
-		return
-
 		if message.guild is None or message.author.bot:
 			return
 
@@ -145,11 +144,19 @@ class Challenges(AceMixin, commands.Cog):
 		# perform final cleanup
 		cleanup()
 
+		# run git script to create a new commit for this submission (if any)
+		def git():
+			subprocess.run([f'{CHALLENGES_DIR}/git.sh', str(submit_type.value), sub_dir[28:]], capture_output=False)
+
+		await self.bot.loop.run_in_executor(None, git)
+
+		# it gets pushed by an incron entry on the host machine
+
 	def _get_challenge_dir(self):
 		_dir = open('{}/current'.format(CHALLENGES_DIR), 'r').read().strip()
 		if _dir == '':
 			raise commands.CommandError('A challenge is currently not running, please wait for the next challenge to be announced!')
-		return '{}/challenges/{}'.format(CHALLENGES_DIR, _dir)
+		return '{}/submissions/{}'.format(CHALLENGES_DIR, _dir)
 
 	def _validity_check(self, _dir):
 		expected = dict(ahk=False)
