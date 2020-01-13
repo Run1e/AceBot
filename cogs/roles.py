@@ -860,7 +860,11 @@ class Roles(AceMixin, commands.Cog):
 				await channel.send(embed=e, delete_after=10)
 		except discord.HTTPException:
 			e.description = 'Unable to add role {}. Does the bot have the necessary permissions?'.format(role.mention)
-			await channel.send(embed=e, delete_after=30)
+
+			try:
+				await channel.send(embed=e, delete_after=30)
+			except discord.HTTPException:
+				pass
 
 
 def setup(bot):

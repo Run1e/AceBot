@@ -130,6 +130,7 @@ class Challenges(AceMixin, commands.Cog):
 		except discord.HTTPException:
 			pass
 
+		# add log for organizers
 		try:
 			channel = message.guild.get_channel(SUBMISSIONS_CHAN_ID)
 			if channel is not None:
@@ -140,6 +141,14 @@ class Challenges(AceMixin, commands.Cog):
 				await channel.send(embed=e)
 		except discord.HTTPException:
 			pass
+
+		# add challenger role to submitter
+		challenger = message.guild.get_role(CHALLENGER_ROLE_ID)
+		if challenger is not None:
+			try:
+				await member.add_roles(challenger, reason='Auto-add upon challenge submission')
+			except discord.HTTPException:
+				pass
 
 		# perform final cleanup
 		cleanup()
