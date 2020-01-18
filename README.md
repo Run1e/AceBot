@@ -10,6 +10,8 @@ A fun, general purpose Discord bot!
 The bot was initially made for the
 [AutoHotkey server](https://discord.gg/tPGdSr2).
 
+Support server invite [here.](https://discord.gg/X7abzRe)
+
 ### General commands
 
 The bot has a plethora of commands. To invoke these, send a message starting with `.` followed by the command name.
