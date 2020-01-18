@@ -155,7 +155,7 @@ class Starboard(AceMixin, commands.Cog):
 		board = await self.config.get_entry(ctx.guild.id)
 
 		if board.channel is not None:
-			raise commands.CommandError('Starboard already exists -> {}'.format(board.channel.mention))
+			raise commands.CommandError('Starboard already exists: {}'.format(board.channel.mention))
 
 		if board.channel_id is not None:
 			prompt = (
