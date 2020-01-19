@@ -42,6 +42,7 @@ EXTENSIONS = (
 	'cogs.ahk.challenges',
 	'cogs.dwitter',
 	'cogs.owner',
+	'cogs.linus'
 )
 
 
