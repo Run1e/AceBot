@@ -259,10 +259,10 @@ CREATE TABLE IF NOT EXISTS trivia_stats (
 	result			BOOL NOT NULL
 );
 
-CREATE TABLE IF NOT EXISTS linus_rants (
+CREATE TABLE IF NOT EXISTS linus_rant (
 	id 				SERIAL UNIQUE,
 	hate			DOUBLE PRECISION NOT NULL,
-	rant			TEXT NOT NULL
+	rant			VARCHAR(2000) NOT NULL
 )
 
 '''
@@ -284,15 +284,14 @@ async def main():
 			for fact in facts.split('\n'):
 				await db.execute('INSERT INTO facts (content) VALUES ($1)', fact)
 
-		if await db.fetchval('SELECT COUNT(id) FROM linus_rants') == 0:
+		if await db.fetchval('SELECT COUNT(id) FROM linus_rant') == 0:
 			for rant_and_hate in rants.split('\n'):
-				print(rant_and_hate)
 				split_rant = rant_and_hate.split('\t')
 
-				if len(split_rant) != 2:
+				if len(split_rant) != 2 or len(split_rant[1]) > 2000:
 					continue
 				
-				await db.execute('INSERT INTO linus_rants (hate, rant) VALUES ($1, $2)', float(split_rant[0]), split_rant[1])
+				await db.execute('INSERT INTO linus_rant (hate, rant) VALUES ($1, $2)', float(split_rant[0]), split_rant[1])
 
 
 facts = """
