@@ -20,7 +20,7 @@ LINUS_GITHUB_ICON_URL = 'https://avatars1.githubusercontent.com/u/1024025'
 
 class HarshnessConverter(commands.Converter):
 	async def convert(self, ctx, harshness):
-		return LINUS_PHRASES_TO_HATE.get(harshness, choice(list(LINUS_PHRASES_TO_HATE.values())))
+		return LINUS_PHRASES_TO_HATE.get(harshness, None)
 
 
 class Linus(AceMixin, commands.Cog):
@@ -59,7 +59,7 @@ class Linus(AceMixin, commands.Cog):
 		if should_only_be_linus.lower() != 'linus':
 			return
 
-		await ctx.invoke(self.linus, harshness='harder')
+		await ctx.invoke(self.linus, harshness=7)
 
 
 def setup(bot):
