@@ -41,7 +41,7 @@ class Image(AceMixin, commands.Cog):
 		super().__init__(bot)
 
 	def _create_embed(self, url=None):
-		e = discord.Embed(description=choice(QUOTES))
+		e = discord.Embed() # description=choice(QUOTES))
 		if url is not None:
 			e.set_image(url=url)
 		log.info(url)
