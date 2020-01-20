@@ -612,6 +612,13 @@ class Roles(AceMixin, commands.Cog):
 				try:
 					value = await test().convert(ctx, message.content)
 				except commands.CommandError as exc:
+					if not msg.embeds:
+						try:
+							await msg.delete()
+						except discord.HTTPException:
+							pass
+						raise commands.CommandError('Embed seems to have been removed, aborting.')
+
 					e = msg.embeds[0]
 					e.set_footer(text='NOTE: ' + str(exc) + ' ' + RETRY_MSG)
 					await msg.edit(embed=e)
@@ -695,6 +702,13 @@ class Roles(AceMixin, commands.Cog):
 			try:
 				value = await test().convert(ctx, message.content)
 			except commands.CommandError as exc:
+				if not msg.embeds:
+					try:
+						await msg.delete()
+					except discord.HTTPException:
+						pass
+					raise commands.CommandError('Embed seems to have been removed, aborting.')
+
 				e = msg.embeds[0]
 				e.set_footer(text='NOTE: ' + str(exc) + ' ' + RETRY_MSG)
 				await msg.edit(embed=e)
@@ -724,7 +738,7 @@ class Roles(AceMixin, commands.Cog):
 		)
 
 		if not selectors:
-			raise commands.CommandError('No selectors configured. Do `roles edit` to set one up.')
+			raise commands.CommandError('No selectors configured. Do `roles editor` to set one up.')
 
 		if any(not selector.get('roles') for selector in selectors):
 			raise commands.CommandError('You have empty selectors. Delete these or add roles to them before spawning.')

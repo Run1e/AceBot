@@ -6,3 +6,7 @@ class AceMixin:
 	@property
 	def db(self):
 		return self.bot.db
+
+	@property
+	def aiohttp(self):
+		return self.bot.aiohttp

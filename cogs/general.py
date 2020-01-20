@@ -275,6 +275,9 @@ class General(AceMixin, commands.Cog):
 			except asyncio.TimeoutError:
 				raise self.query_error
 
+			if data.get('success', True) is False:
+				raise commands.CommandError('Unable to find a location match.')
+
 			location = data['location']
 			current = data['current']
 
