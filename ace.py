@@ -124,6 +124,8 @@ class AceBot(commands.Bot):
 		if self.db is None:
 			log.info('Creating database connection...')
 
+			self._mention_startswith = '<@!{}>'.format(self.user.id)
+
 			self.config = ConfigTable(self, table='config', primary='guild_id', record_class=GuildConfigRecord)
 
 			self.static_help_command = self.help_command
@@ -162,16 +164,19 @@ class AceBot(commands.Bot):
 				ctx.guild.id, ctx.channel.id, ctx.author.id, datetime.utcnow(), ctx.command.qualified_name
 			)
 
-	async def on_message(self, message: discord.Message):
-		if self.db is not None and self.db._initialized:
-			if message.content.startswith(f'<@{self.user.id}>'):
-				ctx = await self.get_context(message)
-				ctx.bot = self
-				ctx.prefix = await self.prefix_resolver(self, message)
-				ctx.command = self.get_command('help')
-				await ctx.reinvoke()
-			else: # only process commands if db is initialized
-				await self.process_commands(message)
+	async def on_message(self, message):
+		if self.db is None or not self.db._initialized:
+			return
+
+		if message.content.startswith(self._mention_startswith):
+			ctx = await self.get_context(message)
+			ctx.bot = self
+			ctx.prefix = await self.prefix_resolver(self, message)
+			ctx.command = self.get_command('help')
+			await ctx.reinvoke()
+
+		else:
+			await self.process_commands(message)
 
 	@property
 	def invite_link(self, perms=None):
