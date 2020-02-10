@@ -10,7 +10,6 @@ config.py
 
 test.py
 test_md.py
-migrate_roles.py
 test_docs_parser.py
 notes.md
 cogs/ahk/security.py

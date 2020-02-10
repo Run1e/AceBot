@@ -9,7 +9,7 @@ from enum import IntEnum
 from cogs.mixins import AceMixin
 from utils.databasetimer import DatabaseTimer
 from utils.string_helpers import shorten
-from utils.time import pretty_timedelta, pretty_datetime
+from utils.time import pretty_timedelta
 from utils.pager import Pager
 
 log = logging.getLogger(__name__)

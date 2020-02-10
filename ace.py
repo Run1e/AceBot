@@ -11,7 +11,6 @@ import json
 from discord.ext import commands
 from pprint import saferepr
 from datetime import datetime
-from enum import Enum
 
 from config import *
 from cogs.help import PaginatedHelpCommand, EditedMinimalHelpCommand

@@ -2,12 +2,11 @@ import os
 import json
 import shutil
 import aiohttp
-import asyncio
 import logging
 
 from zipfile import ZipFile
 
-from utils.docs_parser.handlers import *
+from .handlers import *
 
 DOCS_URL = 'https://www.autohotkey.com/docs/'
 EXTRACT_TO = 'data'

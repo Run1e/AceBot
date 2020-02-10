@@ -1,0 +1,259 @@
+-- guild config
+CREATE TABLE IF NOT EXISTS config (
+	id 					SERIAL UNIQUE,
+	guild_id 			BIGINT UNIQUE NOT NULL,
+	prefix 				VARCHAR(8) NULL,
+	log_channel_id		BIGINT NULL,
+	mod_role_id			BIGINT NULL,
+	mute_role_id		BIGINT NULL
+);
+
+-- moderation values
+CREATE TABLE IF NOT EXISTS security (
+	id 					SERIAL UNIQUE,
+	guild_id 			BIGINT UNIQUE NOT NULL,
+
+	spam_enabled		BOOLEAN NOT NULL DEFAULT FALSE,
+	spam_action			SMALLINT NOT NULL DEFAULT 0 CHECK (spam_action >= 0 AND spam_action <= 2),
+	spam_count			SMALLINT NOT NULL DEFAULT 8,
+	spam_per			FLOAT NOT NULL DEFAULT 10.0,
+
+	mention_enabled		BOOLEAN NOT NULL DEFAULT FALSE,
+	mention_action		SMALLINT NOT NULL DEFAULT 0 CHECK (mention_action >= 0 AND mention_action <= 2),
+	mention_count		SMALLINT NOT NULL DEFAULT 8,
+	mention_per			FLOAT NOT NULL DEFAULT 16.0
+);
+
+-- starboard config
+CREATE TABLE IF NOT EXISTS starboard (
+	id			SERIAL UNIQUE,
+	guild_id	BIGINT UNIQUE NOT NULL,
+	channel_id	BIGINT NULL,
+	locked		BOOLEAN NOT NULL DEFAULT FALSE,
+	threshold	SMALLINT NULL
+);
+
+-- list of muted people
+CREATE TABLE IF NOT EXISTS muted (
+	id			SERIAL UNIQUE,
+	guild_id	BIGINT NOT NULL,
+	user_id		BIGINT NOT NULL,
+	mod_id		BIGINT NULL,
+	until		TIMESTAMP NULL,
+	UNIQUE 		(guild_id, user_id)
+);
+
+-- list of banned people
+CREATE TABLE IF NOT EXISTS banned (
+	id			SERIAL UNIQUE,
+	guild_id	BIGINT NOT NULL,
+	user_id		BIGINT NOT NULL,
+	mod_id		BIGINT NOT NULL,
+	until		TIMESTAMP NOT NULL,
+	name		TEXT NOT NULL,
+	avatar_url	TEXT NOT NULL,
+	UNIQUE 		(guild_id, user_id)
+);
+
+-- ignore list
+CREATE TABLE IF NOT EXISTS ignore (
+	id			SERIAL UNIQUE,
+	object_id	BIGINT UNIQUE NOT NULL
+);
+
+-- seen table
+CREATE TABLE IF NOT EXISTS seen (
+	id			SERIAL UNIQUE,
+	guild_id	BIGINT NOT NULL,
+	user_id		BIGINT NOT NULL,
+	seen		TIMESTAMP NOT NULL,
+	UNIQUE 		(guild_id, user_id)
+);
+
+-- nicks table
+CREATE TABLE IF NOT EXISTS nick (
+	id			SERIAL UNIQUE,
+	guild_id	BIGINT NOT NULL,
+	user_id		BIGINT NOT NULL,
+	nick		VARCHAR(32) NOT NULL,
+	stored_at	TIMESTAMP NOT NULL
+);
+
+-- highlighter languages
+CREATE TABLE IF NOT EXISTS highlight_lang (
+	id			SERIAL UNIQUE,
+	guild_id	BIGINT NOT NULL,
+	user_id		BIGINT NOT NULL DEFAULT 0,
+	lang		VARCHAR(32) NOT NULL,
+	UNIQUE 		(guild_id, user_id)
+);
+
+-- highlighter messages
+CREATE TABLE IF NOT EXISTS highlight_msg (
+	id			SERIAL UNIQUE,
+	guild_id	BIGINT NOT NULL,
+	channel_id	BIGINT NOT NULL,
+	user_id		BIGINT NOT NULL,
+	message_id	BIGINT NOT NULL
+);
+
+-- starmessage
+CREATE TABLE IF NOT EXISTS star_msg (
+	id				SERIAL UNIQUE,
+	guild_id		BIGINT NOT NULL,
+	channel_id		BIGINT NOT NULL,
+	user_id			BIGINT NOT NULL,
+	message_id		BIGINT UNIQUE NOT NULL,
+	star_message_id	BIGINT NOT NULL,
+	starred_at		TIMESTAMP NOT NULL,
+	starrer_id		BIGINT NOT NULL
+);
+
+-- starrers
+CREATE TABLE IF NOT EXISTS starrers (
+	id 			SERIAL UNIQUE,
+	star_id		INTEGER NOT NULL REFERENCES star_msg (id) ON DELETE CASCADE,
+	user_id		BIGINT NOT NULL,
+	UNIQUE 		(star_id, user_id)
+);
+
+-- feeds
+CREATE TABLE IF NOT EXISTS feed (
+	id				SERIAL UNIQUE,
+	guild_id		BIGINT NOT NULL,
+	channel_id		BIGINT NOT NULL,
+	role_id			BIGINT NOT NULL,
+	publisher_id	BIGINT NULL,
+	name			TEXT NOT NULL,
+	UNIQUE			(guild_id, name)
+);
+
+-- fact list
+CREATE TABLE IF NOT EXISTS facts (
+	id 			SERIAL UNIQUE,
+	content		TEXT NOT NULL
+);
+
+-- tag list
+CREATE TABLE IF NOT EXISTS tag (
+	id			SERIAL UNIQUE,
+	name		VARCHAR(32) NOT NULL,
+	alias		VARCHAR(32) NULL,
+	guild_id	BIGINT NOT NULL,
+	user_id		BIGINT NOT NULL,
+	uses		INT NOT NULL DEFAULT 0,
+	created_at	TIMESTAMP NOT NULL,
+	edited_at	TIMESTAMP NULL,
+	viewed_at	TIMESTAMP NULL,
+	content		VARCHAR(2000) NOT NULL
+);
+
+-- command log
+CREATE TABLE IF NOT EXISTS log (
+	id			SERIAL UNIQUE,
+	guild_id	BIGINT NOT NULL,
+	channel_id	BIGINT NOT NULL,
+	user_id		BIGINT NOT NULL,
+	timestamp	TIMESTAMP NOT NULL,
+	command		TEXT NOT NULL
+);
+
+-- docs stuff
+CREATE TABLE IF NOT EXISTS docs_entry (
+	id			SERIAL UNIQUE,
+	content		TEXT NULL,
+	link		TEXT UNIQUE,
+	page		TEXT NULL,
+	fragment	TEXT NULL,
+	title		TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS docs_name (
+	id			SERIAL UNIQUE,
+	docs_id		INT REFERENCES docs_entry (id) NOT NULL,
+	name		TEXT UNIQUE NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS docs_syntax (
+	id			SERIAL UNIQUE,
+	docs_id		INT REFERENCES docs_entry (id) NOT NULL,
+	syntax		TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS docs_param (
+	id			SERIAL UNIQUE,
+	docs_id		INT REFERENCES docs_entry (id) NOT NULL,
+	name		TEXT NOT NULL,
+	value		TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS remind (
+	id			SERIAL UNIQUE,
+	guild_id	BIGINT NOT NULL,
+	channel_id	BIGINT NOT NULL,
+	user_id		BIGINT NOT NULL,
+	made_on		TIMESTAMP NOT NULL,
+	remind_on	TIMESTAMP NOT NULL,
+	message		TEXT
+);
+
+CREATE TABLE IF NOT EXISTS welcome (
+	id			SERIAL UNIQUE,
+	guild_id	BIGINT UNIQUE NOT NULL,
+	channel_id	BIGINT,
+	enabled		BOOLEAN NOT NULL DEFAULT TRUE,
+	content		VARCHAR(1024)
+);
+
+CREATE TABLE IF NOT EXISTS role (
+	id			SERIAL UNIQUE,
+	guild_id	BIGINT UNIQUE NOT NULL,
+	channel_id	BIGINT NULL,
+	message_ids	BIGINT[8] NOT NULL DEFAULT ARRAY[]::BIGINT[8],
+	selectors	INTEGER[8] NOT NULL DEFAULT ARRAY[]::INTEGER[8]
+);
+
+CREATE TABLE IF NOT EXISTS role_selector (
+	id 			SERIAL UNIQUE,
+	guild_id	BIGINT NOT NULL,
+	title		VARCHAR(256) NOT NULL,
+	description	VARCHAR(1024) NULL,
+	icon		VARCHAR(256) NULL,
+	inline		BOOLEAN NOT NULL DEFAULT TRUE,
+	roles		INTEGER[25] NOT NULL DEFAULT ARRAY[]::INTEGER[25]
+);
+
+CREATE TABLE IF NOT EXISTS role_entry (
+	id			SERIAL UNIQUE,
+	guild_id	BIGINT NOT NULL,
+	role_id		BIGINT UNIQUE NOT NULL,
+	emoji		VARCHAR(56) NOT NULL,
+	name		VARCHAR(199) NOT NULL,
+	description	VARCHAR(1024) NOT NULL
+);
+
+
+CREATE TABLE IF NOT EXISTS trivia (
+	id				SERIAL UNIQUE,
+	guild_id		BIGINT NOT NULL,
+	user_id			BIGINT NOT NULL,
+	correct_count	INT NOT NULL DEFAULT 0,
+	wrong_count		INT NOT NULL DEFAULT 0,
+	score			BIGINT NOT NULL DEFAULT 0,
+	UNIQUE			(guild_id, user_id)
+);
+
+CREATE TABLE IF NOT EXISTS trivia_stats (
+	id				SERIAL UNIQUE,
+	guild_id		BIGINT NOT NULL,
+	user_id			BIGINT NOT NULL,
+	timestamp		TIMESTAMP NOT NULL,
+	question_hash	BIGINT NOT NULL,
+	result			BOOL NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS linus_rant (
+	id 				SERIAL UNIQUE,
+	hate			DOUBLE PRECISION NOT NULL,
+	rant			VARCHAR(2000) NOT NULL
+)

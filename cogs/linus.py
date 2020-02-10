@@ -2,7 +2,6 @@ import discord
 from discord.ext import commands
 
 from cogs.mixins import AceMixin
-from random import choice
 
 LINUS_PHRASES_TO_HATE = {
 	'destroy me': 9,

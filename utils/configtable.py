@@ -1,7 +1,5 @@
 import asyncio
 
-from discord.ext import commands
-
 
 class ConfigTableRecord(object):
 	# TODO: figure out how to stop infinite recursion without having to set this in init

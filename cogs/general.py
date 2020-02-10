@@ -9,7 +9,7 @@ from bs4 import BeautifulSoup
 
 from config import WOLFRAM_KEY, APIXU_KEY
 from cogs.mixins import AceMixin
-from utils.time import pretty_datetime, pretty_timedelta
+from utils.time import pretty_timedelta
 
 
 class General(AceMixin, commands.Cog):
