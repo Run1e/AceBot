@@ -117,13 +117,16 @@ class WhoIs(AceMixin, commands.Cog):
 			)
 
 			nicks = await self.db.fetch(
-				'SELECT nick FROM nick WHERE guild_id=$1 AND user_id=$2 GROUP BY nick LIMIT 3',
+				'SELECT nick FROM (SELECT DISTINCT ON (nick) * FROM nick WHERE guild_id=$1 AND user_id=$2) as sub '
+				'ORDER BY id DESC LIMIT 4',
 				ctx.guild.id, member.id
 			)
 
 			e.add_field(
 				name='Last known nicknames',
-				value='None yet.' if not nicks else '\n'.join(record.get('nick') for record in reversed(nicks))
+				value='None yet.' if not nicks else '\n'.join(
+					discord.utils.escape_markdown(record.get('nick')) for record in nicks
+				)
 			)
 
 		if len(member.roles) > 1:
@@ -174,18 +177,19 @@ class WhoIs(AceMixin, commands.Cog):
 			raise commands.CommandError('I\'m not paying attention to bots.')
 
 		nicks = await self.db.fetch(
-			'SELECT nick FROM nick WHERE guild_id=$1 AND user_id=$2 GROUP BY nick',
+			'SELECT nick FROM (SELECT DISTINCT ON (nick) * FROM nick WHERE guild_id=$1 AND user_id=$2) as sub '
+			'ORDER BY id DESC LIMIT 16',
 			ctx.guild.id, member.id
 		)
 
 		if not nicks:
 			raise commands.CommandError('No nicks stored yet.')
 
-		nik = list()
-		for record in reversed(nicks):
-			nik.append(discord.utils.escape_markdown(record.get('nick')))
+		e = discord.Embed(
+			description='\n'.join(discord.utils.escape_markdown(record.get('nick')) for record in nicks)
+		)
 
-		await ctx.send(embed=discord.Embed(description='\n'.join(nik)))
+		await ctx.send(embed=e)
 
 
 def setup(bot):
