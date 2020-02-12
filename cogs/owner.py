@@ -11,11 +11,11 @@ from bs4 import BeautifulSoup
 from contextlib import redirect_stdout
 from tabulate import tabulate
 from asyncpg.exceptions import UniqueViolationError
-from datetime import datetime
+from datetime import datetime, timedelta
 from urllib.parse import urlparse
 
 from utils.pager import Pager
-from utils.time import pretty_datetime
+from utils.time import pretty_datetime, pretty_timedelta
 from utils.string_helpers import shorten
 from utils.lookup import DiscordLookup
 from config import BOT_ACTIVITY
@@ -99,7 +99,15 @@ class Owner(AceMixin, commands.Cog):
 
 	@commands.command(hidden=True)
 	async def ping(self, ctx):
-		await ctx.send('`{}ms`'.format(int(self.bot.latency * 1000)))
+		'''Check response time.'''
+
+		msg = await ctx.send('Wait...')
+
+		await msg.edit(content='Response: {}.\nGateway: {}'.format(
+				pretty_timedelta(msg.created_at - ctx.message.created_at),
+				pretty_timedelta(timedelta(seconds=self.bot.latency))
+			)
+		)
 
 	@commands.command()
 	@commands.bot_has_permissions(embed_links=True)
