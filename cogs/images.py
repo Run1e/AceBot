@@ -59,6 +59,11 @@ class Image(AceMixin, commands.Cog):
 						raise QUERY_ERROR
 					file = await resp.text()
 
+				if file.lower().endswith('.webm'):
+					log.info('woof got webm, reinvoking...')
+					await ctx.reinvoke()
+					return
+
 				e = self._create_embed(WOOF_URL + file)
 				await ctx.send(embed=e)
 			except self.QUERY_EXCEPTIONS:
