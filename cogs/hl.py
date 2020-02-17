@@ -1,6 +1,8 @@
 import discord
 from discord.ext import commands
 
+import re
+
 from cogs.ahk.ids import AHK_GUILD_ID
 from utils.checks import is_mod
 from cogs.mixins import AceMixin
@@ -36,6 +38,12 @@ class Highlighter(AceMixin, commands.Cog):
 
 		# don't allow three backticks in a row, alternative is to throw error upon this case
 		code = code.replace('```', '`\u200b``')
+
+		# replace triple+ newlines with double newlines
+		code = re.sub('\n\n+', '\n\n', code)
+
+		# trim start and finish
+		code = code.strip()
 
 		# get the language this user should use
 		lang = await self.db.fetchval(
