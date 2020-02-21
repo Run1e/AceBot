@@ -798,6 +798,16 @@ class Roles(AceMixin, commands.Cog):
 
 		await conf.update(channel_id=ctx.channel.id, message_ids=ids)
 
+	@roles.command()
+	async def notify(self, ctx):
+		'''Toggle whether bot sends a message for role updates.'''
+
+		conf = await self.config.get_entry(ctx.guild.id)
+
+		await conf.update(notify=not conf.notify)
+
+		await ctx.send('Role update message are now {}.'.format('enabled' if conf.notify else 'disabled'))
+
 	@commands.Cog.listener()
 	async def on_raw_reaction_add(self, payload):
 
@@ -855,7 +865,9 @@ class Roles(AceMixin, commands.Cog):
 		role = guild.get_role(role_row.get('role_id'))
 		if role is None:
 			await channel.send(
-				embed=discord.Embed(description='Could not find role with ID {}. Has it been deleted?'.format(role.id)),
+				embed=discord.Embed(
+					description='Could not find role with ID {}. Has it been deleted?'.format(role_row.get('role_id'))
+				),
 				delete_after=30
 			)
 			return
@@ -867,11 +879,9 @@ class Roles(AceMixin, commands.Cog):
 			if role in member.roles:
 				await member.remove_roles(role, reason='Removed through role selector')
 				e.description = 'Removed role {}'.format(role.mention)
-				await channel.send(embed=e, delete_after=10)
 			else:
 				await member.add_roles(role, reason='Added through role selector')
 				e.description = 'Added role {}'.format(role.mention)
-				await channel.send(embed=e, delete_after=10)
 		except discord.HTTPException:
 			e.description = 'Unable to add role {}. Does the bot have the necessary permissions?'.format(role.mention)
 
@@ -879,6 +889,9 @@ class Roles(AceMixin, commands.Cog):
 				await channel.send(embed=e, delete_after=30)
 			except discord.HTTPException:
 				pass
+
+		if conf.notify:
+			await channel.send(embed=e, delete_after=10)
 
 
 def setup(bot):
