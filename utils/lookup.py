@@ -1,21 +1,7 @@
 import discord
 import ast
 
-from enum import Enum
 from datetime import datetime, timedelta
-
-
-def past(*args, **kwargs):
-	return datetime.utcnow() - timedelta(*args, **kwargs)
-
-
-def excel_time(dt):
-	return dt.strftime('%d.%m.%y %H:%M')
-
-
-class Context(Enum):
-	NONE = 1
-	FUNC = 2
 
 
 class DiscordLookup:
@@ -50,8 +36,8 @@ class DiscordLookup:
 			len=len,
 			sum=sum,
 			sorted=sorted,
-			excel_time=excel_time,
-			past=past,
+			excel_time=lambda dt: dt.strftime('%d.%m.%y %H:%M'),
+			past=lambda *args, **kwargs: datetime.utcnow() - timedelta(*args, **kwargs),
 			guild=lambda ident: self.get_object(ctx.bot.guilds, ident),
 			role=lambda ident: self.get_object(all_roles, ident),
 			member=lambda ident: self.get_object(ctx.guild.members, ident),
@@ -64,9 +50,7 @@ class DiscordLookup:
 		if isinstance(ident, int):
 			res = discord.utils.get(items, id=ident)
 		elif isinstance(ident, str):
-			res = discord.utils.get(items, name=ident)
-			if res is None:
-				res = discord.utils.get(items, display_name=ident)
+			res = discord.utils.get(items, name=ident) or discord.utils.get(items, display_name=ident)
 		else:
 			raise TypeError('Can\'t find items with ident of type \'{}\''.format(type(ident)).__name__)
 
@@ -78,11 +62,23 @@ class DiscordLookup:
 	def run(self):
 		self.ast = ast.parse(self.query)
 		#print(ast.dump(self.ast))
-		return self.traverse(self.ast.body[0].value, Context.NONE)
+		return self.traverse(self.ast.body[0].value)
 
-	def traverse(self, node, context=Context.NONE):
-		if isinstance(node, ast.Call):
-			func = self.traverse(node.func, Context.FUNC)
+	def traverse(self, node):
+		if isinstance(node, ast.Str):
+			return node.s
+
+		elif isinstance(node, ast.Num):
+			return node.n
+
+		elif isinstance(node, ast.NameConstant):
+			return node.value
+
+		elif isinstance(node, ast.Name):
+			return self.get_namespace(node.id)
+
+		elif isinstance(node, ast.Call):
+			func = self.get_func(node.func.id)
 			args = [self.traverse(arg_val) for arg_val in node.args]
 			kwargs = {kw.arg: self.traverse(kw.value) for kw in node.keywords}
 			return func(*args, **kwargs)
@@ -95,15 +91,33 @@ class DiscordLookup:
 
 			if not isinstance(items, list):
 				raise ValueError('Can only perform queries on lists.')
-			elif not items:
+
+			if not items:
 				return items
 
-			return self.filter_items(items, node.slice.value)
+			if hasattr(node.slice, 'value'):
+				items = self.filter_items(items, node.slice.value)
+			else:
+
+				if node.slice.lower is not None:
+					items = self.filter_items(items, node.slice.lower)
+
+				if node.slice.upper is not None:
+					if not isinstance(node.slice.upper, ast.Name):
+						raise TypeError('Slice attribute token has to be an attribute lookup.')
+
+					items = sorted(items, key=lambda item: getattr(item, node.slice.upper.id))
+
+				if node.slice.step is not None:
+					if not isinstance(node.slice.step, ast.Name):
+						raise TypeError('Slice order token has to be an attribute lookup.')
+
+					items = list(getattr(item, node.slice.step.id) for item in items)
+
+			return items
 
 		elif isinstance(node, ast.Attribute):
 			val = self.traverse(node.value)
-			#if isinstance(val, list):
-			#	return list(getattr(item, node.attr) for item in val)
 			return getattr(val, node.attr)
 
 		elif isinstance(node, ast.BinOp):
@@ -123,34 +137,20 @@ class DiscordLookup:
 			else:
 				raise NotImplementedError('Operator: {}'.format(node.op))
 
-		elif isinstance(node, ast.ListComp):
-			l = []
-			gen = node.generators[0]
-			for item in self.traverse(gen.iter):
-				self.namespace[gen.target.id] = item
-				l.append(self.traverse(node.elt))
-			return l
-
-		elif isinstance(node, ast.Str):
-			return node.s
-		elif isinstance(node, ast.Num):
-			return node.n
-		elif isinstance(node, ast.NameConstant):
-			return node.value
-		elif isinstance(node, ast.Name):
-			return self.get_namespace(node.id, context)
 		else:
 			raise NotImplementedError('Unsupported AST type: \'{}\''.format(node))
 
-	def get_namespace(self, name, context):
-		if context is Context.FUNC:
-			if name in self.funcs:
-				return self.funcs[name]
+	def get_func(self, name):
+		try:
+			return self.funcs[name]
+		except KeyError:
+			raise ValueError('Namespace resolve failure: \'{}\''.format(name))
 
-		if name in self.namespace:
+	def get_namespace(self, name):
+		try:
 			return self.namespace[name]
-
-		raise ValueError('Namespace resolve failure: \'{}\''.format(name))
+		except KeyError:
+			raise ValueError('Namespace resolve failure: \'{}\''.format(name))
 
 	def filter_items(self, items, node):
 		if isinstance(node, ast.Compare):
@@ -164,6 +164,9 @@ class DiscordLookup:
 
 		elif isinstance(node, ast.Name):
 			return list(filter(lambda item: getattr(item, node.id), items))
+
+		else:
+			return items
 
 	def filter_unaryop(self, items, op, operand):
 		if not isinstance(operand, ast.Name):
@@ -201,16 +204,6 @@ class DiscordLookup:
 	def filter_compare(self, items, ops, left, comparators):
 		return list(filter(lambda item: self.perform_compare(item, ops, left, comparators), items))
 
-	def get_compare_value(self, item, node):
-		if isinstance(node, ast.Name):
-			if hasattr(item, node.id):
-				return getattr(item, node.id)
-			else:
-				return self.get_namespace(node)
-		else:
-			# recursing deeper than one step and we go back to no context
-			return self.traverse(node, Context.FUNC)
-
 	def perform_compare(self, item, ops, left, comparators):
 		left = self.get_compare_value(item, left)
 
@@ -237,3 +230,12 @@ class DiscordLookup:
 			left = right
 
 		return True
+
+	def get_compare_value(self, item, node):
+		if isinstance(node, ast.Name):
+			if hasattr(item, node.id):
+				return getattr(item, node.id)
+			else:
+				return self.get_namespace(node)
+		else:
+			return self.traverse(node)

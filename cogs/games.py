@@ -260,7 +260,7 @@ class Games(AceMixin, commands.Cog):
 		now = datetime.utcnow()
 
 		def check(reaction, user):
-			return reaction.message.id == msg.id and user is ctx.author and str(reaction) in option_emojis
+			return reaction.message.id == msg.id and user == ctx.author and str(reaction) in option_emojis
 
 		try:
 			reaction, user = await self.bot.wait_for('reaction_add', check=check, timeout=QUESTION_TIMEOUT)
