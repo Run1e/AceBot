@@ -67,8 +67,8 @@ class Moderator(AceMixin, commands.Cog):
 	def __init__(self, bot):
 		super().__init__(bot)
 
-		self.ban_timer = DatabaseTimer(self.bot, 'banned', 'until', self.timer_unban)
-		self.mute_timer = DatabaseTimer(self.bot, 'muted', 'until', self.timer_unmute)
+		self.ban_timer = DatabaseTimer(self.bot, 'banned', 'until', 'ban_complete')
+		self.mute_timer = DatabaseTimer(self.bot, 'muted', 'until', 'mute_complete')
 
 	def _issuer_text(self, guild, user_id):
 		if isinstance(user_id, discord.Member):
@@ -81,9 +81,8 @@ class Moderator(AceMixin, commands.Cog):
 		else:
 			return '{} (ID: {})'.format(mod.display_name, mod.id)
 
-	async def timer_unban(self, record):
-		await self.db.execute('DELETE FROM banned WHERE id=$1', record.get('id'))
-
+	@commands.Cog.listener()
+	async def on_ban_complete(self, record):
 		guild = self.bot.get_guild(record.get('guild_id'))
 		if guild is None:
 			return
@@ -101,9 +100,8 @@ class Moderator(AceMixin, commands.Cog):
 
 		await self.bot.security_log(target=guild, action='UNBAN', reason=reason, member=member, severity=2)
 
-	async def timer_unmute(self, record):
-		await self.db.execute('DELETE FROM muted WHERE id=$1', record.get('id'))
-
+	@commands.Cog.listener()
+	async def on_mute_complete(self, record):
 		conf = await self.bot.config.get_entry(record.get('guild_id'))
 		mute_role = conf.mute_role
 

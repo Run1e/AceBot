@@ -806,7 +806,7 @@ class Roles(AceMixin, commands.Cog):
 
 		await conf.update(notify=not conf.notify)
 
-		await ctx.send('Role update message are now {}.'.format('enabled' if conf.notify else 'disabled'))
+		await ctx.send('Role update messages are now {}.'.format('enabled' if conf.notify else 'disabled'))
 
 	@commands.Cog.listener()
 	async def on_raw_reaction_add(self, payload):

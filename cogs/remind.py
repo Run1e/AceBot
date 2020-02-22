@@ -70,20 +70,21 @@ class ReminderConverter(commands.Converter):
 
 
 class Reminders(AceMixin, commands.Cog):
-	'''Set, view and delete reminders.
+	'''Set, view, and delete reminders.
 
 	Examples:
 	`.remindme in 3 days do the laundry`
-	`.remindme next tuesday at 10am call back david`
+	`.remindme call back david in 10 minutes`
 	`.remindme apply for job 17th of august`
 	`.remindme tomorrow take out trash`
 	'''
 
 	def __init__(self, bot):
 		super().__init__(bot)
-		self.timer = DatabaseTimer(self.bot, 'remind', 'remind_on', self.run_reminder)
+		self.timer = DatabaseTimer(self.bot, 'remind', 'remind_on', 'reminder_complete')
 
-	async def run_reminder(self, record):
+	@commands.Cog.listener()
+	async def on_reminder_complete(self, record):
 		_id = record.get('id')
 		channel_id = record.get('channel_id')
 		user_id = record.get('user_id')
@@ -106,8 +107,6 @@ class Reminders(AceMixin, commands.Cog):
 				await user.send(embed=e)
 		except discord.HTTPException as exc:
 			log.info(f'Failed sending reminder #{_id} for {user.id} - {exc}')
-
-		await self.db.execute('DELETE FROM remind WHERE id=$1', _id)
 
 	@commands.command(aliases=['remind'])
 	@commands.bot_has_permissions(add_reactions=True)

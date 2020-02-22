@@ -8,11 +8,11 @@ MAX_SLEEP = timedelta(days=40)
 
 
 class DatabaseTimer:
-	def __init__(self, bot, table, column, callback):
+	def __init__(self, bot, table, column, event_name):
 		self.bot = bot
 		self.table = table
 		self.column = column
-		self.callback = callback
+		self.event_name = event_name
 		self.query = 'SELECT * FROM {0} WHERE {1} < $1 AND {1} IS NOT NULL ORDER BY {1} LIMIT 1'.format(table, column)
 
 		self.record = None
@@ -51,11 +51,11 @@ class DatabaseTimer:
 
 				self.record = None
 
+				# delete row before dispatching event
+				await self.bot.db.execute('DELETE FROM {} WHERE id={}'.format(self.table, record.get('id')))
+
 				# run it
-				try:
-					await self.callback(record)
-				except Exception:
-					pass
+				self.bot.dispatch(self.event_name, record)
 
 		except (discord.ConnectionClosed, asyncpg.PostgresConnectionError):
 			# if anything happened, sleep for 15 seconds then attempt a restart
