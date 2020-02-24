@@ -1,8 +1,11 @@
 import asyncio
 import discord
 import asyncpg
+import logging
 
 from datetime import datetime, timedelta
+
+log = logging.getLogger(__name__)
 
 MAX_SLEEP = timedelta(days=40)
 
@@ -57,8 +60,9 @@ class DatabaseTimer:
 				# run it
 				self.bot.dispatch(self.event_name, record)
 
-		except (discord.ConnectionClosed, asyncpg.PostgresConnectionError):
+		except (discord.ConnectionClosed, asyncpg.PostgresConnectionError) as e:
 			# if anything happened, sleep for 15 seconds then attempt a restart
+			log.warning('DatabaseTimer got exception {}: attempting restart in 15 seconds'.format(str(e)))
 			await asyncio.sleep(15)
 			self.restart_task()
 

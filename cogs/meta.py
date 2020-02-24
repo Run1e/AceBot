@@ -149,17 +149,12 @@ class Meta(AceMixin, commands.Cog):
 		raise commands.CommandError('Not implemented yet.')
 
 	@commands.command(aliases=['fb'])
-	@commands.cooldown(rate=1, per=60.0, type=commands.BucketType.user)
+	@commands.cooldown(rate=2, per=120.0, type=commands.BucketType.user)
 	async def feedback(self, ctx, *, feedback: str):
 		'''Give me some feedback about the bot!'''
 
-		timestamp = str(datetime.utcnow()).split('.')[0].replace(' ', '_').replace(':', '')
-		filename = str(ctx.message.id) + '_' + timestamp
-
-		content = '{}\n\n{}'.format(repr_ctx(ctx), feedback)
-
-		with open('feedback/{}.feedback'.format(filename), 'w', encoding='utf-8-sig') as f:
-			f.write(content)
+		with open('feedback/{}.feedback'.format(str(ctx.message.id)), 'w', encoding='utf-8-sig') as f:
+			f.write(repr_ctx(ctx) + '\n\n' + feedback)
 
 		await ctx.send('Feedback sent. Thanks for helping improve the bot!')
 

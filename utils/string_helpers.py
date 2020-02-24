@@ -40,6 +40,6 @@ def present_object(obj):
 
 def repr_ctx(ctx):
 	return 'TIME: {}\nGUILD: {}\nCHANNEL: #{}\nAUTHOR: {}\nMESSAGE ID: {}'.format(
-		pretty_datetime(datetime.utcnow()), present_object(ctx.guild), present_object(ctx.channel),
+		pretty_datetime(ctx.message.created_at), present_object(ctx.guild), present_object(ctx.channel),
 		present_object(ctx.author), str(ctx.message.id)
 	)
