@@ -232,9 +232,13 @@ class AceBot(commands.Bot):
 		async def log_and_raise():
 			nonlocal send_error
 
-			e.set_author(name='An error occured.', icon_url=self.user.avatar_url)
+			e.set_author(name='Oops!', icon_url=self.user.avatar_url)
 			e.description = (
-				'The error has been saved and will hopefully be fixed.\nThanks for using the bot!'
+				'An exception occured while processing the command.\nMy developer has been notified and the issue will '
+				'hopefully be fixed soon!\n\n'
+				'You can join the support server [here]({0}).'
+			).format(
+				self.support_link
 			)
 
 			await send_error()

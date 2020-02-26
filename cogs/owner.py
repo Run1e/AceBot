@@ -86,6 +86,7 @@ class Owner(AceMixin, commands.Cog):
 
 	def cleanup_code(self, content):
 		'''Automatically removes code blocks from the code.'''
+
 		# remove ```py\n```
 		if content.startswith('```') and content.endswith('```'):
 			return '\n'.join(content.split('\n')[1:-1])
@@ -96,6 +97,10 @@ class Owner(AceMixin, commands.Cog):
 	@commands.command(hidden=True)
 	async def test(self, ctx):
 		print('hi!')
+
+	@commands.command(name='raise', hidden=True)
+	async def _raise(self, ctx, type: str, *, message: str):
+		raise globals()[type](message)
 
 	@commands.command(hidden=True)
 	async def ping(self, ctx):

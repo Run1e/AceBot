@@ -19,7 +19,8 @@ log = logging.getLogger(__name__)
 
 
 ALIASES = {
-	'commands/For.htm': ['For']
+	'commands/For.htm': ['For'],
+	'commands/IfExpression.htm': ['If']
 }
 
 
@@ -85,6 +86,12 @@ class DocsAggregator:
 			if entry['page'] == append_page:
 				for name_to_add in append_list:
 					force_names.append(name_to_add)
+			else:
+				for name_to_add in append_list:
+					if name_to_add in force_names:
+						force_names.remove(name_to_add)
+					if name_to_add in fill_names:
+						fill_names.remove(name_to_add)
 
 		for name in force_names:
 			name = self.treat_name(name)
