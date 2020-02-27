@@ -875,17 +875,15 @@ class Roles(AceMixin, commands.Cog):
 		e = discord.Embed()
 		e.set_author(name=member.display_name, icon_url=member.avatar_url)
 
-		added = None
+		do_add = role not in member.roles
 
 		try:
-			if role in member.roles:
+			if do_add:
 				await member.remove_roles(role, reason='Removed through role selector')
 				e.description = 'Removed role {}'.format(role.mention)
-				added = False
 			else:
 				await member.add_roles(role, reason='Added through role selector')
 				e.description = 'Added role {}'.format(role.mention)
-				added = False
 		except discord.HTTPException:
 			e.description = 'Unable to add role {}. Does the bot have the necessary permissions?'.format(role.mention)
 
@@ -898,9 +896,9 @@ class Roles(AceMixin, commands.Cog):
 			await channel.send(embed=e, delete_after=10)
 
 		log.info('{} {} {} {} in {}'.format(
-			'Added' if added else 'Removed',
+			'Added' if do_add else 'Removed',
 			present_object(role),
-			'to' if added else 'from',
+			'to' if do_add else 'from',
 			present_object(member),
 			present_object(guild)
 		))
