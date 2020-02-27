@@ -1,13 +1,16 @@
 import discord
+import logging
 
 from discord.ext import commands
 
 
 from cogs.mixins import AceMixin
 from utils.checks import is_mod_pred
-from utils.string_helpers import craft_welcome
+from utils.string_helpers import craft_welcome, present_object
 from utils.configtable import ConfigTable, ConfigTableRecord
 
+
+log = logging.getLogger(__name__)
 
 WELCOME_NOT_SET_UP_ERROR = commands.CommandError(
 	'You don\'t seem to have set up a welcome message yet, do `welcome` to see available commands.'
@@ -67,6 +70,8 @@ class Welcome(AceMixin, commands.Cog):
 			await channel.send(craft_welcome(member, entry.content))
 		except discord.HTTPException:
 			pass
+
+		log.info('Sending welcome message for {} in {}'.format(present_object(member), present_object(member.guild)))
 
 	@commands.group(hidden=True, invoke_without_command=True)
 	async def welcome(self, ctx):

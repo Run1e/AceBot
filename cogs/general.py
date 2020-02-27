@@ -1,9 +1,8 @@
 import discord
-from discord.ext import commands
-
 import asyncio
 import random
 
+from discord.ext import commands
 from datetime import datetime, date
 from bs4 import BeautifulSoup
 
@@ -40,13 +39,16 @@ class General(AceMixin, commands.Cog):
 		if len(choices) < 2:
 			raise commands.CommandError('At least two choices are necessary.')
 
+		selected = random.choice(choices)
+
 		e = discord.Embed(
-			description=random.choice(choices)
+			description=selected
 		)
 
 		e.set_author(name=random.choice(choose_prompts) + ':', icon_url=self.bot.user.avatar_url)
 
 		msg = await ctx.send(':thinking:')
+
 		await asyncio.sleep(3)
 		await msg.edit(content=None, embed=e)
 

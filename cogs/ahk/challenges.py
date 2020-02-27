@@ -2,6 +2,7 @@ import discord
 import os
 import shutil
 import subprocess
+import logging
 
 from discord.ext import commands
 from datetime import datetime
@@ -10,7 +11,10 @@ from enum import Enum
 
 from cogs.ahk.ids import *
 from cogs.mixins import AceMixin
+from utils.string_helpers import present_object
 
+
+log = logging.getLogger(__name__)
 
 CHALLENGES_DIR = 'data/challenges'
 MAX_ZIP_SIZE = 8 * 1024 * 1024
@@ -32,6 +36,7 @@ class Challenges(AceMixin, commands.Cog):
 			return
 
 		async def send_info(msg, is_bad=False):
+			log.info(msg + ' is_bad={}, author: {}'.format(is_bad, present_object(message.author)))
 			try:
 				await message.channel.send(
 					'{} {}{}'.format(message.author.mention, msg, ' Entry not submitted.' if is_bad else ''),
@@ -61,6 +66,7 @@ class Challenges(AceMixin, commands.Cog):
 			pass
 
 		if attachment is None:
+			await send_info('Your message does not have a ZIP archive attached.', True)
 			return
 
 		try:
@@ -159,7 +165,8 @@ class Challenges(AceMixin, commands.Cog):
 
 		await self.bot.loop.run_in_executor(None, git)
 
-		# it gets pushed by an incron entry on the host machine
+		log.info('Submission from {} added.'.format(present_object(message.author)))
+
 
 	def _get_challenge_dir(self):
 		_dir = open('{}/current'.format(CHALLENGES_DIR), 'r').read().strip()

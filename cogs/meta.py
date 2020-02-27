@@ -8,6 +8,7 @@ from cogs.mixins import AceMixin
 from utils.time import pretty_timedelta
 from utils.string_helpers import repr_ctx
 
+
 MEDALS = (
 	'\N{FIRST PLACE MEDAL}',
 	'\N{SECOND PLACE MEDAL}',

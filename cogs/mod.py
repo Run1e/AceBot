@@ -11,6 +11,7 @@ from utils.databasetimer import DatabaseTimer
 from utils.time import pretty_datetime, pretty_timedelta
 from utils.converters import TimeMultConverter, TimeDeltaConverter
 from utils.checks import is_mod, member_is_mod
+from utils.string_helpers import present_object
 
 log = logging.getLogger(__name__)
 
@@ -177,6 +178,14 @@ class Moderator(AceMixin, commands.Cog):
 			target=conf, action='MUTE', reason=full_reason, member=member, message=ctx.message, severity=0
 		)
 
+		log.info('{} issued a {} tempmute for {} in {}. Reason: {}'.format(
+			present_object(ctx.author),
+			pretty_timedelta(delta),
+			present_object(member),
+			present_object(ctx.guild),
+			reason
+		))
+
 	@commands.command()
 	@commands.has_permissions(ban_members=True)
 	@commands.bot_has_permissions(ban_members=True, embed_links=True)
@@ -232,6 +241,14 @@ class Moderator(AceMixin, commands.Cog):
 			target=ctx.guild, action='TEMPBAN', reason=full_reason, member=member, message=ctx.message, severity=2
 		)
 
+		log.info('{} issued a {} tempban for {} in {}. Reason: {}'.format(
+			present_object(ctx.author),
+			pretty_timedelta(delta),
+			present_object(member),
+			present_object(ctx.guild),
+			reason
+		))
+
 	@commands.command()
 	@commands.has_permissions(kick_members=True)
 	@commands.bot_has_permissions(manage_roles=True)
@@ -253,11 +270,22 @@ class Moderator(AceMixin, commands.Cog):
 		reason = 'Muted by {0.display_name} (ID: {0.id})'.format(ctx.author)
 
 		await member.add_roles(mute_role, reason=reason)
-		await ctx.send('{0.display_name} muted.'.format(member))
+
+		try:
+			await ctx.send('{0.display_name} muted.'.format(member))
+		except discord.HTTPException:
+			pass
 
 		await self.bot.security_log(
 			target=conf, action='MUTE', reason=reason, message=ctx.message, member=member, severity=0
 		)
+
+		log.info('{} issued a mute on {} in {}. Reason: {}'.format(
+			present_object(ctx.author),
+			present_object(member),
+			present_object(ctx.guild),
+			reason
+		))
 
 	@commands.command()
 	@commands.has_permissions(kick_members=True)
@@ -280,11 +308,21 @@ class Moderator(AceMixin, commands.Cog):
 		reason = 'Unmuted by {0.mention} (ID: {0.id})'.format(ctx.author)
 
 		await member.remove_roles(mute_role, reason=reason)
-		await ctx.send('{0.display_name} unmuted.'.format(member))
+
+		try:
+			await ctx.send('{0.display_name} unmuted.'.format(member))
+		except discord.HTTPException:
+			pass
 
 		await self.bot.security_log(
 			target=conf, action='UNMUTE', reason=reason, message=ctx.message, member=member, severity=0
 		)
+
+		log.info('{} issued an unmute on {} in {}.'.format(
+			present_object(ctx.author),
+			present_object(member),
+			present_object(ctx.guild)
+		))
 
 	@commands.Cog.listener()
 	async def on_member_unban(self, guild, member):
@@ -382,9 +420,9 @@ class Moderator(AceMixin, commands.Cog):
 
 		count = len(deleted)
 
-		log.info('{} ({}) deleted {} messages in #{} ({})'.format(
-			ctx.author.name, ctx.author.id, count, ctx.channel.name, ctx.channel.id)
-		)
+		log.info('{} deleted {} messages in {}'.format(
+			present_object(ctx.author), count, present_object(ctx.guild)
+		))
 
 		await ctx.send(f'Deleted {count} message{"s" if count > 1 else ""}.', delete_after=5)
 

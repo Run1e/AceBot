@@ -8,7 +8,7 @@ from discord.ext import commands
 from cogs.mixins import AceMixin
 from utils.checks import is_mod_pred
 from utils.configtable import ConfigTable
-from utils.string_helpers import shorten
+from utils.string_helpers import shorten, present_object
 from utils.prompter import prompter
 
 log = logging.getLogger(__name__)
@@ -875,13 +875,17 @@ class Roles(AceMixin, commands.Cog):
 		e = discord.Embed()
 		e.set_author(name=member.display_name, icon_url=member.avatar_url)
 
+		added = None
+
 		try:
 			if role in member.roles:
 				await member.remove_roles(role, reason='Removed through role selector')
 				e.description = 'Removed role {}'.format(role.mention)
+				added = False
 			else:
 				await member.add_roles(role, reason='Added through role selector')
 				e.description = 'Added role {}'.format(role.mention)
+				added = False
 		except discord.HTTPException:
 			e.description = 'Unable to add role {}. Does the bot have the necessary permissions?'.format(role.mention)
 
@@ -892,6 +896,14 @@ class Roles(AceMixin, commands.Cog):
 
 		if conf.notify:
 			await channel.send(embed=e, delete_after=10)
+
+		log.info('{} {} {} {} in {}'.format(
+			'Added' if added else 'Removed',
+			present_object(role),
+			'to' if added else 'from',
+			present_object(member),
+			present_object(guild)
+		))
 
 
 def setup(bot):

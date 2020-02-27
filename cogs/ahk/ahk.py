@@ -1,5 +1,6 @@
 import discord
 import html
+import logging
 
 from discord.ext import commands, tasks
 from collections import OrderedDict
@@ -13,6 +14,8 @@ from utils.pager import Pager
 from utils.docs_parser import parse_docs
 from utils.html2markdown import HTML2Markdown
 
+
+log = logging.getLogger(__name__)
 
 AHK_COLOR = 0x95CD95
 RSS_URL = 'https://www.autohotkey.com/boards/feed'
@@ -60,7 +63,7 @@ class AutoHotkey(AceMixin, commands.Cog):
 		date_str = date_str.strip()
 		return datetime.strptime(date_str[:-3] + date_str[-2:], "%Y-%m-%dT%H:%M:%S%z")
 
-	@tasks.loop(minutes=5)
+	@tasks.loop(minutes=10)
 	async def rss(self):
 		async with self.bot.aiohttp.request('get', RSS_URL) as resp:
 			if resp.status != 200:
@@ -244,7 +247,10 @@ class AutoHotkey(AceMixin, commands.Cog):
 	@commands.command(hidden=True)
 	@commands.is_owner()
 	async def build(self, ctx, download: bool = True):
+		log.info('Starting documentation build job. Download={}'.format(download))
+
 		async def on_update(text):
+			log.info('Build job: {}'.format(text))
 			await ctx.send(text)
 
 		try:

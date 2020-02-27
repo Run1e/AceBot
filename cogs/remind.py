@@ -8,8 +8,8 @@ from enum import IntEnum
 
 from cogs.mixins import AceMixin
 from utils.databasetimer import DatabaseTimer
-from utils.string_helpers import shorten
-from utils.time import pretty_timedelta
+from utils.string_helpers import shorten, present_object
+from utils.time import pretty_timedelta, pretty_datetime
 from utils.pager import Pager
 
 log = logging.getLogger(__name__)
@@ -139,6 +139,8 @@ class Reminders(AceMixin, commands.Cog):
 		remind_in += timedelta(microseconds=1000000 - (remind_in.microseconds % 1000000))
 
 		await ctx.send('You will be reminded in {}.'.format(pretty_timedelta(remind_in)))
+
+		log.info('{} set a reminder for {}.'.format(present_object(ctx.author), pretty_datetime(when)))
 
 	@commands.command()
 	@commands.bot_has_permissions(embed_links=True)

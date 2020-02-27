@@ -5,6 +5,9 @@ import logging
 
 from datetime import datetime, timedelta
 
+from utils.time import pretty_timedelta
+
+
 log = logging.getLogger(__name__)
 
 MAX_SLEEP = timedelta(days=40)
@@ -20,6 +23,8 @@ class DatabaseTimer:
 
 		self.record = None
 		self.task = self.start_task()
+
+		log.info('Creating DatabaseTimer for table "{}" on column "{}"'.format(table, column))
 
 	def start_task(self):
 		return self.bot.loop.create_task(self.dispatch())
@@ -41,21 +46,26 @@ class DatabaseTimer:
 
 				# if none was found, sleep for 40 days and check again
 				if record is None:
+					log.info('No record found for "{}", sleeping.'.format(self.table))
 					await asyncio.sleep(MAX_SLEEP.total_seconds())
 					continue
 
 				# get datetime again in case query took a lot of time
 				now = datetime.utcnow()
 				then = record.get(self.column)
+				dt = then - now
 
 				# if the next record is in the future, sleep until it should be invoked
 				if now < then:
-					await asyncio.sleep((then - now).total_seconds())
+					log.info('Record found for "{}", sleeping {}.'.format(self.table, pretty_timedelta(then - now)))
+					await asyncio.sleep(dt.total_seconds())
 
 				self.record = None
 
 				# delete row before dispatching event
 				await self.bot.db.execute('DELETE FROM {} WHERE id={}'.format(self.table, record.get('id')))
+
+				log.info('Dispatching event {} for "{}".'.format(self.event_name, self.table))
 
 				# run it
 				self.bot.dispatch(self.event_name, record)
@@ -63,6 +73,7 @@ class DatabaseTimer:
 		except (discord.ConnectionClosed, asyncpg.PostgresConnectionError) as e:
 			# if anything happened, sleep for 15 seconds then attempt a restart
 			log.warning('DatabaseTimer got exception {}: attempting restart in 15 seconds'.format(str(e)))
+
 			await asyncio.sleep(15)
 			self.restart_task()
 

@@ -1,11 +1,15 @@
 import discord
 import asyncpg
+import logging
 
 from discord.ext import commands
 from typing import Union
 
 from cogs.mixins import AceMixin
 from utils.checks import is_mod, is_mod_pred
+from utils.string_helpers import present_object
+
+log = logging.getLogger(__name__)
 
 
 class FeedConverter(commands.Converter):
@@ -184,6 +188,8 @@ class Feeds(AceMixin, commands.Cog):
 			await ctx.message.delete()
 		except discord.HTTPException:
 			pass
+
+		log.info('{} published to feed {} in {}'.format(present_object(ctx.author), feed, present_object(ctx.guild)))
 
 	@commands.group(hidden=True)
 	async def feed(self, ctx):
