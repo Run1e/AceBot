@@ -879,11 +879,11 @@ class Roles(AceMixin, commands.Cog):
 
 		try:
 			if do_add:
-				await member.remove_roles(role, reason='Removed through role selector')
-				e.description = 'Removed role {}'.format(role.mention)
-			else:
 				await member.add_roles(role, reason='Added through role selector')
 				e.description = 'Added role {}'.format(role.mention)
+			else:
+				await member.remove_roles(role, reason='Removed through role selector')
+				e.description = 'Removed role {}'.format(role.mention)
 		except discord.HTTPException:
 			e.description = 'Unable to add role {}. Does the bot have the necessary permissions?'.format(role.mention)
 
