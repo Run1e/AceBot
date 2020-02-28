@@ -11,7 +11,7 @@ from enum import Enum
 
 from cogs.ahk.ids import *
 from cogs.mixins import AceMixin
-from utils.string_helpers import present_object
+from utils.string import po
 
 
 log = logging.getLogger(__name__)
@@ -36,7 +36,7 @@ class Challenges(AceMixin, commands.Cog):
 			return
 
 		async def send_info(msg, is_bad=False):
-			log.info(msg + ' is_bad={}, author: {}'.format(is_bad, present_object(message.author)))
+			log.info(msg + ' is_bad={}, author: {}'.format(is_bad, po(message.author)))
 			try:
 				await message.channel.send(
 					'{} {}{}'.format(message.author.mention, msg, ' Entry not submitted.' if is_bad else ''),
@@ -165,7 +165,7 @@ class Challenges(AceMixin, commands.Cog):
 
 		await self.bot.loop.run_in_executor(None, git)
 
-		log.info('Submission from {} added.'.format(present_object(message.author)))
+		log.info('Submission from {} added.'.format(po(message.author)))
 
 
 	def _get_challenge_dir(self):

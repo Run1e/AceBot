@@ -14,10 +14,11 @@ from datetime import datetime
 
 from config import *
 from cogs.help import PaginatedHelpCommand, EditedMinimalHelpCommand
+from utils.context import AceContext
+from utils.fakemember import FakeMember
 from utils.time import pretty_seconds
-from utils.string_helpers import repr_ctx
 from utils.configtable import ConfigTable, ConfigTableRecord
-from utils.checks import set_bot
+
 
 EXTENSIONS = (
 	'cogs.general',
@@ -40,8 +41,8 @@ EXTENSIONS = (
 	'cogs.ahk.security',
 	'cogs.ahk.challenges',
 	'cogs.dwitter',
-	'cogs.owner',
-	'cogs.linus'
+	'cogs.linus',
+	'cogs.owner'
 )
 
 
@@ -49,7 +50,6 @@ self_deleted = list()
 
 
 class GuildConfigRecord(ConfigTableRecord):
-
 	@property
 	def mod_role(self):
 		if self.mod_role_id is None:
@@ -90,8 +90,6 @@ class AceBot(commands.Bot):
 	support_link = 'https://discord.gg/X7abzRe'
 
 	def __init__(self):
-		set_bot(self)
-
 		log.info('Starting...')
 
 		super().__init__(
@@ -108,9 +106,6 @@ class AceBot(commands.Bot):
 		self.config = None
 		self.self_deleted = self_deleted
 		self.startup_time = datetime.utcnow()
-
-		# do blacklist check before all commands
-		self.add_check(self.blacklist, call_once=True)
 
 	async def on_connect(self):
 		'''Called on connection with the Discord gateway.'''
@@ -132,7 +127,12 @@ class AceBot(commands.Bot):
 			self.help_command = PaginatedHelpCommand()
 			self.static_help_command._command_impl = command_impl
 
+			# rebind help command to call ctx.send_help instead
+			self.remove_command('help')
+			self.add_command(commands.Command(self._help, name='help'))
+
 			log.info('Initializing aiohttp')
+
 			self.aiohttp = aiohttp.ClientSession(
 				loop=self.loop,
 				timeout=aiohttp.ClientTimeout(total=5)
@@ -146,6 +146,9 @@ class AceBot(commands.Bot):
 
 			self.loop.create_task(self.update_dbl())
 
+	async def _help(self, ctx, *, command=None):
+		await ctx.send_help(command)
+
 	async def on_resumed(self):
 		log.info('Resumed...')
 
@@ -157,31 +160,45 @@ class AceBot(commands.Bot):
 		log.info(f'Guild "{guild.name}" unavailable')
 
 	async def on_command_completion(self, ctx):
-		if ctx.guild is not None:
-			await self.db.execute(
-				'INSERT INTO log (guild_id, channel_id, user_id, timestamp, command) VALUES ($1, $2, $3, $4, $5)',
-				ctx.guild.id, ctx.channel.id, ctx.author.id, datetime.utcnow(), ctx.command.qualified_name
-			)
+		await self.db.execute(
+			'INSERT INTO log (guild_id, channel_id, user_id, timestamp, command) VALUES ($1, $2, $3, $4, $5)',
+			ctx.guild.id, ctx.channel.id, ctx.author.id, datetime.utcnow(), ctx.command.qualified_name
+		)
 
 	async def on_message(self, message):
-		if self.db is None or not self.db._initialized:
+		if message.author.bot or self.db is None or not self.db._initialized:
 			return
 
+		await self.process_commands(message)
+
+	async def process_commands(self, message):
+		ctx = await self.get_context(message, cls=AceContext)
+
+		# if message starts with our mention, trigger a help invoke
 		if message.content.startswith(self._mention_startswith):
-			ctx = await self.get_context(message)
 			ctx.bot = self
 			ctx.prefix = await self.prefix_resolver(self, message)
-			ctx.command = self.get_command('help')
-			await ctx.reinvoke()
+			command = message.content[message.content.find('>') + 1:].strip()
+			await ctx.send_help(command or None)
+			return
 
-		else:
-			await self.process_commands(message)
+		if ctx.command is None:
+			return
+
+		if ctx.guild is None:
+			return
+
+		perms = ctx.perms
+		if not perms.send_messages or not perms.read_message_history:
+			return
+
+		await self.invoke(ctx)
 
 	@property
-	def invite_link(self, perms=None):
-		if perms is None:
-			perms = 268823632
-		return f'https://discordapp.com/oauth2/authorize?&client_id={self.user.id}&scope=bot&permissions={perms}'
+	def invite_link(self):
+		return 'https://discordapp.com/oauth2/authorize?&client_id={0}&scope=bot&permissions={1}'.format(
+			self.user.id, 268823632
+		)
 
 	async def prefix_resolver(self, bot, message):
 		if message.guild is None:
@@ -190,30 +207,12 @@ class AceBot(commands.Bot):
 		gc = await self.config.get_entry(message.guild.id)
 		return gc.prefix or DEFAULT_PREFIX
 
-	async def blacklist(self, ctx):
-		if ctx.author.bot:
-			return False
-
-		if ctx.guild is None:
-			return False
-
-		perms = ctx.guild.me.permissions_in(ctx.channel)
-
-		if not (perms.send_messages and perms.read_message_history):
-			return False
-
-		return True
-
-	async def invoke_help(self, ctx, command):
-		help_command = self.help_command._command_impl
-		await ctx.invoke(help_command, command=command)
-
 	async def on_command_error(self, ctx, exc):
 		e = discord.Embed(color=0x36393E)
 
 		async def send_error():
 			try:
-				if ctx.guild.me.permissions_in(ctx.channel).embed_links:
+				if ctx.perms.embed_links:
 					await ctx.send(embed=e)
 				else:
 					content = ''
@@ -254,7 +253,7 @@ class AceBot(commands.Bot):
 			content = (
 				'{}\n\nMESSAGE CONTENT:\n{}\n\nCOMMAND: {}\nARGS: {}\nKWARGS: {}\n\nTRACEBACK:\n{}'
 			).format(
-				repr_ctx(ctx), ctx.message.content, ctx.command.qualified_name,
+				ctx.stamp(), ctx.message.content, ctx.command.qualified_name,
 				saferepr(ctx.args[2:]), saferepr(ctx.kwargs), tb
 			)
 
@@ -326,33 +325,27 @@ class AceBot(commands.Bot):
 			else:
 				log.info('Failed updating DBL: {} - {}'.format(resp.reason, await resp.text()))
 
-	async def security_log(self, target, action=None, reason=None, message=None, member=None, severity=0):
-		if message is None and member is None:
-			return
-
-		if member is None:
+	@commands.Cog.listener()
+	async def on_log(self, member_or_message, action=None, reason=None, severity=0):
+		if isinstance(member_or_message, discord.Message):
+			message = member_or_message
 			member = message.author
-
-		if isinstance(target, GuildConfigRecord):
-			log_channel = target.log_channel
-		elif isinstance(target, discord.Guild):
-			gc = await self.config.get_entry(target.id)
-			log_channel = gc.log_channel
-		elif isinstance(target, int):
-			gc = await self.config.get_entry(target, construct=False)
-			if gc is None:
-				return
-			log_channel = gc.log_channel
+		elif isinstance(member_or_message, (discord.Member, FakeMember)):
+			message = None
+			member = member_or_message
 		else:
-			return
+			raise TypeError('Unsupported type: {}'.format(type(member_or_message)))
+
+		guild = member.guild
+
+		conf = await self.config.get_entry(guild.id)
+
+		log_channel = conf.log_channel
 
 		if log_channel is None:
 			return
 
-		desc = 'ID: `{0.id}`\nNAME: {1}\nMENTION: <@{0.id}>'.format(
-			member,
-			getattr(member, 'display_name', 'Unknown'),
-		)
+		desc = 'NAME: {0.display_name}\nMENTION: {0.mention}'.format(member)
 
 		color = [discord.Embed().color, 0xFF8C00, 0xFF2000][severity]
 
@@ -363,7 +356,8 @@ class AceBot(commands.Bot):
 			timestamp=datetime.utcnow()
 		)
 
-		e.add_field(name='Reason', value=reason)
+		if reason is not None:
+			e.add_field(name='Reason', value=reason)
 
 		if hasattr(member, 'avatar_url'):
 			e.set_thumbnail(url=member.avatar_url)

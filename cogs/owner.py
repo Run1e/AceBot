@@ -16,7 +16,7 @@ from urllib.parse import urlparse
 
 from utils.pager import Pager
 from utils.time import pretty_datetime, pretty_timedelta
-from utils.string_helpers import shorten
+from utils.string import shorten
 from utils.lookup import DiscordLookup
 from config import BOT_ACTIVITY
 from cogs.mixins import AceMixin
@@ -96,7 +96,7 @@ class Owner(AceMixin, commands.Cog):
 
 	@commands.command(hidden=True)
 	async def test(self, ctx):
-		print('hi!')
+		self.bot.dispatch('log', ctx.message, action='benis')
 
 	@commands.command(name='raise', hidden=True)
 	async def _raise(self, ctx, type: str, *, message: str):

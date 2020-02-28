@@ -4,7 +4,7 @@ from discord.ext import commands
 import re
 
 from cogs.ahk.ids import AHK_GUILD_ID
-from utils.checks import is_mod
+from utils.context import is_mod
 from cogs.mixins import AceMixin
 
 DELETE_EMOJI = '\N{Put Litter in Its Place Symbol}'

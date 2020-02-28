@@ -9,11 +9,12 @@ from datetime import datetime
 from cogs.mixins import AceMixin
 from utils.time import pretty_datetime
 from utils.pager import Pager
-from utils.prompter import prompter, admin_prompter, ADMIN_PROMPT_ABORTED, PROMPT_PERMS
-from utils.checks import is_mod_pred
+from utils.context import can_prompt, PROMPT_ADMIN_ABORTED
 
 
 log = logging.getLogger(__name__)
+
+ACCESS_ERROR = commands.CommandError('Tag not found or you do not have edit permissions for it.')
 
 
 def build_tag_name(record):
@@ -72,8 +73,6 @@ class TagCreateConverter(commands.Converter):
 
 
 class TagEditConverter(commands.Converter):
-	ACCESS_ERROR = commands.CommandError('Tag not found or you do not have edit permissions for it.')
-
 	async def convert(self, ctx, tag_name):
 		tag_name = tag_name.lower()
 
@@ -83,19 +82,19 @@ class TagEditConverter(commands.Converter):
 		)
 
 		if rec is None:
-			raise self.ACCESS_ERROR
+			raise ACCESS_ERROR
 
 		# check if invoker owns tag
 		if rec.get('user_id') != ctx.author.id:
 
 			# if not, and user is not moderator, raise access error
-			if not await is_mod_pred(ctx):
-				raise self.ACCESS_ERROR
+			if not await ctx.is_mod():
+				raise ACCESS_ERROR
 
 			# if user is moderator, run the admin prompt
-			if not await admin_prompter(ctx):
+			if not await ctx.admin_prompt():
 				# if it returns false, abort
-				raise ADMIN_PROMPT_ABORTED
+				raise PROMPT_ADMIN_ABORTED
 
 		return tag_name, rec
 
@@ -219,7 +218,7 @@ class Tags(AceMixin, commands.Cog):
 		'''Retrieve a tags content.'''
 
 		if tag_name is None:
-			await self.bot.invoke_help(ctx, 'tag')
+			await ctx.send_help(self.tag)
 			return
 
 		tag_name, record = tag_name
@@ -238,7 +237,7 @@ class Tags(AceMixin, commands.Cog):
 		await ctx.send(f'Tag \'{tag_name}\' created.')
 
 	@tag.command()
-	@commands.bot_has_permissions(**PROMPT_PERMS)
+	@can_prompt()
 	async def edit(self, ctx, tag_name: TagEditConverter, *, new_content: commands.clean_content = None):
 		'''Edit an existing tag.'''
 
@@ -254,11 +253,11 @@ class Tags(AceMixin, commands.Cog):
 		await ctx.send(f"Tag \'{record.get('name')}\' edited.")
 
 	@tag.command(aliases=['remove'])
-	@commands.bot_has_permissions(**PROMPT_PERMS)
+	@can_prompt()
 	async def delete(self, ctx, *, tag_name: TagEditConverter):
 		'''Delete a tag.'''
 
-		if not await prompter(ctx, title='Are you sure?', prompt='This will delete the tag permanently.'):
+		if not await ctx.prompt(title='Are you sure?', prompt='This will delete the tag permanently.'):
 			raise commands.CommandError('Tag deletion aborted.')
 
 		tag_name, record = tag_name
@@ -370,7 +369,7 @@ class Tags(AceMixin, commands.Cog):
 		await ctx.send(discord.utils.escape_markdown(record.get('content')))
 
 	@tag.command()
-	@commands.bot_has_permissions(**PROMPT_PERMS)
+	@can_prompt()
 	async def rename(self, ctx, old_name: TagEditConverter, *, new_name: TagCreateConverter):
 		'''Rename a tag.'''
 
@@ -384,7 +383,7 @@ class Tags(AceMixin, commands.Cog):
 		await ctx.send(f"Tag \'{record.get('name')}\' renamed to \'{new_name}\'.")
 
 	@tag.command()
-	@commands.bot_has_permissions(**PROMPT_PERMS)
+	@can_prompt()
 	async def alias(self, ctx, tag_name: TagEditConverter, *, alias: TagCreateConverter = None):
 		'''Give a tag an alias. Omit the alias parameter to clear existing alias.'''
 
@@ -446,7 +445,7 @@ class Tags(AceMixin, commands.Cog):
 		await ctx.send(embed=e)
 
 	@tag.command()
-	@commands.bot_has_permissions(**PROMPT_PERMS)
+	@can_prompt()
 	async def transfer(self, ctx, tag_name: TagEditConverter, *, new_owner: discord.Member):
 		'''Transfer a tag to another member.'''
 

@@ -6,8 +6,8 @@ from discord.ext import commands
 from typing import Union
 
 from cogs.mixins import AceMixin
-from utils.checks import is_mod, is_mod_pred
-from utils.string_helpers import present_object
+from utils.context import is_mod
+from utils.string import po
 
 log = logging.getLogger(__name__)
 
@@ -139,14 +139,17 @@ class Feeds(AceMixin, commands.Cog):
 		publisher_id = feed.get('publisher_id')
 
 		async def can_pub():
+			# moderators can publish to any feed
+			if await ctx.is_mod():
+				return True
+
+			# otherwise only allow publishing if member is publisher_id
+			# or, has a role which is publisher_id
 			if publisher_id is not None:
 				if publisher_id == ctx.author.id:
 					return True
 				elif any(role.id == publisher_id for role in ctx.author.roles):
 					return True
-
-			if await is_mod_pred(ctx):
-				return True
 
 			return False
 
@@ -181,7 +184,7 @@ class Feeds(AceMixin, commands.Cog):
 			await role.edit(mentionable=False)
 		except discord.HTTPException:
 			raise commands.CommandError(
-				'Message sent successfully, but failed to make role unmentionable. Please do this manually.'
+				'Message published successfully, but failed to make role unmentionable. Please do this manually.'
 			)
 
 		try:
@@ -189,7 +192,7 @@ class Feeds(AceMixin, commands.Cog):
 		except discord.HTTPException:
 			pass
 
-		log.info('{} published to feed {} in {}'.format(present_object(ctx.author), feed, present_object(ctx.guild)))
+		log.info('{} published to feed {} in {}'.format(po(ctx.author), feed, po(ctx.guild)))
 
 	@commands.group(hidden=True)
 	async def feed(self, ctx):

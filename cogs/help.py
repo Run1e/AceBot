@@ -68,11 +68,6 @@ class PaginatedHelpCommand(commands.HelpCommand):
 		self.context = ctx
 		self.pager = HelpPager(ctx, list(), per_page=1)
 
-		if self.pager.static:
-			ctx.bot.static_help_command.context = ctx
-			ctx.bot.static_help_command.missing_perms = self.pager.missing_perms
-			await ctx.bot.static_help_command.command_callback(ctx, command=command)
-
 	async def add_cog(self, cog):
 		cog_name = cog.__class__.__name__
 		cog_desc = cog.__doc__
@@ -90,9 +85,6 @@ class PaginatedHelpCommand(commands.HelpCommand):
 		self.pager.add_page(cog_name, cog_desc, cmds)
 
 	async def send_bot_help(self, mapping):
-		if self.pager.static:
-			return
-
 		for cog in mapping:
 			if cog is not None:
 				await self.add_cog(cog)
@@ -100,16 +92,10 @@ class PaginatedHelpCommand(commands.HelpCommand):
 		await self.pager.go()
 
 	async def send_cog_help(self, cog):
-		if self.pager.static:
-			return
-
 		await self.add_cog(cog)
 		await self.pager.go()
 
 	async def send_group_help(self, group):
-		if self.pager.static:
-			return
-
 		if group.cog_name.lower() == group.name.lower():
 			await self.send_cog_help(group.cog)
 			return
@@ -128,9 +114,6 @@ class PaginatedHelpCommand(commands.HelpCommand):
 		await self.pager.go()
 
 	async def send_command_help(self, command):
-		if self.pager.static:
-			return
-
 		cog_name = command.cog_name
 
 		if cog_name is not None and cog_name.lower() == command.name:
@@ -164,19 +147,10 @@ class PaginatedHelpCommand(commands.HelpCommand):
 
 
 class EditedMinimalHelpCommand(commands.MinimalHelpCommand):
-	async def send_pages(self):
-		"""A helper utility to send the page output from :attr:`paginator` to the destination."""
-		destination = self.get_destination()
-		for page in self.paginator.pages:
-			try:
-				await destination.send(page)
-			except discord.HTTPException:
-				return
-
 	def get_ending_note(self):
 		return (
-			'NOTE: The custom help command menu did not get sent because the bot is missing '
-			'the following permissions - ' + ', '.join(self.missing_perms)
+			'The interactive help menu did not get sent because the bot is missing '
+			'the following permissions: ' + ', '.join(self.missing_perms)
 		)
 
 	async def send_error_message(self, error):

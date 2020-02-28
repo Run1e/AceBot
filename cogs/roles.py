@@ -6,10 +6,9 @@ import asyncio
 from discord.ext import commands
 
 from cogs.mixins import AceMixin
-from utils.checks import is_mod_pred
+from utils.context import can_prompt
 from utils.configtable import ConfigTable
-from utils.string_helpers import shorten, present_object
-from utils.prompter import prompter
+from utils.string import shorten, po
 
 log = logging.getLogger(__name__)
 
@@ -394,7 +393,7 @@ class Roles(AceMixin, commands.Cog):
 		return (ctx.channel.id, ctx.author.id) not in self.editing
 
 	async def cog_check(self, ctx):
-		return await is_mod_pred(ctx)
+		return await ctx.is_mod()
 
 	def set_editing(self, ctx):
 		self.editing.add((ctx.channel.id, ctx.author.id))
@@ -407,10 +406,11 @@ class Roles(AceMixin, commands.Cog):
 
 	@commands.group(hidden=True, invoke_without_command=True)
 	async def roles(self, ctx):
-		await self.bot.invoke_help(ctx, 'roles')
+		await ctx.send_help(self.roles)
 
 	@roles.command()
-	@commands.bot_has_permissions(embed_links=True, add_reactions=True, manage_messages=True) # already has PROMPT_PERMS
+	@can_prompt()
+	@commands.bot_has_permissions(manage_messages=True)
 	async def editor(self, ctx):
 		'''Editor for selectors and roles.'''
 
@@ -552,8 +552,8 @@ class Roles(AceMixin, commands.Cog):
 					if head.role_pos is None:
 
 						if len(head.selector.roles):
-							p = prompter(
-								ctx, 'Delete selector?',
+							p = ctx.prompt(
+								'Delete selector?',
 								'The selector you\'re trying to delete has {} roles inside it.'.format(
 									len(head.selector.roles)
 								)
@@ -897,10 +897,10 @@ class Roles(AceMixin, commands.Cog):
 
 		log.info('{} {} {} {} in {}'.format(
 			'Added' if do_add else 'Removed',
-			present_object(role),
+			po(role),
 			'to' if do_add else 'from',
-			present_object(member),
-			present_object(guild)
+			po(member),
+			po(guild)
 		))
 
 

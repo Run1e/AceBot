@@ -1,12 +1,12 @@
 import discord
 import logging
+import asyncio
 
 from discord.ext import commands
 
 
 from cogs.mixins import AceMixin
-from utils.checks import is_mod_pred
-from utils.string_helpers import craft_welcome, present_object
+from utils.string import po
 from utils.configtable import ConfigTable, ConfigTableRecord
 
 
@@ -18,7 +18,6 @@ WELCOME_NOT_SET_UP_ERROR = commands.CommandError(
 
 
 class WelcomeRecord(ConfigTableRecord):
-
 	@property
 	def channel(self):
 		if self.channel_id is None:
@@ -46,7 +45,7 @@ class Welcome(AceMixin, commands.Cog):
 		self.config = ConfigTable(bot, 'welcome', 'guild_id', WelcomeRecord)
 
 	async def cog_check(self, ctx):
-		return await is_mod_pred(ctx)
+		return await ctx.is_mod()
 
 	@commands.Cog.listener()
 	async def on_member_join(self, member):
@@ -66,16 +65,31 @@ class Welcome(AceMixin, commands.Cog):
 		if channel is None:
 			return
 
+		# sleep a bit and then dispatch welcome event
+		await asyncio.sleep(2)
+		self.bot.dispatch('welcome', member, channel, entry.content)
+
+	@commands.Cog.listener()
+	async def on_welcome(self, member, channel, message):
+		replace_table = dict(
+			guild=member.guild.name,
+			user=member.mention,
+			member_count=member.guild.member_count
+		)
+
+		for key, val in replace_table.items():
+			message = message.replace('{' + key + '}', str(val))
+
 		try:
-			await channel.send(craft_welcome(member, entry.content))
+			await channel.send(message)
 		except discord.HTTPException:
 			pass
 
-		log.info('Sending welcome message for {} in {}'.format(present_object(member), present_object(member.guild)))
+		log.info('Sending welcome message for {} in {}'.format(po(member), po(member.guild)))
 
 	@commands.group(hidden=True, invoke_without_command=True)
 	async def welcome(self, ctx):
-		await self.bot.invoke_help(ctx, 'welcome')
+		await ctx.send_help(self.welcome)
 
 	@welcome.command(aliases=['msg'])
 	async def message(self, ctx, *, message: str):

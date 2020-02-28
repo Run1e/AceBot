@@ -3,7 +3,7 @@ import asyncio
 
 from math import ceil
 
-STATIC_PERMS = ('add_reactions', 'manage_messages')
+STATIC_PERMS = ('add_reactions', 'manage_messages', 'embed_links')
 
 FIRST_EMOJI = '\N{BLACK LEFT-POINTING DOUBLE TRIANGLE WITH VERTICAL BAR}'
 NEXT_EMOJI = '\N{BLACK RIGHT-POINTING DOUBLE TRIANGLE}'

@@ -127,11 +127,11 @@ class ConfigTable:
 		if not construct and keys in self._non_existent:
 			return None
 
-		get_query = 'SELECT * FROM {} WHERE '.format(self.table) + self.build_predicate()
-
 		async with self._lock:
 			if keys in self.entries:
 				return self.entries[keys]
+
+			get_query = 'SELECT * FROM {} WHERE '.format(self.table) + self.build_predicate()
 
 			record = await self.bot.db.fetchrow(get_query, *keys)
 

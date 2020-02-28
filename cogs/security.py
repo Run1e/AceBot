@@ -7,7 +7,7 @@ from discord.ext import commands
 from enum import IntEnum
 
 from cogs.mixins import AceMixin
-from utils.checks import is_mod_pred
+from utils.context import AceContext
 from utils.configtable import ConfigTable, ConfigTableRecord
 
 
@@ -114,20 +114,26 @@ class Security(AceMixin, commands.Cog):
 
 		self.config = ConfigTable(bot, 'security', 'guild_id', record_class=SecurityConfigRecord)
 
-	async def do_action(self, member, action, reason=None, message=None):
+	async def do_action(self, message, action, reason):
 		'''Called when an event happens.'''
 
-		conf = await self.bot.config.get_entry(member.guild.id)
+		member = message.author
 
-		# if member is moderator, ignore the action
-		if message is not None and await is_mod_pred(message):
-			await self.bot.security_log(
-				target=conf, action='IGNORED {} (MEMBER IS MOD)'.format(action.name), reason=reason,
-				severity=0, member=member, message=message
+		conf = await self.bot.config.get_entry(member.guild.id)
+		ctx = await self.bot.get_context(message, cls=AceContext)
+
+		# ignore if member is mod
+		if await ctx.is_mod():
+			self.bot.dispatch(
+				'log', message,
+				action='IGNORED {} (MEMBER IS MOD)'.format(action.name),
+				reason=reason,
+				severity=0
 			)
 
 			return
 
+		# otherwise, check against security actions and perform punishment
 		try:
 			if action is SecurityAction.MUTE:
 				mute_role = conf.mute_role
@@ -144,20 +150,12 @@ class Security(AceMixin, commands.Cog):
 				await member.ban(delete_message_days=0, reason=reason)
 
 		except Exception as exc:
-			# log failures
-			await self.bot.security_log(
-				target=conf, action='{} FAILED'.format(action.name), reason=str(exc),
-				severity=2, member=member, message=message
-			)
-
+			# log error if something happened
+			self.bot.dispatch('log', message, action='{} FAILED'.format(action.name), reason=str(exc), severity=2)
 			return
 
-		# otherwise, log success
-		await self.bot.security_log(
-			target=conf, action=action.name, reason=reason,
-			severity=dict(MUTE=0, KICK=1, BAN=2)[action.name],
-			member=member, message=message
-		)
+		# log successful security event
+		self.bot.dispatch('log', message, action=action.name, reason=reason, severity=action.value)
 
 	@commands.Cog.listener()
 	async def on_message(self, message):
@@ -168,11 +166,11 @@ class Security(AceMixin, commands.Cog):
 			return
 
 		mc = await self.config.get_entry(message.guild.id, construct=False)
+
 		if mc is None:
 			return
 
 		if mc.spam_enabled:
-
 			# with a lock, figure out if user is spamming
 			async with SPAM_LOCK:
 				res = mc.spam_cooldown.update_rate_limit(message)
@@ -182,8 +180,7 @@ class Security(AceMixin, commands.Cog):
 			# if so, perform the spam action
 			if res is not None:
 				await self.do_action(
-					message.author, SecurityAction(mc.spam_action),
-					reason='Member is spamming', message=message
+					message, SecurityAction(mc.spam_action), reason='Member is spamming'
 				)
 
 		if mc.mention_enabled and message.mentions:
@@ -198,12 +195,11 @@ class Security(AceMixin, commands.Cog):
 
 			if res is not None:
 				await self.do_action(
-					message.author, SecurityAction(mc.mention_action),
-					reason='Member is spamming mentions', message=message
+					message, SecurityAction(mc.mention_action), reason='Member is mention spamming'
 				)
 
 	async def cog_check(self, ctx):
-		return await is_mod_pred(ctx)
+		return await ctx.is_mod()
 
 	def _print_status(self, boolean):
 		return 'ENABLED' if boolean else 'DISABLED'

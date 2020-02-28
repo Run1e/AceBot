@@ -8,10 +8,10 @@ from datetime import datetime, timedelta
 from cogs.mixins import AceMixin
 from cogs.ahk.ids import RULES_MSG_ID
 from utils.databasetimer import DatabaseTimer
-from utils.time import pretty_datetime, pretty_timedelta
-from utils.converters import TimeMultConverter, TimeDeltaConverter
-from utils.checks import is_mod, member_is_mod
-from utils.string_helpers import present_object
+from utils.time import pretty_datetime, pretty_timedelta, TimeMultConverter, TimeDeltaConverter
+from utils.context import is_mod
+from utils.fakemember import FakeMember
+from utils.string import po
 
 log = logging.getLogger(__name__)
 
@@ -53,15 +53,6 @@ class BannedMember(commands.Converter):
 		return entity
 
 
-class FakeMember:
-	def __init__(self, id, name, avatar_url):
-		self.id = id
-		self.nick = name
-		self.display_name = name
-		self.avatar_url = avatar_url
-		self.mention = '<@{0.id}>'.format(self)
-
-
 class Moderator(AceMixin, commands.Cog):
 	'''Simple moderation commands.'''
 
@@ -93,13 +84,15 @@ class Moderator(AceMixin, commands.Cog):
 
 		user_id = record.get('user_id')
 
-		member = self.bot.get_user(user_id)
-		if member is None:
-			member = FakeMember(id=user_id, name=record.get('name'), avatar_url=record.get('avatar_url'))
+		await guild.unban(discord.Object(user_id), reason=reason)
 
-		await guild.unban(member, reason=reason)
-
-		await self.bot.security_log(target=guild, action='UNBAN', reason=reason, member=member, severity=2)
+		self.bot.dispatch(
+			'log',
+			FakeMember(id=user_id, name=record.get('name'), avatar_url=record.get('avatar_url'), guild=guild),
+			action='UNBAN',
+			reason=reason,
+			severity=2
+		)
 
 	@commands.Cog.listener()
 	async def on_mute_complete(self, record):
@@ -122,7 +115,7 @@ class Moderator(AceMixin, commands.Cog):
 
 		await member.remove_roles(mute_role, reason=reason)
 
-		await self.bot.security_log(target=conf, action='UNMUTE', reason=reason, member=member, severity=0)
+		self.bot.dispatch('log', member, action='UNMUTE', reason=reason, severity=0)
 
 	@commands.command()
 	@commands.has_permissions(manage_roles=True)
@@ -135,7 +128,7 @@ class Moderator(AceMixin, commands.Cog):
 		delta = amount * unit
 		until = now + delta
 
-		if not await member_is_mod(member):
+		if await ctx.is_mod(member):
 			raise commands.CommandError('Can\'t mute this member.')
 
 		if delta > MAX_DELTA:
@@ -166,7 +159,10 @@ class Moderator(AceMixin, commands.Cog):
 
 		e.add_field(name='Reason', value=reason)
 
-		await ctx.send(embed=e)
+		try:
+			await ctx.send(embed=e)
+		except discord.HTTPException:
+			pass
 
 		self.mute_timer.maybe_restart(until)
 
@@ -174,15 +170,13 @@ class Moderator(AceMixin, commands.Cog):
 			self._issuer_text(ctx.guild, ctx.author), pretty_timedelta(delta), reason
 		)
 
-		await self.bot.security_log(
-			target=conf, action='MUTE', reason=full_reason, member=member, message=ctx.message, severity=0
-		)
+		self.bot.dispatch('log', member, action='MUTE', reason=full_reason, severity=0)
 
 		log.info('{} issued a {} tempmute for {} in {}. Reason: {}'.format(
-			present_object(ctx.author),
+			po(ctx.author),
 			pretty_timedelta(delta),
-			present_object(member),
-			present_object(ctx.guild),
+			po(member),
+			po(ctx.guild),
 			reason
 		))
 
@@ -197,7 +191,7 @@ class Moderator(AceMixin, commands.Cog):
 		delta = amount * unit
 		until = now + delta
 
-		if not await member_is_mod(member):
+		if await ctx.is_mod(member):
 			raise commands.CommandError('Can\'t tempban this member.')
 
 		if delta > MAX_DELTA:
@@ -230,22 +224,25 @@ class Moderator(AceMixin, commands.Cog):
 			description='{0.display_name} banned for {1}.'.format(member, pretty_timedelta(delta)),
 		)
 
-		await ctx.send(embed=e)
+		e.add_field(name='Reason', value=reason)
+
+		try:
+			await ctx.send(embed=e)
+		except discord.HTTPException:
+			pass
 
 		issuer = self._issuer_text(ctx.guild, ctx.author)
 		full_reason = 'Issued by: {}\nDuration: {}\nUser messaged: {}\n\nMeta-reason:\n```\n{}\n```'.format(
 			issuer, pretty_timedelta(delta), 'yes' if send_success else 'no', reason
 		)
 
-		await self.bot.security_log(
-			target=ctx.guild, action='TEMPBAN', reason=full_reason, member=member, message=ctx.message, severity=2
-		)
+		self.bot.dispatch('log', member, action='TEMPBAN', reason=full_reason, severity=2)
 
 		log.info('{} issued a {} tempban for {} in {}. Reason: {}'.format(
-			present_object(ctx.author),
+			po(ctx.author),
 			pretty_timedelta(delta),
-			present_object(member),
-			present_object(ctx.guild),
+			po(member),
+			po(ctx.guild),
 			reason
 		))
 
@@ -255,7 +252,7 @@ class Moderator(AceMixin, commands.Cog):
 	async def mute(self, ctx, *, member: discord.Member):
 		'''Mute a member. Kick permissions required.'''
 
-		if not await member_is_mod(member):
+		if await ctx.is_mod(member):
 			raise commands.CommandError('Can\'t mute this member.')
 
 		conf = await self.bot.config.get_entry(ctx.guild.id)
@@ -276,14 +273,12 @@ class Moderator(AceMixin, commands.Cog):
 		except discord.HTTPException:
 			pass
 
-		await self.bot.security_log(
-			target=conf, action='MUTE', reason=reason, message=ctx.message, member=member, severity=0
-		)
+		self.bot.dispatch('log', member, action='MUTE', reason=reason)
 
 		log.info('{} issued a mute on {} in {}. Reason: {}'.format(
-			present_object(ctx.author),
-			present_object(member),
-			present_object(ctx.guild),
+			po(ctx.author),
+			po(member),
+			po(ctx.guild),
 			reason
 		))
 
@@ -293,7 +288,7 @@ class Moderator(AceMixin, commands.Cog):
 	async def unmute(self, ctx, *, member: discord.Member):
 		'''Unmute a member. Kick permissions required.'''
 
-		if not await member_is_mod(member):
+		if await ctx.is_mod(member):
 			raise commands.CommandError('Can\'t unmute this member.')
 
 		conf = await self.bot.config.get_entry(ctx.guild.id)
@@ -314,14 +309,12 @@ class Moderator(AceMixin, commands.Cog):
 		except discord.HTTPException:
 			pass
 
-		await self.bot.security_log(
-			target=conf, action='UNMUTE', reason=reason, message=ctx.message, member=member, severity=0
-		)
+		self.bot.dispatch('log', member, action='UNMUTE', reason=reason, severity=0)
 
 		log.info('{} issued an unmute on {} in {}.'.format(
-			present_object(ctx.author),
-			present_object(member),
-			present_object(ctx.guild)
+			po(ctx.author),
+			po(member),
+			po(ctx.guild)
 		))
 
 	@commands.Cog.listener()
@@ -348,6 +341,9 @@ class Moderator(AceMixin, commands.Cog):
 		conf = await self.bot.config.get_entry(before.guild.id)
 		mute_role = conf.mute_role
 
+		if mute_role is None:
+			return
+
 		if mute_role in br - ar:
 			_id = await self.db.fetchval(
 				'DELETE FROM muted WHERE guild_id=$1 AND user_id=$2 RETURNING id',
@@ -357,9 +353,6 @@ class Moderator(AceMixin, commands.Cog):
 			self.mute_timer.restart_if(lambda r: r.get('id') == _id)
 
 		elif mute_role in ar - br:
-			if not await member_is_mod(after):
-				return
-
 			try:
 				await self.db.execute(
 					'INSERT INTO muted (guild_id, user_id) VALUES ($1, $2)',
@@ -385,8 +378,9 @@ class Moderator(AceMixin, commands.Cog):
 			)
 
 			if already_muted:
-				reason = 'Re-muting new member who was previously muted'
+				reason = 'Re-muting newly joined member who was previously muted'
 				await member.add_roles(mute_role, reason=reason)
+				self.bot.dispatch('log', member, action='MUTE', reason=reason, severity=0)
 
 	@commands.command()
 	@commands.has_permissions(manage_messages=True)
@@ -421,7 +415,7 @@ class Moderator(AceMixin, commands.Cog):
 		count = len(deleted)
 
 		log.info('{} deleted {} messages in {}'.format(
-			present_object(ctx.author), count, present_object(ctx.guild)
+			po(ctx.author), count, po(ctx.guild)
 		))
 
 		await ctx.send(f'Deleted {count} message{"s" if count > 1 else ""}.', delete_after=5)

@@ -5,9 +5,9 @@ from discord.ext import commands, tasks
 from datetime import datetime, timedelta
 from asyncpg.exceptions import UniqueViolationError
 
-from utils.checks import is_mod, is_mod_pred
+from utils.context import is_mod
 from utils.configtable import ConfigTable, ConfigTableRecord
-from utils.prompter import prompter, admin_prompter, ADMIN_PROMPT_ABORTED, PROMPT_PERMS
+from utils.context import can_prompt, PROMPT_ADMIN_ABORTED
 from cogs.mixins import AceMixin
 
 log = logging.getLogger(__name__)
@@ -130,7 +130,7 @@ class Starboard(AceMixin, commands.Cog):
 		'''Star a message by ID.'''
 
 		if message_id is None:
-			await self.bot.invoke_help(ctx, 'star')
+			await ctx.send_help(self._star)
 			return
 
 		board = await self.get_board(ctx.guild.id)
@@ -148,7 +148,8 @@ class Starboard(AceMixin, commands.Cog):
 
 	@_star.command()
 	@is_mod()
-	@commands.bot_has_permissions(manage_channels=True, manage_roles=True, **PROMPT_PERMS)
+	@can_prompt()
+	@commands.bot_has_permissions(manage_channels=True, manage_roles=True)
 	async def create(self, ctx):
 		'''Creates a new starboard.'''
 
@@ -165,7 +166,7 @@ class Starboard(AceMixin, commands.Cog):
 				'`{}support`'.format(ctx.prefix)
 			)
 
-			result = await prompter(ctx, title='The previous starboard seems to have been deleted.', prompt=prompt)
+			result = await ctx.prompt(title='The previous starboard seems to have been deleted.', prompt=prompt)
 
 			if not result:
 				raise commands.CommandError('Aborted starboard creation.')
@@ -359,7 +360,8 @@ class Starboard(AceMixin, commands.Cog):
 		await ctx.send(', '.join(parts) + '.')
 
 	@_star.command()
-	@commands.bot_has_permissions(manage_messages=True, **PROMPT_PERMS)
+	@can_prompt()
+	@commands.bot_has_permissions(manage_messages=True)
 	async def delete(self, ctx, *, message_id: StarConverter):
 		'''Remove a starred message. The author, starrer or any moderator can use this on any given starred message.'''
 
@@ -369,7 +371,7 @@ class Starboard(AceMixin, commands.Cog):
 		if ctx.author.id not in (row.get('user_id'), row.get('starrer_id')):
 
 			# if not, check if invoker is moderator
-			if not await is_mod_pred(ctx):
+			if not await ctx.is_mod():
 				# if not, raise
 				raise commands.CommandError(
 					'Only moderators, the original starrer or the original messages author '
@@ -377,8 +379,8 @@ class Starboard(AceMixin, commands.Cog):
 				)
 
 			# if invoker is moderator, run the admin prompter
-			if not await admin_prompter(ctx):
-				raise ADMIN_PROMPT_ABORTED
+			if not await ctx.admin_prompt():
+				raise PROMPT_ADMIN_ABORTED
 
 		await self.db.execute('DELETE FROM star_msg WHERE id=$1', row.get('id'))
 
