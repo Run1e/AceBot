@@ -20,10 +20,10 @@ class Dwitter(AceMixin, commands.Cog):
 
 	@commands.Cog.listener()
 	async def on_message(self, message):
-		if message.guild is None or message.guild.id not in self.guilds:
+		if message.guild is None or message.author.bot:
 			return
 
-		if message.author.bot:
+		if message.guild.id not in self.guilds:
 			return
 
 		short = OrderedDict.fromkeys(re.findall(r'.?(d/(\d*)).?', message.content))

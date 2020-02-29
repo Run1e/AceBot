@@ -159,10 +159,7 @@ class Security(AceMixin, commands.Cog):
 
 	@commands.Cog.listener()
 	async def on_message(self, message):
-		if message.guild is None:
-			return
-
-		if message.author.bot:
+		if message.guild is None or message.author.bot:
 			return
 
 		mc = await self.config.get_entry(message.guild.id, construct=False)

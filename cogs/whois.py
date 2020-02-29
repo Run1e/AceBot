@@ -25,10 +25,10 @@ class WhoIs(AceMixin, commands.Cog):
 
 	@commands.Cog.listener()
 	async def on_message(self, message):
-		if message.guild is None or message.guild.id != AHK_GUILD_ID:
+		if message.guild is None or message.author.bot:
 			return
 
-		if message.author.bot:
+		if message.guild.id != AHK_GUILD_ID:
 			return
 
 		await self.db.execute(

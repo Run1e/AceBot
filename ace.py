@@ -166,7 +166,10 @@ class AceBot(commands.Bot):
 		)
 
 	async def on_message(self, message):
-		if message.author.bot or self.db is None or not self.db._initialized:
+		if message.guild is None or message.author.bot:
+			return
+
+		if self.db is None or not self.db._initialized:
 			return
 
 		await self.process_commands(message)
@@ -183,9 +186,6 @@ class AceBot(commands.Bot):
 			return
 
 		if ctx.command is None:
-			return
-
-		if ctx.guild is None:
 			return
 
 		perms = ctx.perms
