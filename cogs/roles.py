@@ -90,7 +90,7 @@ class CustomRoleConverter(commands.RoleConverter):
 	async def convert(self, ctx, argument):
 		try:
 			role = await super().convert(ctx, argument)
-		except commands.ConversionError as exc:
+		except commands.CommandError as exc:
 			raise commands.CommandError(str(exc))
 
 		if role == ctx.guild.default_role:
@@ -378,6 +378,7 @@ class Roles(AceMixin, commands.Cog):
 		super().__init__(bot)
 
 		self.editing = set()
+		self.messages = dict()
 
 		self.config = ConfigTable(bot, table='role', primary='guild_id')
 		self.bot.loop.create_task(self.setup_configs())
@@ -455,6 +456,8 @@ class Roles(AceMixin, commands.Cog):
 
 		msg = await ctx.send(embed=discord.Embed(description='Please wait while reactions are being added...'))
 
+		self.messages[ctx.guild.id] = msg
+
 		for emoji in EMBED_EMOJIS:
 			await msg.add_reaction(emoji)
 
@@ -465,6 +468,7 @@ class Roles(AceMixin, commands.Cog):
 			self.unset_editing(ctx)
 			try:
 				await msg.delete()
+				self.messages.pop(ctx.guild.id)
 			except discord.HTTPException:
 				pass
 
@@ -585,6 +589,13 @@ class Roles(AceMixin, commands.Cog):
 	async def editor_error(self, ctx, error):
 		self.unset_editing(ctx)
 
+		# try to delete the embed message if it exists
+		try:
+			msg = self.messages.pop(ctx.guild.id)
+			await msg.delete()
+		except (KeyError, discord.HTTPException):
+			pass
+
 	async def _multiprompt(self, ctx, msg, preds):
 		outs = list()
 
@@ -597,7 +608,10 @@ class Roles(AceMixin, commands.Cog):
 			return e
 
 		for question, test in preds:
-			await msg.edit(embed=new_embed(question))
+			try:
+				await msg.edit(embed=new_embed(question))
+			except discord.HTTPException:
+				raise commands.CommandError('Could not replace the message embed. Did the message get deleted?')
 
 			while True:
 				try:
@@ -681,7 +695,7 @@ class Roles(AceMixin, commands.Cog):
 				else:
 					continue
 
-		e.description = 'Please input a new value for this field.'
+		e.description = 'Please input a new value for \'{}\'.'.format(attr)
 		e.set_footer(text='Send \'exit\' to abort.')
 		await msg.edit(embed=e)
 
@@ -754,7 +768,15 @@ class Roles(AceMixin, commands.Cog):
 					except discord.HTTPException:
 						pass
 
-		ids = list()
+		msgs = list()
+
+		async def delete_all():
+			for m in msgs:
+				try:
+					await m.delete()
+				except discord.HTTPException:
+					pass
+
 
 		for selector in selectors:
 
@@ -791,12 +813,21 @@ class Roles(AceMixin, commands.Cog):
 
 			msg = await ctx.send(embed=e)
 
-			ids.append(msg.id)
+			msgs.append(msg)
 
-			for role in roles:
-				await msg.add_reaction(role.get('emoji'))
+			try:
+				for role in roles:
+					emoj = role.get('emoji')
+					await msg.add_reaction(emoj)
+			except discord.HTTPException:
+				await delete_all()
+				raise commands.CommandError(
+					'Failed adding the emoji {}.\nIf the emoji has been deleted, change it in the editor.'.format(
+						emoj
+					)
+				)
 
-		await conf.update(channel_id=ctx.channel.id, message_ids=ids)
+		await conf.update(channel_id=ctx.channel.id, message_ids=list(msg.id for msg in msgs))
 
 	@roles.command()
 	async def notify(self, ctx):

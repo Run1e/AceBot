@@ -37,11 +37,14 @@ def can_prompt():
 class AceContext(commands.Context):
 	def __init__(self, **kwargs):
 		super().__init__(**kwargs)
-		self._perms = None
 
 	@property
 	def db(self):
 		return self.bot.db
+
+	@property
+	def http(self):
+		return self.bot.aiohttp
 
 	@property
 	def perms(self):
