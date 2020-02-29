@@ -381,14 +381,6 @@ class Roles(AceMixin, commands.Cog):
 		self.messages = dict()
 
 		self.config = ConfigTable(bot, table='role', primary='guild_id')
-		self.bot.loop.create_task(self.setup_configs())
-
-	# init configs
-	async def setup_configs(self):
-		records = await self.db.fetch('SELECT * FROM {}'.format(self.config.table))
-
-		for record in records:
-			await self.config.insert_record(record)
 
 	async def bot_check(self, ctx):
 		return (ctx.channel.id, ctx.author.id) not in self.editing

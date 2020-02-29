@@ -384,12 +384,12 @@ discord.Message.delete = patched_delete
 
 
 async def patched_execute(self, query, args, limit, timeout, return_status=False):
-	print(query)
+	log.debug(query)
 	return await self._real_execute(query, args, limit, timeout, return_status)
 
 
-#asyncpg.Connection._real_execute = asyncpg.Connection._execute
-#asyncpg.Connection._execute = patched_execute
+asyncpg.Connection._real_execute = asyncpg.Connection._execute
+asyncpg.Connection._execute = patched_execute
 
 
 # monkey-patched Embed class to force embed color
@@ -401,19 +401,24 @@ class Embed(discord.Embed):
 
 discord.Embed = Embed
 
-if __name__ == '__main__':
 
+def init_folders():
 	# create additional folders
 	for path in ('data', 'logs', 'error', 'feedback'):
 		if not os.path.exists(path):
 			os.makedirs(path)
 
+
+def init_logging():
+	global log
+
 	# init first log file
 	if not os.path.isfile('logs/log.log'):
 		open('logs/log.log', 'w+')
 
-	# set logging levels for discord and gino lib
-	logging.getLogger('discord').setLevel(logging.DEBUG)
+	# set logging levels for discord and asyncpg
+	logging.getLogger('discord').setLevel(logging.INFO)
+	logging.getLogger('websockets').setLevel(logging.INFO)
 	logging.getLogger('asyncpg').setLevel(logging.DEBUG)
 
 	# we want out logging formatted like this everywhere
@@ -437,5 +442,9 @@ if __name__ == '__main__':
 	log.addHandler(stream)
 	log.addHandler(file)
 
-	# start the bot
+if __name__ == '__main__':
+	# inits
+	init_folders()
+	init_logging()
+
 	AceBot().run(BOT_TOKEN)
