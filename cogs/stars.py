@@ -466,8 +466,13 @@ class Starboard(AceMixin, commands.Cog):
 		else:
 			# new star. post it and store it
 
-			if message is None or star_channel is None:
-				return # undef behaviour
+			if star_channel is None:
+				raise commands.CommandError('I don\'t know where to post this. Try setting the starboard again.')
+
+			# message=None happens if the message being starred originated from the starboard, this setting
+			# star_message=message and message=None
+			if message is None:
+				raise commands.CommandError('Can\'t star messages from the starboard.')
 
 			if message.author == starrer:
 				raise commands.CommandError('Can\'t star your own message.')
