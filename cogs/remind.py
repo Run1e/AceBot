@@ -77,6 +77,8 @@ class Reminders(AceMixin, commands.Cog):
 	`.remindme call back david in 10 minutes`
 	`.remindme apply for job 17th of august`
 	`.remindme tomorrow take out trash`
+
+	Absolute dates/times are in UTC.
 	'''
 
 	def __init__(self, bot):

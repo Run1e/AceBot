@@ -442,6 +442,7 @@ def init_logging():
 	log.addHandler(stream)
 	log.addHandler(file)
 
+
 if __name__ == '__main__':
 	# inits
 	init_folders()

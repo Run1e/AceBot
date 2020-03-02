@@ -13,14 +13,24 @@ from cogs.mixins import AceMixin
 from utils.pager import Pager
 from utils.docs_parser import parse_docs
 from utils.html2markdown import HTML2Markdown
+from utils.string import po
+from utils.time import pretty_timedelta
 
 
 log = logging.getLogger(__name__)
 
 AHK_COLOR = 0x95CD95
 RSS_URL = 'https://www.autohotkey.com/boards/feed'
+
 DOCS_FORMAT = 'https://autohotkey.com/docs/{}'
 DOCS_NO_MATCH = commands.CommandError('Sorry, couldn\'t find an entry similar to that.')
+
+SUGGESTION_PREFIX = 'suggestion:'
+UPVOTE_EMOJI = '\N{Thumbs Up Sign}'
+DOWNVOTE_EMOJI = '\N{Thumbs Down Sign}'
+
+INACTIVITY_LIMIT = timedelta(weeks=12)
+
 
 
 class DocsPagePager(Pager):
@@ -58,6 +68,7 @@ class AutoHotkey(AceMixin, commands.Cog):
 		self.rss_time = datetime.now(tz=timezone(timedelta(hours=1))) - timedelta(minutes=1)
 
 		self.rss.start()
+		self.helper_purge.start()
 
 	def parse_date(self, date_str):
 		date_str = date_str.strip()
@@ -98,6 +109,118 @@ class AutoHotkey(AceMixin, commands.Cog):
 					await self.forum_thread_channel.send(embed=e)
 
 				self.rss_time = time
+
+	@tasks.loop(hours=24)
+	async def helper_purge(self):
+		guild = self.bot.get_guild(AHK_GUILD_ID)
+		if guild is None:
+			return
+
+		role = guild.get_role(HELPERS_ROLE_ID)
+		if role is None:
+			return
+
+		past = datetime.utcnow() - INACTIVITY_LIMIT
+
+		all_helpers = list(member for member in guild.members if role in member.roles)
+		helpers = list(member for member in all_helpers if member.joined_at < past)
+
+		spare = await self.bot.db.fetch(
+			'SELECT user_id FROM seen WHERE guild_id=$1 AND user_id=ANY($2::bigint[]) AND seen>$3',
+			AHK_GUILD_ID, list(member.id for member in helpers), past
+		)
+
+		spare_ids = list(record.get('user_id') for record in spare)
+		remove = list(member for member in helpers if member.id not in spare_ids)
+
+		if not remove:
+			return
+
+		log.info(
+			'About to purge {} helpers. Current list: {}'.format(
+				len(remove), ', '.join(list(str(member.id) for member in all_helpers))
+			)
+		)
+
+		log.info('Removing inactive helpers:\n{}'.format('\n'.join(list(po(member) for member in remove))))
+
+		reason = 'Removed helper inactive for over {0}.'.format(pretty_timedelta(INACTIVITY_LIMIT))
+
+		for member in remove:
+			try:
+				await member.remove_roles(
+					role,
+					reason=reason
+				)
+			except discord.HTTPException as e:
+				self.bot.dispatch(
+					'log', member,
+					action='FAILED REMOVE HELPER',
+					reason='Failed removing role.\n\nException:\n```{}```'.format(str(e)),
+					severity=0
+				)
+				continue
+
+			self.bot.dispatch(
+				'log', member,
+				action='REMOVE HELPER',
+				reason=reason,
+				severity=0
+			)
+
+	def _is_suggestion(self, message):
+		return (
+			message.channel.id == SUGGESTIONS_CHAN_ID
+			and
+			message.content[:len(SUGGESTION_PREFIX)].lower() == SUGGESTION_PREFIX
+		)
+
+	@commands.Cog.listener()
+	async def on_message(self, message):
+		if message.guild is None or message.author.bot:
+			return
+
+		if not self._is_suggestion(message):
+			return
+
+		for emoji in (UPVOTE_EMOJI, DOWNVOTE_EMOJI):
+			await message.add_reaction(emoji)
+
+	@commands.Cog.listener()
+	async def on_raw_reaction_add(self, pl):
+		if pl.channel_id != SUGGESTIONS_CHAN_ID:
+			return
+
+		if pl.user_id == self.bot.user.id:
+			return
+
+		emoji = str(pl.emoji)
+
+		if emoji == UPVOTE_EMOJI:
+			other = DOWNVOTE_EMOJI
+		elif emoji == DOWNVOTE_EMOJI:
+			other = UPVOTE_EMOJI
+		else:
+			return
+
+		channel = self.bot.get_channel(SUGGESTIONS_CHAN_ID)
+		if channel is None:
+			return
+
+		try:
+			message = await channel.fetch_message(pl.message_id)
+		except discord.HTTPException:
+			return
+
+		if not self._is_suggestion(message):
+			return
+
+		for reaction in message.reactions:
+			if str(reaction) == other:
+				async for user in reaction.users():
+					if user.id == pl.user_id:
+						await message.remove_reaction(reaction.emoji, user)
+						return
 
 	def craft_docs_page(self, record):
 		page = record.get('page')
