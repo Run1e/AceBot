@@ -428,7 +428,7 @@ class AutoHotkey(AceMixin, commands.Cog):
 			'$top': 1,
 		}
 
-		async with self.bot.aiohttp.get(url, params=params) as resp:
+		async with ctx.http.get(url, params=params) as resp:
 			if resp.status != 200:
 				raise commands.CommandError('Query failed.')
 
@@ -461,7 +461,7 @@ class AutoHotkey(AceMixin, commands.Cog):
 
 		url = 'https://api.github.com/repos/Lexikos/AutoHotkey_L/releases'
 
-		async with self.bot.aiohttp.get(url) as resp:
+		async with ctx.http.get(url) as resp:
 			if resp.status != 200:
 				raise commands.CommandError('Query failed.')
 

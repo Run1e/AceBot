@@ -23,6 +23,8 @@ class HarshnessConverter(commands.Converter):
 
 
 class Linus(AceMixin, commands.Cog):
+	'''Linus hates your code.'''
+
 	async def get_rant_for_phrase(self, ctx, hate):
 		if hate is None:
 			rant = await self.db.fetchrow('SELECT * FROM linus_rant ORDER BY random() LIMIT 1')
@@ -56,7 +58,7 @@ class Linus(AceMixin, commands.Cog):
 	@commands.command(hidden=True)
 	async def harder(self, ctx, should_only_be_linus: str):
 		if should_only_be_linus.lower() != 'linus':
-			return
+			raise commands.CommandNotFound('Has to be \'harder linus\'.')
 
 		await ctx.invoke(self.linus, harshness=7)
 

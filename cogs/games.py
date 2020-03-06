@@ -204,7 +204,7 @@ class Games(AceMixin, commands.Cog):
 			params['category'] = choice(category) if category is list else category
 
 		try:
-			async with self.bot.aiohttp.get(API_URL, params=params) as resp:
+			async with ctx.http.get(API_URL, params=params) as resp:
 				if resp.status != 200:
 					self.trivia.reset_cooldown(ctx)
 					raise REQUEST_FAILED

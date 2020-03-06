@@ -213,7 +213,7 @@ class Owner(AceMixin, commands.Cog):
 
 		async with ctx.channel.typing():
 			try:
-				async with self.bot.aiohttp.get(f'http://google.com/search', params=params, headers=headers) as resp:
+				async with ctx.http.get(f'http://google.com/search', params=params, headers=headers) as resp:
 					if resp.status != 200:
 						raise commands.CommandError(f'Query returned status {resp.status} {resp.reason}')
 

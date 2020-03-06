@@ -61,7 +61,7 @@ class General(AceMixin, commands.Cog):
 
 		async with ctx.channel.typing():
 			try:
-				async with self.bot.aiohttp.get(url) as resp:
+				async with ctx.http.get(url) as resp:
 					if resp.status != 200:
 						raise self.query_error
 					text = await resp.text()
@@ -86,6 +86,7 @@ class General(AceMixin, commands.Cog):
 	@commands.command(name='8', aliases=['8ball'])
 	async def ball(self, ctx, *, question):
 		'''Classic Magic 8 Ball!'''
+
 		responses = (
 			# yes
 			'It is certain', 'It is decidedly so', 'Without a doubt', 'Yes definitely', 'You may rely on it',
@@ -229,7 +230,7 @@ class General(AceMixin, commands.Cog):
 
 		async with ctx.channel.typing():
 			try:
-				async with self.bot.aiohttp.get('https://api.wolframalpha.com/v1/result', params=params) as resp:
+				async with ctx.http.get('https://api.wolframalpha.com/v1/result', params=params) as resp:
 					if resp.status != 200:
 						raise self.query_error
 
@@ -270,7 +271,7 @@ class General(AceMixin, commands.Cog):
 
 		async with ctx.channel.typing():
 			try:
-				async with self.bot.aiohttp.get(url, params=params) as resp:
+				async with ctx.http.get(url, params=params) as resp:
 					if resp.status != 200:
 						raise self.query_error
 					data = await resp.json()
@@ -313,7 +314,7 @@ class General(AceMixin, commands.Cog):
 		url = 'https://billwurtz.com/'
 
 		async with ctx.typing():
-			async with self.bot.aiohttp.get(url + 'videos.html') as resp:
+			async with ctx.http.get(url + 'videos.html') as resp:
 				if resp.status != 200:
 					raise commands.CommandError('Request failed.')
 
@@ -336,7 +337,7 @@ class General(AceMixin, commands.Cog):
 			url = 'https://xkcd.com/{}'.format(id)
 
 		async with ctx.typing():
-			async with self.bot.aiohttp.get(url) as resp:
+			async with ctx.http.get(url) as resp:
 				if resp.status != 200:
 					raise commands.CommandError('Request failed.')
 

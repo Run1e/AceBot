@@ -160,7 +160,7 @@ class AceBot(commands.Bot):
 		log.info(f'Guild "{guild.name}" unavailable')
 
 	async def on_command_completion(self, ctx):
-		await self.db.execute(
+		await ctx.db.execute(
 			'INSERT INTO log (guild_id, channel_id, user_id, timestamp, command) VALUES ($1, $2, $3, $4, $5)',
 			ctx.guild.id, ctx.channel.id, ctx.author.id, datetime.utcnow(), ctx.command.qualified_name
 		)

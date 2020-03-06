@@ -54,7 +54,7 @@ class Image(AceMixin, commands.Cog):
 
 		async with ctx.typing():
 			try:
-				async with self.aiohttp.get(WOOF_URL + 'woof', params=WOOF_HEADERS) as resp:
+				async with ctx.http.get(WOOF_URL + 'woof', params=WOOF_HEADERS) as resp:
 					if resp.status != 200:
 						raise QUERY_ERROR
 					file = (await resp.text()).lower()
@@ -80,7 +80,7 @@ class Image(AceMixin, commands.Cog):
 
 		async with ctx.typing():
 			try:
-				async with self.aiohttp.get(MEOW_URL, params=MEOW_HEADERS) as resp:
+				async with ctx.http.get(MEOW_URL, params=MEOW_HEADERS) as resp:
 					if resp.status != 200:
 						raise QUERY_ERROR
 					json = await resp.json()
@@ -100,7 +100,7 @@ class Image(AceMixin, commands.Cog):
 
 		async with ctx.typing():
 			try:
-				async with self.aiohttp.get(QUACK_URL,) as resp:
+				async with ctx.http.get(QUACK_URL,) as resp:
 					if resp.status != 200:
 						raise QUERY_ERROR
 					json = await resp.json()
@@ -120,7 +120,7 @@ class Image(AceMixin, commands.Cog):
 
 		async with ctx.typing():
 			try:
-				async with self.aiohttp.get(FLOOF_URL) as resp:
+				async with ctx.http.get(FLOOF_URL) as resp:
 					if resp.status != 200:
 						raise QUERY_ERROR
 					json = await resp.json()
