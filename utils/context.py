@@ -54,6 +54,13 @@ class AceContext(commands.Context):
 	def pretty(self):
 		return '{0.display_name} ({0.id}) in {1.name} ({1.id})'.format(self.author, self.guild)
 
+	@property
+	def stamp(self):
+		return 'TIME: {}\nGUILD: {}\nCHANNEL: #{}\nAUTHOR: {}\nMESSAGE ID: {}'.format(
+			pretty_datetime(self.message.created_at), po(self.guild), po(self.channel),
+			po(self.author), str(self.message.id)
+		)
+
 	async def is_mod(self, member=None):
 		'''Check if invoker or member has bot moderator rights.'''
 
@@ -96,12 +103,6 @@ class AceContext(commands.Context):
 			command = command.qualified_name
 
 		await help_cmd.command_callback(self, command=command)
-
-	def stamp(self):
-		return 'TIME: {}\nGUILD: {}\nCHANNEL: #{}\nAUTHOR: {}\nMESSAGE ID: {}'.format(
-			pretty_datetime(self.message.created_at), po(self.guild), po(self.channel),
-			po(self.author), str(self.message.id)
-		)
 
 	async def prompt(self, title=None, prompt=None):
 		'''Creates a yes/no prompt.'''

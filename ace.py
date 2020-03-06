@@ -253,7 +253,7 @@ class AceBot(commands.Bot):
 			content = (
 				'{}\n\nMESSAGE CONTENT:\n{}\n\nCOMMAND: {}\nARGS: {}\nKWARGS: {}\n\nTRACEBACK:\n{}'
 			).format(
-				ctx.stamp(), ctx.message.content, ctx.command.qualified_name,
+				ctx.stamp, ctx.message.content, ctx.command.qualified_name,
 				saferepr(ctx.args[2:]), saferepr(ctx.kwargs), tb
 			)
 

@@ -154,7 +154,7 @@ class Meta(AceMixin, commands.Cog):
 		'''Give me some feedback about the bot!'''
 
 		with open('feedback/{}.feedback'.format(str(ctx.message.id)), 'w', encoding='utf-8-sig') as f:
-			f.write(ctx.stamp() + '\n\n' + feedback)
+			f.write(ctx.stamp + '\n\n' + feedback)
 
 		await ctx.send('Feedback sent. Thanks for helping improve the bot!')
 
