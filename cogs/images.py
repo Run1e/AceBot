@@ -48,7 +48,7 @@ class Image(AceMixin, commands.Cog):
 
 	@commands.command(aliases=['dog'])
 	@commands.cooldown(rate=6, per=10.0, type=commands.BucketType.user)
-	@commands.bot_has_permissions(attach_files=True)
+	@commands.bot_has_permissions(embed_links=True)
 	async def woof(self, ctx):
 		'''Get a random doggo!'''
 
@@ -71,7 +71,7 @@ class Image(AceMixin, commands.Cog):
 
 	@commands.command(aliases=['cat'])
 	@commands.cooldown(rate=6, per=10.0, type=commands.BucketType.user)
-	@commands.bot_has_permissions(attach_files=True)
+	@commands.bot_has_permissions(embed_links=True)
 	async def meow(self, ctx):
 		'''Get a random cat image!'''
 
@@ -94,7 +94,7 @@ class Image(AceMixin, commands.Cog):
 
 	@commands.command(aliases=['duck'])
 	@commands.cooldown(rate=6, per=10.0, type=commands.BucketType.user)
-	@commands.bot_has_permissions(attach_files=True)
+	@commands.bot_has_permissions(embed_links=True)
 	async def quack(self, ctx):
 		'''Get a random duck image!'''
 
@@ -114,7 +114,7 @@ class Image(AceMixin, commands.Cog):
 
 	@commands.command(aliases=['fox'])
 	@commands.cooldown(rate=6, per=10.0, type=commands.BucketType.user)
-	@commands.bot_has_permissions(attach_files=True)
+	@commands.bot_has_permissions(embed_links=True)
 	async def floof(self, ctx):
 		'''~floooof~'''
 
