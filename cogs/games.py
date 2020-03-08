@@ -14,11 +14,10 @@ from typing import Optional, Union
 from cogs.mixins import AceMixin
 from utils.configtable import ConfigTable
 
-
 log = logging.getLogger(__name__)
 
-
 REQUEST_FAILED = commands.CommandError('Request failed, try again later.')
+
 
 # TRIVIA CONSTANTS
 
@@ -150,7 +149,7 @@ class Games(AceMixin, commands.Cog):
 					await asyncio.sleep(10)
 					asyncio.create_task(self.get_trivia_categories())
 					return
-		
+
 				res = await resp.json()
 		except asyncio.TimeoutError:
 			return
