@@ -21,9 +21,12 @@ QUOTES = (
 
 WOOF_URL = 'https://random.dog/'
 WOOF_HEADERS = dict(filter='mp4')
+
 MEOW_URL = 'https://api.thecatapi.com/v1/images/search'
 MEOW_HEADERS = dict(api_key=THECATAPI_KEY)
+
 QUACK_URL = 'https://random-d.uk/api/v1/random'
+
 FLOOF_URL = 'https://randomfox.ca/floof/'
 
 
@@ -33,7 +36,7 @@ log = logging.getLogger(__name__)
 class Image(AceMixin, commands.Cog):
 	''':heart_eyes: :heart_eyes: :heart_eyes:'''
 
-	QUERY_EXCEPTIONS = (discord.HTTPException, aiohttp.ClientError, asyncio.TimeoutError, QUERY_ERROR)
+	QUERY_EXCEPTIONS = (discord.HTTPException, aiohttp.ClientError, asyncio.TimeoutError, commands.CommandError)
 	EXCEPTION_FORMAT = 'Resorting to file system cache: {}'
 
 	def __init__(self, bot):

@@ -19,7 +19,6 @@ from utils.fakemember import FakeMember
 from utils.time import pretty_seconds
 from utils.configtable import ConfigTable, ConfigTableRecord
 
-
 EXTENSIONS = (
 	'cogs.general',
 	'cogs.images',
@@ -44,7 +43,6 @@ EXTENSIONS = (
 	'cogs.linus',
 	'cogs.owner'
 )
-
 
 self_deleted = list()
 
@@ -285,7 +283,7 @@ class AceBot(commands.Bot):
 			e.description = str(exc)
 
 		elif isinstance(exc, (commands.CheckFailure, commands.CommandNotFound)):
-			return # *specifically* do nothing on these
+			return  # *specifically* do nothing on these
 
 		elif isinstance(exc, commands.CommandError):
 			e.description = str(exc)
@@ -378,6 +376,7 @@ async def patched_delete(self, *, delay=None):
 		self_deleted.pop()
 
 	await self.real_delete(delay=delay)
+
 
 discord.Message.real_delete = discord.Message.delete
 discord.Message.delete = patched_delete

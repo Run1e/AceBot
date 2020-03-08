@@ -78,7 +78,7 @@ class Starboard(AceMixin, commands.Cog):
 
 		self.purger.start()
 
-	@tasks.loop(minutes=10)
+	@tasks.loop(minutes=20)
 	async def purger(self):
 		'''Purges old and underperforming stars depending on guild starboard settings.'''
 
@@ -537,7 +537,7 @@ class Starboard(AceMixin, commands.Cog):
 			await self.update_star_count(record.get('message_id'), star_message, starrer_count + 1)
 
 		else:
-			pass # ???
+			pass  # ???
 
 	async def _on_star_event_meta(self, event, board, message, starrer):
 		# get the starmessage record if it exists
