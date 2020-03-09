@@ -1,23 +1,23 @@
-import discord
-import asyncpg
-import aiohttp
-import logging
-import traceback
-import logging.handlers
-import sys
-import os
 import json
-
-from discord.ext import commands
-from pprint import saferepr
+import logging
+import logging.handlers
+import os
+import sys
+import traceback
 from datetime import datetime
+from pprint import saferepr
 
-from config import *
+import aiohttp
+import asyncpg
+import discord
+from discord.ext import commands
+
 from cogs.help import PaginatedHelpCommand, EditedMinimalHelpCommand
+from config import *
+from utils.configtable import ConfigTable, ConfigTableRecord
 from utils.context import AceContext
 from utils.fakemember import FakeMember
 from utils.time import pretty_seconds
-from utils.configtable import ConfigTable, ConfigTableRecord
 
 EXTENSIONS = (
 	'cogs.general',

@@ -139,12 +139,17 @@ class AceContext(commands.Context):
 			except discord.HTTPException:
 				pass
 
-	async def admin_prompt(self):
-		return await self.prompt(
+	async def admin_prompt(self, raise_on_abort=True):
+		result = await self.prompt(
 			title='Warning!',
 			prompt=(
 				'You are about to do an administrative action on an item you do not own.\n\n'
 				'Are you sure you want to continue?'
 			)
 		)
+
+		if raise_on_abort and not result:
+			raise PROMPT_ADMIN_ABORTED
+
+		return result
 

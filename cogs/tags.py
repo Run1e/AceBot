@@ -92,9 +92,7 @@ class TagEditConverter(commands.Converter):
 				raise ACCESS_ERROR
 
 			# if user is moderator, run the admin prompt
-			if not await ctx.admin_prompt():
-				# if it returns false, abort
-				raise PROMPT_ADMIN_ABORTED
+			await ctx.admin_prompt(raise_on_abort=True)
 
 		return tag_name, rec
 

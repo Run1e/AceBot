@@ -379,8 +379,7 @@ class Starboard(AceMixin, commands.Cog):
 				)
 
 			# if invoker is moderator, run the admin prompter
-			if not await ctx.admin_prompt():
-				raise PROMPT_ADMIN_ABORTED
+			await ctx.admin_prompt(raise_on_abort=True)
 
 		await self.db.execute('DELETE FROM star_msg WHERE id=$1', row.get('id'))
 

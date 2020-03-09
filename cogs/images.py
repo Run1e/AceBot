@@ -37,7 +37,6 @@ class Image(AceMixin, commands.Cog):
 	''':heart_eyes: :heart_eyes: :heart_eyes:'''
 
 	QUERY_EXCEPTIONS = (discord.HTTPException, aiohttp.ClientError, asyncio.TimeoutError, commands.CommandError)
-	EXCEPTION_FORMAT = 'Resorting to file system cache: {}'
 
 	def __init__(self, bot):
 		super().__init__(bot)
