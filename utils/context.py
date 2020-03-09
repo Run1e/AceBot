@@ -9,7 +9,6 @@ from utils.string import po
 
 PROMPT_REQUIRED_PERMS = ('embed_links', 'add_reactions')
 PROMPT_EMOJIS = ('\N{WHITE HEAVY CHECK MARK}', '\N{CROSS MARK}')
-PROMPT_ADMIN_ABORTED = commands.CommandError('Administrative action aborted.')
 
 
 async def is_mod_pred(ctx):
@@ -149,7 +148,7 @@ class AceContext(commands.Context):
 		)
 
 		if raise_on_abort and not result:
-			raise PROMPT_ADMIN_ABORTED
+			raise commands.CommandError('Administrative action aborted.')
 
 		return result
 
