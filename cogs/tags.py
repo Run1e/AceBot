@@ -9,7 +9,7 @@ from datetime import datetime
 from cogs.mixins import AceMixin
 from utils.time import pretty_datetime
 from utils.pager import Pager
-from utils.context import can_prompt, PROMPT_ADMIN_ABORTED
+from utils.context import can_prompt
 
 
 log = logging.getLogger(__name__)

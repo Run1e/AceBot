@@ -7,7 +7,7 @@ from asyncpg.exceptions import UniqueViolationError
 
 from utils.context import is_mod
 from utils.configtable import ConfigTable, ConfigTableRecord
-from utils.context import can_prompt, PROMPT_ADMIN_ABORTED
+from utils.context import can_prompt
 from cogs.mixins import AceMixin
 
 log = logging.getLogger(__name__)
