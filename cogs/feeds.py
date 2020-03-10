@@ -192,7 +192,7 @@ class Feeds(AceMixin, commands.Cog):
 		except discord.HTTPException:
 			pass
 
-		log.info('{} published to feed {} in {}'.format(po(ctx.author), feed, po(ctx.guild)))
+		log.info('{} published to feed {} in {}'.format(po(ctx.author), feed.get('name'), po(ctx.guild)))
 
 	@commands.group(hidden=True)
 	async def feed(self, ctx):
@@ -231,6 +231,14 @@ class Feeds(AceMixin, commands.Cog):
 	async def delete(self, ctx, *, feed: FeedConverter):
 		'''Delete a feed.'''
 
+		coro = ctx.prompt(
+			title='Warning!',
+			prompt='This will also delete the associated *role*. Are you sure you want to do this?'
+		)
+
+		if not await coro:
+			raise commands.CommandError('Aborted feed deletion.')
+
 		role_id = await self.db.fetchval('DELETE FROM feed WHERE id=$1 RETURNING role_id', feed.get('id'))
 
 		role = ctx.guild.get_role(role_id)
@@ -242,6 +250,42 @@ class Feeds(AceMixin, commands.Cog):
 				pass
 
 		await ctx.send('Feed deleted.')
+
+	@feed.group()
+	async def info(self, ctx, *, feed: FeedConverter):
+		'''Show info about a feed.'''
+
+		name = feed.get('name')
+		channel_id = feed.get('channel_id')
+		role_id = feed.get('role_id')
+		publisher_id = feed.get('publisher_id')
+
+		e = discord.Embed(title=name)
+		e.set_author(name='Feed', icon_url=self.bot.user.avatar_url)
+
+		e.add_field(name='Channel', value='<#{0}>'.format(channel_id))
+		e.add_field(name='Subscriber role', value='<@&{0}>'.format(role_id))
+
+		if publisher_id is None:
+			e.add_field(name='Publisher', value='Bot moderators.')
+		else:
+			publisher = ctx.guild.get_role(publisher_id)
+			if publisher is None:
+				publisher = ctx.guild.get_member(publisher_id)
+
+			if publisher is None:
+				e.add_field(
+					name='Publisher',
+					value='Bot moderators. Publisher previously set but not found, please set it again.',
+					inline=False
+				)
+			else:
+				e.add_field(name='Publisher', value=publisher.mention, inline=False)
+
+		try:
+			await ctx.send(embed=e)
+		except discord.HTTPException:
+			pass
 
 	@feed.group(hidden=True)
 	async def edit(self, ctx):
