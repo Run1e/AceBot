@@ -252,6 +252,8 @@ class Feeds(AceMixin, commands.Cog):
 		await ctx.send('Feed deleted.')
 
 	@feed.group()
+	@is_mod()
+	@commands.bot_has_permissions(embed_links=True)
 	async def info(self, ctx, *, feed: FeedConverter):
 		'''Show info about a feed.'''
 
@@ -287,11 +289,7 @@ class Feeds(AceMixin, commands.Cog):
 		except discord.HTTPException:
 			pass
 
-	@feed.group(hidden=True)
-	async def edit(self, ctx):
-		pass
-
-	@edit.command()
+	@feed.command()
 	@is_mod()
 	@commands.has_permissions(manage_roles=True)
 	@commands.bot_has_permissions(manage_roles=True)
@@ -301,7 +299,7 @@ class Feeds(AceMixin, commands.Cog):
 		await self.db.execute('UPDATE feed SET name=$1 WHERE id=$2', feed_name, feed.get('id'))
 		await ctx.send('Feed name updated to `{}`'.format(feed_name))
 
-	@edit.command()
+	@feed.command()
 	@is_mod()
 	@commands.has_permissions(manage_roles=True)
 	@commands.bot_has_permissions(manage_roles=True)
@@ -311,12 +309,12 @@ class Feeds(AceMixin, commands.Cog):
 		await self.db.execute('UPDATE feed SET channel_id=$1 WHERE id=$2', channel.id, feed.get('id'))
 		await ctx.send('Publishing channel of feed `{}` changed to {}'.format(feed.get('name'), channel.mention))
 
-	@edit.command()
+	@feed.command()
 	@is_mod()
 	@commands.has_permissions(manage_roles=True)
 	@commands.bot_has_permissions(manage_roles=True)
 	async def publisher(self, ctx, feed: FeedConverter, *, publisher: Union[discord.Member, discord.Role] = None):
-		'''Set a member or role that can publish to a feed.'''
+		'''Set a member or role that can publish to a feed. Leave publisher empty to clear.'''
 
 		value = publisher.id if publisher is not None else None
 		await self.db.execute('UPDATE feed SET publisher_id=$1 WHERE id=$2', value, feed.get('id'))
