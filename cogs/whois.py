@@ -21,7 +21,6 @@ class WhoIs(AceMixin, commands.Cog):
 
 	def __init__(self, bot):
 		super().__init__(bot)
-		self.nick_cache = dict()
 
 	@commands.Cog.listener()
 	async def on_message(self, message):
@@ -39,16 +38,10 @@ class WhoIs(AceMixin, commands.Cog):
 
 	@commands.Cog.listener()
 	async def on_member_update(self, before, after):
-		if before.guild.id != AHK_GUILD_ID:
+		if before.bot or before.guild.id != AHK_GUILD_ID:
 			return
 
-		if before.bot:
-			return
-
-		key = (after.guild.id, after.id)
-
-		# if the current nick is the same as the last stored one, aborterino
-		if key in self.nick_cache and self.nick_cache[key] == after.display_name:
+		if before.display_name == after.display_name:
 			return
 
 		now = datetime.utcnow()
@@ -65,10 +58,6 @@ class WhoIs(AceMixin, commands.Cog):
 				'INSERT INTO nick (guild_id, user_id, nick, stored_at) VALUES ($1, $2, $3, $4)',
 				before.guild.id, before.id, nick, now
 			)
-
-			last_nick = nick
-
-		self.nick_cache[key] = last_nick
 
 	@commands.command()
 	@commands.bot_has_permissions(embed_links=True)
