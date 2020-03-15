@@ -86,16 +86,7 @@ class AceBot(commands.Bot):
 		self.remove_command('help')
 		self.add_command(commands.Command(self._help, name='help'))
 
-		cmd = commands.Command(self._level, name='level')
-		cmd.add_check(commands.is_owner())
-		self.add_command(cmd)
-
 		self.extension_mtimes = dict()
-
-	async def _level(self, ctx, *, level):
-		lvl = getattr(logging, level.upper())
-		logging.getLogger().setLevel(lvl)
-		await ctx.send('Logging level is {0}'.format(lvl))
 
 	async def on_connect(self):
 		'''Called on connection with the Discord gateway.'''

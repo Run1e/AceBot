@@ -101,6 +101,12 @@ class Owner(AceMixin, commands.Cog):
 	async def test(self, ctx):
 		raise ValueError('test')
 
+	@commands.command(hidden=True, aliases=['lvl'])
+	async def level(self, ctx, *, level):
+		lvl = getattr(logging, level.upper())
+		logging.getLogger().setLevel(lvl)
+		await ctx.send('Logging level is {0}'.format(lvl))
+
 	@commands.command(name='raise', hidden=True)
 	async def _raise(self, ctx, type: str, *, message: str):
 		raise globals()[type](message)
