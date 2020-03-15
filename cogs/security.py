@@ -79,7 +79,10 @@ class ActionConverter(commands.Converter):
 
 class CountConverter(commands.Converter):
 	async def convert(self, ctx, count):
-		count = int(count)
+		try:
+			count = int(count)
+		except ValueError:
+			raise commands.CommandError('Input has to be integer.')
 
 		if count < 3:
 			raise commands.CommandError('Setting count less than 3 is not recommended.')
@@ -89,7 +92,10 @@ class CountConverter(commands.Converter):
 
 class PerConverter(commands.Converter):
 	async def convert(self, ctx, per):
-		per = float(per)
+		try:
+			per = float(per)
+		except ValueError:
+			raise commands.CommandError('Argument has to be float.')
 
 		if per < 3.0:
 			raise commands.CommandError('Setting per less than 3 is not recommended.')

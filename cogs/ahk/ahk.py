@@ -175,7 +175,7 @@ class AutoHotkey(AceMixin, commands.Cog):
 			message.content[:len(SUGGESTION_PREFIX)].lower() == SUGGESTION_PREFIX
 		)
 
-	@commands.Cog.listener()
+	#@commands.Cog.listener()
 	async def on_message(self, message):
 		if message.guild is None or message.author.bot:
 			return

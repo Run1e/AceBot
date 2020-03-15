@@ -24,7 +24,7 @@ class DatabaseTimer:
 		self.record = None
 		self.task = self.start_task()
 
-		log.info('Creating DatabaseTimer for table "{}" on column "{}"'.format(table, column))
+		log.info('Creating DatabaseTimer for table "{0}" on column "{1}"'.format(table, column))
 
 	def start_task(self):
 		return self.bot.loop.create_task(self.dispatch())

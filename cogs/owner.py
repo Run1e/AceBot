@@ -4,6 +4,7 @@ import textwrap
 import traceback
 import asyncio
 import copy
+import logging
 
 from discord.ext import commands
 from discord.mixins import Hashable
@@ -20,6 +21,8 @@ from utils.string import shorten
 from utils.lookup import DiscordLookup
 from config import BOT_ACTIVITY
 from cogs.mixins import AceMixin
+
+log = logging.getLogger(__name__)
 
 
 class DiscordObjectPager(Pager):
@@ -96,7 +99,7 @@ class Owner(AceMixin, commands.Cog):
 
 	@commands.command(hidden=True)
 	async def test(self, ctx):
-		self.bot.dispatch('log', ctx.message, action='benis')
+		raise ValueError('test')
 
 	@commands.command(name='raise', hidden=True)
 	async def _raise(self, ctx, type: str, *, message: str):
@@ -165,17 +168,24 @@ class Owner(AceMixin, commands.Cog):
 
 	@commands.command(name='reload', aliases=['rl'])
 	@commands.bot_has_permissions(add_reactions=True)
-	async def _reload(self, ctx, *, module: str):
+	async def _reload(self, ctx):
 		'''Reloads a module.'''
 
-		try:
-			module = 'cogs.' + module
-			self.bot.unload_extension(module)
-			self.bot.load_extension(module)
-		except Exception:
-			await ctx.send(f'```py\n{traceback.format_exc()}\n```')
+		reloaded = list()
+
+		for ext, time in self.bot.extension_mtimes.items():
+			new_time = self.bot.get_extension_time(ext)
+			if new_time > time:
+				self.bot.unload_extension(ext)
+				self.bot.load_extension(ext)
+				self.bot.extension_mtimes[ext] = new_time
+				reloaded.append(ext)
+
+		if reloaded:
+			log.info('Reloaded cogs: ' + ', '.join(reloaded))
+			await ctx.send('Reloaded cogs: ' + ', '.join('`{0}`'.format(ext) for ext in reloaded))
 		else:
-			await ctx.message.add_reaction('\N{OK HAND SIGN}')
+			await ctx.send('Nothing to reload.')
 
 	@commands.command()
 	async def repeat(self, ctx, repeats: int, *, command):
