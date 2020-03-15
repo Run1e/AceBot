@@ -86,7 +86,16 @@ class AceBot(commands.Bot):
 		self.remove_command('help')
 		self.add_command(commands.Command(self._help, name='help'))
 
+		cmd = commands.Command(self._level, name='level')
+		cmd.add_check(commands.is_owner())
+		self.add_command(cmd)
+
 		self.extension_mtimes = dict()
+
+	async def _level(self, ctx, *, level):
+		lvl = getattr(logging, level.upper())
+		logging.getLogger().setLevel(lvl)
+		await ctx.send('Logging level is {0}'.format(lvl))
 
 	async def on_connect(self):
 		'''Called on connection with the Discord gateway.'''
@@ -177,7 +186,6 @@ class AceBot(commands.Bot):
 		return gc.prefix or DEFAULT_PREFIX
 
 	async def on_command_error(self, ctx, exc):
-
 		async with CommandErrorLogic(ctx, exc) as handler:
 			if isinstance(exc, commands.CommandInvokeError):
 				if isinstance(exc.original, discord.HTTPException):
@@ -293,7 +301,7 @@ def setup_logger():
 		open('logs/log.log', 'w+')
 
 	# set logging levels for various libs
-	logging.getLogger('discord').setLevel(logging.DEBUG)
+	logging.getLogger('discord').setLevel(logging.INFO)
 	logging.getLogger('websockets').setLevel(logging.INFO)
 	logging.getLogger('asyncpg').setLevel(logging.INFO)
 	logging.getLogger('asyncio').setLevel(logging.INFO)
@@ -302,16 +310,16 @@ def setup_logger():
 	fmt = logging.Formatter('{asctime} [{levelname}] {name}: {message}', datefmt='%Y-%m-%d %H:%M:%S', style='{')
 
 	stream = ColorStreamHandler(sys.stdout)
-	stream.setLevel(LOG_LEVEL)
 	stream.setFormatter(fmt)
+	stream.setLevel(logging.DEBUG)
 
 	file = logging.handlers.TimedRotatingFileHandler('logs/log.log', when='midnight', encoding='utf-8-sig')
-	file.setLevel(logging.INFO)
 	file.setFormatter(fmt)
+	file.setLevel(logging.INFO)
 
 	# get the __main__ logger and add handlers
 	root = logging.getLogger()
-	root.setLevel(logging.DEBUG)
+	root.setLevel(LOG_LEVEL)
 	root.addHandler(stream)
 	root.addHandler(file)
 

@@ -59,9 +59,9 @@ class Image(AceMixin, commands.Cog):
 				async with ctx.http.get(WOOF_URL + 'woof', params=WOOF_HEADERS) as resp:
 					if resp.status != 200:
 						raise QUERY_ERROR
-					file = (await resp.text()).lower()
+					file = await resp.text()
 
-				if file.endswith('.webm'):
+				if file.lower().endswith('.webm'):
 					log.info('woof got webm, reinvoking...')
 					await ctx.reinvoke()
 					return

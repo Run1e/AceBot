@@ -33,8 +33,8 @@ class _AnsiColorStreamHandler(logging.StreamHandler):
 	CRITICAL = RED
 	ERROR = RED
 	WARNING = YELLOW
-	INFO = GREEN
-	DEBUG = CYAN
+	INFO = DEFAULT
+	DEBUG = GREEN
 
 	@classmethod
 	def _get_color(cls, level):
