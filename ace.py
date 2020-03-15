@@ -19,6 +19,7 @@ from utils.fakemember import FakeMember
 from utils.guildconfigrecord import GuildConfigRecord
 from utils.time import pretty_seconds
 from utils.colorstreamhandler import ColorStreamHandler
+from utils.string import po
 
 EXTENSIONS = (
 	'cogs.general',
@@ -124,7 +125,11 @@ class AceBot(commands.Bot):
 	async def on_guild_unavailable(self, guild):
 		log.info(f'Guild "{guild.name}" unavailable')
 
-	async def on_command_completion(self, ctx):
+	async def on_command(self, ctx):
+		spl = ctx.message.content.split('\n')
+		log.info('%s in %s: %s', ctx.author.display_name, ctx.guild.name, spl[0] + (' ...' if len(spl) > 1 else ''))
+
+	async def on_command_completion(self, ctx: AceContext):
 		await ctx.db.execute(
 			'INSERT INTO log (guild_id, channel_id, user_id, timestamp, command) VALUES ($1, $2, $3, $4, $5)',
 			ctx.guild.id, ctx.channel.id, ctx.author.id, datetime.utcnow(), ctx.command.qualified_name
