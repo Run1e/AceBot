@@ -24,7 +24,7 @@ class DatabaseTimer:
 		self.record = None
 		self.task = self.start_task()
 
-		log.info('Creating DatabaseTimer for table "{0}" on column "{1}"'.format(table, column))
+		log.debug('Creating DatabaseTimer for table "{0}" on column "{1}"'.format(table, column))
 
 	def start_task(self):
 		return self.bot.loop.create_task(self.dispatch())
@@ -46,7 +46,7 @@ class DatabaseTimer:
 
 				# if none was found, sleep for 40 days and check again
 				if record is None:
-					log.info('No record found for "{}", sleeping'.format(self.table))
+					log.debug('No record found for "{}", sleeping'.format(self.table))
 					await asyncio.sleep(MAX_SLEEP.total_seconds())
 					continue
 
@@ -57,7 +57,7 @@ class DatabaseTimer:
 
 				# if the next record is in the future, sleep until it should be invoked
 				if now < then:
-					log.info('{} dispatching in {}'.format(self.event_name, pretty_timedelta(then - now)))
+					log.debug('{} dispatching in {}'.format(self.event_name, pretty_timedelta(then - now)))
 					await asyncio.sleep(dt.total_seconds())
 
 				self.record = None
@@ -65,7 +65,7 @@ class DatabaseTimer:
 				# delete row before dispatching event
 				await self.bot.db.execute('DELETE FROM {} WHERE id={}'.format(self.table, record.get('id')))
 
-				log.info('Dispatching event {}'.format(self.event_name))
+				log.debug('Dispatching event {}'.format(self.event_name))
 
 				# run it
 				self.bot.dispatch(self.event_name, record)

@@ -168,60 +168,6 @@ class AutoHotkey(AceMixin, commands.Cog):
 				severity=0
 			)
 
-	def _is_suggestion(self, message):
-		return (
-			message.channel.id == SUGGESTIONS_CHAN_ID
-			and
-			message.content[:len(SUGGESTION_PREFIX)].lower() == SUGGESTION_PREFIX
-		)
-
-	#@commands.Cog.listener()
-	async def on_message(self, message):
-		if message.guild is None or message.author.bot:
-			return
-
-		if not self._is_suggestion(message):
-			return
-
-		for emoji in (UPVOTE_EMOJI, DOWNVOTE_EMOJI):
-			await message.add_reaction(emoji)
-
-	@commands.Cog.listener()
-	async def on_raw_reaction_add(self, pl):
-		if pl.channel_id != SUGGESTIONS_CHAN_ID:
-			return
-
-		if pl.user_id == self.bot.user.id:
-			return
-
-		emoji = str(pl.emoji)
-
-		if emoji == UPVOTE_EMOJI:
-			other = DOWNVOTE_EMOJI
-		elif emoji == DOWNVOTE_EMOJI:
-			other = UPVOTE_EMOJI
-		else:
-			return
-
-		channel = self.bot.get_channel(SUGGESTIONS_CHAN_ID)
-		if channel is None:
-			return
-
-		try:
-			message = await channel.fetch_message(pl.message_id)
-		except discord.HTTPException:
-			return
-
-		if not self._is_suggestion(message):
-			return
-
-		for reaction in message.reactions:
-			if str(reaction) == other:
-				async for user in reaction.users():
-					if user.id == pl.user_id:
-						await message.remove_reaction(reaction.emoji, user)
-						return
-
 	def craft_docs_page(self, record):
 		page = record.get('page')
 

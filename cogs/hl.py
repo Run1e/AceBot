@@ -70,6 +70,9 @@ class Highlighter(AceMixin, commands.Cog):
 	async def on_raw_reaction_add(self, payload):
 		'''Listens for raw reactions and removes a highlighted message if appropriate.'''
 
+		if payload.guild_id is None:
+			return
+
 		if str(payload.emoji) != DELETE_EMOJI or payload.user_id == self.bot.user.id:
 			return
 

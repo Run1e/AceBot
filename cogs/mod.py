@@ -80,7 +80,7 @@ class Moderator(AceMixin, commands.Cog):
 			return
 
 		issuer = self._issuer_text(guild, record.get('mod_id'))
-		reason = 'Completed tempban issued by {}'.format(issuer)
+		reason = 'Completed tempban issued by {0}'.format(issuer)
 
 		user_id = record.get('user_id')
 
@@ -111,7 +111,7 @@ class Moderator(AceMixin, commands.Cog):
 			return
 
 		issuer = self._issuer_text(guild, record.get('mod_id'))
-		reason = 'Completed tempmute issued by {}'.format(issuer)
+		reason = 'Completed tempmute issued by {0}'.format(issuer)
 
 		await member.remove_roles(mute_role, reason=reason)
 

@@ -1,26 +1,27 @@
-import discord
-import io
-import textwrap
-import traceback
 import asyncio
 import copy
+import io
 import logging
-
-from discord.ext import commands
-from discord.mixins import Hashable
-from bs4 import BeautifulSoup
+import textwrap
+import traceback
 from contextlib import redirect_stdout
-from tabulate import tabulate
-from asyncpg.exceptions import UniqueViolationError
 from datetime import datetime, timedelta
 from urllib.parse import urlparse
 
-from utils.pager import Pager
-from utils.time import pretty_datetime, pretty_timedelta
-from utils.string import shorten
-from utils.lookup import DiscordLookup
-from config import BOT_ACTIVITY
+import discord
+from asyncpg.exceptions import UniqueViolationError
+from bs4 import BeautifulSoup
+from discord.ext import commands
+from discord.mixins import Hashable
+from tabulate import tabulate
+
 from cogs.mixins import AceMixin
+from config import BOT_ACTIVITY
+from utils.context import AceContext
+from utils.lookup import DiscordLookup
+from utils.pager import Pager
+from utils.string import shorten
+from utils.time import pretty_datetime, pretty_timedelta
 
 log = logging.getLogger(__name__)
 
@@ -118,9 +119,9 @@ class Owner(AceMixin, commands.Cog):
 		msg = await ctx.send('Wait...')
 
 		await msg.edit(content='Response: {}.\nGateway: {}'.format(
-				pretty_timedelta(msg.created_at - ctx.message.created_at),
-				pretty_timedelta(timedelta(seconds=self.bot.latency))
-			)
+			pretty_timedelta(msg.created_at - ctx.message.created_at),
+			pretty_timedelta(timedelta(seconds=self.bot.latency))
+		)
 		)
 
 	@commands.command()
@@ -177,15 +178,7 @@ class Owner(AceMixin, commands.Cog):
 	async def _reload(self, ctx):
 		'''Reloads a module.'''
 
-		reloaded = list()
-
-		for ext, time in self.bot.extension_mtimes.items():
-			new_time = self.bot.get_extension_time(ext)
-			if new_time > time:
-				self.bot.unload_extension(ext)
-				self.bot.load_extension(ext)
-				self.bot.extension_mtimes[ext] = new_time
-				reloaded.append(ext)
+		reloaded = self.bot.load_extensions()
 
 		if reloaded:
 			log.info('Reloaded cogs: ' + ', '.join(reloaded))
@@ -203,7 +196,7 @@ class Owner(AceMixin, commands.Cog):
 		msg = copy.copy(ctx.message)
 		msg.content = ctx.prefix + command
 
-		new_ctx = await self.bot.get_context(msg)
+		new_ctx = await self.bot.get_context(msg, cls=AceContext)
 
 		for i in range(repeats):
 			await new_ctx.reinvoke()

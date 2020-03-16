@@ -833,8 +833,10 @@ class Roles(AceMixin, commands.Cog):
 
 	@commands.Cog.listener()
 	async def on_raw_reaction_add(self, payload):
-
 		guild_id = payload.guild_id
+		if guild_id is None:
+			return
+
 		channel_id = payload.channel_id
 		message_id = payload.message_id
 		user_id = payload.user_id

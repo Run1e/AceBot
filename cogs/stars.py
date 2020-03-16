@@ -73,7 +73,7 @@ class Starboard(AceMixin, commands.Cog):
 			FROM star_msg
 			WHERE guild_id = $1
 			AND starred_at < $2
-			AND (SELECT COUNT(id) from starrers where starrers.star_id=star_msg.id) < $3
+			AND (SELECT COUNT(id) FROM starrers WHERE starrers.star_id=star_msg.id) < $3
 		'''
 
 		self.purger.start()
@@ -578,6 +578,9 @@ class Starboard(AceMixin, commands.Cog):
 		await event(starrer, star_channel, message, star_message, row)
 
 	async def _on_star_event(self, payload, event):
+		if payload.guild_id is None:
+			return
+
 		# only listen for star emojis
 		if str(payload.emoji) != STAR_EMOJI:
 			return
@@ -649,6 +652,9 @@ class Starboard(AceMixin, commands.Cog):
 
 	@commands.Cog.listener()
 	async def on_raw_message_delete(self, payload):
+		if payload.guild_id is None:
+			return
+
 		board = await self.config.get_entry(payload.guild_id, construct=False)
 
 		if board is None or board.locked:
@@ -694,6 +700,9 @@ class Starboard(AceMixin, commands.Cog):
 
 	@commands.Cog.listener()
 	async def on_raw_bulk_message_delete(self, payload):
+		if payload.guild_id is None:
+			return
+
 		board = await self.config.get_entry(payload.guild_id, construct=False)
 
 		if board is None or board.locked:
