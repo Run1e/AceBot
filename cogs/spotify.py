@@ -85,8 +85,8 @@ class Spotify(AceMixin, commands.Cog):
 
 		return await self.bot.is_owner(ctx.author)
 
-	def cog_command_error(self, ctx, error):
-		raise error
+	#def cog_command_error(self, ctx, error):
+	#	raise error
 
 	def _new_embed(self, **kwargs):
 		return discord.Embed(color=0x1DB954, **kwargs)
