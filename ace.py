@@ -34,6 +34,7 @@ EXTENSIONS = (
 	'cogs.feeds',
 	'cogs.hl',
 	'cogs.welcome',
+	'cogs.spotify',
 	'cogs.roles',
 	'cogs.whois',
 	'cogs.ahk.ahk',
