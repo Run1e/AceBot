@@ -1,5 +1,5 @@
 import logging
-from asyncio import create_task
+from asyncio import create_task, Event
 from datetime import timedelta
 
 import discord
@@ -11,7 +11,7 @@ from cogs.mixins import AceMixin
 from config import SPOTIFY_ID, SPOTIFY_SECRET
 
 log = logging.getLogger(__name__)
-logging.getLogger('asyncspotify').setLevel(logging.DEBUG)
+#logging.getLogger('asyncspotify').setLevel(logging.DEBUG)
 
 SPOTIFY_ICON_URL = 'https://dashboard.snapcraft.io/site_media/appmedia/2017/12/spotify-linux-256.png'
 
@@ -61,6 +61,8 @@ class Spotify(AceMixin, commands.Cog):
 	def __init__(self, bot):
 		super().__init__(bot)
 
+		self.event = Event()
+
 		self.sp = Client(
 			ClientCredentialsFlow(
 				client_id=SPOTIFY_ID,
@@ -68,12 +70,19 @@ class Spotify(AceMixin, commands.Cog):
 			)
 		)
 
-		create_task(self.sp.authorize())
+		create_task(self.authorize())
+
+	async def authorize(self):
+		await self.sp.authorize()
+		self.event.set()
 
 	def cog_unload(self):
 		create_task(self.sp.close())
 
 	async def cog_check(self, ctx):
+		if not self.event.is_set():
+			await self.event.wait()
+
 		return await self.bot.is_owner(ctx.author)
 
 	def cog_command_error(self, ctx, error):

@@ -178,6 +178,8 @@ LOG_LEVEL       = 'INFO'
 
 BOT_ACTIVITY    = discord.Game(name='@mention for help menu')
 
+SPOTIFY_ID      = 'your spotify id'
+SPOTIFY_SECRET  = 'your spotify secret'
 DBL_KEY         = None
 THECATAPI_KEY   = None
 WOLFRAM_KEY     = None
