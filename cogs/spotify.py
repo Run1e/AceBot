@@ -1,17 +1,17 @@
 import logging
-from asyncio import create_task, Event
+from asyncio import Event, create_task
 from datetime import timedelta
 
 import discord
-from asyncspotify import Client, ClientCredentialsFlow, FullAlbum, FullArtist, FullTrack
+from asyncspotify import Client, ClientCredentialsFlow, FullAlbum, FullArtist, FullPlaylist, FullTrack
 from discord.ext import commands
 
-from utils.time import pretty_datetime
 from cogs.mixins import AceMixin
 from config import SPOTIFY_ID, SPOTIFY_SECRET
+from utils.time import pretty_datetime
 
 log = logging.getLogger(__name__)
-#logging.getLogger('asyncspotify').setLevel(logging.DEBUG)
+# logging.getLogger('asyncspotify').setLevel(logging.DEBUG)
 
 SPOTIFY_ICON_URL = 'https://dashboard.snapcraft.io/site_media/appmedia/2017/12/spotify-linux-256.png'
 
@@ -44,6 +44,16 @@ class AlbumConverter(commands.Converter):
 			raise commands.CommandError('No album found.')
 
 		return await ctx.cog.sp.get_album(album.id)
+
+
+class PlaylistConverter(commands.Converter):
+	async def convert(self, ctx, query=None):
+		playlist = await ctx.cog.sp.search_playlist(query)
+
+		if playlist is None:
+			raise commands.CommandError('No playlist found.')
+
+		return await ctx.cog.sp.get_playlist(playlist.id)
 
 
 def get_url(images):
@@ -83,7 +93,7 @@ class Spotify(AceMixin, commands.Cog):
 		if not self.event.is_set():
 			await self.event.wait()
 
-		return await self.bot.is_owner(ctx.author)
+		return True  # await self.bot.is_owner(ctx.author)
 
 	#def cog_command_error(self, ctx, error):
 	#	raise error
@@ -92,7 +102,7 @@ class Spotify(AceMixin, commands.Cog):
 		return discord.Embed(color=0x1DB954, **kwargs)
 
 	def _craft_track_embed(self, artist: FullArtist, track: FullTrack):
-		#desc = 'on album *[{0}]({1})*'.format(track.album.name, track.album.link)
+		# desc = 'on album *[{0}]({1})*'.format(track.album.name, track.album.link)
 
 		e = self._new_embed(title='*' + track.name + '*', description=None, url=track.link)
 
@@ -142,8 +152,8 @@ class Spotify(AceMixin, commands.Cog):
 				name='Related artists',
 				value='\n'.join(
 					self._list_fmt.format(idx + 1, artist.name, artist.link)
-					for idx, artist in
-					enumerate(related_artists[:3])
+						for idx, artist in
+						enumerate(related_artists[:3])
 				)
 			)
 
@@ -182,6 +192,30 @@ class Spotify(AceMixin, commands.Cog):
 				name='Genres',
 				value=', '.join(album.genres)
 			)
+
+		return e
+
+	def _craft_playlist_embed(self, playlist: FullPlaylist):
+		e = self._new_embed(
+			title=playlist.name,
+			url=playlist.link,
+			description=playlist.description
+		)
+
+		owner = playlist.owner
+		author = dict(name=owner.name, url=owner.link)
+		if owner.images:
+			author['icon_url'] = get_url(owner.images)
+		e.set_author(**author)
+
+		e.set_footer(text=playlist.uri, icon_url=SPOTIFY_ICON_URL)
+
+		if playlist.images:
+			e.set_image(url=get_url(playlist.images))
+
+		e.add_field(name='Tracks', value=str(len(playlist.tracks)))
+		e.add_field(name='Followers', value=playlist.follower_count)
+		e.add_field(name='Collaborative', value='yes' if playlist.collaborative else 'no')
 
 		return e
 
@@ -253,6 +287,16 @@ class Spotify(AceMixin, commands.Cog):
 			return
 
 		e = self._craft_album_embed(artist, album)
+		await ctx.send(embed=e)
+
+	@commands.command()
+	@commands.cooldown(3, 10.0, commands.BucketType.user)
+	async def playlist(self, ctx, *, query: PlaylistConverter):
+		'''Search for a playlist.'''
+
+		playlist: FullPlaylist = query
+
+		e = self._craft_playlist_embed(playlist)
 		await ctx.send(embed=e)
 
 
