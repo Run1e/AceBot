@@ -443,7 +443,7 @@ class Moderation(AceMixin, commands.Cog):
 	@commands.has_permissions(ban_members=True)
 	@commands.bot_has_permissions(ban_members=True, embed_links=True)
 	async def tempban(self, ctx, member: discord.Member, amount: TimeMultConverter, unit: TimeDeltaConverter, *, reason: ReasonConverter = None):
-		'''Tempban a member. Requires Ban Members perms. Same formatting as `tempmute` explained above.'''
+		'''Temporarily ban a member. Requires Ban Members perms. Same formatting as `tempmute` explained above.'''
 
 		now = datetime.utcnow()
 		duration = amount * unit
