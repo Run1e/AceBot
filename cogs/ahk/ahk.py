@@ -155,9 +155,8 @@ class AutoHotkey(AceMixin, commands.Cog):
 			except discord.HTTPException as e:
 				self.bot.dispatch(
 					'log', member,
-					action='FAILED REMOVE HELPER',
+					action='FAILED REMOVING HELPER',
 					reason='Failed removing role.\n\nException:\n```{}```'.format(str(e)),
-					severity=0
 				)
 				continue
 
@@ -165,7 +164,6 @@ class AutoHotkey(AceMixin, commands.Cog):
 				'log', member,
 				action='REMOVE HELPER',
 				reason=reason,
-				severity=0
 			)
 
 	def craft_docs_page(self, record):
