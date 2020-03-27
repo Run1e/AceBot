@@ -6,7 +6,7 @@ from utils.pager import Pager
 
 class HelpPager(Pager):
 
-	commands_per_page = 10
+	commands_per_page = 8
 
 	def add_page(self, cog_name, cog_desc, cmds):
 		'''Will split into several pages to accomodate the per_page limit.'''

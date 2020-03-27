@@ -22,4 +22,4 @@ def shorten(text, max_char=2000):
 
 
 def po(obj):
-	return '{} ({})'.format(obj.name, obj.id)
+	return '{0} ({1})'.format(str(obj), obj.id)

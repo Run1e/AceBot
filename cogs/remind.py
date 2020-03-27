@@ -7,7 +7,7 @@ from datetime import datetime, timedelta
 from enum import IntEnum
 
 from cogs.mixins import AceMixin
-from utils.databasetimer import DatabaseTimer
+from utils.databasetimer import ColumnTimer
 from utils.string import shorten, po
 from utils.time import pretty_timedelta, pretty_datetime
 from utils.pager import Pager
@@ -83,7 +83,7 @@ class Reminders(AceMixin, commands.Cog):
 
 	def __init__(self, bot):
 		super().__init__(bot)
-		self.timer = DatabaseTimer(self.bot, 'remind', 'remind_on', 'reminder_complete')
+		self.timer = ColumnTimer(self.bot, 'reminder_complete', table='remind', column='remind_on')
 
 	@commands.Cog.listener()
 	async def on_reminder_complete(self, record):

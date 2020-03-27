@@ -38,7 +38,6 @@ EXTENSIONS = (
 	'cogs.roles',
 	'cogs.whois',
 	'cogs.ahk.ahk',
-	'cogs.security',
 	'cogs.ahk.logger',
 	'cogs.ahk.security',
 	'cogs.ahk.challenges',
@@ -229,48 +228,6 @@ class AceBot(commands.Bot):
 
 	async def on_guild_unavailable(self, guild):
 		log.info(f'Guild "{guild.name}" unavailable')
-
-	@commands.Cog.listener()
-	async def on_log(self, member_or_message, action=None, reason=None, severity=0):
-		if isinstance(member_or_message, discord.Message):
-			message = member_or_message
-			member = message.author
-		elif isinstance(member_or_message, (discord.Member, FakeMember)):
-			message = None
-			member = member_or_message
-		else:
-			raise TypeError('Unsupported type: {}'.format(type(member_or_message)))
-
-		conf = await self.config.get_entry(member.guild.id)
-
-		log_channel = conf.log_channel
-
-		if log_channel is None:
-			return
-
-		desc = 'NAME: {0.display_name}\nMENTION: {0.mention}'.format(member)
-
-		color = [discord.Embed().color, 0xFF8C00, 0xFF2000][severity]
-
-		e = discord.Embed(
-			title=action or 'INFO',
-			description=desc,
-			color=color,
-			timestamp=datetime.utcnow()
-		)
-
-		if reason is not None:
-			e.add_field(name='Reason', value=reason)
-
-		if hasattr(member, 'avatar_url'):
-			e.set_thumbnail(url=member.avatar_url)
-
-		e.set_footer(text='{} - ID: {}'.format(['LOW', 'MEDIUM', 'HIGH'][severity], member.id))
-
-		if message is not None:
-			e.add_field(name='Context', value='[Click here]({})'.format(message.jump_url), inline=False)
-
-		await log_channel.send(embed=e)
 
 	@property
 	def invite_link(self):

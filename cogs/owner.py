@@ -261,35 +261,6 @@ class Owner(AceMixin, commands.Cog):
 
 		await ctx.invoke(self.google, query='site:autohotkey.com ' + query)
 
-	@commands.command()
-	async def ignore(self, ctx, user: discord.User):
-		'''Make bot ignore a user.'''
-
-		if user.bot:
-			await ctx.send('Bots cannot be ignored.')
-			return
-
-		try:
-			await self.db.execute('INSERT INTO ignore (user_id) VALUES ($1)', user.id)
-			await ctx.send('User ignored.')
-		except UniqueViolationError:
-			await ctx.send('User already ignored.')
-
-	@commands.command()
-	async def notice(self, ctx, user: discord.User):
-		'''Make bot notice an ignored user.'''
-
-		if user.bot:
-			await ctx.send('Bots cannot be ignored.')
-			return
-
-		res = await self.db.execute('DELETE FROM ignore WHERE user_id=$1', user.id)
-
-		if res == 'DELETE 1':
-			await ctx.send('User noticed.')
-		else:
-			await ctx.send('User not previously ignored.')
-
 	@commands.command(hidden=True)
 	async def status(self, ctx):
 		await self.bot.change_presence()

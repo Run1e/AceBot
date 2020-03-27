@@ -1,25 +1,35 @@
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'mod_event_type') THEN
+		CREATE TYPE mod_event_type AS ENUM ('BAN', 'MUTE');
+    END IF;
+
+	IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'security_action') THEN
+		CREATE TYPE security_action AS ENUM ('MUTE', 'KICK', 'BAN');
+    END IF;
+END$$;
+
 -- guild config
 CREATE TABLE IF NOT EXISTS config (
 	id 					SERIAL UNIQUE,
 	guild_id 			BIGINT UNIQUE NOT NULL,
 	prefix 				VARCHAR(8) NULL,
-	log_channel_id		BIGINT NULL,
-	mod_role_id			BIGINT NULL,
-	mute_role_id		BIGINT NULL
+	mod_role_id			BIGINT NULL
 );
 
 -- moderation values
-CREATE TABLE IF NOT EXISTS security (
+CREATE TABLE IF NOT EXISTS mod_config (
 	id 					SERIAL UNIQUE,
 	guild_id 			BIGINT UNIQUE NOT NULL,
 
-	spam_enabled		BOOLEAN NOT NULL DEFAULT FALSE,
-	spam_action			SMALLINT NOT NULL DEFAULT 0 CHECK (spam_action >= 0 AND spam_action <= 2),
+	log_channel_id		BIGINT NULL,
+	mute_role_id		BIGINT NULL,
+
+	spam_action			security_action NULL,
 	spam_count			SMALLINT NOT NULL DEFAULT 8,
 	spam_per			FLOAT NOT NULL DEFAULT 10.0,
 
-	mention_enabled		BOOLEAN NOT NULL DEFAULT FALSE,
-	mention_action		SMALLINT NOT NULL DEFAULT 0 CHECK (mention_action >= 0 AND mention_action <= 2),
+	mention_action		security_action NULL,
 	mention_count		SMALLINT NOT NULL DEFAULT 8,
 	mention_per			FLOAT NOT NULL DEFAULT 16.0
 );
@@ -33,32 +43,22 @@ CREATE TABLE IF NOT EXISTS starboard (
 	threshold	SMALLINT NULL
 );
 
--- list of muted people
-CREATE TABLE IF NOT EXISTS muted (
+CREATE TABLE IF NOT EXISTS mod_timer (
 	id			SERIAL UNIQUE,
+
 	guild_id	BIGINT NOT NULL,
 	user_id		BIGINT NOT NULL,
 	mod_id		BIGINT NULL,
-	until		TIMESTAMP NULL,
-	UNIQUE 		(guild_id, user_id)
-);
 
--- list of banned people
-CREATE TABLE IF NOT EXISTS banned (
-	id			SERIAL UNIQUE,
-	guild_id	BIGINT NOT NULL,
-	user_id		BIGINT NOT NULL,
-	mod_id		BIGINT NOT NULL,
-	until		TIMESTAMP NOT NULL,
-	name		TEXT NOT NULL,
-	avatar_url	TEXT NOT NULL,
-	UNIQUE 		(guild_id, user_id)
-);
+	event		mod_event_type NOT NULL,
 
--- ignore list
-CREATE TABLE IF NOT EXISTS ignore (
-	id			SERIAL UNIQUE,
-	object_id	BIGINT UNIQUE NOT NULL
+	created_at	TIMESTAMP NOT NULL,
+	duration	INTERVAL NULL,
+
+	reason		TEXT NULL,
+	userdata	JSON NULL,
+
+	UNIQUE (guild_id, user_id, event)
 );
 
 -- seen table
@@ -257,4 +257,4 @@ CREATE TABLE IF NOT EXISTS linus_rant (
 	id 				SERIAL UNIQUE,
 	hate			DOUBLE PRECISION NOT NULL,
 	rant			VARCHAR(2000) NOT NULL
-)
+);

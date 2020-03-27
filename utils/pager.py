@@ -79,7 +79,7 @@ class Pager:
 
 				# if it is, and it's a stop emoji, just stop
 				if reaction.emoji == STOP_EMOJI:
-					await msg.delete()
+					await msg.clear_reactions()
 					return
 
 				# otherwise, delete the reaction before handling case
