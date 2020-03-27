@@ -170,7 +170,7 @@ class CountConverter(commands.Converter):
 		try:
 			count = int(count)
 		except ValueError:
-			raise commands.CommandError('Input has to be integer.')
+			raise commands.CommandError('Argument has to be integer.')
 
 		if count < self.MIN:
 			raise commands.CommandError(self.ERROR % (self.MIN, self.MAX))
@@ -181,15 +181,15 @@ class CountConverter(commands.Converter):
 
 
 class IntervalConverter(commands.Converter):
-	MIN = 8.0
-	MAX = 24.0
+	MIN = 8
+	MAX = 24
 	ERROR = 'Interval should be between %s and %s.'
 
 	async def convert(self, ctx, interval):
 		try:
-			interval = float(interval)
+			interval = int(interval)
 		except ValueError:
-			raise commands.CommandError('Argument has to be float.')
+			raise commands.CommandError('Argument has to be integer.')
 
 		if interval < self.MIN:
 			raise commands.CommandError(self.ERROR % (self.MIN, self.MAX))

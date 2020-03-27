@@ -27,11 +27,11 @@ CREATE TABLE IF NOT EXISTS mod_config (
 
 	spam_action			security_action NULL,
 	spam_count			SMALLINT NOT NULL DEFAULT 8,
-	spam_per			FLOAT NOT NULL DEFAULT 10.0,
+	spam_per			SMALLINT NOT NULL DEFAULT 10,
 
 	mention_action		security_action NULL,
 	mention_count		SMALLINT NOT NULL DEFAULT 8,
-	mention_per			FLOAT NOT NULL DEFAULT 16.0
+	mention_per			SMALLINT NOT NULL DEFAULT 16
 );
 
 -- starboard config
