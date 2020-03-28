@@ -213,7 +213,7 @@ class Spotify(AceMixin, commands.Cog):
 		if playlist.images:
 			e.set_image(url=get_url(playlist.images))
 
-		e.add_field(name='Tracks', value=str(len(playlist.tracks)))
+		e.add_field(name='Tracks', value=str(playlist.track_count))
 		e.add_field(name='Followers', value=playlist.follower_count)
 		e.add_field(name='Collaborative', value='yes' if playlist.collaborative else 'no')
 
