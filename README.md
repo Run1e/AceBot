@@ -89,9 +89,9 @@ Run `help tag` for a complete list.
 
 ### Bot configuration
 
-The prefix of the bot is configurable using the `config prefix` command. If you forget the current prefix, the help menu can be brought up by simply mentioning the bot.
+The prefix of the bot is configurable using the `prefix` command. If you forget the current prefix, the help menu can be brought up by simply mentioning the bot.
 ```
-.config prefix !
+.prefix !
 # new commands are now invoked using !
 !woof
 ```
@@ -99,17 +99,17 @@ The prefix of the bot is configurable using the `config prefix` command. If you 
 A role can be set that can also configure the bot using the `modrole` command.
 Members with the mod role can delete any tag, delete starred messages, change the prefix, etc. Only thing members with this role can't do is change the mod role, as this requires administrator privileges.
 ```
-.config modrole @somerole
+.modrole @somerole
 ```
 To see what the current configuration is, run `config`.
 
 
 ### Moderation
 
-To enable member muting, create a role that prohibits sending messages and set it with `config muterole <role>`.
-To mute a member do `mute <member>` and to unmute use `unmute <member>`.
+To enable member muting, create a role that prohibits sending messages and set it with `muterole <role>`.
+To mute a member do `mute <member>` and to unmute use `unmute <member>`. Similarly, `ban` and `unban` also exist.
 
-You can also issue tempbans and tempmutes:
+You can issue tempbans and tempmutes:
 ```
 tempban <member> <amount> <unit> [reason]
 tempmute <member> <amount> <unit> [reason]
