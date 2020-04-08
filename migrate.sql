@@ -34,15 +34,6 @@ CREATE TABLE IF NOT EXISTS mod_config (
 	mention_per			SMALLINT NOT NULL DEFAULT 16
 );
 
--- starboard config
-CREATE TABLE IF NOT EXISTS starboard (
-	id			SERIAL UNIQUE,
-	guild_id	BIGINT UNIQUE NOT NULL,
-	channel_id	BIGINT NULL,
-	locked		BOOLEAN NOT NULL DEFAULT FALSE,
-	threshold	SMALLINT NULL
-);
-
 CREATE TABLE IF NOT EXISTS mod_timer (
 	id			SERIAL UNIQUE,
 
@@ -61,22 +52,13 @@ CREATE TABLE IF NOT EXISTS mod_timer (
 	UNIQUE (guild_id, user_id, event)
 );
 
--- seen table
-CREATE TABLE IF NOT EXISTS seen (
+-- starboard config
+CREATE TABLE IF NOT EXISTS starboard (
 	id			SERIAL UNIQUE,
-	guild_id	BIGINT NOT NULL,
-	user_id		BIGINT NOT NULL,
-	seen		TIMESTAMP NOT NULL,
-	UNIQUE 		(guild_id, user_id)
-);
-
--- nicks table
-CREATE TABLE IF NOT EXISTS nick (
-	id			SERIAL UNIQUE,
-	guild_id	BIGINT NOT NULL,
-	user_id		BIGINT NOT NULL,
-	nick		VARCHAR(32) NOT NULL,
-	stored_at	TIMESTAMP NOT NULL
+	guild_id	BIGINT UNIQUE NOT NULL,
+	channel_id	BIGINT NULL,
+	locked		BOOLEAN NOT NULL DEFAULT FALSE,
+	threshold	SMALLINT NULL
 );
 
 -- highlighter languages
@@ -117,17 +99,6 @@ CREATE TABLE IF NOT EXISTS starrers (
 	UNIQUE 		(star_id, user_id)
 );
 
--- feeds
-CREATE TABLE IF NOT EXISTS feed (
-	id				SERIAL UNIQUE,
-	guild_id		BIGINT NOT NULL,
-	channel_id		BIGINT NOT NULL,
-	role_id			BIGINT NOT NULL,
-	publisher_id	BIGINT NULL,
-	name			TEXT NOT NULL,
-	UNIQUE			(guild_id, name)
-);
-
 -- fact list
 CREATE TABLE IF NOT EXISTS facts (
 	id 			SERIAL UNIQUE,
@@ -158,6 +129,24 @@ CREATE TABLE IF NOT EXISTS log (
 	command		TEXT NOT NULL
 );
 
+CREATE TABLE IF NOT EXISTS remind (
+	id			SERIAL UNIQUE,
+	guild_id	BIGINT NOT NULL,
+	channel_id	BIGINT NOT NULL,
+	user_id		BIGINT NOT NULL,
+	made_on		TIMESTAMP NOT NULL,
+	remind_on	TIMESTAMP NOT NULL,
+	message		TEXT
+);
+
+CREATE TABLE IF NOT EXISTS welcome (
+	id			SERIAL UNIQUE,
+	guild_id	BIGINT UNIQUE NOT NULL,
+	channel_id	BIGINT,
+	enabled		BOOLEAN NOT NULL DEFAULT TRUE,
+	content		VARCHAR(1024)
+);
+
 -- docs stuff
 CREATE TABLE IF NOT EXISTS docs_entry (
 	id			SERIAL UNIQUE,
@@ -185,24 +174,6 @@ CREATE TABLE IF NOT EXISTS docs_param (
 	docs_id		INT REFERENCES docs_entry (id) NOT NULL,
 	name		TEXT NOT NULL,
 	value		TEXT NOT NULL
-);
-
-CREATE TABLE IF NOT EXISTS remind (
-	id			SERIAL UNIQUE,
-	guild_id	BIGINT NOT NULL,
-	channel_id	BIGINT NOT NULL,
-	user_id		BIGINT NOT NULL,
-	made_on		TIMESTAMP NOT NULL,
-	remind_on	TIMESTAMP NOT NULL,
-	message		TEXT
-);
-
-CREATE TABLE IF NOT EXISTS welcome (
-	id			SERIAL UNIQUE,
-	guild_id	BIGINT UNIQUE NOT NULL,
-	channel_id	BIGINT,
-	enabled		BOOLEAN NOT NULL DEFAULT TRUE,
-	content		VARCHAR(1024)
 );
 
 CREATE TABLE IF NOT EXISTS role (
