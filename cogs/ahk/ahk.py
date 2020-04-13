@@ -367,7 +367,6 @@ class AutoHotkey(AceMixin, commands.Cog):
 		params = {
 			'filter': "category eq 'Documentation'",
 			'locale': 'en-us',
-			'scoringprofile': 'search_for_en_us_pageview',
 			'search': query,
 			'$top': 1,
 		}
