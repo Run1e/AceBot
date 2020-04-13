@@ -4,12 +4,12 @@ import io
 import logging
 import textwrap
 import traceback
+from collections import Counter
 from contextlib import redirect_stdout
 from datetime import datetime, timedelta
 from urllib.parse import urlparse
 
 import discord
-from asyncpg.exceptions import UniqueViolationError
 from bs4 import BeautifulSoup
 from discord.ext import commands
 from discord.mixins import Hashable
@@ -85,6 +85,11 @@ class Owner(AceMixin, commands.Cog):
 		discord.Object, discord.Emoji, discord.abc.Messageable, discord.mixins.Hashable
 	)
 
+	def __init__(self, bot):
+		super().__init__(bot)
+
+		self.event_counter = Counter()
+
 	async def cog_check(self, ctx):
 		return await self.bot.is_owner(ctx.author)
 
@@ -97,6 +102,22 @@ class Owner(AceMixin, commands.Cog):
 
 		# remove `foo`
 		return content.strip('` \n')
+
+	@commands.Cog.listener()
+	async def on_socket_response(self, msg):
+		t = msg['t']
+
+		if t is not None:
+			self.event_counter[t] += 1
+
+	@commands.command()
+	async def events(self, ctx, *, n=None):
+		'''Print event counters.'''
+
+		data = self.event_counter.most_common(n)
+		headers = ('Event', 'Count')
+
+		await ctx.send('```{0}```'.format(tabulate(data, headers)))
 
 	@commands.command(hidden=True)
 	async def test(self, ctx):
