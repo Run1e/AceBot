@@ -115,6 +115,7 @@ class Owner(AceMixin, commands.Cog):
 		'''Print event counters.'''
 
 		data = self.event_counter.most_common(n)
+		data = [(name, format(count, ',d')) for name, count in data]
 		headers = ('Event', 'Count')
 
 		await ctx.send('```{0}```'.format(tabulate(data, headers)))
