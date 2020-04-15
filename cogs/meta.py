@@ -143,6 +143,16 @@ class Meta(AceMixin, commands.Cog):
 
 		e.set_author(name=self.bot.user.name, icon_url=self.bot.user.avatar_url)
 
+		e.add_field(name='Developer', value=str(self.bot.get_user(self.bot.owner_id)))
+
+		now = datetime.utcnow()
+
+		commands_run = await self.db.fetchval('SELECT COUNT(*) FROM log')
+
+		e.add_field(name='Commands run', value=str(commands_run))
+
+		e.add_field(name='Uptime', value=pretty_timedelta(now - self.bot.startup_time))
+
 		await ctx.send(embed=e)
 
 	async def _about_command(self, ctx, command):

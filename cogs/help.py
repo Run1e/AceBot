@@ -5,7 +5,6 @@ from utils.pager import Pager
 
 
 class HelpPager(Pager):
-
 	commands_per_page = 8
 
 	def add_page(self, cog_name, cog_desc, cmds):
@@ -31,7 +30,7 @@ class HelpPager(Pager):
 
 		e.description = (
 			'Invoke a command by sending the prefix followed by a command name.\n\n'
-			'For example, the command signature `define <query>` can be invoked by doing `define cake`\n\n'
+			'For example, the command signature `track <query>` can be invoked by doing `track yellow`\n\n'
 			'The different argument brackets mean:'
 		)
 

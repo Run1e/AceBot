@@ -47,7 +47,7 @@ def pretty_datetime(dt: datetime, ignore_time=False):
 	if not isinstance(dt, datetime):
 		raise ValueError('datetime expected, \'{}\' given'.format(type(dt)))
 
-	return '{} {}'.format(ordinal(int(dt.strftime('%d'))), dt.strftime('%b %Y' + ('' if ignore_time else ' %H:%M')))
+	return '{0} {1}'.format(ordinal(int(dt.strftime('%d'))), dt.strftime('%b %Y' + ('' if ignore_time else ' %H:%M')))
 
 
 class TimeMultConverter(commands.Converter):

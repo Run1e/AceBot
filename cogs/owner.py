@@ -110,8 +110,8 @@ class Owner(AceMixin, commands.Cog):
 		if t is not None:
 			self.event_counter[t] += 1
 
-	@commands.command()
-	async def events(self, ctx, *, n=None):
+	@commands.command(hidden=True)
+	async def ws(self, ctx, *, n=None):
 		'''Print event counters.'''
 
 		data = self.event_counter.most_common(n)
