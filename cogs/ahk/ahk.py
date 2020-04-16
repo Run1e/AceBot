@@ -74,7 +74,7 @@ class AutoHotkey(AceMixin, commands.Cog):
 		date_str = date_str.strip()
 		return datetime.strptime(date_str[:-3] + date_str[-2:], "%Y-%m-%dT%H:%M:%S%z")
 
-	@tasks.loop(minutes=10)
+	@tasks.loop(minutes=7)
 	async def rss(self):
 		async with self.bot.aiohttp.request('get', RSS_URL) as resp:
 			if resp.status != 200:
