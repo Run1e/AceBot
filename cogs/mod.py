@@ -681,7 +681,7 @@ class Moderation(AceMixin, commands.Cog):
 		reason = 'Re-muting newly joined member who was previously muted'
 
 		await member.add_roles(mute_role, reason=reason)
-		self.bot.dispatch('log', member, action='MUTE', severity=Severity.MEDIUM, reason=reason)
+		self.bot.dispatch('log', member, action='MUTE', severity=Severity.LOW, reason=reason)
 
 	@commands.command()
 	@commands.has_permissions(manage_messages=True)
