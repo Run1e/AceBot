@@ -5,6 +5,7 @@ from discord.ext import commands
 
 from cogs.mixins import AceMixin
 from utils.time import pretty_timedelta, pretty_datetime
+from utils.string import po
 
 
 class WhoIs(AceMixin, commands.Cog):
@@ -53,6 +54,26 @@ class WhoIs(AceMixin, commands.Cog):
 			e.add_field(name='Roles', value=' '.join(role.mention for role in reversed(member.roles[1:])), inline=False)
 
 		e.set_footer(text='ID: ' + str(member.id))
+
+		await ctx.send(embed=e)
+
+
+	@commands.command(aliases=['newmembers'])
+	@commands.bot_has_permissions(embed_links=True)
+	async def newusers(self, ctx, *, count=5):
+		'''Lists newly joined members.'''
+
+		count = min(max(count, 5), 25)
+
+		now = datetime.utcnow()
+		e = discord.Embed()
+
+		for idx, member in enumerate(sorted(ctx.guild.members, key=lambda m: m.joined_at, reverse=True)):
+			if idx >= count:
+				break
+
+			value = 'Joined {0} ago\nCreated {1} ago'.format(pretty_timedelta(now - member.joined_at), pretty_timedelta(now - member.created_at))
+			e.add_field(name=po(member), value=value, inline=False)
 
 		await ctx.send(embed=e)
 
