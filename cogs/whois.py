@@ -57,7 +57,6 @@ class WhoIs(AceMixin, commands.Cog):
 
 		await ctx.send(embed=e)
 
-
 	@commands.command(aliases=['newmembers'])
 	@commands.bot_has_permissions(embed_links=True)
 	async def newusers(self, ctx, *, count=5):
@@ -76,6 +75,12 @@ class WhoIs(AceMixin, commands.Cog):
 			e.add_field(name=po(member), value=value, inline=False)
 
 		await ctx.send(embed=e)
+
+	@commands.command()
+	async def avatar(self, ctx, member: discord.Member):
+		'''Show an enlarged version of a members avatar.'''
+
+		await ctx.send(member.avatar_url)
 
 
 def setup(bot):
