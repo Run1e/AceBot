@@ -1,21 +1,23 @@
-import discord
 import html
 import logging
-
-from discord.ext import commands, tasks
+import re
+from base64 import b64encode
 from collections import OrderedDict
-from bs4 import BeautifulSoup
-from fuzzywuzzy import process, fuzz
 from datetime import datetime, timedelta, timezone
+
+import discord
+from bs4 import BeautifulSoup
+from discord.ext import commands, tasks
+from fuzzywuzzy import fuzz, process
 
 from cogs.ahk.ids import *
 from cogs.mixins import AceMixin
-from utils.pager import Pager
+from config import CLOUDAHK_PASS, CLOUDAHK_URL, CLOUDAHK_USER
 from utils.docs_parser import parse_docs
 from utils.html2markdown import HTML2Markdown
+from utils.pager import Pager
 from utils.string import po
 from utils.time import pretty_timedelta
-
 
 log = logging.getLogger(__name__)
 
@@ -30,7 +32,6 @@ UPVOTE_EMOJI = '\N{Thumbs Up Sign}'
 DOWNVOTE_EMOJI = '\N{Thumbs Down Sign}'
 
 INACTIVITY_LIMIT = timedelta(weeks=12)
-
 
 
 class DocsPagePager(Pager):
@@ -225,6 +226,44 @@ class AutoHotkey(AceMixin, commands.Cog):
 
 		return results
 
+	@commands.command()
+	@commands.cooldown(rate=1.0, per=5.0, type=commands.BucketType.user)
+	async def ahk(self, ctx, *, code):
+		'''Run AHK code through CloudAHK.'''
+
+		token = '{0}:{1}'.format(CLOUDAHK_USER, CLOUDAHK_PASS)
+
+		encoded = b64encode(bytes(token, 'utf-8')).decode('utf-8')
+		headers = {'Authorization': 'Basic ' + encoded}
+
+		# remove first line with backticks and highlighting lang
+		if re.match('^```.*\n', code):
+			code = code[code.find('\n') + 1:]
+
+		# strip backticks on both sides
+		code = code.strip('`').strip()
+
+		# maybe wrap in print()
+		if not code.count('\n') and not code.startswith('print('):
+			code = 'print({0})'.format(code)
+
+		# call cloudahk with 20 in timeout
+		async with self.bot.aiohttp.post(CLOUDAHK_URL, data=code, headers=headers, timeout=16) as resp:
+			if resp.status == 200:
+				result = await resp.json()
+			else:
+				raise commands.CommandError('Something went wrong.')
+
+		stdout, time = result['stdout'].strip(), result['time']
+
+		out = '{0} - {1}\n{2}'.format(
+			ctx.author.mention,
+			'Timed out' if time is None else '{0:.1f} seconds'.format(time),
+			'No output.' if stdout == '' else '```autoit\n{0}\n```\n'.format(stdout)
+		)
+
+		await ctx.send(out)
+
 	@commands.command(aliases=['d', 'doc', 'rtfm'])
 	@commands.bot_has_permissions(embed_links=True)
 	async def docs(self, ctx, *, query):
@@ -389,7 +428,7 @@ class AutoHotkey(AceMixin, commands.Cog):
 
 		e = discord.Embed(
 			title=html.unescape(result['title']),
-			description= description,
+			description=description,
 			color=AHK_COLOR,
 			url=result['url']
 		)
