@@ -256,13 +256,17 @@ class AutoHotkey(AceMixin, commands.Cog):
 
 		stdout, time = result['stdout'].strip(), result['time']
 
-		out = '{0} - {1}\n{2}'.format(
+		out = '{0}\n{1}`Processing time: {2}`'.format(
 			ctx.author.mention,
-			'Timed out' if time is None else '{0:.1f} seconds'.format(time),
-			'No output.' if stdout == '' else '```autoit\n{0}\n```\n'.format(stdout)
+			'No output.\n' if stdout == '' else '```autoit\n{0}\n```'.format(stdout),
+			'timed out' if time is None else '{0:.1f} seconds'.format(time),
 		)
 
 		await ctx.send(out)
+
+		# logging for security purposes and checking for abuse
+		with open('ahk/{0}_{1}_{2}'.format(ctx.guild.id, ctx.author.id, ctx.message.id), 'w') as f:
+			f.write('{0}\n\nCODE:\n{1}\n\nPROCESSING TIME: {2}\n\nSTDOUT:\n{3}'.format(ctx.stamp, code, time, stdout))
 
 	@commands.command(aliases=['d', 'doc', 'rtfm'])
 	@commands.bot_has_permissions(embed_links=True)

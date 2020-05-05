@@ -293,7 +293,7 @@ def setup_logger():
 
 async def setup():
 	# create folders
-	for path in ('data', 'logs', 'error', 'feedback'):
+	for path in ('data', 'logs', 'error', 'feedback', 'ahk'):
 		if not os.path.exists(path):
 			log.info('Creating folder: {0}'.format(path))
 			os.makedirs(path)
