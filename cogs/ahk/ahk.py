@@ -256,6 +256,9 @@ class AutoHotkey(AceMixin, commands.Cog):
 
 		stdout, time = result['stdout'].strip(), result['time']
 
+		if len(stdout) > 1800 or stdout.count('\n') > 12:
+			raise commands.CommandError('Output too large.')
+
 		out = '{0}{1}`Processing time: {2}`'.format(
 			ctx.author.mention,
 			' No output.\n' if stdout == '' else '\n```autoit\n{0}\n```'.format(stdout),
