@@ -488,8 +488,6 @@ class Starboard(AceMixin, commands.Cog):
 			if prev_time is not None and datetime.utcnow() - prev_time < STAR_COOLDOWN:
 				raise commands.CommandError('Please wait a bit before starring again.')
 
-			# at this point we're golden
-
 			# post it if no minimum star requirement is set
 			if board.minimum is None:
 				star_message = await self.post_star(star_channel, message, 1)
@@ -565,7 +563,7 @@ class Starboard(AceMixin, commands.Cog):
 				await self.update_star(record.get('message_id'), star_message, starrer_count + 1)
 
 		else:
-			raise commands.CommandError('You have not previously starred this message.')
+			raise commands.CommandError('This message has not previously been starred.')
 
 	async def _on_star_event_meta(self, event, board, message, starrer):
 		# get the starmessage record if it exists
