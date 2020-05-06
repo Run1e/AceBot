@@ -5,6 +5,7 @@ data
 error
 feedback
 logs
+ahk
 venv
 config.py
 

@@ -52,15 +52,6 @@ CREATE TABLE IF NOT EXISTS mod_timer (
 	UNIQUE (guild_id, user_id, event)
 );
 
--- starboard config
-CREATE TABLE IF NOT EXISTS starboard (
-	id			SERIAL UNIQUE,
-	guild_id	BIGINT UNIQUE NOT NULL,
-	channel_id	BIGINT NULL,
-	locked		BOOLEAN NOT NULL DEFAULT FALSE,
-	threshold	SMALLINT NULL
-);
-
 -- highlighter languages
 CREATE TABLE IF NOT EXISTS highlight_lang (
 	id			SERIAL UNIQUE,
@@ -79,6 +70,16 @@ CREATE TABLE IF NOT EXISTS highlight_msg (
 	message_id	BIGINT NOT NULL
 );
 
+-- starboard config
+CREATE TABLE IF NOT EXISTS starboard (
+	id			SERIAL UNIQUE,
+	guild_id	BIGINT UNIQUE NOT NULL,
+	channel_id	BIGINT NULL,
+	locked		BOOLEAN NOT NULL DEFAULT FALSE,
+	threshold	SMALLINT NULL,
+	minimum		SMALLINT NULL
+);
+
 -- starmessage
 CREATE TABLE IF NOT EXISTS star_msg (
 	id				SERIAL UNIQUE,
@@ -86,7 +87,7 @@ CREATE TABLE IF NOT EXISTS star_msg (
 	channel_id		BIGINT NOT NULL,
 	user_id			BIGINT NOT NULL,
 	message_id		BIGINT UNIQUE NOT NULL,
-	star_message_id	BIGINT NOT NULL,
+	star_message_id	BIGINT NULL,
 	starred_at		TIMESTAMP NOT NULL,
 	starrer_id		BIGINT NOT NULL
 );
