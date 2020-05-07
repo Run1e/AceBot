@@ -5,7 +5,7 @@ data
 error
 feedback
 logs
-ahk
+ahk_eval
 venv
 config.py
 
@@ -13,5 +13,4 @@ test.py
 test_md.py
 test_docs_parser.py
 notes.md
-cogs/ahk/security.py
-cogs/ahk/logger.py
+cogs/ahk/internal

@@ -256,6 +256,8 @@ class AutoHotkey(AceMixin, commands.Cog):
 
 		stdout, time = result['stdout'].strip(), result['time']
 
+		stdout = stdout.replace('```', '`\u200b``')
+
 		if len(stdout) > 1800 or stdout.count('\n') > 12:
 			raise commands.CommandError('Output too large.')
 
@@ -268,7 +270,7 @@ class AutoHotkey(AceMixin, commands.Cog):
 		await ctx.send(out)
 
 		# logging for security purposes and checking for abuse
-		with open('ahk/{0}_{1}_{2}'.format(ctx.guild.id, ctx.author.id, ctx.message.id), 'w') as f:
+		with open('ahk_eval/{0}_{1}_{2}'.format(ctx.guild.id, ctx.author.id, ctx.message.id), 'w', encoding='utf-8-sig') as f:
 			f.write('{0}\n\nCODE:\n{1}\n\nPROCESSING TIME: {2}\n\nSTDOUT:\n{3}\n'.format(ctx.stamp, code, time, stdout))
 
 	@commands.command(aliases=['d', 'doc', 'rtfm'])

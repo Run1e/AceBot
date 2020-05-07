@@ -37,12 +37,12 @@ EXTENSIONS = (
 	'cogs.roles',
 	'cogs.whois',
 	'cogs.ahk.ahk',
-	'cogs.ahk.logger',
-	'cogs.ahk.security',
-	'cogs.ahk.challenges',
+	#'cogs.ahk.help',
+	'cogs.ahk.internal.logger',
+	'cogs.ahk.internal.security',
 	'cogs.dwitter',
 	'cogs.linus',
-	'cogs.owner'
+	'cogs.owner',
 )
 
 
@@ -77,7 +77,7 @@ class AceBot(commands.Bot):
 			timeout=aiohttp.ClientTimeout(total=5)
 		)
 
-		self.mtimes = dict()
+		self.modified_times = dict()
 
 		# help command. this is messy but it has to be because the lib doesn't really like you having
 		# two different help commands. maybe I will see if I can clean this up in the future
@@ -157,14 +157,14 @@ class AceBot(commands.Bot):
 			if os.path.isfile(file_name):
 				mtime = os.stat(file_name).st_mtime_ns
 
-				if mtime > self.mtimes.get(name, 0):
+				if mtime > self.modified_times.get(name, 0):
 					if name in self.extensions.keys():
 						self.unload_extension(name)
 
 					log.debug('Loading %s', name)
 
 					self.load_extension(name)
-					self.mtimes[name] = mtime
+					self.modified_times[name] = mtime
 
 					reloaded.append(name)
 
@@ -293,7 +293,7 @@ def setup_logger():
 
 async def setup():
 	# create folders
-	for path in ('data', 'logs', 'error', 'feedback', 'ahk'):
+	for path in ('data', 'logs', 'error', 'feedback', 'ahk_eval'):
 		if not os.path.exists(path):
 			log.info('Creating folder: {0}'.format(path))
 			os.makedirs(path)

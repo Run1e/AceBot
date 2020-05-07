@@ -703,7 +703,7 @@ class Moderation(AceMixin, commands.Cog):
 		Examples:
 		Delete all messages within the last 200 containing the word "spam": `purge --check 200 --contains "spam"`
 		Delete all messages within the last 100 from two members: `purge --user @runie @dave`
-		Delete maximum 6 messages within the last 400 starting with "ham": `purge --check 400 --count 6 --starts "ham"`
+		Delete maximum 6 messages within the last 400 starting with "ham": `purge --check 400 --max 6 --starts "ham"`
 
 		List of arguments:
 		```
