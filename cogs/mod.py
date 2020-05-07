@@ -48,6 +48,8 @@ MOD_PERMS = (
 
 DEFAULT_REASON = 'No reason provided.'
 
+PURGE_LIMIT = 512
+
 
 class NoExitArgumentParser(argparse.ArgumentParser):
 	def exit(self, code, error):
@@ -693,19 +695,60 @@ class Moderation(AceMixin, commands.Cog):
 	@commands.command()
 	@commands.has_permissions(manage_messages=True)
 	@commands.bot_has_permissions(manage_messages=True)
-	async def purge(self, ctx, *, args: str):
-		'''Advanced purge command.'''
+	async def purge(self, ctx, *, args: str = None):
+		'''Advanced purge command. Do `help purge` for usage examples and argument list.
 
-		parser = NoExitArgumentParser(add_help=False, allow_abbrev=False)
+		Arguments are parsed as command line arguments.
 
-		parser.add_argument('--search', type=int, default=100)
-		parser.add_argument('--bot', action='store_true')
-		parser.add_argument('--user', nargs='+')
-		parser.add_argument('--after', type=int)
-		parser.add_argument('--before', type=int)
-		parser.add_argument('--contains', nargs='+')
-		parser.add_argument('--starts', nargs='+')
-		parser.add_argument('--ends', nargs='+')
+		Examples:
+		Delete all messages within the last 200 containing the word "spam": `purge --search 200 --contains "spam"`
+		Delete all messages within the last 100 from two members: `purge --user @runie @dave`
+		Delete maximum 6 messages within the last 400 starting with "ham": `purge --search 400 --count 6 --starts "ham"`
+
+		List of arguments:
+		```
+		--search <int>
+		Total amount of messages the bot will check for deletion.
+
+		--count <int>
+		Total amount of messages the bot will delete.
+
+		--bot
+		Only delete messages from bots.
+
+		--user member [...]
+		Only delete messages from these members.
+
+		--after message_id
+		Start deleting after this message id.
+
+		--before message_id
+		Delete, at most, up until this message id.
+
+		--contains
+		Delete messages containing this string(s).
+
+		--starts <string>
+		Delete messages starting with this string(s).
+
+		--ends <string>
+		Delete messages ending with this string(s).```'''
+
+		parser = NoExitArgumentParser(prog='purge', add_help=False, allow_abbrev=False)
+
+		parser.add_argument('-s', '--search', type=int, default=100, metavar='message_count', help='Total amount of messages checked for deletion.')
+		parser.add_argument('-m', '--max', type=int, metavar='message_count', help='Total amount of messages the bot will delete.')
+		parser.add_argument('--bot', action='store_true', help='Only delete messages from bots.')
+		parser.add_argument('-u', '--user', nargs='+', metavar='user', help='Only delete messages from this member(s).')
+		parser.add_argument('-a', '--after', type=int, metavar='id', help='Start deleting after this message id.')
+		parser.add_argument('-b', '--before', type=int, metavar='id', help='Delete, at most, up until this message id.')
+		parser.add_argument('--contains', nargs='+', metavar='text', help='Delete messages containing this string(s).')
+		parser.add_argument('--starts', nargs='+', metavar='text', help='Delete messages starting with this string(s).')
+		parser.add_argument('--ends', nargs='+', metavar='text', help='Delete messages ending with this string(s).')
+
+		if args is None:
+			await ctx.send('```\n{0}\n```'.format(parser.format_help()))
+			return
 
 		try:
 			args = parser.parse_args(shlex.split(args))
@@ -739,20 +782,30 @@ class Moderation(AceMixin, commands.Cog):
 		if args.ends:
 			preds.append(lambda m: any(m.content.endswith(s) for s in args.ends))
 
-		def predicate(message):
-			return all(pred(message) for pred in preds)
+		count = args.count
+		deleted = 0
 
-		limit = max(1, min(513, args.search + 1))
+		def predicate(message):
+			nonlocal deleted
+
+			if deleted >= count:
+				return False
+
+			if all(pred(message) for pred in preds):
+				deleted += 1
+				return True
+
+		limit = max(0, min(PURGE_LIMIT, args.search)) + 1
 
 		after = None if args.after is None else discord.Object(id=args.after)
 		before = None if args.before is None else discord.Object(id=args.before)
 
 		try:
-			deleted = await ctx.channel.purge(limit=limit, check=predicate, before=before, after=after)
+			deleted_messages = await ctx.channel.purge(limit=limit, check=predicate, before=before, after=after)
 		except Exception:
 			raise commands.CommandError('Error occurred when bulk-deleting messages.')
 
-		await ctx.send('{0} messages deleted.'.format(len(deleted)))
+		await ctx.send('{0} messages deleted.'.format(len(deleted_messages)))
 
 	@commands.command()
 	@commands.has_permissions(manage_messages=True)

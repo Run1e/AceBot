@@ -43,7 +43,7 @@ class HelpPager(Pager):
 class PaginatedHelpCommand(commands.HelpCommand):
 	'''Cog that implements the help command and help pager.'''
 
-	async def add_command(self, cmds, command, force=False):
+	async def add_command(self, cmds, command, force=False, long_help=False):
 		if command.hidden:
 			return
 
@@ -58,7 +58,7 @@ class PaginatedHelpCommand(commands.HelpCommand):
 
 		if help_message is None:
 			help_message = 'No description available.'
-		else:
+		elif not long_help:
 			help_message = help_message.split('\n')[0]
 
 		cmds.append((self.context.prefix + get_signature(command), help_message))
@@ -123,7 +123,7 @@ class PaginatedHelpCommand(commands.HelpCommand):
 
 		cmds = []
 
-		await self.add_command(cmds, command)
+		await self.add_command(cmds, command, long_help=True)
 		self.pager.add_page(cog_name, cog_desc, cmds)
 
 		await self.pager.go()
