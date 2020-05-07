@@ -1,5 +1,7 @@
+import argparse
 import asyncio
 import logging
+import shlex
 from datetime import datetime, timedelta
 from enum import Enum, IntEnum
 from json import dumps, loads
@@ -15,7 +17,7 @@ from utils.context import AceContext, can_prompt, is_mod
 from utils.databasetimer import DatabaseTimer
 from utils.fakemember import FakeMember
 from utils.string import po
-from utils.time import TimeDeltaConverter, TimeMultConverter, pretty_datetime, pretty_timedelta
+from utils.time import TimeDeltaConverter, TimeMultConverter, pretty_timedelta
 
 log = logging.getLogger(__name__)
 
@@ -45,6 +47,11 @@ MOD_PERMS = (
 )
 
 DEFAULT_REASON = 'No reason provided.'
+
+
+class NoExitArgumentParser(argparse.ArgumentParser):
+	def exit(self, code, error):
+		raise ValueError(error)
 
 
 class SecurityAction(IntEnum):
@@ -682,6 +689,70 @@ class Moderation(AceMixin, commands.Cog):
 
 		await member.add_roles(mute_role, reason=reason)
 		self.bot.dispatch('log', member, action='MUTE', severity=Severity.LOW, reason=reason)
+
+	@commands.command()
+	@commands.has_permissions(manage_messages=True)
+	@commands.bot_has_permissions(manage_messages=True)
+	async def purge(self, ctx, *, args: str):
+		'''Advanced purge command.'''
+
+		parser = NoExitArgumentParser(add_help=False, allow_abbrev=False)
+
+		parser.add_argument('--search', type=int, default=100)
+		parser.add_argument('--bot', action='store_true')
+		parser.add_argument('--user', nargs='+')
+		parser.add_argument('--after', type=int)
+		parser.add_argument('--before', type=int)
+		parser.add_argument('--contains', nargs='+')
+		parser.add_argument('--starts', nargs='+')
+		parser.add_argument('--ends', nargs='+')
+
+		try:
+			args = parser.parse_args(shlex.split(args))
+		except Exception as e:
+			raise commands.CommandError(str(e).partition('error: ')[2])
+
+		preds = [lambda m: m.id != ctx.message.id]
+
+		if args.user:
+			converter = commands.MemberConverter()
+			members = []
+
+			for id in args.user:
+				try:
+					member = await converter.convert(ctx, id)
+					members.append(member)
+				except commands.CommandError:
+					raise commands.CommandError('Unknown user: "{0}"'.format(id))
+
+			preds.append(lambda m: m.author in members)
+
+		if args.contains:
+			preds.append(lambda m: any((s in m.content) for s in args.contains))
+
+		if args.bot:
+			preds.append(lambda m: m.author.bot)
+
+		if args.starts:
+			preds.append(lambda m: any(m.content.startswith(s) for s in args.starts))
+
+		if args.ends:
+			preds.append(lambda m: any(m.content.endswith(s) for s in args.ends))
+
+		def predicate(message):
+			return all(pred(message) for pred in preds)
+
+		limit = max(1, min(513, args.search + 1))
+
+		after = None if args.after is None else discord.Object(id=args.after)
+		before = None if args.before is None else discord.Object(id=args.before)
+
+		try:
+			deleted = await ctx.channel.purge(limit=limit, check=predicate, before=before, after=after)
+		except Exception:
+			raise commands.CommandError('Error occurred when bulk-deleting messages.')
+
+		await ctx.send('{0} messages deleted.'.format(len(deleted)))
 
 	@commands.command()
 	@commands.has_permissions(manage_messages=True)
