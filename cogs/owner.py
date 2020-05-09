@@ -111,8 +111,8 @@ class Owner(AceMixin, commands.Cog):
 			self.event_counter[t] += 1
 
 	@commands.command(hidden=True)
-	async def ws(self, ctx, *, n=None):
-		'''Print event counters.'''
+	async def gateway(self, ctx, *, n=None):
+		'''Print gateway event counters.'''
 
 		data = self.event_counter.most_common(n)
 		data = [(name, format(count, ',d')) for name, count in data]
@@ -126,6 +126,8 @@ class Owner(AceMixin, commands.Cog):
 
 	@commands.command(hidden=True, aliases=['lvl'])
 	async def level(self, ctx, *, level):
+		'''Change the logging level for debugging purposes.'''
+
 		lvl = getattr(logging, level.upper())
 		logging.getLogger().setLevel(lvl)
 		await ctx.send('Logging level is {0}'.format(lvl))
@@ -143,8 +145,7 @@ class Owner(AceMixin, commands.Cog):
 		await msg.edit(content='Response: {}.\nGateway: {}'.format(
 			pretty_timedelta(msg.created_at - ctx.message.created_at),
 			pretty_timedelta(timedelta(seconds=self.bot.latency))
-		)
-		)
+		))
 
 	@commands.command()
 	@commands.bot_has_permissions(embed_links=True)
@@ -198,7 +199,7 @@ class Owner(AceMixin, commands.Cog):
 	@commands.command(name='reload', aliases=['rl'])
 	@commands.bot_has_permissions(add_reactions=True)
 	async def _reload(self, ctx):
-		'''Reloads a module.'''
+		'''Reload edited extensions.'''
 
 		reloaded = self.bot.load_extensions()
 
@@ -210,7 +211,7 @@ class Owner(AceMixin, commands.Cog):
 
 	@commands.command()
 	async def repeat(self, ctx, repeats: int, *, command):
-		'''Repeat a command several times.'''
+		'''Repeat a command.'''
 
 		if repeats < 1:
 			raise commands.CommandError('Repeat count must be more than 0.')
@@ -305,6 +306,8 @@ class Owner(AceMixin, commands.Cog):
 
 	@commands.command(hidden=True)
 	async def status(self, ctx):
+		'''Refresh the status of the bot in case Discord cleared it.'''
+
 		await self.bot.change_presence()
 		await self.bot.change_presence(activity=BOT_ACTIVITY)
 

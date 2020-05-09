@@ -9,3 +9,5 @@ beautifulsoup4==4.8.2
 tabulate==0.8.6
 emoji==0.5.4
 asyncspotify==0.12.1
+pygit2==1.2.1
+psutil==5.7.0

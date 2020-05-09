@@ -1,12 +1,17 @@
-import discord
 import inspect
+from datetime import datetime, timedelta, timezone
+from itertools import islice
 
+import discord
+import psutil
+import pygit2
 from discord.ext import commands
-from datetime import datetime, timedelta
 
 from cogs.mixins import AceMixin
-from utils.time import pretty_timedelta
+from utils.string import yesno
+from utils.time import pretty_datetime, pretty_timedelta
 
+GITHUB_LINK = 'https://github.com/Run1e/AceBot'
 
 MEDALS = (
 	'\N{FIRST PLACE MEDAL}',
@@ -19,6 +24,11 @@ MEDALS = (
 
 class Meta(AceMixin, commands.Cog):
 	'''Commands about the bot itself.'''
+
+	def __init__(self, bot):
+		super().__init__(bot)
+
+		self.process = psutil.Process()
 
 	@commands.command()
 	@commands.bot_has_permissions(embed_links=True)
@@ -125,10 +135,22 @@ class Meta(AceMixin, commands.Cog):
 
 		return value[1:]
 
-	@commands.command(hidden=True, enabled=False)
+	def format_commit(self, commit):
+		short, _, _ = commit.message.partition('\n')
+		short_sha2 = commit.hex[0:6]
+		tz = timezone(timedelta(minutes=commit.commit_time_offset))
+		time = datetime.fromtimestamp(commit.commit_time).replace(tzinfo=tz)
+		offset = pretty_datetime(time.astimezone(timezone.utc).replace(tzinfo=None), ignore_time=True)
+		return f'[`{short_sha2}`]({GITHUB_LINK}/commit/{commit.hex}) {short} ({offset})'
+
+	def get_last_commits(self, count=3):
+		repo = pygit2.Repository('.git')
+		return '\n'.join(self.format_commit(c) for c in islice(repo.walk(repo.head.target, pygit2.GIT_SORT_TOPOLOGICAL), count))
+
+	@commands.command()
 	@commands.bot_has_permissions(embed_links=True)
-	async def about(self, ctx, command_name: str = None):
-		'''See the aliases for a given command.'''
+	async def about(self, ctx, *, command_name: str = None):
+		'''Show info about the bot or a command.'''
 
 		if command_name is None:
 			await self._about_bot(ctx)
@@ -139,24 +161,67 @@ class Meta(AceMixin, commands.Cog):
 			await self._about_command(ctx, cmd)
 
 	async def _about_bot(self, ctx):
-		e = discord.Embed()
 
-		e.set_author(name=self.bot.user.name, icon_url=self.bot.user.avatar_url)
+		e = discord.Embed(title='Click for official bot invite link!', description=self.get_last_commits(), url=self.bot.invite_link)
+
+		owner = self.bot.get_user(self.bot.owner_id)
+		e.set_author(name=str(owner), icon_url=owner.avatar_url)
 
 		e.add_field(name='Developer', value=str(self.bot.get_user(self.bot.owner_id)))
 
+		invokes = await self.db.fetchval('SELECT COUNT(*) FROM log')
+		e.add_field(name='Command invokes', value='{0:,d}'.format(invokes))
+
+		guilds, text, voice, users = 0, 0, 0, 0
+
+		for guild in self.bot.guilds:
+			guilds += 1
+			users += len(guild.members)
+			for channel in guild.channels:
+				if isinstance(channel, discord.TextChannel):
+					text += 1
+				elif isinstance(channel, discord.VoiceChannel):
+					voice += 1
+
+		unique = len(self.bot.users)
+
+		e.add_field(name='Servers', value=str(guilds))
+
+		memory_usage = self.process.memory_full_info().uss / 1024 ** 2
+		cpu_usage = self.process.cpu_percent() / psutil.cpu_count()
+
+		e.add_field(name='Process', value='CPU: {0}%\nMemory: {1:.2f} MiB'.format(cpu_usage, memory_usage))
+
+		e.add_field(name='Members', value='{0:,d} total\n{1:,d} unique'.format(users, unique))
+		e.add_field(name='Channels', value='{0:,d} total\n{1:,d} text channels\n{2:,d} voice channels'.format(text + voice, text, voice))
+
 		now = datetime.utcnow()
+		e.add_field(name='Time since last restart', value=pretty_timedelta(now - self.bot.startup_time))
 
-		commands_run = await self.db.fetchval('SELECT COUNT(*) FROM log')
-
-		e.add_field(name='Commands run', value=str(commands_run))
-
-		e.add_field(name='Uptime', value=pretty_timedelta(now - self.bot.startup_time))
+		e.timestamp = now
 
 		await ctx.send(embed=e)
 
-	async def _about_command(self, ctx, command):
-		raise commands.CommandError('Not implemented yet.')
+	async def _about_command(self, ctx, command: commands.Command):
+		e = discord.Embed(title=command.qualified_name + ' ' + command.signature, description=command.description or command.help)
+
+		e.add_field(name='Qualified name', value=command.qualified_name)
+
+		invokes = await self.db.fetchval('SELECT COUNT(*) FROM log WHERE command=$1', command.qualified_name)
+		e.add_field(name='Total invokes', value='{0:,d}'.format(invokes))
+
+		here_invokes = await self.db.fetchval('SELECT COUNT(*) FROM log WHERE command=$1 AND guild_id=$2', command.qualified_name, ctx.guild.id)
+		e.add_field(name='Invokes in this server', value='{0:,d}'.format(here_invokes))
+
+		e.add_field(name='Can you run it?', value=yesno(await command.can_run(ctx)))
+
+		e.add_field(name='Enabled', value=yesno(command.enabled))
+		e.add_field(name='Hidden', value=yesno(command.hidden))
+
+		if command.aliases:
+			e.set_footer(text='Also known as: ' + ', '.join(command.aliases))
+
+		await ctx.send(embed=e)
 
 	@commands.command(aliases=['fb'])
 	@commands.cooldown(rate=2, per=120.0, type=commands.BucketType.user)

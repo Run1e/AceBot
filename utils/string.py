@@ -23,3 +23,7 @@ def shorten(text, max_char=2000):
 
 def po(obj):
 	return '{0} ({1})'.format(str(obj), obj.id)
+
+
+def yesno(b):
+	return 'Yes' if b else 'No'

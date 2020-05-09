@@ -8,6 +8,7 @@ from discord.ext import commands, tasks
 from cogs.mixins import AceMixin
 from utils.configtable import ConfigTable, ConfigTableRecord
 from utils.context import can_prompt, is_mod
+from utils.string import yesno
 
 log = logging.getLogger(__name__)
 STAR_EMOJI = '\N{WHITE MEDIUM STAR}'
@@ -246,7 +247,7 @@ class Starboard(AceMixin, commands.Cog):
 		e.add_field(name='Starred in', value='<#{}>'.format(row.get('channel_id')))
 		e.add_field(name='Author', value=f'<@{author.id}>')
 		e.add_field(name='Starrer', value='<@{}>'.format(row.get('starrer_id')))
-		e.add_field(name='Posted', value='No' if row.get('star_message_id') is None else 'Yes')
+		e.add_field(name='Posted', value=yesno(row.get('star_message_id') is not None))
 		e.add_field(
 			name='Context',
 			value='[Click here!](https://discordapp.com/channels/{}/{}/{})'.format(
