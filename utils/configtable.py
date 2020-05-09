@@ -1,4 +1,8 @@
 import asyncio
+import logging
+
+
+log = logging.getLogger(__name__)
 
 
 class ConfigTableRecord(object):
@@ -69,9 +73,6 @@ class ConfigTableRecord(object):
 
 
 class ConfigTable:
-
-	PRIMARY_KEY_TYPE_ERROR = TypeError('Primary key must be int.')
-
 	def __init__(self, bot, table, primary, record_class=None):
 		record_class = record_class or ConfigTableRecord
 
@@ -92,16 +93,7 @@ class ConfigTable:
 		self._lock = asyncio.Lock()
 		self._non_existent = set()
 
-	async def insert_record(self, record, key=None):
-		key = key or self.get_keys_from_record(record)
-
-		if key in self._non_existent:
-			self._non_existent.remove(key)
-
-		entry = self._record_class(self, record)
-		self.entries[key] = entry
-
-		return entry
+		log.debug('Constructed ConfigTable for table %s with keys %s', table, primary)
 
 	def build_predicate(self, start_at=1):
 		return ' AND '.join('{} = ${}'.format(key, idx + start_at) for idx, key in enumerate(self.primary))
@@ -117,12 +109,25 @@ class ConfigTable:
 			', '.join('${}'.format(idx + 1) for idx, _ in enumerate(self.primary))
 		)
 
+	async def insert_record(self, record, keys=None):
+		keys = keys or self.get_keys_from_record(record)
+
+		if keys in self._non_existent:
+			self._non_existent.remove(keys)
+
+		log.debug('Inserting record with keys %s for table %s', keys, self.table)
+
+		entry = self._record_class(self, record)
+		self.entries[keys] = entry
+
+		return entry
+
 	async def get_entry(self, *keys, construct=True):
 		keys = tuple(keys)
 
 		for key in keys:
 			if not isinstance(key, int):
-				raise self.PRIMARY_KEY_TYPE_ERROR
+				raise TypeError('Primary key must be int.')
 
 		if not construct and keys in self._non_existent:
 			return None
@@ -145,7 +150,26 @@ class ConfigTable:
 				await self.bot.db.execute(self._insert_query, *keys)
 				record = await self.bot.db.fetchrow(get_query, *keys)
 
-			return await self.insert_record(record, key=keys)
+			return await self.insert_record(record, keys=keys)
 
 	def has_entry(self, *keys):
 		return tuple(keys) in self.entries
+
+	async def clear_entry(self, *keys):
+		'''Returns True if key(s) found in entries dict.'''
+
+		keys = tuple(keys)
+
+		async with self._lock:
+			if keys in self._non_existent:
+				log.info('Clearing non-existent entry %s for table %s', keys, self.table)
+				self._non_existent.remove(keys)
+
+			removed = bool(self.entries.pop(keys, False))
+
+			if removed:
+				log.info('Clearing entry %s for table %s', keys, self.table)
+
+			return removed
+
+

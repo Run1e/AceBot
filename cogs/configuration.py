@@ -64,7 +64,7 @@ class Configuration(AceMixin, commands.Cog):
 		else:
 			data = 'Prefix set to `{0}`'.format(prefix)
 
-		data += ' - if you forget your prefix, simply mention the bot to open up the help menu.'
+		data += '\nIf you forget your prefix, or simply need help, just mention the bot!'
 
 		await ctx.send(data)
 

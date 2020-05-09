@@ -223,6 +223,26 @@ class Owner(AceMixin, commands.Cog):
 		for i in range(repeats):
 			await new_ctx.reinvoke()
 
+	@commands.command()
+	async def decache(self, ctx, guild_id: int):
+		'''Clear cache of table data of a specific guild.'''
+
+		configs = (
+			self.bot.config,
+			self.bot.get_cog('Starboard').config,
+			self.bot.get_cog('Moderation').config,
+			self.bot.get_cog('Welcome').config,
+			self.bot.get_cog('Roles').config,
+		)
+
+		cleared = []
+
+		for config in configs:
+			if await config.clear_entry(guild_id):
+				cleared.append(config)
+
+		await ctx.send('Cleared entries for:\n```\n{0}\n```'.format('\n'.join(config.table for config in cleared)))
+
 	@commands.command(aliases=['g'])
 	@commands.bot_has_permissions(embed_links=True)
 	async def google(self, ctx, *, query: str):

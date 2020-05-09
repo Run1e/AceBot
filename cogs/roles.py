@@ -1,14 +1,14 @@
-import discord
-import logging
-import emoji
 import asyncio
+import logging
 
+import discord
+import emoji
 from discord.ext import commands
 
 from cogs.mixins import AceMixin
-from utils.context import can_prompt
 from utils.configtable import ConfigTable
-from utils.string import shorten, po
+from utils.context import can_prompt
+from utils.string import po, shorten
 
 log = logging.getLogger(__name__)
 
@@ -426,7 +426,6 @@ class Roles(AceMixin, commands.Cog):
 		selectors = list()
 
 		for slc in slcs:
-
 			roles = await self.db.fetch(
 				'''
 				SELECT re.* 
@@ -769,7 +768,6 @@ class Roles(AceMixin, commands.Cog):
 				except discord.HTTPException:
 					pass
 
-
 		for selector in selectors:
 
 			# https://stackoverflow.com/questions/866465/order-by-the-in-value-list
@@ -798,7 +796,7 @@ class Roles(AceMixin, commands.Cog):
 
 			for role in roles:
 				e.add_field(
-					name='{} {}'.format(role.get('emoji'),role.get('name')),
+					name='{} {}'.format(role.get('emoji'), role.get('name')),
 					value=role.get('description'),
 					inline=selector.get('inline')
 				)
@@ -918,7 +916,7 @@ class Roles(AceMixin, commands.Cog):
 				pass
 
 		if conf.notify:
-			await channel.send(embed=e, delete_after=10)
+			await channel.send(embed=e, delete_after=5)
 
 		log.info('{} {} {} {} in {}'.format(
 			'Added' if do_add else 'Removed',
