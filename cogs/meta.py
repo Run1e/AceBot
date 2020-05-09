@@ -213,7 +213,12 @@ class Meta(AceMixin, commands.Cog):
 		here_invokes = await self.db.fetchval('SELECT COUNT(*) FROM log WHERE command=$1 AND guild_id=$2', command.qualified_name, ctx.guild.id)
 		e.add_field(name='Invokes in this server', value='{0:,d}'.format(here_invokes))
 
-		e.add_field(name='Can you run it?', value=yesno(await command.can_run(ctx)))
+		try:
+			can_run = await command.can_run(ctx)
+		except commands.CommandError:
+			can_run = False
+
+		e.add_field(name='Can you run it?', value=yesno(can_run))
 
 		e.add_field(name='Enabled', value=yesno(command.enabled))
 		e.add_field(name='Hidden', value=yesno(command.hidden))
