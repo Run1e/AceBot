@@ -827,7 +827,7 @@ class Moderation(AceMixin, commands.Cog):
 		except discord.HTTPException:
 			raise commands.CommandError('Error occurred when deleting messages.')
 
-		await ctx.send('{0} messages deleted.'.format(len(deleted_messages)))
+		await ctx.send('{0} messages deleted.'.format(len(deleted_messages)), delete_after=10)
 
 	@commands.command()
 	@commands.has_permissions(administrator=True)
