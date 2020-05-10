@@ -1,23 +1,14 @@
-import discord
 import asyncio
-import aiohttp
 import logging
 
+import aiohttp
+import discord
 from discord.ext import commands
 
-from config import THECATAPI_KEY
 from cogs.mixins import AceMixin
+from config import THECATAPI_KEY
 
 QUERY_ERROR = commands.CommandError('Query failed, try again later.')
-
-QUOTES = (
-	'That\'s the cutest thing I\'ve ever seen.',
-	'OMG :heart_eyes:',
-	'I didn\'t know they came in this level of cute.',
-	':heart_eyes: :heart_eyes: :heart_eyes:',
-	'CUTE ASF.',
-	'I wanna hug it so bad.',
-)
 
 WOOF_URL = 'https://random.dog/'
 WOOF_HEADERS = dict(filter='mp4')
@@ -29,12 +20,11 @@ QUACK_URL = 'https://random-d.uk/api/v1/random'
 
 FLOOF_URL = 'https://randomfox.ca/floof/'
 
-
 log = logging.getLogger(__name__)
 
 
-class Image(AceMixin, commands.Cog):
-	''':heart_eyes: :heart_eyes: :heart_eyes:'''
+class Images(AceMixin, commands.Cog):
+	'''The cutest woofs, meows, quacks and floofs around. :heart_eyes:'''
 
 	QUERY_EXCEPTIONS = (discord.HTTPException, aiohttp.ClientError, asyncio.TimeoutError, commands.CommandError)
 
@@ -42,7 +32,7 @@ class Image(AceMixin, commands.Cog):
 		super().__init__(bot)
 
 	def _create_embed(self, url=None):
-		e = discord.Embed() # description=choice(QUOTES))
+		e = discord.Embed()
 		if url is not None:
 			e.set_image(url=url)
 		log.info(url)
@@ -102,7 +92,7 @@ class Image(AceMixin, commands.Cog):
 
 		async with ctx.typing():
 			try:
-				async with ctx.http.get(QUACK_URL,) as resp:
+				async with ctx.http.get(QUACK_URL) as resp:
 					if resp.status != 200:
 						raise QUERY_ERROR
 					json = await resp.json()
@@ -136,4 +126,4 @@ class Image(AceMixin, commands.Cog):
 
 
 def setup(bot):
-	bot.add_cog(Image(bot))
+	bot.add_cog(Images(bot))

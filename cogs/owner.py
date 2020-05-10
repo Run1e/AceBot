@@ -110,42 +110,59 @@ class Owner(AceMixin, commands.Cog):
 		if t is not None:
 			self.event_counter[t] += 1
 
-	@commands.command(hidden=True)
-	async def gateway(self, ctx, *, n=None):
-		'''Print gateway event counters.'''
+	@commands.command()
+	async def eval(self, ctx, *, body: str):
+		'''Evaluates some code.'''
 
-		data = self.event_counter.most_common(n)
-		data = [(name, format(count, ',d')) for name, count in data]
-		headers = ('Event', 'Count')
+		from pprint import pprint
+		from tabulate import tabulate
 
-		await ctx.send('```{0}```'.format(tabulate(data, headers)))
+		env = {
+			'discord': discord,
+			'bot': self.bot,
+			'ctx': ctx,
+			'channel': ctx.channel,
+			'author': ctx.author,
+			'guild': ctx.guild,
+			'message': ctx.message,
+			'pprint': pprint,
+			'tabulate': tabulate,
+			'db': self.db
+		}
 
-	@commands.command(hidden=True)
-	async def test(self, ctx):
-		raise ValueError('test')
+		env.update(globals())
 
-	@commands.command(hidden=True, aliases=['lvl'])
-	async def level(self, ctx, *, level):
-		'''Change the logging level for debugging purposes.'''
+		body = self.cleanup_code(body)
+		stdout = io.StringIO()
 
-		lvl = getattr(logging, level.upper())
-		logging.getLogger().setLevel(lvl)
-		await ctx.send('Logging level is {0}'.format(lvl))
+		to_compile = f'async def func():\n{textwrap.indent(body, "  ")}'
 
-	@commands.command(name='raise', hidden=True)
-	async def _raise(self, ctx, type: str, *, message: str):
-		raise globals()[type](message)
+		try:
+			exec(to_compile, env)
+		except Exception as e:
+			return await ctx.send(f'```py\n{e.__class__.__name__}: {e}\n```')
 
-	@commands.command(hidden=True)
-	async def ping(self, ctx):
-		'''Check response time.'''
+		func = env['func']
+		try:
+			with redirect_stdout(stdout):
+				ret = await func()
+		except Exception as e:
+			value = stdout.getvalue()
+			await ctx.send(f'```py\n{value}{traceback.format_exc()}\n```')
+		else:
+			value = stdout.getvalue()
+			try:
+				await ctx.message.add_reaction('\u2705')
+			except:
+				pass
 
-		msg = await ctx.send('Wait...')
-
-		await msg.edit(content='Response: {}.\nGateway: {}'.format(
-			pretty_timedelta(msg.created_at - ctx.message.created_at),
-			pretty_timedelta(timedelta(seconds=self.bot.latency))
-		))
+			if ret is None:
+				if value:
+					if len(value) > 1990:
+						fp = io.BytesIO(value.encode('utf-8'))
+						await ctx.send('Log too large...', file=discord.File(fp, 'results.txt'))
+					else:
+						await ctx.send(f'```py\n{value}\n```')
 
 	@commands.command()
 	@commands.bot_has_permissions(embed_links=True)
@@ -196,18 +213,38 @@ class Owner(AceMixin, commands.Cog):
 		else:
 			await ctx.send('```' + table + '```')
 
-	@commands.command(name='reload', aliases=['rl'])
-	@commands.bot_has_permissions(add_reactions=True)
-	async def _reload(self, ctx):
-		'''Reload edited extensions.'''
+	@commands.command()
+	async def gateway(self, ctx, *, n=None):
+		'''Print gateway event counters.'''
 
-		reloaded = self.bot.load_extensions()
+		data = self.event_counter.most_common(n)
+		data = [(name, format(count, ',d')) for name, count in data]
+		headers = ('Event', 'Count')
 
-		if reloaded:
-			log.info('Reloaded cogs: ' + ', '.join(reloaded))
-			await ctx.send('Reloaded cogs: ' + ', '.join('`{0}`'.format(ext) for ext in reloaded))
-		else:
-			await ctx.send('Nothing to reload.')
+		await ctx.send('```{0}```'.format(tabulate(data, headers)))
+
+	@commands.command(hidden=True)
+	async def test(self, ctx):
+		raise ValueError('test')
+
+	@commands.command()
+	async def level(self, ctx, *, level):
+		'''Change the logging level for debugging purposes.'''
+
+		lvl = getattr(logging, level.upper())
+		logging.getLogger().setLevel(lvl)
+		await ctx.send('Logging level is {0}'.format(lvl))
+
+	@commands.command()
+	async def ping(self, ctx):
+		'''Check response time.'''
+
+		msg = await ctx.send('Wait...')
+
+		await msg.edit(content='Response: {}.\nGateway: {}'.format(
+			pretty_timedelta(msg.created_at - ctx.message.created_at),
+			pretty_timedelta(timedelta(seconds=self.bot.latency))
+		))
 
 	@commands.command()
 	async def repeat(self, ctx, repeats: int, *, command):
@@ -223,6 +260,19 @@ class Owner(AceMixin, commands.Cog):
 
 		for i in range(repeats):
 			await new_ctx.reinvoke()
+
+	@commands.command(name='reload', aliases=['rl'])
+	@commands.bot_has_permissions(add_reactions=True)
+	async def _reload(self, ctx):
+		'''Reload edited extensions.'''
+
+		reloaded = self.bot.load_extensions()
+
+		if reloaded:
+			log.info('Reloaded cogs: ' + ', '.join(reloaded))
+			await ctx.send('Reloaded cogs: ' + ', '.join('`{0}`'.format(ext) for ext in reloaded))
+		else:
+			await ctx.send('Nothing to reload.')
 
 	@commands.command()
 	async def decache(self, ctx, guild_id: int):
@@ -291,15 +341,23 @@ class Owner(AceMixin, commands.Cog):
 				raise commands.CommandError('Query timed out.')
 
 	@commands.command()
+	@commands.bot_has_permissions(manage_messages=True)
+	async def say(self, ctx, channel: discord.TextChannel, *, content: str):
+		'''Send a message in a channel.'''
+
+		await ctx.message.delete()
+		await channel.send(content)
+
+	@commands.command(hidden=True, aliases=['gh'])
 	@commands.bot_has_permissions(embed_links=True)
-	async def gh(self, ctx, *, query: str):
+	async def github(self, ctx, *, query: str):
 		'''Google search for GitHub pages.'''
 
 		await ctx.invoke(self.google, query='site:github.com ' + query)
 
-	@commands.command()
+	@commands.command(hidden=True, aliases=['f'])
 	@commands.bot_has_permissions(embed_links=True)
-	async def f(self, ctx, *, query: str):
+	async def forum(self, ctx, *, query: str):
 		'''Google search for AutoHotkey pages.'''
 
 		await ctx.invoke(self.google, query='site:autohotkey.com ' + query)
@@ -318,72 +376,10 @@ class Owner(AceMixin, commands.Cog):
 		await user.send(content)
 
 	@commands.command(hidden=True)
-	@commands.bot_has_permissions(manage_messages=True)
-	async def say(self, ctx, channel: discord.TextChannel, *, content: str):
-		'''Send a message in a channel.'''
-
-		await ctx.message.delete()
-		await channel.send(content)
-
-	@commands.command(hidden=True)
 	async def print(self, ctx, *, body: str):
 		'''Calls eval but wraps code in print()'''
 
 		await ctx.invoke(self.eval, body=f'pprint({body})')
-
-	@commands.command()
-	async def eval(self, ctx, *, body: str):
-		'''Evaluates some code.'''
-
-		from pprint import pprint
-		from tabulate import tabulate
-
-		env = {
-			'discord': discord,
-			'bot': self.bot,
-			'ctx': ctx,
-			'channel': ctx.channel,
-			'author': ctx.author,
-			'guild': ctx.guild,
-			'message': ctx.message,
-			'pprint': pprint,
-			'tabulate': tabulate,
-			'db': self.db
-		}
-
-		env.update(globals())
-
-		body = self.cleanup_code(body)
-		stdout = io.StringIO()
-
-		to_compile = f'async def func():\n{textwrap.indent(body, "  ")}'
-
-		try:
-			exec(to_compile, env)
-		except Exception as e:
-			return await ctx.send(f'```py\n{e.__class__.__name__}: {e}\n```')
-
-		func = env['func']
-		try:
-			with redirect_stdout(stdout):
-				ret = await func()
-		except Exception as e:
-			value = stdout.getvalue()
-			await ctx.send(f'```py\n{value}{traceback.format_exc()}\n```')
-		else:
-			value = stdout.getvalue()
-			try:
-				await ctx.message.add_reaction('\u2705')
-			except:
-				pass
-
-			if ret is None:
-				if value:
-					if len(value) > 1990:
-						fp = io.BytesIO(value.encode('utf-8'))
-						await ctx.send('Log too large...', file=discord.File(fp, 'results.txt'))
-					else:
-						await ctx.send(f'```py\n{value}\n```')
 
 
 def setup(bot):

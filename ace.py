@@ -1,6 +1,5 @@
 import asyncio
 import json
-import logging
 import logging.handlers
 import os
 import sys
@@ -10,16 +9,14 @@ import aiohttp
 import asyncpg
 from discord.ext import commands
 
-from cogs.help import EditedMinimalHelpCommand, PaginatedHelpCommand
 from config import *
+from utils.colorstreamhandler import ColorStreamHandler
 from utils.commanderrorlogic import CommandErrorLogic
 from utils.configtable import ConfigTable
 from utils.context import AceContext
-from utils.fakemember import FakeMember
 from utils.guildconfigrecord import GuildConfigRecord
+from utils.help import EditedMinimalHelpCommand, PaginatedHelpCommand
 from utils.time import pretty_seconds
-from utils.colorstreamhandler import ColorStreamHandler
-from utils.string import po
 
 EXTENSIONS = (
 	'cogs.general',
@@ -31,13 +28,13 @@ EXTENSIONS = (
 	'cogs.mod',
 	'cogs.games',
 	'cogs.remind',
-	'cogs.hl',
 	'cogs.welcome',
-	'cogs.spotify',
 	'cogs.roles',
+	'cogs.spotify',
 	'cogs.whois',
+	'cogs.hl',
 	'cogs.ahk.ahk',
-	#'cogs.ahk.help',
+	# 'cogs.ahk.help',
 	'cogs.ahk.internal.logger',
 	'cogs.ahk.internal.security',
 	'cogs.dwitter',
@@ -310,6 +307,7 @@ async def setup():
 		async def new(self, query, args, limit, timeout, return_status=False):
 			log.debug(query)
 			return await old(self, query, args, limit, timeout, return_status)
+
 		return new
 
 	asyncpg.Connection._execute = patched_execute(asyncpg.Connection._execute)

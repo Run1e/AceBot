@@ -1,4 +1,3 @@
-import discord
 from discord.ext import commands
 
 from utils.pager import Pager
@@ -7,20 +6,30 @@ from utils.pager import Pager
 class HelpPager(Pager):
 	commands_per_page = 8
 
-	def add_page(self, cog_name, cog_desc, cmds):
-		'''Will split into several pages to accomodate the per_page limit.'''
+	def add_page(self, cog_name, cog_desc, commands):
+		'''Will split into several pages to accommodate the per_page limit.'''
 
 		# will obviously not run if no commands are in the page
-		for cmds_slice in [cmds[i:i + self.commands_per_page] for i in range(0, len(cmds), self.commands_per_page)]:
-			self.entries.append((cog_name, cog_desc, cmds_slice))
+		for commands_slice in [commands[i:i + self.commands_per_page] for i in range(0, len(commands), self.commands_per_page)]:
+			self.entries.append((cog_name, cog_desc, commands_slice))
+
+	def craft_invite_string(self):
+		return '[Enjoying the bot? Invite me to your own server!]({0})'.format(self.ctx.bot.invite_link)
 
 	async def craft_page(self, e, page, entries):
 		cog_name, cog_desc, commands = entries[0]
 
 		name = f'{cog_name} Commands'
 
+		desc = ''
+		if self.ctx.guild.owner != self.ctx.author:
+			desc += self.craft_invite_string()
+
+		if cog_desc is not None:
+			desc += '\n\n' + cog_desc
+
 		self.embed.set_author(name=name, icon_url=self.bot.user.avatar_url)
-		self.embed.description = cog_desc
+		self.embed.description = desc
 
 		for name, value in commands:
 			self.embed.add_field(name=name, value=value, inline=False)
@@ -43,16 +52,16 @@ class HelpPager(Pager):
 class PaginatedHelpCommand(commands.HelpCommand):
 	'''Cog that implements the help command and help pager.'''
 
-	async def add_command(self, cmds, command, force=False, long_help=False):
+	async def package_command(self, command, force=False, long_help=False):
 		if command.hidden:
-			return
+			return None
 
-		if force is False:
+		if not force:
 			try:
 				if not await command.can_run(self.context):
-					return
-			except commands.CheckFailure:
-				return
+					return None
+			except commands.CommandError:
+				return None
 
 		help_message = command.brief or command.help
 
@@ -61,27 +70,35 @@ class PaginatedHelpCommand(commands.HelpCommand):
 		elif not long_help:
 			help_message = help_message.split('\n')[0]
 
-		cmds.append((self.context.prefix + get_signature(command), help_message))
+		return self.context.prefix + get_signature(command), help_message
 
 	async def prepare_help_command(self, ctx, command=None):
 		self.context = ctx
 		self.pager = HelpPager(ctx, list(), per_page=1)
 
-	async def add_cog(self, cog):
+	async def add_cog(self, cog, force=False):
 		cog_name = cog.__class__.__name__
 		cog_desc = cog.__doc__
 
-		cmds = []
-
+		commands = []
 		added = []
+
 		for command in cog.walk_commands():
 			if command in added:
 				continue
 
-			await self.add_command(cmds, command)
 			added.append(command)
 
-		self.pager.add_page(cog_name, cog_desc, cmds)
+			pack = await self.package_command(command, force=force)
+			if pack is None:
+				continue
+
+			commands.append(pack)
+
+		if not commands:
+			return True
+
+		self.pager.add_page(cog_name, cog_desc, commands)
 
 	async def send_bot_help(self, mapping):
 		for cog in mapping:
@@ -91,25 +108,38 @@ class PaginatedHelpCommand(commands.HelpCommand):
 		await self.pager.go()
 
 	async def send_cog_help(self, cog):
-		await self.add_cog(cog)
+		if await self.add_cog(cog, force=True):
+			return
 		await self.pager.go()
 
 	async def send_group_help(self, group):
-		if group.cog_name.lower() == group.name.lower():
+		cog_name = group.cog_name
+
+		if cog_name is not None and group.cog_name.lower() == group.name.lower():
 			await self.send_cog_help(group.cog)
 			return
 
-		added = []
-		cmds = []
+		commands = []
+		seen = []
 
 		for command in group.walk_commands():
-			if command in added:
+			if command in seen:
 				continue
 
-			await self.add_command(cmds, command)
-			added.append(command)
+			seen.append(command)
 
-		self.pager.add_page(group.cog_name, group.cog.__doc__, cmds)
+			pack = await self.package_command(command)
+			if pack is None:
+				continue
+
+			commands.append(pack)
+
+		# if we found no commands, just stop here
+		if not commands:
+			await self.stop()
+			return
+
+		self.pager.add_page(group.cog_name, group.cog.__doc__, commands)
 		await self.pager.go()
 
 	async def send_command_help(self, command):
@@ -119,30 +149,33 @@ class PaginatedHelpCommand(commands.HelpCommand):
 			await self.send_cog_help(command.cog)
 			return
 
-		cog_desc = command.cog.__doc__
+		pack = await self.package_command(command, force=True, long_help=True)
 
-		cmds = []
+		if pack is None:  # probably means it's hidden
+			await self.stop()
+			return
 
-		await self.add_command(cmds, command, long_help=True)
-		self.pager.add_page(cog_name, cog_desc, cmds)
-
+		self.pager.add_page(cog_name, command.cog.__doc__, [pack])
 		await self.pager.go()
 
-	async def command_not_found(self, string):
-		return commands.CommandNotFound(string)
+	async def stop(self):
+		await self.send_error_message(await self.command_not_found(self.context.kwargs['command']))
+
+	async def command_not_found(self, command_name):
+		return commands.CommandNotFound(command_name)
 
 	async def send_error_message(self, error):
 		if not isinstance(error, commands.CommandNotFound):
 			return
 
-		cmd = str(error)
+		command_name = str(error)
 
 		for cog in self.context.bot.cogs:
-			if cmd == cog.lower():
+			if command_name == cog.lower():
 				await self.send_cog_help(self.context.bot.get_cog(cog))
 				return
 
-		await self.context.send('Command \'{}\' not found.'.format(cmd))
+		await self.context.send('Command \'{0}\' not found.'.format(command_name))
 
 
 class EditedMinimalHelpCommand(commands.MinimalHelpCommand):

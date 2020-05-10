@@ -305,7 +305,7 @@ class Moderation(AceMixin, commands.Cog):
 	@commands.has_permissions(ban_members=True)
 	@commands.bot_has_permissions(ban_members=True)
 	async def unban(self, ctx, member: BannedMember, *, reason: ReasonConverter = None):
-		'''Unban a member. Either provide an ID or the users name and discriminator like `RUNIE#9646`.'''
+		'''Unban a member. Either provide an ID or the users name and discriminator like `runie#0001`.'''
 
 		if member.reason is None:
 			prompt = 'No reason provided with the previous ban.'
@@ -503,34 +503,6 @@ class Moderation(AceMixin, commands.Cog):
 			responsible=po(ctx.author), duration=pretty_duration, reason=reason
 		)
 
-	@commands.command()
-	@commands.has_permissions(administrator=True)
-	async def muterole(self, ctx, *, role: discord.Role = None):
-		'''Set the mute role. Only modifiable by server administrators. Leave argument empty to clear.'''
-
-		conf = await self.config.get_entry(ctx.guild.id)
-
-		if role is None:
-			await conf.update(mute_role_id=None)
-			await ctx.send('Mute role cleared.')
-		else:
-			await conf.update(mute_role_id=role.id)
-			await ctx.send('Mute role has been set to {0}'.format(po(role)))
-
-	@commands.command()
-	@is_mod()
-	async def logchannel(self, ctx, *, channel: discord.TextChannel = None):
-		'''Set a channel for the bot to log moderation-related messages.'''
-
-		conf = await self.config.get_entry(ctx.guild.id)
-
-		if channel is None:
-			await conf.update(log_channel_id=None)
-			await ctx.send('Log channel cleared.')
-		else:
-			await conf.update(log_channel_id=channel.id)
-			await ctx.send('Log channel has been set to {0}'.format(po(channel)))
-
 	@commands.Cog.listener()
 	async def on_event_complete(self, record):
 		# relatively crucial that the bot is ready before we launch any events like tempban completions
@@ -695,6 +667,44 @@ class Moderation(AceMixin, commands.Cog):
 	@commands.command()
 	@commands.has_permissions(manage_messages=True)
 	@commands.bot_has_permissions(manage_messages=True)
+	async def clear(self, ctx, message_count: int, user: discord.Member = None):
+		'''Simple purge command. Clear messages, either from user or indiscriminately.'''
+
+		if message_count < 1:
+			raise commands.CommandError('Please choose a positive message amount to clear.')
+
+		if message_count > 100:
+			raise commands.CommandError('Please choose a message count below 100.')
+
+		def all_check(msg):
+			if msg.id == RULES_MSG_ID:
+				return False
+			return True
+
+		def user_check(msg):
+			return msg.author == user and all_check(msg)
+
+		try:
+			await ctx.message.delete()
+		except discord.HTTPException:
+			pass
+
+		try:
+			deleted = await ctx.channel.purge(limit=message_count, check=all_check if user is None else user_check)
+		except discord.HTTPException:
+			raise commands.CommandError('Failed deleting messages. Does the bot have the necessary permissions?')
+
+		count = len(deleted)
+
+		log.info('{} deleted {} messages in {}'.format(
+			po(ctx.author), count, po(ctx.guild)
+		))
+
+		await ctx.send(f'Deleted {count} message{"s" if count > 1 else ""}.', delete_after=5)
+
+	@commands.command()
+	@commands.has_permissions(manage_messages=True)
+	@commands.bot_has_permissions(manage_messages=True)
 	async def purge(self, ctx, *, args: str = None):
 		'''Advanced purge command. Do `help purge` for usage examples and argument list.
 
@@ -755,7 +765,7 @@ class Moderation(AceMixin, commands.Cog):
 		except Exception as e:
 			raise commands.CommandError(str(e).partition('error: ')[2])
 
-		preds = [lambda m: m.id != ctx.message.id]
+		preds = [lambda m: m.id != ctx.message.id, lambda m: m.id != RULES_MSG_ID]
 
 		if args.user:
 			converter = commands.MemberConverter()
@@ -820,42 +830,32 @@ class Moderation(AceMixin, commands.Cog):
 		await ctx.send('{0} messages deleted.'.format(len(deleted_messages)))
 
 	@commands.command()
-	@commands.has_permissions(manage_messages=True)
-	@commands.bot_has_permissions(manage_messages=True)
-	async def clear(self, ctx, message_count: int, user: discord.Member = None):
-		'''Clear messages, either from user or indiscriminately.'''
+	@commands.has_permissions(administrator=True)
+	async def muterole(self, ctx, *, role: discord.Role = None):
+		'''Set the mute role. Only modifiable by server administrators. Leave argument empty to clear.'''
 
-		if message_count < 1:
-			raise commands.CommandError('Please choose a positive message amount to clear.')
+		conf = await self.config.get_entry(ctx.guild.id)
 
-		if message_count > 100:
-			raise commands.CommandError('Please choose a message count below 100.')
+		if role is None:
+			await conf.update(mute_role_id=None)
+			await ctx.send('Mute role cleared.')
+		else:
+			await conf.update(mute_role_id=role.id)
+			await ctx.send('Mute role has been set to {0}'.format(po(role)))
 
-		def all_check(msg):
-			if msg.id == RULES_MSG_ID:
-				return False
-			return True
+	@commands.command()
+	@is_mod()
+	async def logchannel(self, ctx, *, channel: discord.TextChannel = None):
+		'''Set a channel for the bot to log moderation-related messages.'''
 
-		def user_check(msg):
-			return msg.author == user and all_check(msg)
+		conf = await self.config.get_entry(ctx.guild.id)
 
-		try:
-			await ctx.message.delete()
-		except discord.HTTPException:
-			pass
-
-		try:
-			deleted = await ctx.channel.purge(limit=message_count, check=all_check if user is None else user_check)
-		except discord.HTTPException:
-			raise commands.CommandError('Failed deleting messages. Does the bot have the necessary permissions?')
-
-		count = len(deleted)
-
-		log.info('{} deleted {} messages in {}'.format(
-			po(ctx.author), count, po(ctx.guild)
-		))
-
-		await ctx.send(f'Deleted {count} message{"s" if count > 1 else ""}.', delete_after=5)
+		if channel is None:
+			await conf.update(log_channel_id=None)
+			await ctx.send('Log channel cleared.')
+		else:
+			await conf.update(log_channel_id=channel.id)
+			await ctx.send('Log channel has been set to {0}'.format(po(channel)))
 
 	@commands.command(hidden=True)
 	@is_mod()
@@ -997,8 +997,8 @@ class Moderation(AceMixin, commands.Cog):
 		per = getattr(conf, type + '_per')
 
 		data = (
-			'{0} action is{3}performed on members sending {1} '
-			'or more {4} within {2} seconds.'
+			'{0} action is{3}performed on members sending `{1}` '
+			'or more {4} within `{2}` seconds.'
 		).format(
 			'A `{0}`'.format(action) if action else 'No', count, per,
 			' now ' if now else ' ', 'mentions' if type == 'mention' else 'messages'
@@ -1014,19 +1014,23 @@ class Moderation(AceMixin, commands.Cog):
 			data += '\n\nNOTE: I do not have Kick Members permissions!'
 		elif action is None:
 			data += '\n\nNOTE: Anti-{0} is disabled, enable by doing `{0} action <action>`'.format(type)
+		else:
+			data += '\n\nNo issues found with current configuration. Anti-{0} is live!'.format(type)
 
 		return data
 
-	@commands.group(hidden=True, invoke_without_command=True)
+	@commands.group(invoke_without_command=True)
 	@is_mod()
 	async def spam(self, ctx):
+		'''View current anti-spam settings.'''
+
 		conf = await self.config.get_entry(ctx.guild.id)
 		await ctx.send(self._craft_string(ctx, 'spam', conf))
 
 	@spam.command(name='action')
 	@is_mod()
 	async def antispam_action(self, ctx, *, action: ActionConverter = None):
-		'''Set action taken towards spamming members. Leave argument blank to disable anti-spam.'''
+		'''Set action taken towards spamming members. Valid actions are `MUTE`, `KICK`, and `BAN`. Leave argument blank to disable anti-spam.'''
 
 		conf = await self.config.get_entry(ctx.guild.id)
 		await conf.update(spam_action=None if action is None else action.name)
@@ -1050,16 +1054,18 @@ class Moderation(AceMixin, commands.Cog):
 
 		await ctx.send(self._craft_string(ctx, 'spam', conf, now=True))
 
-	@commands.group(hidden=True, invoke_without_command=True)
+	@commands.group(invoke_without_command=True)
 	@is_mod()
 	async def mention(self, ctx):
+		'''View current anti-mentionspam settings.'''
+
 		conf = await self.config.get_entry(ctx.guild.id)
 		await ctx.send(self._craft_string(ctx, 'mention', conf))
 
 	@mention.command(name='action')
 	@is_mod()
 	async def mention_action(self, ctx, *, action: ActionConverter = None):
-		'''Action taken towards mention-spamming members. Leave argument blank to disable anti-mention.'''
+		'''Action taken towards mention-spamming members. Valid actions are `MUTE`, `KICK`, and `BAN`. Leave argument blank to disable anti-mention.'''
 
 		conf = await self.config.get_entry(ctx.guild.id)
 		await conf.update(mention_action=None if action is None else action.name)

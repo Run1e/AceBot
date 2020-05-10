@@ -74,7 +74,7 @@ class Reminders(AceMixin, commands.Cog):
 
 	Examples:
 	`.remindme in 3 days do the laundry`
-	`.remindme call back david in 10 minutes`
+	`.remindme call back john in 10 minutes`
 	`.remindme apply for job 17th of august`
 	`.remindme tomorrow take out trash`
 

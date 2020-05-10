@@ -61,8 +61,7 @@ def get_url(images):
 
 
 class Spotify(AceMixin, commands.Cog):
-	'''
-	Spotify stuff!
+	'''Spotify stuff!
 	Powered by [asyncspotify](https://github.com/Run1e/asyncspotify)
 	'''
 

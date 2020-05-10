@@ -60,7 +60,7 @@ class WhoIs(AceMixin, commands.Cog):
 	@commands.command(aliases=['newmembers'])
 	@commands.bot_has_permissions(embed_links=True)
 	async def newusers(self, ctx, *, count=5):
-		'''Lists newly joined members.'''
+		'''List newly joined members.'''
 
 		count = min(max(count, 5), 25)
 

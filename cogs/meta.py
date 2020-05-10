@@ -149,20 +149,20 @@ class Meta(AceMixin, commands.Cog):
 
 	@commands.command()
 	@commands.bot_has_permissions(embed_links=True)
-	async def about(self, ctx, *, command_name: str = None):
+	async def about(self, ctx, *, command: str = None):
 		'''Show info about the bot or a command.'''
 
-		if command_name is None:
+		if command is None:
 			await self._about_bot(ctx)
 		else:
-			cmd = self.bot.get_command(command_name)
-			if cmd is None:
+			cmd = self.bot.get_command(command)
+			if cmd is None or cmd.hidden:
 				raise commands.CommandError('No command with that name found.')
 			await self._about_command(ctx, cmd)
 
 	async def _about_bot(self, ctx):
 
-		e = discord.Embed(title='Click for official bot invite link!', description=self.get_last_commits(), url=self.bot.invite_link)
+		e = discord.Embed(title='Official bot invite link here!', description=self.get_last_commits(), url=self.bot.invite_link)
 
 		owner = self.bot.get_user(self.bot.owner_id)
 		e.set_author(name=str(owner), icon_url=owner.avatar_url)
@@ -196,9 +196,7 @@ class Meta(AceMixin, commands.Cog):
 		e.add_field(name='Channels', value='{0:,d} total\n{1:,d} text channels\n{2:,d} voice channels'.format(text + voice, text, voice))
 
 		now = datetime.utcnow()
-		e.add_field(name='Time since last restart', value=pretty_timedelta(now - self.bot.startup_time))
-
-		e.timestamp = now
+		e.set_footer(text='Last restart {0} ago'.format(pretty_timedelta(now - self.bot.startup_time)))
 
 		await ctx.send(embed=e)
 
@@ -206,12 +204,6 @@ class Meta(AceMixin, commands.Cog):
 		e = discord.Embed(title=command.qualified_name + ' ' + command.signature, description=command.description or command.help)
 
 		e.add_field(name='Qualified name', value=command.qualified_name)
-
-		invokes = await self.db.fetchval('SELECT COUNT(*) FROM log WHERE command=$1', command.qualified_name)
-		e.add_field(name='Total invokes', value='{0:,d}'.format(invokes))
-
-		here_invokes = await self.db.fetchval('SELECT COUNT(*) FROM log WHERE command=$1 AND guild_id=$2', command.qualified_name, ctx.guild.id)
-		e.add_field(name='Invokes in this server', value='{0:,d}'.format(here_invokes))
 
 		try:
 			can_run = await command.can_run(ctx)
@@ -221,7 +213,12 @@ class Meta(AceMixin, commands.Cog):
 		e.add_field(name='Can you run it?', value=yesno(can_run))
 
 		e.add_field(name='Enabled', value=yesno(command.enabled))
-		e.add_field(name='Hidden', value=yesno(command.hidden))
+
+		invokes = await self.db.fetchval('SELECT COUNT(*) FROM log WHERE command=$1', command.qualified_name)
+		e.add_field(name='Total invokes', value='{0:,d}'.format(invokes))
+
+		here_invokes = await self.db.fetchval('SELECT COUNT(*) FROM log WHERE command=$1 AND guild_id=$2', command.qualified_name, ctx.guild.id)
+		e.add_field(name='Invokes in this server', value='{0:,d}'.format(here_invokes))
 
 		if command.aliases:
 			e.set_footer(text='Also known as: ' + ', '.join(command.aliases))
