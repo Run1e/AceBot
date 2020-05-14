@@ -138,12 +138,11 @@ class AutoHotkey(AceMixin, commands.Cog):
 			return
 
 		log.info(
-			'About to purge {} helpers. Current list: {}'.format(
-				len(remove), ', '.join(list(str(member.id) for member in all_helpers))
-			)
+			'About to purge %s helpers. Current list: %s',
+			len(remove), ', '.join(list(str(member.id) for member in all_helpers))
 		)
 
-		log.info('Removing inactive helpers:\n{}'.format('\n'.join(list(po(member) for member in remove))))
+		log.info('Removing inactive helpers:\n%s', '\n'.join(list(po(member) for member in remove)))
 
 		reason = 'Removed helper inactive for over {0}.'.format(pretty_timedelta(INACTIVITY_LIMIT))
 
@@ -362,10 +361,10 @@ class AutoHotkey(AceMixin, commands.Cog):
 	@commands.command(hidden=True)
 	@commands.is_owner()
 	async def build(self, ctx, download: bool = True):
-		log.info('Starting documentation build job. Download={}'.format(download))
+		log.info('Starting documentation build job. Download=%s', download)
 
 		async def on_update(text):
-			log.info('Build job: {}'.format(text))
+			log.info('Build job: %s', text)
 			await ctx.send(text)
 
 		try:

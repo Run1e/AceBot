@@ -80,12 +80,12 @@ class Welcome(AceMixin, commands.Cog):
 		for key, val in replace_table.items():
 			message = message.replace('{' + key + '}', str(val))
 
+		log.info('Sending welcome message for %s in %s', po(member), po(member.guild))
+
 		try:
 			await channel.send(message)
 		except discord.HTTPException:
 			pass
-
-		log.info('Sending welcome message for {} in {}'.format(po(member), po(member.guild)))
 
 	@commands.group(hidden=True, invoke_without_command=True)
 	async def welcome(self, ctx):

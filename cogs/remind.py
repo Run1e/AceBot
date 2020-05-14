@@ -108,7 +108,7 @@ class Reminders(AceMixin, commands.Cog):
 			elif user is not None:
 				await user.send(embed=e)
 		except discord.HTTPException as exc:
-			log.info(f'Failed sending reminder #{_id} for {user.id} - {exc}')
+			log.info('Failed sending reminder #%s for %s - %s', _id, po(user), str(exc))
 
 	@commands.command(aliases=['remind'])
 	@commands.bot_has_permissions(add_reactions=True)
@@ -142,7 +142,7 @@ class Reminders(AceMixin, commands.Cog):
 
 		await ctx.send('You will be reminded in {}.'.format(pretty_timedelta(remind_in)))
 
-		log.info('{} set a reminder for {}.'.format(po(ctx.author), pretty_datetime(when)))
+		log.info('%s set a reminder for %s.', po(ctx.author), pretty_datetime(when))
 
 	@commands.command()
 	@commands.bot_has_permissions(embed_links=True)

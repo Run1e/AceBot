@@ -918,13 +918,14 @@ class Roles(AceMixin, commands.Cog):
 		if conf.notify:
 			await channel.send(embed=e, delete_after=5)
 
-		log.info('{} {} {} {} in {}'.format(
+		log.info(
+			'%s %s %s %s in %s',
 			'Added' if do_add else 'Removed',
 			po(role),
 			'to' if do_add else 'from',
 			po(member),
 			po(guild)
-		))
+		)
 
 
 def setup(bot):

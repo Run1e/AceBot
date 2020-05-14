@@ -88,7 +88,7 @@ class AutoHotkeyHelpSystem(AceMixin, commands.Cog):
 			if owner_id is not None:
 				self.claimed.pop(owner_id)
 
-			log.info('Reclaming %s from user id %s', po(channel), owner_id)
+			log.info('Reclaiming %s from user id %s', po(channel), owner_id)
 
 			await channel.edit(category=self.pool_category, topic='Open for claiming.', sync_permissions=True)
 

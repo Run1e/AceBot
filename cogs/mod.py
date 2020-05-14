@@ -696,9 +696,7 @@ class Moderation(AceMixin, commands.Cog):
 
 		count = len(deleted)
 
-		log.info('{} deleted {} messages in {}'.format(
-			po(ctx.author), count, po(ctx.guild)
-		))
+		log.info('%s cleared %s messages in %s', po(ctx.author), count, po(ctx.guild))
 
 		await ctx.send(f'Deleted {count} message{"s" if count > 1 else ""}.', delete_after=5)
 
@@ -827,7 +825,11 @@ class Moderation(AceMixin, commands.Cog):
 		except discord.HTTPException:
 			raise commands.CommandError('Error occurred when deleting messages.')
 
-		await ctx.send('{0} messages deleted.'.format(len(deleted_messages)), delete_after=10)
+		deleted_count = len(deleted_messages)
+
+		log.info('%s purged %s messages in %s', po(ctx.author), deleted_count, po(ctx.guild))
+
+		await ctx.send('{0} messages deleted.'.format(deleted_count), delete_after=10)
 
 	@commands.command()
 	@commands.has_permissions(administrator=True)

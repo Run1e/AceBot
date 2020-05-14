@@ -16,6 +16,7 @@ from utils.configtable import ConfigTable
 from utils.context import AceContext
 from utils.guildconfigrecord import GuildConfigRecord
 from utils.help import EditedMinimalHelpCommand, PaginatedHelpCommand
+from utils.string import po
 from utils.time import pretty_seconds
 
 EXTENSIONS = (
@@ -34,7 +35,7 @@ EXTENSIONS = (
 	'cogs.whois',
 	'cogs.hl',
 	'cogs.ahk.ahk',
-	# 'cogs.ahk.help',
+		# 'cogs.ahk.help',
 	'cogs.ahk.internal.logger',
 	'cogs.ahk.internal.security',
 	'cogs.dwitter',
@@ -106,7 +107,7 @@ class AceBot(commands.Bot):
 			self.loop.create_task(self.update_dbl())
 
 			self.ready.set()
-			log.info(f'Ready! {self.user} (ID: {self.user.id})')
+			log.info('Ready! %s', po(self.user))
 
 	async def on_message(self, message):
 		if message.guild is None or message.author.bot:
@@ -169,7 +170,7 @@ class AceBot(commands.Bot):
 
 	async def on_command(self, ctx):
 		spl = ctx.message.content.split('\n')
-		log.info('%s in %s: %s', ctx.author.display_name, ctx.guild.name, spl[0] + (' ...' if len(spl) > 1 else ''))
+		log.info('%s in %s: %s', po(ctx.author), po(ctx.guild), spl[0] + (' ...' if len(spl) > 1 else ''))
 
 	async def on_command_completion(self, ctx: AceContext):
 		await ctx.db.execute(
@@ -215,15 +216,15 @@ class AceBot(commands.Bot):
 				handler.oops()
 
 	async def on_guild_join(self, guild):
-		log.info('Join guild {0.name} ({0.id})'.format(guild))
+		log.info('Join guild %s', po(guild))
 		await self.update_dbl()
 
 	async def on_guild_remove(self, guild):
-		log.info('Left guild {0.name} ({0.id})'.format(guild))
+		log.info('Left guild %s', po(guild))
 		await self.update_dbl()
 
 	async def on_guild_unavailable(self, guild):
-		log.info(f'Guild "{guild.name}" unavailable')
+		log.info('Unavailable guild %s', po(guild))
 
 	@property
 	def invite_link(self):
@@ -252,9 +253,9 @@ class AceBot(commands.Bot):
 
 		async with self.aiohttp.post(url, data=json.dumps(data), headers=headers) as resp:
 			if resp.status == 200:
-				log.info('Updated DBL with server count {}'.format(server_count))
+				log.info('Updated DBL with server count %s', server_count)
 			else:
-				log.info('Failed updating DBL: {} - {}'.format(resp.reason, await resp.text()))
+				log.info('Failed updating DBL: %s - %s', resp.reason, await resp.text())
 
 
 def setup_logger():
@@ -292,7 +293,7 @@ async def setup():
 	# create folders
 	for path in ('data', 'logs', 'error', 'feedback', 'ahk_eval'):
 		if not os.path.exists(path):
-			log.info('Creating folder: {0}'.format(path))
+			log.info('Creating folder: %s', path)
 			os.makedirs(path)
 
 	# misc. monkey-patching

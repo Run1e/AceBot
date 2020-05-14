@@ -269,7 +269,7 @@ class Owner(AceMixin, commands.Cog):
 		reloaded = self.bot.load_extensions()
 
 		if reloaded:
-			log.info('Reloaded cogs: ' + ', '.join(reloaded))
+			log.info('Reloaded cogs: %s', ', '.join(reloaded))
 			await ctx.send('Reloaded cogs: ' + ', '.join('`{0}`'.format(ext) for ext in reloaded))
 		else:
 			await ctx.send('Nothing to reload.')
