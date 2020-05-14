@@ -31,7 +31,7 @@ SUGGESTION_PREFIX = 'suggestion:'
 UPVOTE_EMOJI = '\N{Thumbs Up Sign}'
 DOWNVOTE_EMOJI = '\N{Thumbs Down Sign}'
 
-INACTIVITY_LIMIT = timedelta(weeks=12)
+INACTIVITY_LIMIT = timedelta(weeks=4)
 
 
 class DocsPagePager(Pager):
