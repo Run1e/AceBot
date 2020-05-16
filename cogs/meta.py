@@ -278,9 +278,9 @@ class Meta(AceMixin, commands.Cog):
 			'since the last bot restart.'
 		)
 
-	@commands.command()
-	async def dbl(self, ctx):
-		'''Get link to discordbots.org bot page.'''
+	@commands.command(aliases=['dbl'])
+	async def topgg(self, ctx):
+		'''Get link to top.gg bot page.'''
 
 		await ctx.send('https://top.gg/bot/{0.id}'.format(self.bot.user))
 
