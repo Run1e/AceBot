@@ -1,16 +1,17 @@
-import discord
 import logging
-import parsedatetime
-
-from discord.ext import commands
 from datetime import datetime, timedelta
 from enum import IntEnum
 
+import discord
+import parsedatetime
+from discord.ext import commands
+
 from cogs.mixins import AceMixin
+from utils.converters import Int32Converter
 from utils.databasetimer import ColumnTimer
-from utils.string import shorten, po
-from utils.time import pretty_timedelta, pretty_datetime
 from utils.pager import Pager
+from utils.string import po, shorten
+from utils.time import pretty_datetime, pretty_timedelta
 
 log = logging.getLogger(__name__)
 
@@ -161,8 +162,10 @@ class Reminders(AceMixin, commands.Cog):
 		await p.go()
 
 	@commands.command()
-	async def delreminder(self, ctx, *, reminder_id: int):
+	async def delreminder(self, ctx, *, reminder_id: Int32Converter):
 		'''Delete a reminder. Must be your own reminder.'''
+
+		print(reminder_id, pow(2, 31))
 
 		res = await self.db.execute(
 			'DELETE FROM remind WHERE id=$1 AND guild_id=$2 AND user_id=$3',
