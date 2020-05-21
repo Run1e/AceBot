@@ -14,6 +14,7 @@ from cogs.ahk.ids import RULES_MSG_ID
 from cogs.mixins import AceMixin
 from utils.configtable import ConfigTable, ConfigTableRecord
 from utils.context import AceContext, can_prompt, is_mod
+from utils.converters import MaxLengthConverter, RangeConverter
 from utils.databasetimer import DatabaseTimer
 from utils.fakemember import FakeMember
 from utils.string import po
@@ -149,7 +150,7 @@ class BannedMember(commands.Converter):
 			entity = discord.utils.find(lambda u: str(u.user) == argument, ban_list)
 
 		if entity is None:
-			raise commands.BadArgument("Not a valid previously-banned member.")
+			raise commands.BadArgument('Not a valid previously banned member.')
 
 		return entity
 
@@ -161,7 +162,7 @@ class ActionConverter(commands.Converter):
 		try:
 			value = SecurityAction[action.upper()]
 		except KeyError:
-			raise commands.CommandError(
+			raise commands.BadArgument(
 				'\'{0}\' is not a valid action. Valid actions are {1}'.format(
 					action, self.valid_actions
 				)
@@ -170,49 +171,9 @@ class ActionConverter(commands.Converter):
 		return value
 
 
-class CountConverter(commands.Converter):
-	MIN = 8
-	MAX = 24
-	ERROR = 'Count should be between %s and %s.'
-
-	async def convert(self, ctx, count):
-		try:
-			count = int(count)
-		except ValueError:
-			raise commands.CommandError('Argument has to be integer.')
-
-		if count < self.MIN:
-			raise commands.CommandError(self.ERROR % (self.MIN, self.MAX))
-		elif count > self.MAX:
-			raise commands.CommandError(self.ERROR % (self.MIN, self.MAX))
-
-		return count
-
-
-class IntervalConverter(commands.Converter):
-	MIN = 8
-	MAX = 24
-	ERROR = 'Interval should be between %s and %s.'
-
-	async def convert(self, ctx, interval):
-		try:
-			interval = int(interval)
-		except ValueError:
-			raise commands.CommandError('Argument has to be integer.')
-
-		if interval < self.MIN:
-			raise commands.CommandError(self.ERROR % (self.MIN, self.MAX))
-		elif interval > self.MAX:
-			raise commands.CommandError(self.ERROR % (self.MIN, self.MAX))
-
-		return interval
-
-
-class ReasonConverter(commands.Converter):
-	async def convert(self, ctx, reason):
-		if len(reason) > 1024:
-			raise commands.CommandError('The reason text can\'t be longer than 1024 characters.')
-		return reason
+reason_converter = MaxLengthConverter(1024)
+count_converter = RangeConverter(8, 24)
+interval_converter = RangeConverter(8, 24)
 
 
 class Moderation(AceMixin, commands.Cog):
@@ -290,7 +251,7 @@ class Moderation(AceMixin, commands.Cog):
 	@commands.command()
 	@commands.has_permissions(ban_members=True)
 	@commands.bot_has_permissions(ban_members=True)
-	async def ban(self, ctx, member: discord.Member, *, reason: ReasonConverter = None):
+	async def ban(self, ctx, member: discord.Member, *, reason: reason_converter = None):
 		'''Ban a member. Requires Ban Members perms.'''
 
 		try:
@@ -304,7 +265,7 @@ class Moderation(AceMixin, commands.Cog):
 	@can_prompt()
 	@commands.has_permissions(ban_members=True)
 	@commands.bot_has_permissions(ban_members=True)
-	async def unban(self, ctx, member: BannedMember, *, reason: ReasonConverter = None):
+	async def unban(self, ctx, member: BannedMember, *, reason: reason_converter = None):
 		'''Unban a member. Either provide an ID or the users name and discriminator like `runie#0001`.'''
 
 		if member.reason is None:
@@ -327,7 +288,7 @@ class Moderation(AceMixin, commands.Cog):
 	@commands.command()
 	@commands.has_permissions(manage_roles=True)
 	@commands.bot_has_permissions(manage_roles=True)
-	async def mute(self, ctx, member: discord.Member, *, reason: ReasonConverter = None):
+	async def mute(self, ctx, member: discord.Member, *, reason: reason_converter = None):
 		'''Mute a member. Requires Manage Roles perms.'''
 
 		if await ctx.is_mod(member):
@@ -395,7 +356,7 @@ class Moderation(AceMixin, commands.Cog):
 	@commands.command()
 	@commands.has_permissions(manage_roles=True)
 	@commands.bot_has_permissions(manage_roles=True, embed_links=True)
-	async def tempmute(self, ctx, member: discord.Member, amount: TimeMultConverter, unit: TimeDeltaConverter, *, reason: ReasonConverter = None):
+	async def tempmute(self, ctx, member: discord.Member, amount: TimeMultConverter, unit: TimeDeltaConverter, *, reason: reason_converter = None):
 		'''
 		Temporarily mute a member. Requires Manage Role perms. Example: `tempmute @member 1 day Reason goes here.`
 		'''
@@ -451,7 +412,7 @@ class Moderation(AceMixin, commands.Cog):
 	@commands.command()
 	@commands.has_permissions(ban_members=True)
 	@commands.bot_has_permissions(ban_members=True, embed_links=True)
-	async def tempban(self, ctx, member: discord.Member, amount: TimeMultConverter, unit: TimeDeltaConverter, *, reason: ReasonConverter = None):
+	async def tempban(self, ctx, member: discord.Member, amount: TimeMultConverter, unit: TimeDeltaConverter, *, reason: reason_converter = None):
 		'''Temporarily ban a member. Requires Ban Members perms. Same formatting as `tempmute` explained above.'''
 
 		now = datetime.utcnow()
@@ -1046,7 +1007,7 @@ class Moderation(AceMixin, commands.Cog):
 
 	@spam.command(name='rate')
 	@is_mod()
-	async def antispam_rate(self, ctx, count: CountConverter, interval: IntervalConverter):
+	async def antispam_rate(self, ctx, count: count_converter, interval: interval_converter):
 		'''A member is spamming if they send `count` or more messages in `interval` seconds.'''
 
 		conf = await self.config.get_entry(ctx.guild.id)
@@ -1081,7 +1042,7 @@ class Moderation(AceMixin, commands.Cog):
 
 	@mention.command(name='rate')
 	@is_mod()
-	async def mention_rate(self, ctx, count: CountConverter, interval: IntervalConverter):
+	async def mention_rate(self, ctx, count: count_converter, interval: interval_converter):
 		'''A member is mention-spamming if they send `count` or more mentions in `interval` seconds.'''
 
 		conf = await self.config.get_entry(ctx.guild.id)

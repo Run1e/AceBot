@@ -1,20 +1,18 @@
-import discord
-import logging
 import asyncio
-import asyncpg
-
-from discord.ext import commands
+import logging
 from datetime import datetime
 
-from cogs.mixins import AceMixin
-from utils.time import pretty_datetime
-from utils.pager import Pager
-from utils.context import can_prompt
+import asyncpg
+import discord
+from discord.ext import commands
 
+from cogs.mixins import AceMixin
+from utils.context import can_prompt
+from utils.converters import LengthConverter
+from utils.pager import Pager
+from utils.time import pretty_datetime
 
 log = logging.getLogger(__name__)
-
-ACCESS_ERROR = commands.CommandError('Tag not found or you do not have edit permissions for it.')
 
 
 def build_tag_name(record):
@@ -24,10 +22,7 @@ def build_tag_name(record):
 	return name
 
 
-class TagCreateConverter(commands.Converter):
-	_length_max = 32
-	_length_min = 2
-
+class TagCreateConverter(LengthConverter):
 	_reserved = (
 		'tag',
 		'create', 'add', 'new',
@@ -44,22 +39,18 @@ class TagCreateConverter(commands.Converter):
 		'top', 'get', 'set', 'put', 'exec'
 	)
 
-	async def convert(self, ctx, tag_name):
-		tag_name = tag_name.lower()
+	async def convert(self, ctx, argument):
+		tag_name = await super().convert(ctx, argument.lower())
 
-		if len(tag_name) > self._length_max:
-			raise commands.CommandError(f'Tag name limit is {self._length_max} characters.')
-		if len(tag_name) < self._length_min:
-			raise commands.CommandError(f'Tag names must be at least {self._length_min} characters long.')
 		if tag_name in self._reserved:
-			raise commands.CommandError('Sorry, that tag name is reserved.')
+			raise commands.BadArgument('Sorry, that tag name is reserved.')
 
 		escape_converter = commands.clean_content(fix_channel_mentions=True, escape_markdown=True)
 		if tag_name != await escape_converter.convert(ctx, tag_name):
-			raise commands.CommandError('Tag name has disallowed formatting in it.')
+			raise commands.BadArgument('Tag name has disallowed formatting in it.')
 
 		if ctx.cog.tag_is_being_made(ctx, tag_name):
-			raise commands.CommandError('Tag is currently being made elsewhere.')
+			raise commands.BadArgument('Tag with that name is currently being made elsewhere.')
 
 		exist_id = await ctx.bot.db.fetchval(
 			'SELECT id FROM tag WHERE guild_id=$1 AND (name=$2 OR alias=$2)',
@@ -67,9 +58,14 @@ class TagCreateConverter(commands.Converter):
 		)
 
 		if exist_id is not None:
-			raise commands.CommandError('Tag name is already in use.')
+			raise commands.BadArgument('Tag name is already in use.')
 
 		return tag_name
+
+
+tag_create_converter = TagCreateConverter(2, 32)
+
+ACCESS_ERROR = commands.CommandError('Tag not found or you do not have edit permissions for it.')
 
 
 class TagEditConverter(commands.Converter):
@@ -228,7 +224,7 @@ class Tags(AceMixin, commands.Cog):
 		)
 
 	@tag.command(aliases=['add', 'new'])
-	async def create(self, ctx, tag_name: TagCreateConverter, *, content: commands.clean_content = None):
+	async def create(self, ctx, tag_name: tag_create_converter, *, content: commands.clean_content = None):
 		'''Create a new tag.'''
 
 		await self.create_tag(ctx, tag_name, self.craft_tag_contents(ctx, content))
@@ -236,7 +232,7 @@ class Tags(AceMixin, commands.Cog):
 
 	@tag.command()
 	@can_prompt()
-	async def edit(self, ctx, tag_name: TagEditConverter, *, new_content: commands.clean_content = None):
+	async def edit(self, ctx, tag_name: TagEditConverter(), *, new_content: commands.clean_content = None):
 		'''Edit an existing tag.'''
 
 		tag_name, record = tag_name
@@ -252,7 +248,7 @@ class Tags(AceMixin, commands.Cog):
 
 	@tag.command(aliases=['remove'])
 	@can_prompt()
-	async def delete(self, ctx, *, tag_name: TagEditConverter):
+	async def delete(self, ctx, *, tag_name: TagEditConverter()):
 		'''Delete a tag.'''
 
 		if not await ctx.prompt(title='Are you sure?', prompt='This will delete the tag permanently.'):
@@ -326,7 +322,7 @@ class Tags(AceMixin, commands.Cog):
 				try:
 					old_message = ctx.message
 					ctx.message = message
-					await TagCreateConverter().convert(ctx, message.content)
+					await tag_create_converter.convert(ctx, message.content)
 					ctx.message = old_message
 				except commands.CommandError as exc:
 					await ctx.send('Sorry! {} {}'.format(str(exc), name_prompt))
@@ -360,7 +356,7 @@ class Tags(AceMixin, commands.Cog):
 		self.unset_tag_being_made(ctx)
 
 	@tag.command()
-	async def raw(self, ctx, *, tag_name: TagViewConverter):
+	async def raw(self, ctx, *, tag_name: TagViewConverter()):
 		'''View raw contents of a tag. Useful when editing tags.'''
 
 		tag_name, record = tag_name
@@ -368,7 +364,7 @@ class Tags(AceMixin, commands.Cog):
 
 	@tag.command()
 	@can_prompt()
-	async def rename(self, ctx, old_name: TagEditConverter, *, new_name: TagCreateConverter):
+	async def rename(self, ctx, old_name: TagEditConverter(), *, new_name: tag_create_converter):
 		'''Rename a tag.'''
 
 		old_name, record = old_name
@@ -382,7 +378,7 @@ class Tags(AceMixin, commands.Cog):
 
 	@tag.command()
 	@can_prompt()
-	async def alias(self, ctx, tag_name: TagEditConverter, *, alias: TagCreateConverter = None):
+	async def alias(self, ctx, tag_name: TagEditConverter(), *, alias: tag_create_converter = None):
 		'''Give a tag an alias. Omit the alias parameter to clear existing alias.'''
 
 		tag_name, record = tag_name
@@ -399,7 +395,7 @@ class Tags(AceMixin, commands.Cog):
 
 	@tag.command(aliases=['stats'])
 	@commands.bot_has_permissions(embed_links=True)
-	async def info(self, ctx, *, tag_name: TagViewConverter):
+	async def info(self, ctx, *, tag_name: TagViewConverter()):
 		'''See stats about a tag.'''
 
 		tag_name, record = tag_name
@@ -429,22 +425,27 @@ class Tags(AceMixin, commands.Cog):
 
 		e.add_field(name='Uses', value=record.get('uses'))
 
-		if record.get('alias') is not None:
-			e.add_field(name='Alias', value=record.get('alias'))
+		alias = record.get('alias')
+		created_at = record.get('created_at')
+		viewed_at = record.get('viewed_at')
+		edited_at = record.get('edited_at')
 
-		e.add_field(name='Created at', value=pretty_datetime(record.get('created_at')))
+		if alias is not None:
+			e.add_field(name='Alias', value=alias)
 
-		if record.get('viewed_at'):
-			e.add_field(name='Last viewed at', value=pretty_datetime(record.get('viewed_at')))
+		e.add_field(name='Created at', value=pretty_datetime(created_at))
 
-		if record.get('edited_at'):
-			e.add_field(name='Last edited at', value=pretty_datetime(record.get('edited_at')))
+		if viewed_at:
+			e.add_field(name='Last viewed at', value=pretty_datetime(viewed_at))
+
+		if edited_at:
+			e.add_field(name='Last edited at', value=pretty_datetime(edited_at))
 
 		await ctx.send(embed=e)
 
 	@tag.command()
 	@can_prompt()
-	async def transfer(self, ctx, tag_name: TagEditConverter, *, new_owner: discord.Member):
+	async def transfer(self, ctx, tag_name: TagEditConverter(), *, new_owner: discord.Member):
 		'''Transfer a tag to another member.'''
 
 		tag_name, record = tag_name

@@ -1,26 +1,28 @@
+import re
+
 import discord
 from discord.ext import commands
 
-import re
-
 from cogs.ahk.ids import AHK_GUILD_ID
-from utils.context import is_mod
 from cogs.mixins import AceMixin
+from utils.context import is_mod
+from utils.converters import LengthConverter
 
 DELETE_EMOJI = '\N{Put Litter in Its Place Symbol}'
 DEFAULT_LANG = 'py'
 
 
-class LangConverter(commands.Converter):
+class LangConverter(LengthConverter):
 	async def convert(self, ctx, argument):
-		if len(argument) < 1:
-			raise commands.CommandError('Argument too short.')
-		elif len(argument) > 32:
-			raise commands.CommandError('Argument too long.')
-		elif argument != discord.utils.escape_markdown(argument):
-			raise commands.CommandError('No markdown allowed in the codebox language.')
+		argument = await super().convert(ctx, argument)
+
+		if argument != discord.utils.escape_markdown(argument):
+			raise commands.BadArgument('No markdown allowed in the codebox language.')
 
 		return argument
+
+
+lang_converter = LangConverter(1, 32)
 
 
 class Highlighter(AceMixin, commands.Cog):
@@ -52,7 +54,7 @@ class Highlighter(AceMixin, commands.Cog):
 		) or DEFAULT_LANG
 
 		code = '```{}\n{}\n```'.format(lang, code)
-		code += '*Paste by {} - Click {} to delete.*'.format(ctx.author.mention, DELETE_EMOJI)
+		code += '*Paste by {0} - Click {1} to delete.*'.format(ctx.author.mention, DELETE_EMOJI)
 
 		if len(code) > 2000:
 			raise commands.CommandError('Code contents too long to paste.')
@@ -98,7 +100,7 @@ class Highlighter(AceMixin, commands.Cog):
 
 	@commands.command()
 	@commands.bot_has_permissions(embed_links=True)
-	async def lang(self, ctx, *, language: LangConverter = None):
+	async def lang(self, ctx, *, language: lang_converter = None):
 		'''Set your preferred highlighting language in this server.'''
 
 		if language is None:
@@ -145,7 +147,7 @@ class Highlighter(AceMixin, commands.Cog):
 
 	@commands.command(aliases=['guildlang'])
 	@is_mod()
-	async def serverlang(self, ctx, *, language: LangConverter):
+	async def serverlang(self, ctx, *, language: lang_converter):
 		'''Set a guild-specific highlighting language. Can be overridden individually by users.'''
 
 		if language == 'clear':

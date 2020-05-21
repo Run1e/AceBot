@@ -2,12 +2,12 @@ import asyncio
 import logging
 
 import discord
-import emoji
 from discord.ext import commands
 
 from cogs.mixins import AceMixin
 from utils.configtable import ConfigTable
 from utils.context import can_prompt
+from utils.converters import EmojiConverter, MaxLengthConverter
 from utils.string import po, shorten
 
 log = logging.getLogger(__name__)
@@ -31,48 +31,20 @@ EMBED_EMOJIS = (
 )
 
 
-class EmojiConverter(commands.Converter):
-	async def convert(self, ctx, emoj):
-		if emoj not in emoji.UNICODE_EMOJI:
-			if emoj not in list(str(e) for e in ctx.guild.emojis):
-				raise commands.CommandError('Unknown emoji.')
+class SelectorEmojiConverter(EmojiConverter):
+	async def convert(self, ctx, argument):
+		argument = await super().convert(ctx, argument)
 
-		if emoj in (role.emoji for role in ctx.head.selector.roles):
+		if argument in (role.emoji for role in ctx.head.selector.roles):
 			raise commands.CommandError('This emoji already exists in this selector.')
 
-		return emoj
+		return argument
 
 
-class RoleTitleConverter(commands.Converter):
-	async def convert(self, ctx, title):
-		if len(title) > 199:
-			raise commands.CommandError('Role field titles cannot be more than 199 characters.')
-
-		return title
-
-
-class RoleDescConverter(commands.Converter):
-	async def convert(self, ctx, title):
-		if len(title) > 1024:
-			raise commands.CommandError('Role field descriptions cannot be more than 1024 characters.')
-
-		return title
-
-
-class SelectorTitleConverter(commands.Converter):
-	async def convert(self, ctx, title):
-		if len(title) > 256:
-			raise commands.CommandError('Role selector titles cannot be more than 256 characters.')
-
-		return title
-
-
-class SelectorDescConverter(commands.Converter):
-	async def convert(self, ctx, title):
-		if len(title) > 1024:
-			raise commands.CommandError('Role selector descriptions cannot be more than 1024 characters.')
-
-		return title
+role_title_converter = MaxLengthConverter(199)
+role_desc_converter = MaxLengthConverter(1024)
+selector_title_converter = MaxLengthConverter(256)
+selector_desc_converter = MaxLengthConverter(1024)
 
 
 class SelectorInlineConverter(commands.Converter):
@@ -103,14 +75,14 @@ class CustomRoleConverter(commands.RoleConverter):
 
 
 NEW_ROLE_PREDS = (
-	('What role do you want to add? (Send a role mention or just the role ID)', CustomRoleConverter),
-	('What name should this role entry have?', RoleTitleConverter),
-	('What emoji should be associated with this role?', EmojiConverter),
-	('What description should this role have?', RoleDescConverter),
+	('What role do you want to add? (Send a role mention or just the role ID)', CustomRoleConverter()),
+	('What name should this role entry have?', role_title_converter),
+	('What emoji should be associated with this role?', SelectorEmojiConverter()),
+	('What description should this role have?', role_desc_converter),
 )
 
 NEW_SEL_PREDS = (
-	('What should the name of the selector be?', SelectorTitleConverter),
+	('What should the name of the selector be?', selector_title_converter),
 )
 
 EDIT_FOOTER = 'Send a message with your answer! Send \'exit\' to cancel.'
@@ -598,7 +570,7 @@ class Roles(AceMixin, commands.Cog):
 			e.set_footer(text=EDIT_FOOTER)
 			return e
 
-		for question, test in preds:
+		for question, conv in preds:
 			try:
 				await msg.edit(embed=new_embed(question))
 			except discord.HTTPException:
@@ -615,7 +587,7 @@ class Roles(AceMixin, commands.Cog):
 					return None
 
 				try:
-					value = await test().convert(ctx, message.content)
+					value = await conv.convert(ctx, message.content)
 				except commands.CommandError as exc:
 					if not msg.embeds:
 						try:
@@ -637,15 +609,15 @@ class Roles(AceMixin, commands.Cog):
 	async def _edit_item(self, ctx, msg, item):
 		if isinstance(item, Selector):
 			questions = dict(
-				title=SelectorTitleConverter,
-				description=SelectorDescConverter,
-				inline=SelectorInlineConverter,
+				title=selector_title_converter,
+				description=selector_desc_converter,
+				inline=SelectorInlineConverter(),
 			)
 		elif isinstance(item, Role):
 			questions = dict(
-				name=RoleTitleConverter,
-				description=RoleDescConverter,
-				emoji=EmojiConverter
+				name=role_title_converter,
+				description=role_desc_converter,
+				emoji=SelectorEmojiConverter(),
 			)
 		else:
 			raise TypeError('Unknown item type: ' + str(type(item)))
@@ -680,7 +652,7 @@ class Roles(AceMixin, commands.Cog):
 
 				elif reac in opts.keys():
 					attr = opts[reac]
-					test = questions[attr]
+					conv = questions[attr]
 					break
 
 				else:
@@ -705,7 +677,7 @@ class Roles(AceMixin, commands.Cog):
 				return
 
 			try:
-				value = await test().convert(ctx, message.content)
+				value = await conv.convert(ctx, message.content)
 			except commands.CommandError as exc:
 				if not msg.embeds:
 					try:

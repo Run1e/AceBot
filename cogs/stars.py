@@ -8,6 +8,7 @@ from discord.ext import commands, tasks
 from cogs.mixins import AceMixin
 from utils.configtable import ConfigTable, ConfigTableRecord
 from utils.context import can_prompt, is_mod
+from utils.converters import param_name
 from utils.string import yesno
 
 log = logging.getLogger(__name__)
@@ -37,20 +38,18 @@ class StarboardConfigRecord(ConfigTableRecord):
 		return guild.get_channel(self.channel_id)
 
 
-class StarConverter(commands.Converter):
-	async def convert(self, ctx, msg_id):
-		try:
-			msg_id = int(msg_id)
-		except ValueError:
-			raise commands.CommandError('ID has to be integer value.')
+class StarConverter(commands.MessageConverter):
+	async def convert(self, ctx, argument):
+		argument = await super().convert(ctx, argument)
 
 		row = await ctx.bot.db.fetchrow(
 			'SELECT * FROM star_msg WHERE guild_id=$1 AND (message_id=$2 OR star_message_id=$2)',
-			ctx.guild.id, msg_id
+			ctx.guild.id, argument.id
 		)
 
 		if row is None:
-			raise commands.CommandError('Starred message with that ID was not found.')
+			name = param_name(self, ctx)
+			raise commands.BadArgument(f'{name} is not a starred message.')
 
 		return row
 
@@ -211,7 +210,7 @@ class Starboard(AceMixin, commands.Cog):
 
 	@_star.command()
 	@commands.bot_has_permissions(embed_links=True)
-	async def show(self, ctx, *, message_id: StarConverter):
+	async def show(self, ctx, *, message_id: StarConverter()):
 		'''Bring up a starred message by ID.'''
 
 		row = message_id
@@ -230,7 +229,7 @@ class Starboard(AceMixin, commands.Cog):
 
 	@_star.command()
 	@commands.bot_has_permissions(embed_links=True)
-	async def info(self, ctx, *, message_id: StarConverter):
+	async def info(self, ctx, *, message_id: StarConverter()):
 		'''Show info about a starred message.'''
 
 		row = message_id
@@ -262,7 +261,7 @@ class Starboard(AceMixin, commands.Cog):
 
 	@_star.command()
 	@commands.bot_has_permissions(embed_links=True)
-	async def starrers(self, ctx, *, message_id: StarConverter):
+	async def starrers(self, ctx, *, message_id: StarConverter()):
 		'''List every starrer of a starred message.'''
 
 		row = message_id
@@ -298,7 +297,7 @@ class Starboard(AceMixin, commands.Cog):
 
 	@_star.command()
 	@is_mod()
-	async def fix(self, ctx, *, message_id: StarConverter):
+	async def fix(self, ctx, *, message_id: StarConverter()):
 		'''Refreshes message content and re-counts starrers.'''
 
 		row = message_id
@@ -371,7 +370,7 @@ class Starboard(AceMixin, commands.Cog):
 	@_star.command()
 	@can_prompt()
 	@commands.bot_has_permissions(manage_messages=True)
-	async def delete(self, ctx, *, message_id: StarConverter):
+	async def delete(self, ctx, *, message_id: StarConverter()):
 		'''Remove a starred message. The author, starrer or any moderator can use this on a starred message.'''
 
 		row = message_id

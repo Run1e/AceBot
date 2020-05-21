@@ -18,6 +18,7 @@ from tabulate import tabulate
 from cogs.mixins import AceMixin
 from config import BOT_ACTIVITY
 from utils.context import AceContext
+from utils.converters import MaxValueConverter
 from utils.lookup import DiscordLookup
 from utils.pager import Pager
 from utils.string import shorten
@@ -109,6 +110,10 @@ class Owner(AceMixin, commands.Cog):
 
 		if t is not None:
 			self.event_counter[t] += 1
+
+	@commands.command()
+	async def t(self, ctx, a: MaxValueConverter(2)):
+		await ctx.send(str(a))
 
 	@commands.command()
 	async def eval(self, ctx, *, body: str):

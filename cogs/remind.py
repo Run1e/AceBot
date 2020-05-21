@@ -7,7 +7,7 @@ import parsedatetime
 from discord.ext import commands
 
 from cogs.mixins import AceMixin
-from utils.converters import Int32Converter
+from utils.converters import SerialConverter
 from utils.databasetimer import ColumnTimer
 from utils.pager import Pager
 from utils.string import po, shorten
@@ -113,7 +113,7 @@ class Reminders(AceMixin, commands.Cog):
 
 	@commands.command(aliases=['remind'])
 	@commands.bot_has_permissions(add_reactions=True)
-	async def remindme(self, ctx, *, when_and_what: ReminderConverter):
+	async def remindme(self, ctx, *, when_and_what: ReminderConverter()):
 		'''Create a new reminder.'''
 
 		now, when, message = when_and_what
@@ -162,10 +162,8 @@ class Reminders(AceMixin, commands.Cog):
 		await p.go()
 
 	@commands.command()
-	async def delreminder(self, ctx, *, reminder_id: Int32Converter):
+	async def delreminder(self, ctx, *, reminder_id: SerialConverter()):
 		'''Delete a reminder. Must be your own reminder.'''
-
-		print(reminder_id, pow(2, 31))
 
 		res = await self.db.execute(
 			'DELETE FROM remind WHERE id=$1 AND guild_id=$2 AND user_id=$3',

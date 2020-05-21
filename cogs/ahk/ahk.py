@@ -170,13 +170,13 @@ class AutoHotkey(AceMixin, commands.Cog):
 		page = record.get('page')
 
 		e = discord.Embed(
-			title=record.get('name'),
+			title='`{0}`'.format(record.get('name')),
 			description=record.get('content') or 'No description for this page.',
 			color=AHK_COLOR,
 			url=None if page is None else DOCS_FORMAT.format(record.get('link'))
 		)
 
-		e.set_footer(text='autohotkey.com', icon_url='https://www.autohotkey.com/favicon.ico')
+		# e.set_footer(text='autohotkey.com', icon_url='https://www.autohotkey.com/favicon.ico')
 
 		syntax = record.get('syntax')
 		if syntax is not None:
@@ -243,7 +243,7 @@ class AutoHotkey(AceMixin, commands.Cog):
 		code = code.strip('`').strip()
 
 		# maybe wrap in print()
-		#if not code.count('\n') and not code.startswith('print('):
+		# if not code.count('\n') and not code.startswith('print('):
 		#	code = 'print({0})'.format(code)
 
 		# call cloudahk with 20 in timeout

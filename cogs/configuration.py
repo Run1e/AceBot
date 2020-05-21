@@ -3,22 +3,17 @@ from discord.ext import commands
 
 from cogs.mixins import AceMixin
 from config import DEFAULT_PREFIX
+from utils.converters import LengthConverter
 
 
-class PrefixConverter(commands.Converter):
-	async def convert(self, ctx, prefix):
-		if len(prefix) > 8 or len(prefix) < 1:
-			raise commands.CommandError('Prefix must be between 1 and 8 characters.')
-
-		if prefix != discord.utils.escape_markdown(prefix):
-			raise commands.CommandError('No markdown allowed in prefix.')
-
-		return prefix
-
-
-class SettingConverter(commands.Converter):
+class PrefixConverter(LengthConverter):
 	async def convert(self, ctx, argument):
-		pass
+		argument = await super().convert(ctx, argument)
+
+		if argument != discord.utils.escape_markdown(argument):
+			raise commands.BadArgument('No markdown allowed in prefix.')
+
+		return argument
 
 
 class Configuration(AceMixin, commands.Cog):
@@ -40,7 +35,7 @@ class Configuration(AceMixin, commands.Cog):
 
 		format_obj = lambda o: '{}\nID: {}'.format(o.mention, o.id)
 
-		e.add_field(name='Prefix', value='`{}`'.format(gc.prefix or DEFAULT_PREFIX))
+		e.add_field(name='Prefix', value='`{0}`'.format(gc.prefix or DEFAULT_PREFIX))
 
 		e.add_field(
 			name='Moderation role',
@@ -52,7 +47,7 @@ class Configuration(AceMixin, commands.Cog):
 		await ctx.send(embed=e)
 
 	@commands.command()
-	async def prefix(self, ctx, *, prefix: PrefixConverter = None):
+	async def prefix(self, ctx, *, prefix: PrefixConverter(1, 8) = None):
 		'''Set a guild-specific prefix. Leave argument empty to reset to default.'''
 
 		gc = await self.bot.config.get_entry(ctx.guild.id)
