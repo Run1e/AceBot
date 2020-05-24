@@ -71,8 +71,13 @@ class CustomRoleConverter(commands.RoleConverter):
 		if role.id in (other_role.role_id for selector in ctx.head.selectors for other_role in selector.roles):
 			raise commands.CommandError('This role already exists somewhere else.')
 
-		if role >= ctx.author.top_role:
+		if ctx.author != ctx.guild.owner and role >= ctx.author.top_role:
 			raise commands.CommandError('Sorry, you can\'t add roles higher than your top role.')
+
+		config = await ctx.bot.config.get_entry(ctx.guild.id)
+		if config is not None:
+			if role == config.mod_role:
+				raise commands.CommandError('Can\'t add moderation role to selector.')
 
 		return role.id
 
