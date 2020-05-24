@@ -71,6 +71,9 @@ class CustomRoleConverter(commands.RoleConverter):
 		if role.id in (other_role.role_id for selector in ctx.head.selectors for other_role in selector.roles):
 			raise commands.CommandError('This role already exists somewhere else.')
 
+		if role >= ctx.author.top_role:
+			raise commands.CommandError('Sorry, you can\'t add roles higher than your top role.')
+
 		return role.id
 
 
