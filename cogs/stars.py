@@ -38,22 +38,17 @@ class StarboardConfigRecord(ConfigTableRecord):
 		return guild.get_channel(self.channel_id)
 
 
-commands.IDConverter
-
-
 class StarConverter(commands.MessageConverter, commands.IDConverter):
 	async def convert(self, ctx, argument):
 		try:
-			argument = await super().convert(ctx, argument)
-			_id = argument.id
+			message = await super().convert(ctx, argument)
+			_id = message.id
 		except commands.BadArgument:
-			pass
-
-		try:
-			_id = int(argument, base=10)
-		except ValueError:
-			name = param_name(self, ctx)
-			raise commands.BadArgument(f'{name} doesn\'t seem to be a message or message id.')
+			try:
+				_id = int(argument, base=10)
+			except ValueError:
+				name = param_name(self, ctx)
+				raise commands.BadArgument(f'{name} doesn\'t seem to be a message or message id.')
 
 		row = await ctx.bot.db.fetchrow(
 			'SELECT * FROM star_msg WHERE guild_id=$1 AND (message_id=$2 OR star_message_id=$2)',
