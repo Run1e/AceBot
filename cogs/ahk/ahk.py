@@ -154,23 +154,18 @@ class AutoHotkey(AceMixin, commands.Cog):
 				)
 			except discord.HTTPException as e:
 				self.bot.dispatch(
-					'log', member,
-					action='FAILED REMOVING HELPER',
+					'log', guild, member, action='FAILED REMOVING HELPER',
 					reason='Failed removing role.\n\nException:\n```{}```'.format(str(e)),
 				)
 				continue
 
-			self.bot.dispatch(
-				'log', member,
-				action='REMOVE HELPER',
-				reason=reason,
-			)
+			self.bot.dispatch('log', guild, member, action='REMOVE HELPER', reason=reason)
 
 	def craft_docs_page(self, record):
 		page = record.get('page')
 
 		e = discord.Embed(
-			title='`{0}`'.format(record.get('name')),
+			title=record.get('name'),
 			description=record.get('content') or 'No description for this page.',
 			color=AHK_COLOR,
 			url=None if page is None else DOCS_FORMAT.format(record.get('link'))

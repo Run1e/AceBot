@@ -14,7 +14,7 @@ class HelpPager(Pager):
 			self.entries.append((cog_name, cog_desc, commands_slice))
 
 	def craft_invite_string(self):
-		return '[Enjoying the bot? Invite me to your own server!]({0})'.format(self.ctx.bot.invite_link)
+		return '[Enjoying the bot? Invite it to your own server!]({0})'.format(self.ctx.bot.invite_link)
 
 	async def craft_page(self, e, page, entries):
 		cog_name, cog_desc, commands = entries[0]

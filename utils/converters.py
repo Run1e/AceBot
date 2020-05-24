@@ -1,7 +1,11 @@
+import re
 from inspect import Parameter
 
+import discord
 import emoji
 from discord.ext import commands
+
+from .fakeuser import FakeUser
 
 empty = Parameter.empty
 
@@ -27,6 +31,35 @@ def _make_int(converter, ctx, argument):
 	except ValueError:
 		name = param_name(converter, ctx)
 		raise commands.BadArgument(f'{name} should be a number.')
+
+
+class MaybeMemberConverter(commands.MemberConverter):
+	async def resolve_id(self, ctx, member_id):
+		member = ctx.guild.get_member(member_id)
+		if member is not None:
+			return member
+
+		try:
+			return await ctx.guild.fetch_member(member_id)
+		except discord.HTTPException:
+			return FakeUser(member_id, ctx.guild)
+
+	async def convert(self, ctx, argument):
+		try:
+			return await super().convert(ctx, argument)
+		except commands.BadArgument as exc:
+			pass
+
+		# handles pure id's
+		if argument.isdigit():
+			return await self.resolve_id(ctx, int(argument))
+
+		# handles mentions
+		match = re.match(r'<@!?([0-9]+)>$', argument)
+		if match is not None:
+			return await self.resolve_id(ctx, int(match.group(1)))
+
+		raise exc
 
 
 class EmojiConverter(commands.Converter):

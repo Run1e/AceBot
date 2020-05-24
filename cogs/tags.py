@@ -8,7 +8,7 @@ from discord.ext import commands
 
 from cogs.mixins import AceMixin
 from utils.context import can_prompt
-from utils.converters import LengthConverter
+from utils.converters import LengthConverter, MaybeMemberConverter
 from utils.pager import Pager
 from utils.time import pretty_datetime
 
@@ -261,7 +261,7 @@ class Tags(AceMixin, commands.Cog):
 
 	@tag.command(name='list', aliases=['all', 'browse'])
 	@commands.bot_has_permissions(embed_links=True)
-	async def _list(self, ctx, *, member: discord.Member = None):
+	async def _list(self, ctx, *, member: MaybeMemberConverter = None):
 		'''List all server tags, or a members tags.'''
 
 		if member is None:
@@ -403,7 +403,7 @@ class Tags(AceMixin, commands.Cog):
 		owner = ctx.guild.get_member(record.get('user_id'))
 
 		if owner is None:
-			nick = 'User not found'
+			nick = 'Unknown User'
 			avatar = ctx.guild.icon_url
 		else:
 			nick = owner.display_name

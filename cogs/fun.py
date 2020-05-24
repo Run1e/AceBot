@@ -11,8 +11,8 @@ from cogs.mixins import AceMixin
 from utils.time import pretty_timedelta
 
 
-class General(AceMixin, commands.Cog):
-	'''General commands.'''
+class Fun(AceMixin, commands.Cog):
+	'''Fun commands!'''
 
 	query_error = commands.CommandError('Query failed. Try again later.')
 
@@ -365,4 +365,4 @@ class General(AceMixin, commands.Cog):
 
 
 def setup(bot):
-	bot.add_cog(General(bot))
+	bot.add_cog(Fun(bot))

@@ -8,6 +8,7 @@ import pygit2
 from discord.ext import commands
 
 from cogs.mixins import AceMixin
+from utils.converters import MaybeMemberConverter
 from utils.string import yesno
 from utils.time import pretty_datetime, pretty_timedelta
 
@@ -32,7 +33,7 @@ class Meta(AceMixin, commands.Cog):
 
 	@commands.command()
 	@commands.bot_has_permissions(embed_links=True)
-	async def stats(self, ctx, member: discord.Member = None):
+	async def stats(self, ctx, member: MaybeMemberConverter = None):
 		'''Show bot or user command stats.'''
 
 		if member is None:

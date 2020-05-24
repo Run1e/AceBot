@@ -20,7 +20,7 @@ from utils.string import po
 from utils.time import pretty_seconds
 
 EXTENSIONS = (
-	'cogs.general',
+	'cogs.fun',
 	'cogs.images',
 	'cogs.configuration',
 	'cogs.tags',

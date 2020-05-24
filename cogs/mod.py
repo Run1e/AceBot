@@ -14,9 +14,9 @@ from cogs.ahk.ids import RULES_MSG_ID
 from cogs.mixins import AceMixin
 from utils.configtable import ConfigTable, ConfigTableRecord
 from utils.context import AceContext, can_prompt, is_mod
-from utils.converters import MaxLengthConverter, RangeConverter
+from utils.converters import MaxLengthConverter, MaybeMemberConverter, RangeConverter
 from utils.databasetimer import DatabaseTimer
-from utils.fakemember import FakeMember
+from utils.fakeuser import FakeUser
 from utils.string import po
 from utils.time import TimeDeltaConverter, TimeMultConverter, pretty_timedelta
 
@@ -186,35 +186,18 @@ class Moderation(AceMixin, commands.Cog):
 		self.event_timer = EventTimer(bot, 'event_complete')
 
 	@commands.Cog.listener()
-	async def on_log(self, member_or_message, action=None, severity=Severity.LOW, guild=None, **fields):
-		if isinstance(member_or_message, discord.Message):
-			message = member_or_message
-			member = message.author
-			guild = message.guild
-		elif isinstance(member_or_message, (discord.Member, FakeMember)):
-			message = None
-			member = member_or_message
-			guild = member.guild
-		elif isinstance(member_or_message, discord.User):
-			if guild is None:
-				return
-			message = None
-			member = member_or_message
-			guild = guild
-		else:
-			return
-
+	async def on_log(self, guild, subject, action=None, severity=Severity.LOW, message=None, **fields):
 		conf = await self.config.get_entry(guild.id)
 
 		log_channel = conf.log_channel
 		if log_channel is None:
 			return
 
-		desc = 'NAME: ' + str(member)
-		if getattr(member, 'nick', None) is not None:
-			desc += '\nAKA: ' + member.nick
-		desc += '\nMENTION: ' + member.mention
-		desc += '\nID: ' + str(member.id)
+		desc = 'NAME: ' + str(subject)
+		if getattr(subject, 'nick', None) is not None:
+			desc += '\nAKA: ' + subject.nick
+		desc += '\nMENTION: ' + subject.mention
+		desc += '\nID: ' + str(subject.id)
 
 		color = SeverityColors[severity.name].value
 
@@ -228,8 +211,8 @@ class Moderation(AceMixin, commands.Cog):
 		for name, value in fields.items():
 			e.add_field(name=name.title(), value=value, inline=False)
 
-		if hasattr(member, 'avatar_url'):
-			e.set_thumbnail(url=member.avatar_url)
+		if hasattr(subject, 'avatar_url'):
+			e.set_thumbnail(url=subject.avatar_url)
 
 		e.set_footer(text=severity.name)
 
@@ -314,7 +297,7 @@ class Moderation(AceMixin, commands.Cog):
 			pass
 
 		self.bot.dispatch(
-			'log', member, action='MUTE', severity=Severity.LOW,
+			'log', ctx.guild, member, action='MUTE', severity=Severity.LOW, message=ctx.message,
 			responsible=po(ctx.author), reason=reason
 		)
 
@@ -349,7 +332,7 @@ class Moderation(AceMixin, commands.Cog):
 			pass
 
 		self.bot.dispatch(
-			'log', member, action='UNMUTE', severity=Severity.RESOLVED,
+			'log', ctx.guild, member, action='UNMUTE', severity=Severity.RESOLVED, message=ctx.message,
 			responsible=pretty_author
 		)
 
@@ -405,7 +388,7 @@ class Moderation(AceMixin, commands.Cog):
 			pass
 
 		self.bot.dispatch(
-			'log', member, action='TEMPMUTE', severity=Severity.LOW,
+			'log', ctx.guild, member, action='TEMPMUTE', severity=Severity.LOW, message=ctx.message,
 			responsible=po(ctx.author), duration=pretty_duration, reason=reason
 		)
 
@@ -460,7 +443,7 @@ class Moderation(AceMixin, commands.Cog):
 			pass
 
 		self.bot.dispatch(
-			'log', member, action='TEMPBAN', severity=Severity.HIGH,
+			'log', ctx.guild, member, action='TEMPBAN', severity=Severity.HIGH, message=ctx.message,
 			responsible=po(ctx.author), duration=pretty_duration, reason=reason
 		)
 
@@ -507,7 +490,7 @@ class Moderation(AceMixin, commands.Cog):
 			return
 
 		self.bot.dispatch(
-			'log', member, action='TEMPMUTE COMPLETED', severity=Severity.RESOLVED,
+			'log', guild, member, action='TEMPMUTE COMPLETED', severity=Severity.RESOLVED,
 			responsible=pretty_mod, duration=pretty_timedelta(duration), reason=reason
 		)
 
@@ -526,15 +509,15 @@ class Moderation(AceMixin, commands.Cog):
 		mod = guild.get_member(mod_id)
 		pretty_mod = '(ID: {0})'.format(str(mod_id)) if mod is None else po(mod)
 
+		member = FakeUser(user_id, guild, **userdata)
+
 		try:
-			await guild.unban(discord.Object(id=user_id), reason='Completed tempban issued by {0}'.format(pretty_mod))
+			await guild.unban(member, reason='Completed tempban issued by {0}'.format(pretty_mod))
 		except discord.HTTPException:
 			return  # rip :)
 
-		member = FakeMember(guild, user_id, **userdata)
-
 		self.bot.dispatch(
-			'log', member, action='TEMPBAN COMPLETED', severity=Severity.RESOLVED,
+			'log', guild, member, action='TEMPBAN COMPLETED', severity=Severity.RESOLVED,
 			responsible=pretty_mod, duration=pretty_timedelta(duration), reason=reason
 		)
 
@@ -551,7 +534,7 @@ class Moderation(AceMixin, commands.Cog):
 			self.event_timer.restart_if(lambda r: r.get('id') == _id)
 
 			self.bot.dispatch(
-				'log', user, action='TEMPBAN CANCELLED', severity=Severity.RESOLVED, guild=guild,
+				'log', guild, user, action='TEMPBAN CANCELLED', severity=Severity.RESOLVED,
 				reason='Tempbanned member manually unbanned.'
 			)
 
@@ -623,12 +606,12 @@ class Moderation(AceMixin, commands.Cog):
 		reason = 'Re-muting newly joined member who was previously muted'
 
 		await member.add_roles(mute_role, reason=reason)
-		self.bot.dispatch('log', member, action='MUTE', severity=Severity.LOW, reason=reason)
+		self.bot.dispatch('log', member.guild, member, action='MUTE', severity=Severity.LOW, reason=reason)
 
 	@commands.command()
 	@commands.has_permissions(manage_messages=True)
 	@commands.bot_has_permissions(manage_messages=True)
-	async def clear(self, ctx, message_count: int, user: discord.Member = None):
+	async def clear(self, ctx, message_count: int, user: MaybeMemberConverter = None):
 		'''Simple purge command. Clear messages, either from user or indiscriminately.'''
 
 		if message_count < 1:
@@ -643,7 +626,7 @@ class Moderation(AceMixin, commands.Cog):
 			return True
 
 		def user_check(msg):
-			return msg.author == user and all_check(msg)
+			return msg.author.id == user.id and all_check(msg)
 
 		try:
 			await ctx.message.delete()
@@ -727,7 +710,7 @@ class Moderation(AceMixin, commands.Cog):
 		preds = [lambda m: m.id != ctx.message.id, lambda m: m.id != RULES_MSG_ID]
 
 		if args.user:
-			converter = commands.MemberConverter()
+			converter = MaybeMemberConverter()
 			members = []
 
 			for id in args.user:
@@ -737,7 +720,9 @@ class Moderation(AceMixin, commands.Cog):
 				except commands.CommandError:
 					raise commands.CommandError('Unknown user: "{0}"'.format(id))
 
-			preds.append(lambda m: m.author in members)
+			# yes, if both objects were discord.Member I could do m.author in members,
+			# but since member can be FakeUser I need to do an explicit id comparison
+			preds.append(lambda m: any(m.author.id == member.id for member in members))
 
 		if args.contains:
 			preds.append(lambda m: any((s in m.content) for s in args.contains))
@@ -862,6 +847,7 @@ class Moderation(AceMixin, commands.Cog):
 		'''Called when an event happens.'''
 
 		member = message.author
+		guild = message.guild
 
 		conf = await self.config.get_entry(member.guild.id)
 		ctx = await self.bot.get_context(message, cls=AceContext)
@@ -869,9 +855,8 @@ class Moderation(AceMixin, commands.Cog):
 		# ignore if member is mod
 		if await ctx.is_mod():
 			self.bot.dispatch(
-				'log', message,
-				action='IGNORED {0} (MEMBER IS MOD)'.format(action.name),
-				severity=Severity.LOW, reason=reason,
+				'log', guild, member, action='IGNORED {0} (MEMBER IS MOD)'.format(action.name), severity=Severity.LOW, message=message,
+				reason=reason,
 			)
 
 			return
@@ -895,17 +880,14 @@ class Moderation(AceMixin, commands.Cog):
 		except Exception as exc:
 			# log error if something happened
 			self.bot.dispatch(
-				'log', message,
-				action='{0} FAILED'.format(action.name),
-				severity=Severity.HIGH,
+				'log', guild, member, action='{0} FAILED'.format(action.name), severity=Severity.HIGH, message=message,
 				reason=reason, error=str(exc)
 			)
 			return
 
 		# log successful security event
 		self.bot.dispatch(
-			'log', message,
-			action=action.name, severity=Severity(action.value),
+			'log', guild, member, action=action.name, severity=Severity(action.value), message=message,
 			reason=reason
 		)
 
