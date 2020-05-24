@@ -75,9 +75,8 @@ class CustomRoleConverter(commands.RoleConverter):
 			raise commands.CommandError('Sorry, you can\'t add roles higher than your top role.')
 
 		config = await ctx.bot.config.get_entry(ctx.guild.id)
-		if config is not None:
-			if role == config.mod_role:
-				raise commands.CommandError('Can\'t add moderation role to selector.')
+		if role == config.mod_role:
+			raise commands.CommandError('Can\'t add moderation role to selector.')
 
 		return role.id
 

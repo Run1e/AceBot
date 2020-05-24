@@ -38,13 +38,26 @@ class StarboardConfigRecord(ConfigTableRecord):
 		return guild.get_channel(self.channel_id)
 
 
-class StarConverter(commands.MessageConverter):
+commands.IDConverter
+
+
+class StarConverter(commands.MessageConverter, commands.IDConverter):
 	async def convert(self, ctx, argument):
-		argument = await super().convert(ctx, argument)
+		try:
+			argument = await super().convert(ctx, argument)
+			_id = argument.id
+		except commands.BadArgument:
+			pass
+
+		try:
+			_id = int(argument, base=10)
+		except ValueError:
+			name = param_name(self, ctx)
+			raise commands.BadArgument(f'{name} doesn\'t seem to be a message or message id.')
 
 		row = await ctx.bot.db.fetchrow(
 			'SELECT * FROM star_msg WHERE guild_id=$1 AND (message_id=$2 OR star_message_id=$2)',
-			ctx.guild.id, argument.id
+			ctx.guild.id, _id
 		)
 
 		if row is None:
@@ -210,10 +223,10 @@ class Starboard(AceMixin, commands.Cog):
 
 	@_star.command()
 	@commands.bot_has_permissions(embed_links=True)
-	async def show(self, ctx, *, message_id: StarConverter()):
+	async def show(self, ctx, *, message: StarConverter()):
 		'''Bring up a starred message by ID.'''
 
-		row = message_id
+		row = message
 
 		if row.get('star_message_id') is None:
 			raise SB_NOT_POSTED
@@ -229,10 +242,10 @@ class Starboard(AceMixin, commands.Cog):
 
 	@_star.command()
 	@commands.bot_has_permissions(embed_links=True)
-	async def info(self, ctx, *, message_id: StarConverter()):
+	async def info(self, ctx, *, message: StarConverter()):
 		'''Show info about a starred message.'''
 
-		row = message_id
+		row = message
 
 		star_ret = await self.db.fetchval('SELECT COUNT(id) FROM starrers WHERE star_id=$1', row.get('id'))
 
@@ -261,10 +274,10 @@ class Starboard(AceMixin, commands.Cog):
 
 	@_star.command()
 	@commands.bot_has_permissions(embed_links=True)
-	async def starrers(self, ctx, *, message_id: StarConverter()):
+	async def starrers(self, ctx, *, message: StarConverter()):
 		'''List every starrer of a starred message.'''
 
-		row = message_id
+		row = message
 
 		starrers = await self.db.fetch('SELECT user_id FROM starrers WHERE star_id=$1', row.get('id'))
 
@@ -297,10 +310,10 @@ class Starboard(AceMixin, commands.Cog):
 
 	@_star.command()
 	@is_mod()
-	async def fix(self, ctx, *, message_id: StarConverter()):
+	async def fix(self, ctx, *, message: StarConverter()):
 		'''Refreshes message content and re-counts starrers.'''
 
-		row = message_id
+		row = message
 
 		if row.get('star_message_id') is None:
 			raise SB_NOT_POSTED
@@ -370,10 +383,10 @@ class Starboard(AceMixin, commands.Cog):
 	@_star.command()
 	@can_prompt()
 	@commands.bot_has_permissions(manage_messages=True)
-	async def delete(self, ctx, *, message_id: StarConverter()):
+	async def delete(self, ctx, *, message: StarConverter()):
 		'''Remove a starred message. The author, starrer or any moderator can use this on a starred message.'''
 
-		row = message_id
+		row = message
 
 		# see if invoker is either original starrer, or author of original message
 		if ctx.author.id not in (row.get('user_id'), row.get('starrer_id')):
