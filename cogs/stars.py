@@ -301,7 +301,7 @@ class Starboard(AceMixin, commands.Cog):
 		if entry is None:
 			raise commands.CommandError('No starred messages to pick from.')
 
-		await ctx.invoke(self.show, message_id=entry)
+		await ctx.invoke(self.show, message=entry)
 
 	@_star.command()
 	@is_mod()
