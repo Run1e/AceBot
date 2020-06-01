@@ -70,9 +70,29 @@ class AceBot(commands.Bot):
 		self.ready = asyncio.Event()
 		self.startup_time = datetime.utcnow()
 
+		aiohttp_log = logging.getLogger('aiotrace')
+
+		async def get_content(resp):
+			content_type = resp.content_type
+			if content_type == 'application/json':
+				return await resp.text()
+			return None
+
+		async def on_request_end(session, ctx, end):
+			resp = end.response
+			content = await get_content(resp)
+			aiohttp_log.info(
+				'[%s %s] %s %s (%s)%s',
+				str(resp.status), resp.reason, end.method.upper(), end.url, resp.content_type, '' if content is None else '\n' + content
+			)
+
+		trace_config = aiohttp.TraceConfig()
+		trace_config.on_request_end.append(on_request_end)
+
 		self.aiohttp = aiohttp.ClientSession(
 			loop=self.loop,
-			timeout=aiohttp.ClientTimeout(total=5)
+			timeout=aiohttp.ClientTimeout(total=5),
+			trace_configs=[trace_config],
 		)
 
 		self.modified_times = dict()
