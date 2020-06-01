@@ -48,18 +48,17 @@ class MaybeMemberConverter(commands.MemberConverter):
 		try:
 			return await super().convert(ctx, argument)
 		except commands.BadArgument as exc:
-			pass
 
-		# handles pure id's
-		if argument.isdigit():
-			return await self.resolve_id(ctx, int(argument))
+			# handles pure id's
+			if argument.isdigit():
+				return await self.resolve_id(ctx, int(argument))
 
-		# handles mentions
-		match = re.match(r'<@!?([0-9]+)>$', argument)
-		if match is not None:
-			return await self.resolve_id(ctx, int(match.group(1)))
+			# handles mentions
+			match = re.match(r'<@!?([0-9]+)>$', argument)
+			if match is not None:
+				return await self.resolve_id(ctx, int(match.group(1)))
 
-		raise exc
+			raise exc
 
 
 class EmojiConverter(commands.Converter):
