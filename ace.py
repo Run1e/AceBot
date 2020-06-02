@@ -21,7 +21,6 @@ from utils.time import pretty_seconds
 
 EXTENSIONS = (
 	'cogs.fun',
-	'cogs.images',
 	'cogs.configuration',
 	'cogs.tags',
 	'cogs.stars',
@@ -72,18 +71,11 @@ class AceBot(commands.Bot):
 
 		aiohttp_log = logging.getLogger('aiotrace')
 
-		async def get_content(resp):
-			content_type = resp.content_type
-			if content_type == 'application/json':
-				return await resp.text()
-			return None
-
 		async def on_request_end(session, ctx, end):
 			resp = end.response
-			content = await get_content(resp)
 			aiohttp_log.info(
-				'[%s %s] %s %s (%s)%s',
-				str(resp.status), resp.reason, end.method.upper(), end.url, resp.content_type, '' if content is None else '\n' + content
+				'[%s %s] %s %s (%s)',
+				str(resp.status), resp.reason, end.method.upper(), end.url, resp.content_type
 			)
 
 		trace_config = aiohttp.TraceConfig()
