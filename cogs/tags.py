@@ -69,6 +69,9 @@ ACCESS_ERROR = commands.CommandError('Tag not found or you do not have edit perm
 
 
 class TagEditConverter(commands.Converter):
+	def __init__(self, allow_mod=False):
+		self.allow_mod = allow_mod
+
 	async def convert(self, ctx, tag_name):
 		tag_name = tag_name.lower()
 
@@ -80,11 +83,11 @@ class TagEditConverter(commands.Converter):
 		if rec is None:
 			raise ACCESS_ERROR
 
-		# check if invoker owns tag
-		if rec.get('user_id') != ctx.author.id:
-
-			# if not, and user is not moderator, raise access error
-			if not await ctx.is_mod():
+		# check if invoker owns tag. if not, check if bot owner is invoking
+		if rec.get('user_id') != ctx.author.id and not await ctx.bot.is_owner(ctx.author):
+			# if not, check if mod should be allowed to do this action. if not, raise access error
+			# if they can, check if invoker is mod, if not, raise access error
+			if not self.allow_mod or not await ctx.is_mod():
 				raise ACCESS_ERROR
 
 			# if user is moderator, run the admin prompt
@@ -248,7 +251,7 @@ class Tags(AceMixin, commands.Cog):
 
 	@tag.command(aliases=['remove'])
 	@can_prompt()
-	async def delete(self, ctx, *, tag_name: TagEditConverter()):
+	async def delete(self, ctx, *, tag_name: TagEditConverter(allow_mod=True)):
 		'''Delete a tag.'''
 
 		if not await ctx.prompt(title='Are you sure?', prompt='This will delete the tag permanently.'):
