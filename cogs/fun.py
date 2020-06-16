@@ -351,7 +351,7 @@ class Fun(AceMixin, commands.Cog):
 		boost_desc = 'Level {} - {} Boosts'.format(guild.premium_tier, guild.premium_subscription_count)
 
 		if guild.premium_subscribers:
-			booster = guild.premium_subscribers[-1]
+			booster = guild.premium_subscribers[0]
 			boost_desc += '\nLast boost by {} {} ago'.format(
 				booster.mention, pretty_timedelta(datetime.utcnow() - booster.premium_since)
 			)

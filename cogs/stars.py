@@ -131,31 +131,12 @@ class Starboard(AceMixin, commands.Cog):
 
 		return board
 
-	@commands.group(name='star', invoke_without_command=True)
-	@commands.bot_has_permissions(embed_links=True, add_reactions=True)
-	async def _star(self, ctx, *, message_id: discord.Message = None):
-		'''Star a message by ID.'''
+	@commands.group(hidden=True)
+	@is_mod()
+	async def starboard(self, ctx):
+		pass
 
-		if message_id is None:
-			await ctx.send_help(self._star)
-			return
-
-		board = await self.get_board(ctx.guild.id)
-		await self._on_star_event_meta(self._on_star, board, message_id, ctx.author)
-
-		await ctx.send('Starred!')
-
-	@commands.command()
-	@commands.bot_has_permissions(embed_links=True, add_reactions=True)
-	async def unstar(self, ctx, *, message_id: discord.Message):
-		'''Unstar a message by ID.'''
-
-		board = await self.get_board(ctx.guild.id)
-		await self._on_star_event_meta(self._on_unstar, board, message_id, ctx.author)
-
-		await ctx.send('Unstarred.')
-
-	@_star.command()
+	@starboard.command()
 	@is_mod()
 	@can_prompt()
 	@commands.bot_has_permissions(manage_channels=True, manage_roles=True)
@@ -215,6 +196,73 @@ class Starboard(AceMixin, commands.Cog):
 		await board.update(channel_id=channel.id)
 
 		await ctx.send('Starboard channel created! {}'.format(channel.mention))
+
+	@starboard.command()
+	@is_mod()
+	async def threshold(self, ctx, *, threshold: int = None):
+		'''Starred messages with fewer than `threshold` stars will be removed from the starboard after a week has passed. To disable auto-cleaning completely, leave argument blank.'''
+
+		board = await self.get_board(ctx.guild.id)
+
+		if threshold is None:
+			if board.threshold is None:
+				raise commands.CommandError('Auto-cleaning is already disabled.')
+			await board.update(threshold=None)
+			await ctx.send('Starboard auto-cleaning disabled.')
+		else:
+			if not 0 < threshold < 32767:
+				raise commands.CommandError('Auto-clean star threshold has to be between 0 and 32767.')
+
+			await board.update(threshold=threshold)
+			await ctx.send(
+				'Starred messages with fewer than {} stars after a week will now be removed from the starboard.'.format(
+					threshold
+				)
+			)
+
+	@starboard.command()
+	@is_mod()
+	async def lock(self, ctx):
+		'''Lock the starboard.'''
+
+		board = await self.get_board(ctx.guild.id, raise_on_locked=False)
+		await board.update(locked=True)
+
+		await ctx.send('Starboard locked.')
+
+	@starboard.command()
+	@is_mod()
+	async def unlock(self, ctx):
+		'''Unlock the starboard.'''
+
+		board = await self.get_board(ctx.guild.id, raise_on_locked=False)
+		await board.update(locked=False)
+
+		await ctx.send('Starboard unlocked.')
+
+	@commands.group(name='star', invoke_without_command=True)
+	@commands.bot_has_permissions(embed_links=True, add_reactions=True)
+	async def _star(self, ctx, *, message_id: discord.Message = None):
+		'''Star a message by ID.'''
+
+		if message_id is None:
+			await ctx.send_help(self._star)
+			return
+
+		board = await self.get_board(ctx.guild.id)
+		await self._on_star_event_meta(self._on_star, board, message_id, ctx.author)
+
+		await ctx.send('Starred!')
+
+	@commands.command()
+	@commands.bot_has_permissions(embed_links=True, add_reactions=True)
+	async def unstar(self, ctx, *, message_id: discord.Message):
+		'''Unstar a message by ID.'''
+
+		board = await self.get_board(ctx.guild.id)
+		await self._on_star_event_meta(self._on_unstar, board, message_id, ctx.author)
+
+		await ctx.send('Unstarred.')
 
 	@_star.command()
 	@commands.bot_has_permissions(embed_links=True)
@@ -291,7 +339,8 @@ class Starboard(AceMixin, commands.Cog):
 
 		await ctx.send(embed=e)
 
-	@_star.command()
+	# shit don't work
+	@_star.command(enabled=False)
 	@commands.bot_has_permissions(embed_links=True)
 	async def random(self, ctx):
 		'''Show a random starred message.'''
@@ -413,49 +462,6 @@ class Starboard(AceMixin, commands.Cog):
 				pass
 
 		await ctx.send('Star deleted.')
-
-	@_star.command()
-	@is_mod()
-	async def threshold(self, ctx, *, threshold: int = None):
-		'''Starred messages with fewer than `threshold` stars will be removed from the starboard after a week has passed. To disable auto-cleaning completely, leave argument blank.'''
-
-		board = await self.get_board(ctx.guild.id)
-
-		if threshold is None:
-			if board.threshold is None:
-				raise commands.CommandError('Auto-cleaning is already disabled.')
-			await board.update(threshold=None)
-			await ctx.send('Starboard auto-cleaning disabled.')
-		else:
-			if not 0 < threshold < 32767:
-				raise commands.CommandError('Auto-clean star threshold has to be between 0 and 32767.')
-
-			await board.update(threshold=threshold)
-			await ctx.send(
-				'Starred messages with fewer than {} stars after a week will now be removed from the starboard.'.format(
-					threshold
-				)
-			)
-
-	@_star.command()
-	@is_mod()
-	async def lock(self, ctx):
-		'''Lock the starboard.'''
-
-		board = await self.get_board(ctx.guild.id, raise_on_locked=False)
-		await board.update(locked=True)
-
-		await ctx.send('Starboard locked.')
-
-	@_star.command()
-	@is_mod()
-	async def unlock(self, ctx):
-		'''Unlock the starboard.'''
-
-		board = await self.get_board(ctx.guild.id, raise_on_locked=False)
-		await board.update(locked=False)
-
-		await ctx.send('Starboard unlocked.')
 
 	async def post_star(self, star_channel, message, starrer_count):
 		try:

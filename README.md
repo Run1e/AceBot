@@ -48,11 +48,12 @@ Classic Starboard implementation.
 A starboard is a channel where "starred" messages are posted. A message can be starred by anyone by reacting to it with
 the :star: emoji. At this point anyone can additionally star the message, giving it more stars.
 
-To create a starboard use the `star create` command. This will create a channel where starred messages will be posted.
+To create a starboard use the `starboard create` command. This will create a channel where starred messages will be posted.
 
-Automatic starboard cleaning can be enabled using `star threshold`. To have starred messages with fewer than 5 stars be
-removed after a week, do `star threshold 5`. To disable auto-cleaning, do `star threshold`. The starboard can also be
-temporarily disabled (to clean it, for example) using `star lock` and enabled using `star unlock`.
+Automatic starboard cleaning can be enabled using `starboard threshold`. To have starred messages with fewer than 5 stars be
+removed after a week, do `starboard threshold 5`.
+To disable auto-cleaning, do `starboard threshold`. The starboard can also be
+temporarily disabled (to clean it, for example) using `starboard lock` and enabled using `starboard unlock`.
 
 Other misc. starboard commands:
 ```
@@ -60,14 +61,13 @@ star            Star a message by ID
 unstar          Unstar a message by ID
 star info       Show information about a starred message
 star show       Bring up a starred message in the current channel
-star random     Bring up a random starred message in the current channel
 star delete     Delete a starred message from the starboard. Appropriate permissions/relations required to run this.
 ```
 Run `help starboard` for a complete list.
 
 ### Tags
 
-The tag system is immensively useful for bringing up text or images on demand.
+The tag system is immensely useful for bringing up text or images on demand.
 
 To try it out, you can create a new tag interactively by simply running `tag make`.
 
@@ -192,21 +192,4 @@ previous instance of the bot that ran on the old version, add your database bind
 
 ## Acknowledgements
 
-Avatar artwork: Vinter Borge
-
-Contributors: CloakerSmoker, sjc, Cap'n Odin, GeekDude
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+Contributors: CloakerSmoker, GeekDude, sjc, Cap'n Odin

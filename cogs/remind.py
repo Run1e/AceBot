@@ -161,7 +161,7 @@ class Reminders(AceMixin, commands.Cog):
 		p = RemindPager(ctx, res, per_page=3)
 		await p.go()
 
-	@commands.command()
+	@commands.command(hidden=True)
 	async def delreminder(self, ctx, *, reminder_id: SerialConverter()):
 		'''Delete a reminder. Must be your own reminder.'''
 
