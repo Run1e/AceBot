@@ -220,10 +220,8 @@ class AutoHotkey(AceMixin, commands.Cog):
 
 		return results
 
-	@commands.command()
-	@commands.cooldown(rate=1.0, per=5.0, type=commands.BucketType.user)
-	async def ahk(self, ctx, *, code):
-		'''Run AHK code through CloudAHK. Example: `ahk print("hello world!")`'''
+	async def cloudahk_call(self, ctx, code, lang = 'ahk'):
+		'''Call to CloudAHK to run %code% written in %lang%. Replies to invoking user with stdout/runtime of code. '''
 
 		token = '{0}:{1}'.format(CLOUDAHK_USER, CLOUDAHK_PASS)
 
@@ -237,12 +235,8 @@ class AutoHotkey(AceMixin, commands.Cog):
 		# strip backticks on both sides
 		code = code.strip('`').strip()
 
-		# maybe wrap in print()
-		# if not code.count('\n') and not code.startswith('print('):
-		#	code = 'print({0})'.format(code)
-
 		# call cloudahk with 20 in timeout
-		async with self.bot.aiohttp.post(CLOUDAHK_URL, data=code, headers=headers, timeout=16) as resp:
+		async with self.bot.aiohttp.post('{}/{}'.format(CLOUDAHK_URL, lang), data=code, headers=headers, timeout=16) as resp:
 			if resp.status == 200:
 				result = await resp.json()
 			else:
@@ -262,6 +256,22 @@ class AutoHotkey(AceMixin, commands.Cog):
 		)
 
 		await ctx.send(out)
+
+		return stdout, time
+
+	@commands.command()
+	@commands.cooldown(rate=1.0, per=5.0, type=commands.BucketType.user)
+	async def rlx(self, ctx, *, code):
+		'''Compile and run Relax code through CloudAHK. Example: `rlx define i32 Main() {return 20}`'''
+
+		await self.cloudahk_call(ctx, code, 'rlx')
+
+	@commands.command()
+	@commands.cooldown(rate=1.0, per=5.0, type=commands.BucketType.user)
+	async def ahk(self, ctx, *, code):
+		'''Run AHK code through CloudAHK. Example: `ahk print("hello world!")`'''
+
+		stdout, time = await self.cloudahk_call(ctx, code)
 
 		# logging for security purposes and checking for abuse
 		with open('ahk_eval/{0}_{1}_{2}'.format(ctx.guild.id, ctx.author.id, ctx.message.id), 'w', encoding='utf-8-sig') as f:
