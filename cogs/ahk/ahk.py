@@ -220,7 +220,7 @@ class AutoHotkey(AceMixin, commands.Cog):
 
 		return results
 
-	async def cloudahk_call(self, ctx, code, lang = 'ahk'):
+	async def cloudahk_call(self, ctx, code, lang='ahk'):
 		'''Call to CloudAHK to run %code% written in %lang%. Replies to invoking user with stdout/runtime of code. '''
 
 		token = '{0}:{1}'.format(CLOUDAHK_USER, CLOUDAHK_PASS)
