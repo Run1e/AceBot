@@ -261,13 +261,6 @@ class AutoHotkey(AceMixin, commands.Cog):
 
 	@commands.command()
 	@commands.cooldown(rate=1.0, per=5.0, type=commands.BucketType.user)
-	async def rlx(self, ctx, *, code):
-		'''Compile and run Relax code through CloudAHK. Example: `rlx define i32 Main() {return 20}`'''
-
-		await self.cloudahk_call(ctx, code, 'rlx')
-
-	@commands.command()
-	@commands.cooldown(rate=1.0, per=5.0, type=commands.BucketType.user)
 	async def ahk(self, ctx, *, code):
 		'''Run AHK code through CloudAHK. Example: `ahk print("hello world!")`'''
 
@@ -479,6 +472,13 @@ class AutoHotkey(AceMixin, commands.Cog):
 		e.add_field(name='Downloads', value=asset['download_count'])
 
 		await ctx.send(embed=e)
+
+	@commands.command()
+	@commands.cooldown(rate=1.0, per=5.0, type=commands.BucketType.user)
+	async def rlx(self, ctx, *, code):
+		'''Compile and run Relax code through CloudAHK. Example: `rlx define i32 Main() {return 20}`'''
+
+		await self.cloudahk_call(ctx, code, 'rlx')
 
 
 def setup(bot):

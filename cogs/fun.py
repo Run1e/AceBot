@@ -153,7 +153,7 @@ class Fun(AceMixin, commands.Cog):
 
 				breed = data['breeds'][0]
 
-				e.set_author(name=breed['name'], url=breed['wikipedia_url'])
+				e.set_author(name=breed['name'], url=breed.get('wikipedia_url', None))
 				e.description = breed['description']
 
 				e.add_field(name='Origin', value=breed['origin'])
@@ -351,7 +351,8 @@ class Fun(AceMixin, commands.Cog):
 		boost_desc = 'Level {} - {} Boosts'.format(guild.premium_tier, guild.premium_subscription_count)
 
 		if guild.premium_subscribers:
-			booster = guild.premium_subscribers[0]
+			# actually get the last premium subscriber. this list is always fucked
+			booster = sorted(guild.premium_subscribers, key=lambda m: m.premium_since)[-1]
 			boost_desc += '\nLast boost by {} {} ago'.format(
 				booster.mention, pretty_timedelta(datetime.utcnow() - booster.premium_since)
 			)
