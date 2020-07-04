@@ -221,6 +221,14 @@ class BaseParser:
 				new_names.append(name.split('(')[0].strip())
 			new_names.append(name)
 
+		# add 'asd var asd' for each 'asd ... asd'
+		new_names = list()
+		for name in names:
+			new_names.append(name)
+			if ' ... ' in name:
+				print(name)
+				new_names.append(name.replace(' ... ', ' var '))
+
 		return new_names
 
 	def tag_as_names(self, tag):
