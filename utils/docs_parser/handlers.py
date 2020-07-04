@@ -226,7 +226,6 @@ class BaseParser:
 		for name in names:
 			new_names.append(name)
 			if ' ... ' in name:
-				print(name)
 				new_names.append(name.replace(' ... ', ' var '))
 
 		return new_names
