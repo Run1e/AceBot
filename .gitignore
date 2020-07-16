@@ -14,3 +14,4 @@ test_md.py
 test_docs_parser.py
 notes.md
 cogs/ahk/internal
+ids.py
