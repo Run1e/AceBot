@@ -34,7 +34,7 @@ EXTENSIONS = (
 	'cogs.whois',
 	'cogs.hl',
 	'cogs.ahk.ahk',
-		# 'cogs.ahk.help',
+	'cogs.ahk.help',
 	'cogs.ahk.internal.logger',
 	'cogs.ahk.internal.security',
 	'cogs.dwitter',
