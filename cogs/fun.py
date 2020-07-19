@@ -76,7 +76,7 @@ class Fun(AceMixin, commands.Cog):
 		await msg.edit(content=None, embed=e)
 
 	def _create_embed(self, url=None):
-		e = discord.Embed()
+		e = discord.Embed(color=0x36393E)
 		if url is not None:
 			e.set_image(url=url)
 		log.info(url)

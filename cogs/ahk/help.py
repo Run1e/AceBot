@@ -14,24 +14,21 @@ from utils.time import pretty_timedelta
 OPEN_CHANNEL_COUNT = 3
 MINIMUM_CLAIM_INTERVAL = timedelta(minutes=15)
 FREE_AFTER = timedelta(minutes=30)
+MINIMUM_LEASE = timedelta(minutes=2)
 CHECK_FREE_EVERY = dict(seconds=30)
 
 OPEN_MESSAGE = (
-	'This help channel is now **open**, and you can claim it by simply asking a question. '
-	'After sending a message, the channel will be moved to the **HELP: CLAIMED** category, and someone will hopefully help you with your question.\n\n'
-	'After 30 minutes of inactivity the channel will be moved to the **HELP: CLOSED** category. '
+	'This help channel is now **open**, and you can claim it by simply asking a question in it. '
+	'After sending a message, the channel is moved to the\n`⏳ Active` category, and someone will hopefully help you with your question.\n\n'
+	'After 30 minutes of inactivity, the channel is moved to the\n`🅿 Closed` category. '
 	'You can also close it manually by invoking the `.close` command.'
 )
 
 CLOSED_MESSAGE = (
 	'This channel is currently **closed**. '
-	'It is not possible to send messages in it until it enters rotation again and is available under the **HELP: OPEN** category.\n\n'
-	'If your question didn\'t get answered, you can try and claim another channel under the **HELP: OPEN** category.'
+	'It is not possible to send messages in it until it enters rotation again and is available under the `❔ Help` category.\n\n'
+	'If your question didn\'t get answered, you can try and claim another channel under the `❔ Help` category.'
 )
-
-OPEN_TOPIC = 'Claim this channel by simply sending a message with a question into it!'
-CLAIMED_TOPIC = 'This channel is currently claimed by {0}'
-CLOSED_TOPIC = 'This channel is currently out of rotation. It is still visible so it can be searched through.'
 
 log = logging.getLogger(__name__)
 
@@ -59,7 +56,7 @@ class AutoHotkeyHelpSystem(AceMixin, commands.Cog):
 		on_age = datetime.utcnow() - FREE_AFTER
 
 		for channel in self.claimed_category.text_channels:
-			last_message = channel.last_message
+			last_message = await self.get_last_message(channel)
 			if last_message is None:
 				try:
 					last_message = await channel.fetch_message(channel.last_message_id)
@@ -89,8 +86,12 @@ class AutoHotkeyHelpSystem(AceMixin, commands.Cog):
 
 		is_mod = await ctx.is_mod()
 		claimed_channel_id = self.claimed_channel.get(ctx.author.id, None)
+		claimed_at = self.claimed_at.get(ctx.author.id, None)
 
 		if is_mod or claimed_channel_id == ctx.channel.id:
+			if claimed_at is not None and claimed_at > datetime.utcnow() - MINIMUM_LEASE:
+				raise commands.CommandError(f'Please wait at least {pretty_timedelta(MINIMUM_LEASE)} after claiming before closing a help channel.')
+
 			if is_mod:
 				log.info('%s force-closing closing %s', po(ctx.author), po(ctx.channel))
 
@@ -101,32 +102,30 @@ class AutoHotkeyHelpSystem(AceMixin, commands.Cog):
 	async def open_channel(self, channel: discord.TextChannel):
 		'''Move a channel from dormant to open.'''
 
-		if channel.category_id != OPEN_CATEGORY_ID or channel.topic != OPEN_TOPIC or not channel.permissions_synced:
-			await channel.edit(category=self.open_category, topic=OPEN_TOPIC, sync_permissions=True)
+		if channel.category_id != OPEN_CATEGORY_ID or not channel.permissions_synced:
+			await channel.edit(category=self.open_category, sync_permissions=True)
 
 		await self.post_message(channel, OPEN_MESSAGE)
 
 	async def close_channel(self, channel: discord.TextChannel):
 		'''Release a claimed channel from a member, making it closed.'''
 
-		async with self.close_lock:
-			owner_id = None
+		owner_id = None
 
-			for channel_owner_id, channel_id in self.claimed_channel.items():
-				if channel_id == channel.id:
-					owner_id = channel_owner_id
-					break
+		for channel_owner_id, channel_id in self.claimed_channel.items():
+			if channel_id == channel.id:
+				owner_id = channel_owner_id
+				break
 
-			if owner_id is not None:
-				self.claimed_channel.pop(owner_id)
+		if owner_id is not None:
+			self.claimed_channel.pop(owner_id)
 
-			log.info('Reclaiming %s from user id %s', po(channel), owner_id or 'UNKNOWN')
+		log.info('Reclaiming %s from user id %s', po(channel), owner_id or 'UNKNOWN')
 
-			if channel.category_id != CLOSED_CATEGORY_ID or channel.topic != CLOSED_TOPIC or not channel.permissions_synced:
-				await self._close_channel(channel, self.closed_category)
-				await channel.edit(topic=CLOSED_TOPIC, sync_permissions=True)
+		if channel.category_id != CLOSED_CATEGORY_ID or not channel.permissions_synced:
+			await self._close_channel(channel, self.closed_category)
 
-			await self.post_message(channel, CLOSED_MESSAGE)
+		await channel.send(embed=discord.Embed(description=CLOSED_MESSAGE))
 
 	async def _close_channel(self, channel: discord.TextChannel, category) -> None:
 		payload = [{"id": c.id, "position": c.position} for c in category.channels]
@@ -181,38 +180,30 @@ class AutoHotkeyHelpSystem(AceMixin, commands.Cog):
 			return
 
 		# otherwise, claim it!
-		async with self.claim_lock:
-			if self.is_claimed(channel.id):
-				return
+		if self.is_claimed(channel.id):
+			return
 
-			log.info('%s claiming %s', po(author), po(channel))
+		log.info('%s claiming %s', po(author), po(channel))
 
-			# find a new openable channel before doing any moving
-			new_open = self.get_openable_channel()
+		# find a new openable channel before doing any moving
+		new_open = self.get_openable_channel()
 
-			# move channel
-			try:
-				await channel.edit(category=self.claimed_category, topic=CLAIMED_TOPIC.format(author), sync_permissions=True)
-			except discord.HTTPException:
-				log.warning('Failed moving %s to claimed category.', po(channel))
-				return
+		# move channel
+		try:
+			await channel.edit(category=self.claimed_category, sync_permissions=True)
+		except discord.HTTPException as exc:
+			log.warning('Failed moving %s to claimed category: %s', po(channel), str(exc))
+			return
 
-			# set some metadata
-			self.claimed_channel[author.id] = channel.id
-			self.claimed_at[author.id] = now
+		# set some metadata
+		self.claimed_channel[author.id] = channel.id
+		self.claimed_at[author.id] = now
 
-			# check whether we need to move any open channels
-			await self.maybe_open(new_open)
+		# check whether we need to move any open channels
+		await self.maybe_open(new_open)
 
 	async def post_message(self, channel: discord.TextChannel, content: str):
-		last_message = channel.last_message
-		last_message_id = channel.last_message_id
-
-		if last_message is None and last_message_id is not None:
-			try:
-				last_message = await channel.fetch_message(channel.last_message_id)
-			except discord.NotFound:
-				pass
+		last_message = await self.get_last_message(channel)
 
 		e = discord.Embed(description=content)
 		do_edit = last_message is not None and last_message.author == channel.guild.me and len(last_message.embeds)
@@ -226,6 +217,30 @@ class AutoHotkeyHelpSystem(AceMixin, commands.Cog):
 		await message.delete()
 		await message.channel.send(f'{message.author.mention} {content}', delete_after=10)
 
+	async def get_last_message(self, channel):
+		last_message = channel.last_message
+		if last_message is not None:
+			return last_message
+
+		last_message_id = channel.last_message_id
+		if last_message_id is not None:
+			try:
+				last_message = await channel.fetch_message(channel.last_message_id)
+			except discord.NotFound:
+				pass
+
+		if last_message is None:
+			try:
+				last_message = await channel.history(limit=1).flatten()
+				if last_message:
+					last_message = last_message[0]
+				else:
+					last_message = None
+			except discord.HTTPException:
+				pass
+
+		return last_message
+
 	def is_claimed(self, channel_id):
 		return channel_id in self.claimed_channel.values()
 
@@ -236,7 +251,6 @@ class AutoHotkeyHelpSystem(AceMixin, commands.Cog):
 			return None
 
 	async def maybe_open(self, channel):
-		# check whether we need to move any open channels
 		if len(self.open_category.text_channels) < OPEN_CHANNEL_COUNT:
 			if channel is not None:
 				await self.open_channel(channel)
