@@ -89,11 +89,10 @@ class AutoHotkeyHelpSystem(AceMixin, commands.Cog):
 		claimed_at = self.claimed_at.get(ctx.author.id, None)
 
 		if is_mod or claimed_channel_id == ctx.channel.id:
-			if claimed_at is not None and claimed_at > datetime.utcnow() - MINIMUM_LEASE:
-				raise commands.CommandError(f'Please wait at least {pretty_timedelta(MINIMUM_LEASE)} after claiming before closing a help channel.')
-
 			if is_mod:
 				log.info('%s force-closing closing %s', po(ctx.author), po(ctx.channel))
+			elif claimed_at is not None and claimed_at > datetime.utcnow() - MINIMUM_LEASE:
+				raise commands.CommandError(f'Please wait at least {pretty_timedelta(MINIMUM_LEASE)} after claiming before closing a help channel.')
 
 			await self.close_channel(ctx.channel)
 		else:
