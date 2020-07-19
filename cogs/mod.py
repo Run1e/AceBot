@@ -10,7 +10,7 @@ import discord
 from asyncpg.exceptions import UniqueViolationError
 from discord.ext import commands
 
-from cogs.ahk.ids import RULES_MSG_ID
+from ids import RULES_MSG_ID
 from cogs.mixins import AceMixin
 from utils.configtable import ConfigTable, ConfigTableRecord
 from utils.context import AceContext, can_prompt, is_mod

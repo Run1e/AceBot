@@ -10,7 +10,7 @@ from bs4 import BeautifulSoup
 from discord.ext import commands, tasks
 from fuzzywuzzy import fuzz, process
 
-from cogs.ahk.ids import *
+from ids import *
 from cogs.mixins import AceMixin
 from config import CLOUDAHK_PASS, CLOUDAHK_URL, CLOUDAHK_USER
 from utils.docs_parser import parse_docs

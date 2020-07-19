@@ -5,16 +5,16 @@ from datetime import datetime, timedelta
 import discord
 from discord.ext import commands, tasks
 
-from cogs.ahk.ids import AHK_GUILD_ID, CLAIMED_CATEGORY_ID, CLOSED_CATEGORY_ID, OPEN_CATEGORY_ID
+from ids import AHK_GUILD_ID, CLAIMED_CATEGORY_ID, CLOSED_CATEGORY_ID, OPEN_CATEGORY_ID
 from cogs.mixins import AceMixin
 from utils.context import is_mod
 from utils.string import po
 from utils.time import pretty_timedelta
 
 OPEN_CHANNEL_COUNT = 3
-MINIMUM_CLAIM_INTERVAL = timedelta(seconds=60)
-FREE_AFTER = timedelta(seconds=120)
-CHECK_FREE_EVERY = dict(seconds=5)
+MINIMUM_CLAIM_INTERVAL = timedelta(minutes=15)
+FREE_AFTER = timedelta(minutes=30)
+CHECK_FREE_EVERY = dict(seconds=30)
 
 OPEN_MESSAGE = (
 	'This help channel is now **open**, and you can claim it by simply asking a question. '
@@ -123,9 +123,30 @@ class AutoHotkeyHelpSystem(AceMixin, commands.Cog):
 			log.info('Reclaiming %s from user id %s', po(channel), owner_id or 'UNKNOWN')
 
 			if channel.category_id != CLOSED_CATEGORY_ID or channel.topic != CLOSED_TOPIC or not channel.permissions_synced:
-				await channel.edit(category=self.closed_category, topic=CLOSED_TOPIC, sync_permissions=True)
+				await self._close_channel(channel, self.closed_category)
+				await channel.edit(topic=CLOSED_TOPIC, sync_permissions=True)
 
 			await self.post_message(channel, CLOSED_MESSAGE)
+
+	async def _close_channel(self, channel: discord.TextChannel, category) -> None:
+		payload = [{"id": c.id, "position": c.position} for c in category.channels]
+
+		# Calculate the bottom position based on the current highest position in the category. If the
+		# category is currently empty, we simply use the current position of the channel to avoid making
+		# unnecessary changes to positions in the guild.
+		bottom_position = payload[-1]["position"] + 1 if payload else channel.position
+
+		payload.append(
+			{
+				"id": channel.id,
+				"position": bottom_position,
+				"parent_id": category.id,
+				"lock_permissions": True,
+			}
+		)
+
+		# We use d.py's method to ensure our request is processed by d.py's rate limit manager
+		await self.bot.http.bulk_channel_update(category.guild.id, payload)
 
 	@commands.Cog.listener()
 	async def on_message(self, message):
@@ -185,7 +206,9 @@ class AutoHotkeyHelpSystem(AceMixin, commands.Cog):
 
 	async def post_message(self, channel: discord.TextChannel, content: str):
 		last_message = channel.last_message
-		if last_message is None:
+		last_message_id = channel.last_message_id
+
+		if last_message is None and last_message_id is not None:
 			try:
 				last_message = await channel.fetch_message(channel.last_message_id)
 			except discord.NotFound:
@@ -208,7 +231,7 @@ class AutoHotkeyHelpSystem(AceMixin, commands.Cog):
 
 	def get_openable_channel(self):
 		try:
-			return self.closed_category.text_channels[-1]
+			return self.closed_category.text_channels[0]
 		except IndexError:
 			return None
 

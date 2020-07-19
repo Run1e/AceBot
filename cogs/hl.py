@@ -3,7 +3,7 @@ import re
 import discord
 from discord.ext import commands
 
-from cogs.ahk.ids import AHK_GUILD_ID
+from ids import AHK_GUILD_ID
 from cogs.mixins import AceMixin
 from utils.context import is_mod
 from utils.converters import LengthConverter
