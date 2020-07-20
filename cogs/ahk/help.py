@@ -1,12 +1,11 @@
 import logging
-from asyncio import Lock
 from datetime import datetime, timedelta
 
 import discord
 from discord.ext import commands, tasks
 
-from ids import AHK_GUILD_ID, CLAIMED_CATEGORY_ID, CLOSED_CATEGORY_ID, OPEN_CATEGORY_ID
 from cogs.mixins import AceMixin
+from ids import ACTIVE_CATEGORY_ID, AHK_GUILD_ID, CLOSED_CATEGORY_ID, OPEN_CATEGORY_ID
 from utils.context import is_mod
 from utils.string import po
 from utils.time import pretty_timedelta
@@ -14,20 +13,21 @@ from utils.time import pretty_timedelta
 OPEN_CHANNEL_COUNT = 3
 MINIMUM_CLAIM_INTERVAL = timedelta(minutes=15)
 FREE_AFTER = timedelta(minutes=30)
-MINIMUM_LEASE = timedelta(minutes=2)
+MINIMUM_LEASE = timedelta(minutes=1)
 CHECK_FREE_EVERY = dict(seconds=30)
+NEW_EMOJI = '❗'
 
 OPEN_MESSAGE = (
 	'This help channel is now **open**, and you can claim it by simply asking a question in it. '
-	'After sending a message, the channel is moved to the\n`⏳ Active` category, and someone will hopefully help you with your question.\n\n'
-	'After 30 minutes of inactivity, the channel is moved to the\n`🅿 Closed` category. '
+	'After sending a message the channel is moved to the\n`⏳ Help: Currently In Use` category, where someone will hopefully help you with your question.\n\n'
+	'After 30 minutes of inactivity, the channel is moved to the\n`🅿 Help: Closed` category. '
 	'You can also close it manually by invoking the `.close` command.'
 )
 
 CLOSED_MESSAGE = (
 	'This channel is currently **closed**. '
-	'It is not possible to send messages in it until it enters rotation again and is available under the `❔ Help` category.\n\n'
-	'If your question didn\'t get answered, you can try and claim another channel under the `❔ Help` category.'
+	'It is not possible to send messages in it until it enters rotation again and is available under the `❔ Help: Open For Claiming` category.\n\n'
+	'If your question didn\'t get answered, you can try and claim another channel under the `❔ Help: Open For Claiming` category.'
 )
 
 log = logging.getLogger(__name__)
@@ -37,16 +37,14 @@ class AutoHotkeyHelpSystem(AceMixin, commands.Cog):
 	def __init__(self, bot):
 		super().__init__(bot)
 
-		self.claim_lock = Lock()
-		self.close_lock = Lock()
-
 		self.claimed_channel = dict()
 		self.claimed_at = dict()
+		self.new_channel = dict()
 		self.channel_reclaimer.start()
 
-		self.claimed_category = bot.get_channel(CLAIMED_CATEGORY_ID)
-		self.closed_category = bot.get_channel(CLOSED_CATEGORY_ID)
 		self.open_category = bot.get_channel(OPEN_CATEGORY_ID)
+		self.active_category = bot.get_channel(ACTIVE_CATEGORY_ID)
+		self.closed_category = bot.get_channel(CLOSED_CATEGORY_ID)
 
 	async def cog_check(self, ctx):
 		return ctx.guild.id == AHK_GUILD_ID
@@ -55,18 +53,17 @@ class AutoHotkeyHelpSystem(AceMixin, commands.Cog):
 	async def channel_reclaimer(self):
 		on_age = datetime.utcnow() - FREE_AFTER
 
-		for channel in self.claimed_category.text_channels:
+		for channel in self.active_category.text_channels:
 			last_message = await self.get_last_message(channel)
+
+			# if get_last_message failed there's likely literally no messages in the channel
 			if last_message is None:
-				try:
-					last_message = await channel.fetch_message(channel.last_message_id)
-				except discord.HTTPException:
-					continue  # just skip it for now
+				continue
 
 			if last_message.created_at < on_age:
 				await self.close_channel(channel)
 
-	@commands.command()
+	@commands.command(hidden=True)
 	@is_mod()
 	async def open(self, ctx, channel: discord.TextChannel):
 		'''Open a help channel.'''
@@ -77,11 +74,11 @@ class AutoHotkeyHelpSystem(AceMixin, commands.Cog):
 		await self.open_channel(channel)
 		await ctx.send(f'{channel.mention} opened.')
 
-	@commands.command()
+	@commands.command(hidden=True)
 	async def close(self, ctx):
-		'''Releases a help channel, and moves it back into the pool of available help channels.'''
+		'''Releases a help channel, and moves it back into the pool of closed help channels.'''
 
-		if ctx.channel.category != self.claimed_category:
+		if ctx.channel.category != self.active_category:
 			return
 
 		is_mod = await ctx.is_mod()
@@ -117,16 +114,20 @@ class AutoHotkeyHelpSystem(AceMixin, commands.Cog):
 				break
 
 		if owner_id is not None:
-			self.claimed_channel.pop(owner_id)
+			self.claimed_channel.pop(owner_id, None)
+
+		self.new_channel.pop(channel.id, None)
 
 		log.info('Reclaiming %s from user id %s', po(channel), owner_id or 'UNKNOWN')
 
 		if channel.category_id != CLOSED_CATEGORY_ID or not channel.permissions_synced:
-			await self._close_channel(channel, self.closed_category)
+			await self.move_to_bottom(channel, self.closed_category)
+			if self.has_postfix(channel):
+				await channel.edit(name=self._stripped_name(channel))
 
 		await channel.send(embed=discord.Embed(description=CLOSED_MESSAGE))
 
-	async def _close_channel(self, channel: discord.TextChannel, category) -> None:
+	async def move_to_bottom(self, channel: discord.TextChannel, category) -> None:
 		payload = [{"id": c.id, "position": c.position} for c in category.channels]
 
 		# Calculate the bottom position based on the current highest position in the category. If the
@@ -135,34 +136,20 @@ class AutoHotkeyHelpSystem(AceMixin, commands.Cog):
 		bottom_position = payload[-1]["position"] + 1 if payload else channel.position
 
 		payload.append(
-			{
-				"id": channel.id,
-				"position": bottom_position,
-				"parent_id": category.id,
-				"lock_permissions": True,
-			}
+			dict(
+				id=channel.id,
+				position=bottom_position,
+				parent_id=category.id,
+				lock_permissions=True,
+			)
 		)
 
 		# We use d.py's method to ensure our request is processed by d.py's rate limit manager
 		await self.bot.http.bulk_channel_update(category.guild.id, payload)
 
-	@commands.Cog.listener()
-	async def on_message(self, message):
-		guild = message.guild
-
-		if guild is None or guild.id != AHK_GUILD_ID:
-			return
-
+	async def on_open_message(self, message):
 		author = message.author
-
-		if author.bot:
-			return
-
-		channel: discord.TextChannel = message.channel
-		category: discord.CategoryChannel = channel.category
-
-		if category is None or category.id != OPEN_CATEGORY_ID:
-			return
+		channel = message.channel
 
 		# check whether author already has a claimed channel
 		claimed_id = self.claimed_channel.get(author.id, None)
@@ -189,7 +176,11 @@ class AutoHotkeyHelpSystem(AceMixin, commands.Cog):
 
 		# move channel
 		try:
-			await channel.edit(category=self.claimed_category, sync_permissions=True)
+			opt = dict(category=self.active_category, sync_permissions=True)
+			if not self.has_postfix(channel):
+				opt['name'] = channel.name + '-' + NEW_EMOJI
+
+			await channel.edit(**opt)
 		except discord.HTTPException as exc:
 			log.warning('Failed moving %s to claimed category: %s', po(channel), str(exc))
 			return
@@ -197,9 +188,49 @@ class AutoHotkeyHelpSystem(AceMixin, commands.Cog):
 		# set some metadata
 		self.claimed_channel[author.id] = channel.id
 		self.claimed_at[author.id] = now
+		self.new_channel[channel.id] = True
 
 		# check whether we need to move any open channels
 		await self.maybe_open(new_open)
+
+	async def on_active_message(self, message):
+		channel = message.channel
+
+		has_postfix = self.has_postfix(channel)
+		if not has_postfix:
+			return
+
+		author = message.author
+		state = self.new_channel.get(channel.id, False)
+
+		if state:
+			# get the channel the author has claimed, if any
+			# if that is None or something else than this channel id, we can unset the new state
+			author_claimed_id = self.claimed_channel.get(author.id, None)
+			if author_claimed_id is None or author_claimed_id != channel.id:
+				await self.strip_postfix(channel)
+		elif not state:
+			await self.strip_postfix(channel)
+
+	@commands.Cog.listener()
+	async def on_message(self, message):
+		guild = message.guild
+
+		if guild is None or guild.id != AHK_GUILD_ID:
+			return
+
+		if message.author.bot:
+			return
+
+		category: discord.CategoryChannel = message.channel.category
+
+		if category is None:
+			return
+
+		if category == self.open_category:
+			await self.on_open_message(message)
+		elif category == self.active_category:
+			await self.on_active_message(message)
 
 	async def post_message(self, channel: discord.TextChannel, content: str):
 		last_message = await self.get_last_message(channel)
@@ -239,6 +270,20 @@ class AutoHotkeyHelpSystem(AceMixin, commands.Cog):
 				pass
 
 		return last_message
+
+	def has_postfix(self, channel: discord.TextChannel):
+		return channel.name.endswith(f'-{NEW_EMOJI}')
+
+	def _stripped_name(self, channel: discord.TextChannel):
+		return channel.name[:-2]
+
+	async def strip_postfix(self, channel: discord.TextChannel):
+		new_name = self._stripped_name(channel)
+		try:
+			await channel.edit(name=new_name)
+		except discord.HTTPException as exc:
+			log.warning(f'Failed changing name of {channel} to {new_name}: {exc}')
+			pass
 
 	def is_claimed(self, channel_id):
 		return channel_id in self.claimed_channel.values()
