@@ -1,4 +1,5 @@
 import logging
+from asyncio import sleep
 from datetime import datetime, timedelta
 
 import discord
@@ -11,15 +12,15 @@ from utils.string import po
 from utils.time import pretty_timedelta
 
 OPEN_CHANNEL_COUNT = 3
-MINIMUM_CLAIM_INTERVAL = timedelta(minutes=15)
-FREE_AFTER = timedelta(minutes=30)
+MINIMUM_CLAIM_INTERVAL = timedelta(minutes=5)
+FREE_AFTER = timedelta(minutes=20)
 MINIMUM_LEASE = timedelta(minutes=1)
 CHECK_FREE_EVERY = dict(seconds=30)
-NEW_EMOJI = '❗'
+NEW_EMOJI = '\N{Heavy Exclamation Mark Symbol}'
 
 OPEN_MESSAGE = (
 	'This help channel is now **open**, and you can claim it by simply asking a question in it. '
-	'After sending a message the channel is moved to the\n`⏳ Help: Currently In Use` category, where someone will hopefully help you with your question.\n\n'
+	'After sending a message the channel is moved to the\n`⏳ Help: Occupied` category, where someone will hopefully help you with your question.\n\n'
 	'After 30 minutes of inactivity, the channel is moved to the\n`🅿 Help: Closed` category. '
 	'You can also close it manually by invoking the `.close` command.'
 )
@@ -57,10 +58,17 @@ class AutoHotkeyHelpSystem(AceMixin, commands.Cog):
 			last_message = await self.get_last_message(channel)
 
 			# if get_last_message failed there's likely literally no messages in the channel
-			if last_message is None:
-				continue
+			last_message_at = None if last_message is None else last_message.created_at
 
-			if last_message.created_at < on_age:
+			claimed_at = None
+			for author_id, channel_id in self.claimed_channel.items():
+				if channel_id == channel.id:
+					claimed_at = self.claimed_at.get(author_id, None)
+					break
+
+			pivot = max(dt for dt in (last_message_at, claimed_at) if dt is not None)
+
+			if pivot < on_age:
 				await self.close_channel(channel)
 
 	@commands.command(hidden=True)
@@ -121,8 +129,14 @@ class AutoHotkeyHelpSystem(AceMixin, commands.Cog):
 		log.info('Reclaiming %s from user id %s', po(channel), owner_id or 'UNKNOWN')
 
 		if channel.category_id != CLOSED_CATEGORY_ID or not channel.permissions_synced:
-			await self.move_to_bottom(channel, self.closed_category)
+			category = self.closed_category
+			await self.move_to_bottom(channel, category)
+
 			if self.has_postfix(channel):
+				# I hate this but whatever.
+				while channel.category_id != CLOSED_CATEGORY_ID:
+					await sleep(0.2)
+
 				await channel.edit(name=self._stripped_name(channel))
 
 		await channel.send(embed=discord.Embed(description=CLOSED_MESSAGE))
@@ -194,6 +208,9 @@ class AutoHotkeyHelpSystem(AceMixin, commands.Cog):
 		await self.maybe_open(new_open)
 
 	async def on_active_message(self, message):
+		if message.content.startswith('.close'):
+			return
+
 		channel = message.channel
 
 		has_postfix = self.has_postfix(channel)
