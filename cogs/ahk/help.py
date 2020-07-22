@@ -6,14 +6,14 @@ import discord
 from discord.ext import commands, tasks
 
 from cogs.mixins import AceMixin
-from ids import ACTIVE_CATEGORY_ID, AHK_GUILD_ID, CLOSED_CATEGORY_ID, OPEN_CATEGORY_ID
+from ids import ACTIVE_CATEGORY_ID, AHK_GUILD_ID, CLOSED_CATEGORY_ID, IGNORE_ACTIVE_CHAN_IDS, OPEN_CATEGORY_ID
 from utils.context import is_mod
 from utils.string import po
 from utils.time import pretty_timedelta
 
 OPEN_CHANNEL_COUNT = 3
-MINIMUM_CLAIM_INTERVAL = timedelta(minutes=5)
-FREE_AFTER = timedelta(minutes=20)
+MINIMUM_CLAIM_INTERVAL = timedelta(minutes=2)
+FREE_AFTER = timedelta(minutes=30)
 MINIMUM_LEASE = timedelta(minutes=1)
 CHECK_FREE_EVERY = dict(seconds=30)
 NEW_EMOJI = '\N{Heavy Exclamation Mark Symbol}'
@@ -55,6 +55,9 @@ class AutoHotkeyHelpSystem(AceMixin, commands.Cog):
 		on_age = datetime.utcnow() - FREE_AFTER
 
 		for channel in self.active_category.text_channels:
+			if channel.id in IGNORE_ACTIVE_CHAN_IDS:
+				continue
+
 			last_message = await self.get_last_message(channel)
 
 			# if get_last_message failed there's likely literally no messages in the channel
@@ -106,9 +109,7 @@ class AutoHotkeyHelpSystem(AceMixin, commands.Cog):
 	async def open_channel(self, channel: discord.TextChannel):
 		'''Move a channel from dormant to open.'''
 
-		if channel.category_id != OPEN_CATEGORY_ID or not channel.permissions_synced:
-			await channel.edit(category=self.open_category, sync_permissions=True)
-
+		await channel.edit(category=self.open_category, sync_permissions=True)
 		await self.post_message(channel, OPEN_MESSAGE)
 
 	async def close_channel(self, channel: discord.TextChannel):
@@ -128,16 +129,16 @@ class AutoHotkeyHelpSystem(AceMixin, commands.Cog):
 
 		log.info('Reclaiming %s from user id %s', po(channel), owner_id or 'UNKNOWN')
 
-		if channel.category_id != CLOSED_CATEGORY_ID or not channel.permissions_synced:
-			category = self.closed_category
-			await self.move_to_bottom(channel, category)
+		category = self.closed_category
 
-			if self.has_postfix(channel):
-				# I hate this but whatever.
-				while channel.category_id != CLOSED_CATEGORY_ID:
-					await sleep(0.2)
+		await self.move_to_bottom(channel, category)
 
-				await channel.edit(name=self._stripped_name(channel))
+		if self.has_postfix(channel):
+			# I hate this but whatever.
+			while channel.category_id != CLOSED_CATEGORY_ID:
+				await sleep(0.2)
+
+			await channel.edit(name=self._stripped_name(channel))
 
 		await channel.send(embed=discord.Embed(description=CLOSED_MESSAGE))
 

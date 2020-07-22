@@ -1,15 +1,15 @@
-import discord
-import logging
 import asyncio
+import logging
 import string
-
-from discord.ext import commands
-from fuzzywuzzy import process, fuzz
 from datetime import datetime
-from urllib.parse import unquote
-from random import randrange, choice, sample
 from enum import Enum
-from typing import Optional, Union
+from random import choice, randrange, sample
+from typing import Optional
+from urllib.parse import unquote
+
+import discord
+from discord.ext import commands
+from fuzzywuzzy import fuzz, process
 
 from cogs.mixins import AceMixin
 from utils.configtable import ConfigTable
@@ -137,7 +137,8 @@ class Games(AceMixin, commands.Cog):
 		self.config = ConfigTable(bot, 'trivia', ('guild_id', 'user_id'))
 
 		self.trivia_categories = None
-		# self.bot.loop.create_task(self.get_trivia_categories())
+
+	# self.bot.loop.create_task(self.get_trivia_categories())
 
 	async def get_trivia_categories(self):
 		try:
