@@ -19,16 +19,15 @@ CHECK_FREE_EVERY = dict(seconds=30)
 NEW_EMOJI = '\N{Heavy Exclamation Mark Symbol}'
 
 OPEN_MESSAGE = (
-	'This help channel is now **open**, and you can claim it by simply asking a question in it. '
-	'After sending a message the channel is moved to the\n`⏳ Help: Occupied` category, where someone will hopefully help you with your question.\n\n'
-	'After 30 minutes of inactivity, the channel is moved to the\n`🅿 Help: Closed` category. '
-	'You can also close it manually by invoking the `.close` command.'
+	'This help channel is now **open**, and you can claim it by simply asking a question in it.\n\n'
+	'After sending your question, the channel is moved to the\n`⏳ Help: Occupied` category, where someone will hopefully help you with your question. '
+	'The channel is closed after 30 minutes of inactivity.'
 )
 
 CLOSED_MESSAGE = (
 	'This channel is currently **closed**. '
-	'It is not possible to send messages in it until it enters rotation again and is available under the `❔ Help: Open For Claiming` category.\n\n'
-	'If your question didn\'t get answered, you can try and claim another channel under the `❔ Help: Open For Claiming` category.'
+	'It is not possible to send messages in it until it enters rotation again and is available under the `✅ Help: Open For Claiming` category.\n\n'
+	'If your question didn\'t get answered, you can claim a new channel.'
 )
 
 log = logging.getLogger(__name__)
@@ -110,7 +109,7 @@ class AutoHotkeyHelpSystem(AceMixin, commands.Cog):
 		'''Move a channel from dormant to open.'''
 
 		await channel.edit(category=self.open_category, sync_permissions=True)
-		await self.post_message(channel, OPEN_MESSAGE)
+		await self.post_message(channel, OPEN_MESSAGE, color=discord.Color.green())
 
 	async def close_channel(self, channel: discord.TextChannel):
 		'''Release a claimed channel from a member, making it closed.'''
@@ -140,7 +139,7 @@ class AutoHotkeyHelpSystem(AceMixin, commands.Cog):
 
 			await channel.edit(name=self._stripped_name(channel))
 
-		await channel.send(embed=discord.Embed(description=CLOSED_MESSAGE))
+		await channel.send(embed=discord.Embed(description=CLOSED_MESSAGE, color=discord.Color.red()))
 
 	async def move_to_bottom(self, channel: discord.TextChannel, category) -> None:
 		payload = [{"id": c.id, "position": c.position} for c in category.channels]
@@ -186,9 +185,6 @@ class AutoHotkeyHelpSystem(AceMixin, commands.Cog):
 
 		log.info('%s claiming %s', po(author), po(channel))
 
-		# find a new openable channel before doing any moving
-		new_open = self.get_openable_channel()
-
 		# move channel
 		try:
 			opt = dict(category=self.active_category, sync_permissions=True)
@@ -206,7 +202,7 @@ class AutoHotkeyHelpSystem(AceMixin, commands.Cog):
 		self.new_channel[channel.id] = True
 
 		# check whether we need to move any open channels
-		await self.maybe_open(new_open)
+		await self.maybe_open(self.get_openable_channel())
 
 	async def on_active_message(self, message):
 		if message.content.startswith('.close'):
@@ -250,10 +246,15 @@ class AutoHotkeyHelpSystem(AceMixin, commands.Cog):
 		elif category == self.active_category:
 			await self.on_active_message(message)
 
-	async def post_message(self, channel: discord.TextChannel, content: str):
+	async def post_message(self, channel: discord.TextChannel, content: str, color=None):
 		last_message = await self.get_last_message(channel)
 
-		e = discord.Embed(description=content)
+		opt = dict(description=content)
+		if color is not None:
+			opt['color'] = color
+
+		e = discord.Embed(**opt)
+
 		do_edit = last_message is not None and last_message.author == channel.guild.me and len(last_message.embeds)
 
 		if do_edit:

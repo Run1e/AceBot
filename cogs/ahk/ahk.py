@@ -244,7 +244,7 @@ class AutoHotkey(AceMixin, commands.Cog):
 
 		stdout, time = result['stdout'].strip(), result['time']
 
-		stdout = stdout.replace('```', '`\u200b``')
+		stdout = stdout.replace('`', '`\u200b')
 
 		if len(stdout) > 1800 or stdout.count('\n') > 12:
 			raise commands.CommandError('Output too large.')
