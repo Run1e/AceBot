@@ -1,6 +1,7 @@
 import logging
 from asyncio import sleep
 from datetime import datetime, timedelta
+from json import dumps, loads, JSONDecodeError
 
 import discord
 from discord.ext import commands, tasks
@@ -37,7 +38,7 @@ class AutoHotkeyHelpSystem(AceMixin, commands.Cog):
 	def __init__(self, bot):
 		super().__init__(bot)
 
-		self.claimed_channel = dict()
+		self.claimed_channel = self._load_claims()
 		self.claimed_at = dict()
 		self.new_channel = dict()
 		self.channel_reclaimer.start()
@@ -48,6 +49,20 @@ class AutoHotkeyHelpSystem(AceMixin, commands.Cog):
 
 	async def cog_check(self, ctx):
 		return ctx.guild.id == AHK_GUILD_ID
+
+	def _load_claims(self):
+		try:
+			with open('data/claims.json', 'r') as f:
+				d = loads(f.read())
+				if not isinstance(d, dict):
+					return dict()
+				return {int(k): int(v) for k, v in d.items()}
+		except (FileNotFoundError, JSONDecodeError):
+			return dict()
+
+	def _store_claims(self):
+		with open('data/claims.json', 'w') as f:
+			f.write(dumps(self.claimed_channel))
 
 	@tasks.loop(**CHECK_FREE_EVERY)
 	async def channel_reclaimer(self):
@@ -105,10 +120,33 @@ class AutoHotkeyHelpSystem(AceMixin, commands.Cog):
 		else:
 			raise commands.CommandError('You can\'t do that.')
 
+	async def position_channel(self, channel: discord.TextChannel, category: discord.CategoryChannel, position: int, lock_permissions: bool = True):
+		channels = [c for c in category.channels]
+
+		if channel in channels:
+			channels.remove(channel)
+
+		if position == -1:
+			channels.append(channel)
+		elif position < len(channels):
+			channels.insert(position, channel)
+		else:
+			channels.append(channel)
+
+		payload = list()
+
+		for index, c in enumerate(channels):
+			d = dict(id=c.id, position=index)
+			if c == channel:
+				d.update(parent_id=category.id, lock_permissions=lock_permissions)
+			payload.append(d)
+
+		await self.bot.http.bulk_channel_update(channel.guild.id, payload)
+
 	async def open_channel(self, channel: discord.TextChannel):
 		'''Move a channel from dormant to open.'''
 
-		await channel.edit(category=self.open_category, sync_permissions=True)
+		await self.position_channel(channel, self.open_category, -1)
 		await self.post_message(channel, OPEN_MESSAGE, color=discord.Color.green())
 
 	def should_open(self):
@@ -124,17 +162,19 @@ class AutoHotkeyHelpSystem(AceMixin, commands.Cog):
 				owner_id = channel_owner_id
 				break
 
+		self.new_channel.pop(channel.id, None)
+
 		if owner_id is not None:
 			self.claimed_channel.pop(owner_id, None)
 
-		self.new_channel.pop(channel.id, None)
+		self._store_claims()
 
 		log.info('Reclaiming %s from user id %s', po(channel), owner_id or 'UNKNOWN')
 
 		if self.should_open():
 			await self.open_channel(channel)
 		else:
-			await self.move_to_bottom(channel, self.closed_category)
+			await self.position_channel(channel, self.closed_category, 0)
 			await channel.send(embed=discord.Embed(description=CLOSED_MESSAGE, color=discord.Color.red()))
 
 		if self.has_postfix(channel):
@@ -143,35 +183,6 @@ class AutoHotkeyHelpSystem(AceMixin, commands.Cog):
 				await sleep(0.2)
 
 			await channel.edit(name=self._stripped_name(channel))
-
-	async def move_to_bottom(self, channel: discord.TextChannel, category) -> None:
-		payload = [{"id": c.id, "position": c.position} for c in category.channels]
-
-		# Calculate the bottom position based on the current highest position in the category. If the
-		# category is currently empty, we simply use the current position of the channel to avoid making
-		# unnecessary changes to positions in the guild.
-		bottom_position = payload[-1]["position"] + 1 if payload else channel.position
-
-		payload.append(
-			dict(
-				id=channel.id,
-				position=bottom_position,
-				parent_id=category.id,
-				lock_permissions=True,
-			)
-		)
-
-		# We use d.py's method to ensure our request is processed by d.py's rate limit manager
-		await self.bot.http.bulk_channel_update(category.guild.id, payload)
-
-	async def maybe_open(self):
-		if len(self.open_category.text_channels) < OPEN_CHANNEL_COUNT:
-			try:
-				channel = self.closed_category.text_channels[0]
-			except IndexError:
-				log.warning('No more openable channels in closed pool!')
-			else:
-				await self.open_channel(channel)
 
 	async def on_open_message(self, message):
 		author = message.author
@@ -199,11 +210,9 @@ class AutoHotkeyHelpSystem(AceMixin, commands.Cog):
 
 		# move channel
 		try:
-			opt = dict(category=self.active_category, sync_permissions=True)
+			await self.position_channel(channel, self.active_category, 1)
 			if not self.has_postfix(channel):
-				opt['name'] = channel.name + '-' + NEW_EMOJI
-
-			await channel.edit(**opt)
+				await channel.edit(name=channel.name + '-' + NEW_EMOJI)
 		except discord.HTTPException as exc:
 			log.warning('Failed moving %s to claimed category: %s', po(channel), str(exc))
 			return
@@ -213,10 +222,12 @@ class AutoHotkeyHelpSystem(AceMixin, commands.Cog):
 		self.claimed_at[author.id] = now
 		self.new_channel[channel.id] = True
 
+		self._store_claims()
+
 		# check whether we need to move any open channels
 
 		try:
-			channel = self.closed_category.text_channels[0]
+			channel = self.closed_category.text_channels[-1]
 		except IndexError:
 			log.warning('No more openable channels in closed pool!')
 		else:
@@ -240,7 +251,7 @@ class AutoHotkeyHelpSystem(AceMixin, commands.Cog):
 			author_claimed_id = self.claimed_channel.get(author.id, None)
 			if author_claimed_id is None or author_claimed_id != channel.id:
 				await self.strip_postfix(channel)
-		elif not state:
+		else:
 			await self.strip_postfix(channel)
 
 	@commands.Cog.listener()
@@ -323,15 +334,6 @@ class AutoHotkeyHelpSystem(AceMixin, commands.Cog):
 
 	def is_claimed(self, channel_id):
 		return channel_id in self.claimed_channel.values()
-
-	async def maybe_open(self):
-		if len(self.open_category.text_channels) < OPEN_CHANNEL_COUNT:
-			try:
-				channel = self.closed_category.text_channels[0]
-			except IndexError:
-				log.warning('No more openable channels in closed pool!')
-			else:
-				await self.open_channel(channel)
 
 
 def setup(bot):
