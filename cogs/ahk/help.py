@@ -111,6 +111,9 @@ class AutoHotkeyHelpSystem(AceMixin, commands.Cog):
 		await channel.edit(category=self.open_category, sync_permissions=True)
 		await self.post_message(channel, OPEN_MESSAGE, color=discord.Color.green())
 
+	def should_open(self):
+		return len(self.open_category.text_channels) < OPEN_CHANNEL_COUNT
+
 	async def close_channel(self, channel: discord.TextChannel):
 		'''Release a claimed channel from a member, making it closed.'''
 
@@ -128,18 +131,18 @@ class AutoHotkeyHelpSystem(AceMixin, commands.Cog):
 
 		log.info('Reclaiming %s from user id %s', po(channel), owner_id or 'UNKNOWN')
 
-		category = self.closed_category
-
-		await self.move_to_bottom(channel, category)
+		if self.should_open():
+			await self.open_channel(channel)
+		else:
+			await self.move_to_bottom(channel, self.closed_category)
+			await channel.send(embed=discord.Embed(description=CLOSED_MESSAGE, color=discord.Color.red()))
 
 		if self.has_postfix(channel):
 			# I hate this but whatever.
-			while channel.category_id != CLOSED_CATEGORY_ID:
+			while channel.category_id == ACTIVE_CATEGORY_ID:
 				await sleep(0.2)
 
 			await channel.edit(name=self._stripped_name(channel))
-
-		await channel.send(embed=discord.Embed(description=CLOSED_MESSAGE, color=discord.Color.red()))
 
 	async def move_to_bottom(self, channel: discord.TextChannel, category) -> None:
 		payload = [{"id": c.id, "position": c.position} for c in category.channels]
@@ -160,6 +163,15 @@ class AutoHotkeyHelpSystem(AceMixin, commands.Cog):
 
 		# We use d.py's method to ensure our request is processed by d.py's rate limit manager
 		await self.bot.http.bulk_channel_update(category.guild.id, payload)
+
+	async def maybe_open(self):
+		if len(self.open_category.text_channels) < OPEN_CHANNEL_COUNT:
+			try:
+				channel = self.closed_category.text_channels[0]
+			except IndexError:
+				log.warning('No more openable channels in closed pool!')
+			else:
+				await self.open_channel(channel)
 
 	async def on_open_message(self, message):
 		author = message.author
@@ -202,7 +214,13 @@ class AutoHotkeyHelpSystem(AceMixin, commands.Cog):
 		self.new_channel[channel.id] = True
 
 		# check whether we need to move any open channels
-		await self.maybe_open(self.get_openable_channel())
+
+		try:
+			channel = self.closed_category.text_channels[0]
+		except IndexError:
+			log.warning('No more openable channels in closed pool!')
+		else:
+			await self.open_channel(channel)
 
 	async def on_active_message(self, message):
 		if message.content.startswith('.close'):
@@ -210,8 +228,7 @@ class AutoHotkeyHelpSystem(AceMixin, commands.Cog):
 
 		channel = message.channel
 
-		has_postfix = self.has_postfix(channel)
-		if not has_postfix:
+		if not self.has_postfix(channel):
 			return
 
 		author = message.author
@@ -307,18 +324,14 @@ class AutoHotkeyHelpSystem(AceMixin, commands.Cog):
 	def is_claimed(self, channel_id):
 		return channel_id in self.claimed_channel.values()
 
-	def get_openable_channel(self):
-		try:
-			return self.closed_category.text_channels[0]
-		except IndexError:
-			return None
-
-	async def maybe_open(self, channel):
+	async def maybe_open(self):
 		if len(self.open_category.text_channels) < OPEN_CHANNEL_COUNT:
-			if channel is not None:
-				await self.open_channel(channel)
-			else:
+			try:
+				channel = self.closed_category.text_channels[0]
+			except IndexError:
 				log.warning('No more openable channels in closed pool!')
+			else:
+				await self.open_channel(channel)
 
 
 def setup(bot):
