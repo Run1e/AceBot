@@ -473,7 +473,7 @@ class AutoHotkey(AceMixin, commands.Cog):
 
 		await ctx.send(embed=e)
 
-	@commands.command()
+	@commands.command(hidden=True)
 	@commands.cooldown(rate=1.0, per=5.0, type=commands.BucketType.user)
 	async def rlx(self, ctx, *, code):
 		'''Compile and run Relax code through CloudAHK. Example: `rlx define i32 Main() {return 20}`'''

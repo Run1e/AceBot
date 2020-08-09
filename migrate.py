@@ -169,7 +169,6 @@ You can’t kill yourself by holding your breath.
 Human birth control pills work on gorillas.
 There are no clocks in Las Vegas gambling casinos.
 Beetles taste like apples, wasps like pine nuts, and worms like fried bacon.
-What is called a “French kiss” in the English-speaking world is known as an “English kiss” in France.
 Months that begin on a Sunday will always have a “Friday the 13th.”
 The placement of a donkey’s eyes in its head enables it to see all four feet at all times!
 Some worms will eat themselves if they can’t find any food!

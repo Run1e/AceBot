@@ -100,8 +100,7 @@ class Fun(AceMixin, commands.Cog):
 					await ctx.reinvoke()
 					return
 
-				e = self._create_embed(WOOF_URL + file)
-				await ctx.send(embed=e)
+				await ctx.send(WOOF_URL + file)
 			except self.QUERY_EXCEPTIONS:
 				raise QUERY_ERROR
 
@@ -124,8 +123,7 @@ class Fun(AceMixin, commands.Cog):
 				data = json[0]
 				img_url = data['url']
 
-				e = self._create_embed(img_url)
-				await ctx.send(embed=e)
+				await ctx.send(img_url)
 			except self.QUERY_EXCEPTIONS:
 				raise QUERY_ERROR
 
@@ -179,8 +177,7 @@ class Fun(AceMixin, commands.Cog):
 
 				img_url = json['url']
 
-				e = self._create_embed(img_url)
-				await ctx.send(embed=e)
+				await ctx.send(img_url)
 			except self.QUERY_EXCEPTIONS:
 				raise QUERY_ERROR
 
@@ -199,8 +196,7 @@ class Fun(AceMixin, commands.Cog):
 
 				img_url = json['image']
 
-				e = self._create_embed(img_url)
-				await ctx.send(embed=e)
+				await ctx.send(img_url)
 			except self.QUERY_EXCEPTIONS:
 				raise QUERY_ERROR
 
