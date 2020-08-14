@@ -14,7 +14,7 @@ from utils.time import pretty_timedelta
 
 OPEN_CHANNEL_COUNT = 3
 MINIMUM_CLAIM_INTERVAL = timedelta(minutes=5)
-FREE_AFTER = timedelta(minutes=1)
+FREE_AFTER = timedelta(minutes=30)
 MINIMUM_LEASE = timedelta(minutes=2)
 CHECK_FREE_EVERY = dict(seconds=80)
 NEW_EMOJI = '\N{Heavy Exclamation Mark Symbol}'
