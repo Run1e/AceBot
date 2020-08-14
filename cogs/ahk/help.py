@@ -14,7 +14,7 @@ from utils.time import pretty_timedelta
 
 OPEN_CHANNEL_COUNT = 3
 MINIMUM_CLAIM_INTERVAL = timedelta(minutes=5)
-FREE_AFTER = timedelta(minutes=30)
+FREE_AFTER = timedelta(minutes=1)
 MINIMUM_LEASE = timedelta(minutes=2)
 CHECK_FREE_EVERY = dict(seconds=80)
 NEW_EMOJI = '\N{Heavy Exclamation Mark Symbol}'
@@ -68,7 +68,12 @@ class AutoHotkeyHelpSystem(AceMixin, commands.Cog):
 	async def channel_reclaimer(self):
 		on_age = datetime.utcnow() - FREE_AFTER
 
-		for channel in self.active_category.text_channels:
+		try:
+			active_category = await self.bot.fetch_channel(ACTIVE_CATEGORY_ID)
+		except discord.HTTPException:
+			return
+
+		for channel in active_category.text_channels:
 			if channel.id in IGNORE_ACTIVE_CHAN_IDS:
 				continue
 
