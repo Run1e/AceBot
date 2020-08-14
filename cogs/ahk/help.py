@@ -13,10 +13,10 @@ from utils.string import po
 from utils.time import pretty_timedelta
 
 OPEN_CHANNEL_COUNT = 3
-MINIMUM_CLAIM_INTERVAL = timedelta(minutes=2)
+MINIMUM_CLAIM_INTERVAL = timedelta(minutes=5)
 FREE_AFTER = timedelta(minutes=30)
-MINIMUM_LEASE = timedelta(minutes=1)
-CHECK_FREE_EVERY = dict(seconds=30)
+MINIMUM_LEASE = timedelta(minutes=2)
+CHECK_FREE_EVERY = dict(seconds=80)
 NEW_EMOJI = '\N{Heavy Exclamation Mark Symbol}'
 
 OPEN_MESSAGE = (
@@ -40,7 +40,7 @@ class AutoHotkeyHelpSystem(AceMixin, commands.Cog):
 
 		self.claimed_channel = self._load_claims()
 		self.claimed_at = dict()
-		self.new_channel = dict()
+
 		self.channel_reclaimer.start()
 
 		self.open_category = bot.get_channel(OPEN_CATEGORY_ID)
@@ -135,13 +135,19 @@ class AutoHotkeyHelpSystem(AceMixin, commands.Cog):
 
 		payload = list()
 
+		placed_at = None
 		for index, c in enumerate(channels):
 			d = dict(id=c.id, position=index)
 			if c == channel:
 				d.update(parent_id=category.id, lock_permissions=lock_permissions)
+				placed_at = index
 			payload.append(d)
 
+		log.info(f'Positioning channel #{channel} at pos {placed_at} in category {category}')
+
 		await self.bot.http.bulk_channel_update(channel.guild.id, payload)
+		channel.position = position
+		channel.category_id = category.id
 
 	async def open_channel(self, channel: discord.TextChannel):
 		'''Move a channel from dormant to open.'''
@@ -155,6 +161,8 @@ class AutoHotkeyHelpSystem(AceMixin, commands.Cog):
 	async def close_channel(self, channel: discord.TextChannel):
 		'''Release a claimed channel from a member, making it closed.'''
 
+		log.info(f'Attempting closing routine for #{channel}')
+
 		owner_id = None
 
 		for channel_owner_id, channel_id in self.claimed_channel.items():
@@ -162,35 +170,44 @@ class AutoHotkeyHelpSystem(AceMixin, commands.Cog):
 				owner_id = channel_owner_id
 				break
 
-		self.new_channel.pop(channel.id, None)
-
 		if owner_id is not None:
-			self.claimed_channel.pop(owner_id, None)
+			val = self.claimed_channel.pop(owner_id, None)
+			log.info(f'Found claimant id ({owner_id} - {channel.guild.get_member(owner_id)}), popped with value {val} - {channel.guild.get_channel(val)}')
+		else:
+			log.info('Could not find claimant ID in claimed_channel dict!')
 
 		self._store_claims()
 
 		log.info('Reclaiming %s from user id %s', po(channel), owner_id or 'UNKNOWN')
 
 		if self.should_open():
+			log.info('Opening claimed channel instead of closing, because open category needs channels.')
 			await self.open_channel(channel)
 		else:
+			log.info('Closing claimed channel')
 			await self.position_channel(channel, self.closed_category, 0)
 			await channel.send(embed=discord.Embed(description=CLOSED_MESSAGE, color=discord.Color.red()))
 
 		if self.has_postfix(channel):
 			# I hate this but whatever.
+			log.info(f'Claimed channel has postfix... current category: {channel.category}')
+			await sleep(2.0)
 			while channel.category_id == ACTIVE_CATEGORY_ID:
-				await sleep(0.2)
+				await sleep(2.0)
 
-			await channel.edit(name=self._stripped_name(channel))
+			await self.strip_postfix(channel)
+			log.info(f'Postfix stripped from #{channel}')
 
 	async def on_open_message(self, message):
 		author = message.author
 		channel = message.channel
 
+		log.info(f'New message in open category: {message.author} - #{message.channel}')
+
 		# check whether author already has a claimed channel
 		claimed_id = self.claimed_channel.get(author.id, None)
-		if claimed_id is not None:
+		if claimed_id is not None:  # and False:
+			log.info(f'User has already claimed #{message.guild.get_channel(claimed_id)}')
 			await self.post_error(message, f'You have already claimed <#{claimed_id}>, please ask your question there.')
 			return
 
@@ -198,12 +215,13 @@ class AutoHotkeyHelpSystem(AceMixin, commands.Cog):
 
 		# check whether author has claimed another channel within the last MINIMUM_CLAIM_INTERVAL time
 		last_claim_at = self.claimed_at.get(author.id, None)
-		if last_claim_at is not None and last_claim_at > now - MINIMUM_CLAIM_INTERVAL:
+		if last_claim_at is not None and last_claim_at > now - MINIMUM_CLAIM_INTERVAL:  # and False:
+			log.info(f'User previously claimed a channel {pretty_timedelta(now - last_claim_at)}')
 			await self.post_error(message, f'Please wait at least {pretty_timedelta(MINIMUM_CLAIM_INTERVAL)} between each help channel claim.')
 			return
 
-		# otherwise, claim it!
 		if self.is_claimed(channel.id):
+			log.info('Channel is already claimed (in the claimed category?)')
 			return
 
 		log.info('%s claiming %s', po(author), po(channel))
@@ -211,16 +229,23 @@ class AutoHotkeyHelpSystem(AceMixin, commands.Cog):
 		# move channel
 		try:
 			await self.position_channel(channel, self.active_category, 1)
-			if not self.has_postfix(channel):
-				await channel.edit(name=channel.name + '-' + NEW_EMOJI)
 		except discord.HTTPException as exc:
 			log.warning('Failed moving %s to claimed category: %s', po(channel), str(exc))
 			return
 
+		if not self.has_postfix(channel):
+			try:
+				log.info('Adding postfix...')
+				await channel.edit(name=channel.name + '-' + NEW_EMOJI)
+			except discord.HTTPException as e:
+				log.info(f'Adding postfix failed: {e}')
+				pass  # not a critical error, let it be
+
+		log.info('Channel moved, positioned and given postfix (if applicable) - now setting metadata')
+
 		# set some metadata
 		self.claimed_channel[author.id] = channel.id
 		self.claimed_at[author.id] = now
-		self.new_channel[channel.id] = True
 
 		self._store_claims()
 
@@ -231,27 +256,22 @@ class AutoHotkeyHelpSystem(AceMixin, commands.Cog):
 		except IndexError:
 			log.warning('No more openable channels in closed pool!')
 		else:
+			log.info(f'Opening new channel after claim: {channel}')
 			await self.open_channel(channel)
 
 	async def on_active_message(self, message):
 		if message.content.startswith('.close'):
+			log.info('Message in active channel started with .close, not processing')
 			return
 
 		channel = message.channel
+		has_postfix = self.has_postfix(channel)
 
-		if not self.has_postfix(channel):
+		if not has_postfix:
 			return
 
-		author = message.author
-		state = self.new_channel.get(channel.id, False)
-
-		if state:
-			# get the channel the author has claimed, if any
-			# if that is None or something else than this channel id, we can unset the new state
-			author_claimed_id = self.claimed_channel.get(author.id, None)
-			if author_claimed_id is None or author_claimed_id != channel.id:
-				await self.strip_postfix(channel)
-		else:
+		author_claimed_id = self.claimed_channel.get(message.author.id, None)
+		if author_claimed_id is None or author_claimed_id != channel.id:
 			await self.strip_postfix(channel)
 
 	@commands.Cog.listener()
