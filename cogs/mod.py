@@ -63,6 +63,12 @@ class SecurityAction(IntEnum):
 	BAN = 3
 
 
+class SecurityVerb(Enum):
+	MUTE = 'muted'
+	KICK = 'kicked'
+	BAN = 'banned'
+
+
 class Severity(Enum):
 	LOW = 1
 	MEDIUM = 2
@@ -890,6 +896,13 @@ class Moderation(AceMixin, commands.Cog):
 			'log', guild, member, action=action.name, severity=Severity(action.value), message=message,
 			reason=reason
 		)
+
+		try:
+			await message.channel.send('{0} {1}: {2}'.format(
+				po(member), SecurityVerb[action.name].value, reason
+			))
+		except discord.HTTPException:
+			pass
 
 	@commands.Cog.listener()
 	async def on_message(self, message):
