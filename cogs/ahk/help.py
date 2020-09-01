@@ -7,7 +7,7 @@ import discord
 from discord.ext import commands, tasks
 
 from cogs.mixins import AceMixin
-from ids import ACTIVE_CATEGORY_ID, AHK_GUILD_ID, CLOSED_CATEGORY_ID, IGNORE_ACTIVE_CHAN_IDS, OPEN_CATEGORY_ID
+from ids import ACTIVE_CATEGORY_ID, AHK_GUILD_ID, CLOSED_CATEGORY_ID, IGNORE_ACTIVE_CHAN_IDS, OPEN_CATEGORY_ID, OPEN_INFO_CHAN_ID, ACTIVE_INFO_CHAN_ID
 from utils.context import is_mod
 from utils.string import po
 from utils.time import pretty_timedelta
@@ -46,6 +46,9 @@ class AutoHotkeyHelpSystem(AceMixin, commands.Cog):
 		self.open_category = bot.get_channel(OPEN_CATEGORY_ID)
 		self.active_category = bot.get_channel(ACTIVE_CATEGORY_ID)
 		self.closed_category = bot.get_channel(CLOSED_CATEGORY_ID)
+
+		self.open_info_channel = bot.get_channel(OPEN_INFO_CHAN_ID)
+		self.active_info_channel = bot.get_channel(ACTIVE_INFO_CHAN_ID)
 
 	async def cog_check(self, ctx):
 		return ctx.guild.id == AHK_GUILD_ID
@@ -88,6 +91,9 @@ class AutoHotkeyHelpSystem(AceMixin, commands.Cog):
 					claimed_at = self.claimed_at.get(author_id, None)
 					break
 
+			if last_message_at is None and claimed_at is None:
+				continue
+
 			pivot = max(dt for dt in (last_message_at, claimed_at) if dt is not None)
 
 			if pivot < on_age:
@@ -125,39 +131,16 @@ class AutoHotkeyHelpSystem(AceMixin, commands.Cog):
 		else:
 			raise commands.CommandError('You can\'t do that.')
 
-	async def position_channel(self, channel: discord.TextChannel, category: discord.CategoryChannel, position: int, lock_permissions: bool = True):
-		channels = [c for c in category.channels]
-
-		if channel in channels:
-			channels.remove(channel)
-
-		if position == -1:
-			channels.append(channel)
-		elif position < len(channels):
-			channels.insert(position, channel)
-		else:
-			channels.append(channel)
-
-		payload = list()
-
-		placed_at = None
-		for index, c in enumerate(channels):
-			d = dict(id=c.id, position=index)
-			if c == channel:
-				d.update(parent_id=category.id, lock_permissions=lock_permissions)
-				placed_at = index
-			payload.append(d)
-
-		log.info(f'Positioning channel #{channel} at pos {placed_at} in category {category}')
-
-		await self.bot.http.bulk_channel_update(channel.guild.id, payload)
-		channel.position = position
-		channel.category_id = category.id
-
 	async def open_channel(self, channel: discord.TextChannel):
 		'''Move a channel from dormant to open.'''
 
-		await self.position_channel(channel, self.open_category, -1)
+		try:
+			current_last = self.closed_category.text_channels[-1]
+			to_pos = current_last.position + 1
+		except IndexError:
+			to_pos = 0
+
+		await channel._move(position=to_pos, parent_id=self.open_category.id, lock_permissions=True, reason=None)
 		await self.post_message(channel, OPEN_MESSAGE, color=discord.Color.green())
 
 	def should_open(self):
@@ -166,7 +149,7 @@ class AutoHotkeyHelpSystem(AceMixin, commands.Cog):
 	async def close_channel(self, channel: discord.TextChannel):
 		'''Release a claimed channel from a member, making it closed.'''
 
-		log.info(f'Attempting closing routine for #{channel}')
+		log.info(f'Closing #{channel}')
 
 		owner_id = None
 
@@ -175,37 +158,38 @@ class AutoHotkeyHelpSystem(AceMixin, commands.Cog):
 				owner_id = channel_owner_id
 				break
 
-		if owner_id is not None:
-			val = self.claimed_channel.pop(owner_id, None)
-			log.info(f'Found claimant id ({owner_id} - {channel.guild.get_member(owner_id)}), popped with value {val} - {channel.guild.get_channel(val)}')
-		else:
-			log.info('Could not find claimant ID in claimed_channel dict!')
+		self.claimed_channel.pop(owner_id, None)
 
 		self._store_claims()
 
-		log.info('Reclaiming %s from user id %s', po(channel), owner_id or 'UNKNOWN')
+		log.info('Reclaiming %s from user id %s', po(channel), owner_id or 'UNKNOWN (not found in claims cache)')
 
 		if self.should_open():
-			log.info('Opening claimed channel instead of closing, because open category needs channels.')
+			log.info('Moving channel to open category since it needs channels')
 			await self.open_channel(channel)
 		else:
-			log.info('Closing claimed channel')
-			await self.position_channel(channel, self.closed_category, 0)
+			log.info('Moving channel to closed category')
+
+			try:
+				current_first = self.closed_category.text_channels[0]
+				to_pos = current_first.position - 1
+			except IndexError:
+				to_pos = 0
+
+			await channel._move(position=to_pos, parent_id=self.closed_category.id, lock_permissions=True, reason=None)
 			await channel.send(embed=discord.Embed(description=CLOSED_MESSAGE, color=discord.Color.red()))
 
 		if self.has_postfix(channel):
 			# I hate this but whatever.
-			log.info(f'Claimed channel has postfix... current category: {channel.category}')
 			await sleep(2.0)
-			while channel.category_id == ACTIVE_CATEGORY_ID:
-				await sleep(2.0)
 
 			await self.strip_postfix(channel)
+
 			log.info(f'Postfix stripped from #{channel}')
 
 	async def on_open_message(self, message):
-		author = message.author
-		channel = message.channel
+		author: discord.Member = message.author
+		channel: discord.TextChannel = message.channel
 
 		log.info(f'New message in open category: {message.author} - #{message.channel}')
 
@@ -221,7 +205,7 @@ class AutoHotkeyHelpSystem(AceMixin, commands.Cog):
 		# check whether author has claimed another channel within the last MINIMUM_CLAIM_INTERVAL time
 		last_claim_at = self.claimed_at.get(author.id, None)
 		if last_claim_at is not None and last_claim_at > now - MINIMUM_CLAIM_INTERVAL:  # and False:
-			log.info(f'User previously claimed a channel {pretty_timedelta(now - last_claim_at)}')
+			log.info(f'User previously claimed a channel {pretty_timedelta(now - last_claim_at)} ago')
 			await self.post_error(message, f'Please wait at least {pretty_timedelta(MINIMUM_CLAIM_INTERVAL)} between each help channel claim.')
 			return
 
@@ -233,7 +217,7 @@ class AutoHotkeyHelpSystem(AceMixin, commands.Cog):
 
 		# move channel
 		try:
-			await self.position_channel(channel, self.active_category, 1)
+			await channel._move(position=self.active_info_channel.position + 1, parent_id=self.active_category.id, lock_permissions=True, reason=None)
 		except discord.HTTPException as exc:
 			log.warning('Failed moving %s to claimed category: %s', po(channel), str(exc))
 			return
@@ -245,8 +229,6 @@ class AutoHotkeyHelpSystem(AceMixin, commands.Cog):
 			except discord.HTTPException as e:
 				log.info(f'Adding postfix failed: {e}')
 				pass  # not a critical error, let it be
-
-		log.info('Channel moved, positioned and given postfix (if applicable) - now setting metadata')
 
 		# set some metadata
 		self.claimed_channel[author.id] = channel.id
@@ -266,7 +248,6 @@ class AutoHotkeyHelpSystem(AceMixin, commands.Cog):
 
 	async def on_active_message(self, message):
 		if message.content.startswith('.close'):
-			log.info('Message in active channel started with .close, not processing')
 			return
 
 		channel = message.channel
