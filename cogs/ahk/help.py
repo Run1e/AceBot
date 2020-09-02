@@ -1,5 +1,5 @@
 import logging
-from asyncio import sleep
+from asyncio import sleep, gather
 from datetime import datetime, timedelta
 from json import dumps, loads, JSONDecodeError
 
@@ -47,7 +47,6 @@ class AutoHotkeyHelpSystem(AceMixin, commands.Cog):
 		self.active_category = bot.get_channel(ACTIVE_CATEGORY_ID)
 		self.closed_category = bot.get_channel(CLOSED_CATEGORY_ID)
 
-		self.open_info_channel = bot.get_channel(OPEN_INFO_CHAN_ID)
 		self.active_info_channel = bot.get_channel(ACTIVE_INFO_CHAN_ID)
 
 	async def cog_check(self, ctx):
@@ -135,10 +134,10 @@ class AutoHotkeyHelpSystem(AceMixin, commands.Cog):
 		'''Move a channel from dormant to open.'''
 
 		try:
-			current_last = self.closed_category.text_channels[-1]
+			current_last = self.open_category.text_channels[-1]
 			to_pos = current_last.position + 1
 		except IndexError:
-			to_pos = 0
+			to_pos = max(c.position for c in channel.guild.channels) + 1
 
 		await channel._move(position=to_pos, parent_id=self.open_category.id, lock_permissions=True, reason=None)
 		await self.post_message(channel, OPEN_MESSAGE, color=discord.Color.green())
@@ -172,9 +171,9 @@ class AutoHotkeyHelpSystem(AceMixin, commands.Cog):
 
 			try:
 				current_first = self.closed_category.text_channels[0]
-				to_pos = current_first.position - 1
+				to_pos = max(current_first.position - 1, 0)
 			except IndexError:
-				to_pos = 0
+				to_pos = max(c.position for c in channel.guild.channels) + 1
 
 			await channel._move(position=to_pos, parent_id=self.closed_category.id, lock_permissions=True, reason=None)
 			await channel.send(embed=discord.Embed(description=CLOSED_MESSAGE, color=discord.Color.red()))
@@ -222,10 +221,12 @@ class AutoHotkeyHelpSystem(AceMixin, commands.Cog):
 			log.warning('Failed moving %s to claimed category: %s', po(channel), str(exc))
 			return
 
+		to_gather = list()
+
 		if not self.has_postfix(channel):
 			try:
 				log.info('Adding postfix...')
-				await channel.edit(name=channel.name + '-' + NEW_EMOJI)
+				to_gather.append(channel.edit(name=channel.name + '-' + NEW_EMOJI))
 			except discord.HTTPException as e:
 				log.info(f'Adding postfix failed: {e}')
 				pass  # not a critical error, let it be
@@ -244,7 +245,9 @@ class AutoHotkeyHelpSystem(AceMixin, commands.Cog):
 			log.warning('No more openable channels in closed pool!')
 		else:
 			log.info(f'Opening new channel after claim: {channel}')
-			await self.open_channel(channel)
+			to_gather.append(self.open_channel(channel))
+
+		await gather(*to_gather)
 
 	async def on_active_message(self, message):
 		if message.content.startswith('.close'):
