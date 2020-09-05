@@ -236,7 +236,7 @@ class AceBot(commands.Bot):
 		await self.update_dbl()
 
 	async def on_guild_unavailable(self, guild):
-		log.info('Unavailable guild %s', po(guild))
+		pass #log.info('Unavailable guild %s', str(guild))
 
 	@property
 	def invite_link(self):

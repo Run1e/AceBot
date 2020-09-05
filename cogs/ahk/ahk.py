@@ -69,7 +69,6 @@ class AutoHotkey(AceMixin, commands.Cog):
 		self.rss_time = datetime.now(tz=timezone(timedelta(hours=1))) - timedelta(minutes=1)
 
 		self.rss.start()
-		self.helper_purge.start()
 
 	def parse_date(self, date_str):
 		date_str = date_str.strip()
@@ -110,56 +109,6 @@ class AutoHotkey(AceMixin, commands.Cog):
 					await self.forum_thread_channel.send(embed=e)
 
 				self.rss_time = time
-
-	@tasks.loop(hours=24)
-	async def helper_purge(self):
-		guild = self.bot.get_guild(AHK_GUILD_ID)
-		if guild is None:
-			return
-
-		role = guild.get_role(HELPERS_ROLE_ID)
-		if role is None:
-			return
-
-		past = datetime.utcnow() - INACTIVITY_LIMIT
-
-		all_helpers = list(member for member in guild.members if role in member.roles)
-		helpers = list(member for member in all_helpers if member.joined_at < past)
-
-		spare = await self.bot.db.fetch(
-			'SELECT user_id FROM seen WHERE guild_id=$1 AND user_id=ANY($2::bigint[]) AND seen>$3',
-			AHK_GUILD_ID, list(member.id for member in helpers), past
-		)
-
-		spare_ids = list(record.get('user_id') for record in spare)
-		remove = list(member for member in helpers if member.id not in spare_ids)
-
-		if not remove:
-			return
-
-		log.info(
-			'About to purge %s helpers. Current list: %s',
-			len(remove), ', '.join(list(str(member.id) for member in all_helpers))
-		)
-
-		log.info('Removing inactive helpers:\n%s', '\n'.join(list(po(member) for member in remove)))
-
-		reason = 'Removed helper inactive for over {0}.'.format(pretty_timedelta(INACTIVITY_LIMIT))
-
-		for member in remove:
-			try:
-				await member.remove_roles(
-					role,
-					reason=reason
-				)
-			except discord.HTTPException as e:
-				self.bot.dispatch(
-					'log', guild, member, action='FAILED REMOVING HELPER',
-					reason='Failed removing role.\n\nException:\n```{}```'.format(str(e)),
-				)
-				continue
-
-			self.bot.dispatch('log', guild, member, action='REMOVE HELPER', reason=reason)
 
 	def craft_docs_page(self, record):
 		page = record.get('page')

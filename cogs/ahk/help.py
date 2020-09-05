@@ -7,7 +7,7 @@ import discord
 from discord.ext import commands, tasks
 
 from cogs.mixins import AceMixin
-from ids import ACTIVE_CATEGORY_ID, AHK_GUILD_ID, CLOSED_CATEGORY_ID, IGNORE_ACTIVE_CHAN_IDS, OPEN_CATEGORY_ID, OPEN_INFO_CHAN_ID, ACTIVE_INFO_CHAN_ID
+from ids import ACTIVE_CATEGORY_ID, AHK_GUILD_ID, CLOSED_CATEGORY_ID, IGNORE_ACTIVE_CHAN_IDS, OPEN_CATEGORY_ID, ACTIVE_INFO_CHAN_ID
 from utils.context import is_mod
 from utils.string import po
 from utils.time import pretty_timedelta
@@ -43,11 +43,21 @@ class AutoHotkeyHelpSystem(AceMixin, commands.Cog):
 
 		self.channel_reclaimer.start()
 
-		self.open_category = bot.get_channel(OPEN_CATEGORY_ID)
-		self.active_category = bot.get_channel(ACTIVE_CATEGORY_ID)
-		self.closed_category = bot.get_channel(CLOSED_CATEGORY_ID)
+	@property
+	def open_category(self):
+		return self.bot.get_channel(OPEN_CATEGORY_ID)
 
-		self.active_info_channel = bot.get_channel(ACTIVE_INFO_CHAN_ID)
+	@property
+	def active_category(self):
+		return self.bot.get_channel(ACTIVE_CATEGORY_ID)
+
+	@property
+	def closed_category(self):
+		return self.bot.get_channel(CLOSED_CATEGORY_ID)
+
+	@property
+	def active_info_channel(self):
+		return self.bot.get_channel(ACTIVE_INFO_CHAN_ID)
 
 	async def cog_check(self, ctx):
 		return ctx.guild.id == AHK_GUILD_ID
@@ -139,7 +149,13 @@ class AutoHotkeyHelpSystem(AceMixin, commands.Cog):
 		except IndexError:
 			to_pos = max(c.position for c in channel.guild.channels) + 1
 
-		await channel._move(position=to_pos, parent_id=self.open_category.id, lock_permissions=True, reason=None)
+		await channel._move(
+			position=to_pos,
+			parent_id=self.open_category.id,
+			lock_permissions=True,
+			reason=None
+		)
+
 		await self.post_message(channel, OPEN_MESSAGE, color=discord.Color.green())
 
 	def should_open(self):
@@ -175,16 +191,17 @@ class AutoHotkeyHelpSystem(AceMixin, commands.Cog):
 			except IndexError:
 				to_pos = max(c.position for c in channel.guild.channels) + 1
 
-			await channel._move(position=to_pos, parent_id=self.closed_category.id, lock_permissions=True, reason=None)
+			opt = dict(
+				position=to_pos,
+				category=self.closed_category,
+				sync_permissions=True,
+			)
+
+			if self.has_postfix(channel):
+				opt['name'] = self._stripped_name(channel)
+
+			await channel.edit(**opt)
 			await channel.send(embed=discord.Embed(description=CLOSED_MESSAGE, color=discord.Color.red()))
-
-		if self.has_postfix(channel):
-			# I hate this but whatever.
-			await sleep(2.0)
-
-			await self.strip_postfix(channel)
-
-			log.info(f'Postfix stripped from #{channel}')
 
 	async def on_open_message(self, message):
 		author: discord.Member = message.author
@@ -216,20 +233,20 @@ class AutoHotkeyHelpSystem(AceMixin, commands.Cog):
 
 		# move channel
 		try:
-			await channel._move(position=self.active_info_channel.position + 1, parent_id=self.active_category.id, lock_permissions=True, reason=None)
+			opt = dict(
+				position=self.active_info_channel.position + 1,
+				category=self.active_category,
+				sync_permissions=True
+			)
+
+			if not self.has_postfix(channel):
+				opt['name'] = channel.name + '-' + NEW_EMOJI
+
+			await channel.edit(**opt)
+
 		except discord.HTTPException as exc:
 			log.warning('Failed moving %s to claimed category: %s', po(channel), str(exc))
 			return
-
-		to_gather = list()
-
-		if not self.has_postfix(channel):
-			try:
-				log.info('Adding postfix...')
-				to_gather.append(channel.edit(name=channel.name + '-' + NEW_EMOJI))
-			except discord.HTTPException as e:
-				log.info(f'Adding postfix failed: {e}')
-				pass  # not a critical error, let it be
 
 		# set some metadata
 		self.claimed_channel[author.id] = channel.id
@@ -245,9 +262,7 @@ class AutoHotkeyHelpSystem(AceMixin, commands.Cog):
 			log.warning('No more openable channels in closed pool!')
 		else:
 			log.info(f'Opening new channel after claim: {channel}')
-			to_gather.append(self.open_channel(channel))
-
-		await gather(*to_gather)
+			await self.open_channel(channel)
 
 	async def on_active_message(self, message):
 		if message.content.startswith('.close'):
