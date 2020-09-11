@@ -20,7 +20,7 @@ log = logging.getLogger(__name__)
 
 ALIASES = {
 	'commands/For.htm': ['For'],
-	'commands/IfExpression.htm': ['If']
+	'commands/IfExpression.htm': ['If'],
 }
 
 
@@ -165,7 +165,7 @@ def build_docs():
 
 	for file in sorted(os.listdir('{}/misc'.format(DOCS_FOLDER))):
 		if file.endswith('.htm'):
-			for entry in HeadersParser('misc/{}'.format(file)).run():
+			for entry in HeadersParser('misc/{}'.format(file), ignores=['PostExec']).run():
 				aggregator.add_entry(entry)
 
 	parsers[0].page = DOCS_URL

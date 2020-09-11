@@ -683,13 +683,13 @@ class Moderation(AceMixin, commands.Cog):
 		--before message_id
 		Delete, at most, up until this message id.
 
-		--contains
+		--contains <string> [...]
 		Delete messages containing this string(s).
 
-		--starts <string>
+		--starts <string> [...]
 		Delete messages starting with this string(s).
 
-		--ends <string>
+		--ends <string> [...]
 		Delete messages ending with this string(s).```'''
 
 		parser = NoExitArgumentParser(prog='purge', add_help=False, allow_abbrev=False)
