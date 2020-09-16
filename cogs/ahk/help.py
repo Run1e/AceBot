@@ -7,7 +7,7 @@ import discord
 from discord.ext import commands, tasks
 
 from cogs.mixins import AceMixin
-from ids import ACTIVE_CATEGORY_ID, AHK_GUILD_ID, CLOSED_CATEGORY_ID, IGNORE_ACTIVE_CHAN_IDS, OPEN_CATEGORY_ID, ACTIVE_INFO_CHAN_ID
+from ids import ACTIVE_CATEGORY_ID, AHK_GUILD_ID, CLOSED_CATEGORY_ID, IGNORE_ACTIVE_CHAN_IDS, OPEN_CATEGORY_ID, ACTIVE_INFO_CHAN_ID, GET_HELP_CHAN_ID
 from utils.context import is_mod
 from utils.string import po
 from utils.time import pretty_timedelta
@@ -195,6 +195,7 @@ class AutoHotkeyHelpSystem(AceMixin, commands.Cog):
 				position=to_pos,
 				category=self.closed_category,
 				sync_permissions=True,
+				topic=f'<#{GET_HELP_CHAN_ID}>'
 			)
 
 			if self.has_postfix(channel):
@@ -204,6 +205,7 @@ class AutoHotkeyHelpSystem(AceMixin, commands.Cog):
 			await channel.send(embed=discord.Embed(description=CLOSED_MESSAGE, color=discord.Color.red()))
 
 	async def on_open_message(self, message):
+		message: discord.Message = message
 		author: discord.Member = message.author
 		channel: discord.TextChannel = message.channel
 
@@ -236,7 +238,8 @@ class AutoHotkeyHelpSystem(AceMixin, commands.Cog):
 			opt = dict(
 				position=self.active_info_channel.position + 1,
 				category=self.active_category,
-				sync_permissions=True
+				sync_permissions=True,
+				topic=message.jump_url
 			)
 
 			if not self.has_postfix(channel):
