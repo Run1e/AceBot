@@ -30,6 +30,8 @@ QUACK_URL = 'https://random-d.uk/api/v1/random'
 
 FLOOF_URL = 'https://randomfox.ca/floof/'
 
+COMPLIMENT_URL = 'https://complimentr.com/api'
+
 log = logging.getLogger(__name__)
 
 
@@ -230,6 +232,23 @@ class Fun(AceMixin, commands.Cog):
 		)
 
 		await ctx.send(embed=e)
+
+	@commands.command()
+	async def compliment(self, ctx):
+		'''Get a random compliment.'''
+		
+		async with ctx.channel.typing():
+			try:
+				async with ctx.http.get(COMPLIMENT_URL) as resp:
+					if resp.status != 200:
+						raise QUERY_ERROR
+					json = await resp.json()
+				
+				text = json['compliment']
+				
+				await ctx.send(text)
+			except self.QUERY_EXCEPTIONS:
+				raise QUERY_ERROR
 
 	@commands.command(name='8', aliases=['8ball'])
 	async def ball(self, ctx, *, question):
