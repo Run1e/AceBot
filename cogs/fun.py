@@ -35,6 +35,17 @@ COMPLIMENT_EMOJIS = ('heart', 'kissing_heart', 'heart_eyes', 'two_hearts', 'spar
 
 NUMBER_URL = 'http://numbersapi.com/{number}?notfound=floor'
 
+
+BALL_RESPONSES = [
+	# yes
+	'It is certain', 'It is decidedly so', 'Without a doubt', 'Yes definitely', 'You may rely on it',
+	'As I see it, yes', 'Most likely', 'Outlook good', 'Yes',
+		# uncertain
+	'Signs point to yes', 'Reply hazy try again', 'Ask again later', 'Better not tell you now',
+	'Cannot predict now', 'Concentrate and ask again',
+		# no
+	"Don't count on it", 'My reply is no', 'My sources say no', 'Outlook not so good', 'Very doubtful'
+]
 QUERY_EXCEPTIONS = (discord.HTTPException, aiohttp.ClientError, asyncio.TimeoutError, commands.CommandError)
 
 log = logging.getLogger(__name__)
@@ -255,20 +266,9 @@ class Fun(AceMixin, commands.Cog):
 	async def ball(self, ctx, *, question):
 		'''Classic Magic 8 Ball!'''
 
-		responses = (
-			# yes
-			'It is certain', 'It is decidedly so', 'Without a doubt', 'Yes definitely', 'You may rely on it',
-			'As I see it, yes', 'Most likely', 'Outlook good', 'Yes',
-				# uncertain
-			'Signs point to yes', 'Reply hazy try again', 'Ask again later', 'Better not tell you now',
-			'Cannot predict now', 'Concentrate and ask again',
-				# no
-			"Don't count on it", 'My reply is no', 'My sources say no', 'Outlook not so good', 'Very doubtful'
-		)
-
-		await ctx.trigger_typing()
+		message = await ctx.send('Shaking...')
 		await asyncio.sleep(3)
-		await ctx.send('\N{BILLIARDS} ' + choice(responses))
+		await message.edit(content='\N{BILLIARDS} ' + choice(BALL_RESPONSES))
 
 	@commands.command(aliases=['guild'])
 	@commands.bot_has_permissions(embed_links=True)
