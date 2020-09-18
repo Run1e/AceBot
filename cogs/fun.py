@@ -237,7 +237,7 @@ class Fun(AceMixin, commands.Cog):
 	async def compliment(self, ctx):
 		'''Get a random compliment.'''
 		
-		async with ctx.channel.typing()
+		async with ctx.channel.typing():
 			try:
 				async with ctx.http.get(COMPLIMENT_URL) as resp:
 					if resp.status != 200:
