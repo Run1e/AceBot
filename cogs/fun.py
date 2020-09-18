@@ -31,15 +31,17 @@ QUACK_URL = 'https://random-d.uk/api/v1/random'
 FLOOF_URL = 'https://randomfox.ca/floof/'
 
 COMPLIMENT_URL = 'https://complimentr.com/api'
+COMPLIMENT_EMOJIS = ('heart', 'kissing_heart', 'heart_eyes', 'two_hearts', 'sparkling_heart', 'gift_heart')
+
+NUMBER_URL = 'http://numbersapi.com/{number}?notfound=floor'
+
+QUERY_EXCEPTIONS = (discord.HTTPException, aiohttp.ClientError, asyncio.TimeoutError, commands.CommandError)
 
 log = logging.getLogger(__name__)
 
 
 class Fun(AceMixin, commands.Cog):
 	'''Fun commands!'''
-
-	QUERY_EXCEPTIONS = (discord.HTTPException, aiohttp.ClientError, asyncio.TimeoutError, commands.CommandError)
-	QUERY_ERROR = commands.CommandError('Query failed. Try again later.')
 
 	@commands.command()
 	async def flip(self, ctx):
@@ -103,7 +105,7 @@ class Fun(AceMixin, commands.Cog):
 					return
 
 				await ctx.send(WOOF_URL + file)
-			except self.QUERY_EXCEPTIONS:
+			except QUERY_EXCEPTIONS:
 				raise QUERY_ERROR
 
 	@commands.command(aliases=['cat'])
@@ -126,7 +128,7 @@ class Fun(AceMixin, commands.Cog):
 				img_url = data['url']
 
 				await ctx.send(img_url)
-			except self.QUERY_EXCEPTIONS:
+			except QUERY_EXCEPTIONS:
 				raise QUERY_ERROR
 
 	@commands.command()
@@ -161,7 +163,7 @@ class Fun(AceMixin, commands.Cog):
 				e.add_field(name='Life span', value=breed['life_span'] + ' years')
 
 				await ctx.send(embed=e)
-			except self.QUERY_EXCEPTIONS:
+			except QUERY_EXCEPTIONS:
 				raise QUERY_ERROR
 
 	@commands.command(aliases=['duck'])
@@ -180,7 +182,7 @@ class Fun(AceMixin, commands.Cog):
 				img_url = json['url']
 
 				await ctx.send(img_url)
-			except self.QUERY_EXCEPTIONS:
+			except QUERY_EXCEPTIONS:
 				raise QUERY_ERROR
 
 	@commands.command(aliases=['fox'])
@@ -199,7 +201,7 @@ class Fun(AceMixin, commands.Cog):
 				img_url = json['image']
 
 				await ctx.send(img_url)
-			except self.QUERY_EXCEPTIONS:
+			except QUERY_EXCEPTIONS:
 				raise QUERY_ERROR
 
 	@commands.command()
@@ -207,11 +209,9 @@ class Fun(AceMixin, commands.Cog):
 	async def number(self, ctx, number: int):
 		'''Get a fact about a number!'''
 
-		url = f'http://numbersapi.com/{number}?notfound=floor'
-
 		async with ctx.channel.typing():
 			try:
-				async with ctx.http.get(url) as resp:
+				async with ctx.http.get(NUMBER_URL.format(number=str(number))) as resp:
 					if resp.status != 200:
 						raise QUERY_ERROR
 					text = await resp.text()
@@ -234,8 +234,9 @@ class Fun(AceMixin, commands.Cog):
 		await ctx.send(embed=e)
 
 	@commands.command()
+	@commands.cooldown(rate=3, per=10.0, type=commands.BucketType.user)
 	async def compliment(self, ctx):
-		'''Get a random compliment.'''
+		'''Feels good man'''
 		
 		async with ctx.channel.typing():
 			try:
@@ -245,9 +246,9 @@ class Fun(AceMixin, commands.Cog):
 					json = await resp.json()
 				
 				text = json['compliment']
-				
-				await ctx.send(text)
-			except self.QUERY_EXCEPTIONS:
+
+				await ctx.send(f'{text} :{choice(COMPLIMENT_EMOJIS)}:')
+			except QUERY_EXCEPTIONS:
 				raise QUERY_ERROR
 
 	@commands.command(name='8', aliases=['8ball'])
