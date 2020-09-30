@@ -385,6 +385,24 @@ class Fun(AceMixin, commands.Cog):
 
 		await ctx.send(embed=e)
 
+	async def unpack_commons_image(self, http, url):
+		try:
+			async with http.get(url) as resp:
+				if resp.status != 200:
+					return None
+
+				bs = BeautifulSoup(await resp.text(), 'html.parser')
+				tag = bs.find('a', class_='internal', href=True)
+
+				if tag is not None:
+					href = tag.get('href')
+					if not href.startswith('http'):
+						href = 'https:' + href
+					return href
+			return None
+		except TimeoutError:
+			return None
+
 	@commands.command(aliases=['w', 'wa'])
 	@commands.cooldown(rate=3, per=10.0, type=commands.BucketType.user)
 	@commands.bot_has_permissions(embed_links=True)
@@ -399,6 +417,7 @@ class Fun(AceMixin, commands.Cog):
 			'input': query,
 			'output': 'json',
 			'ip': '',
+			'units': 'metric',
 			'format': 'plaintext',
 		}
 
@@ -421,7 +440,9 @@ class Fun(AceMixin, commands.Cog):
 
 			success = res['success']
 
-			e = discord.Embed()
+			e = discord.Embed(color=0xFF6600)
+			e.set_author(name='Wolfram|Alpha', icon_url='https://i.imgur.com/KFppH69.png')
+			e.set_footer(text='wolframalpha.com')
 
 			if not success:
 				e.description = 'Sorry, Wolfram Alpha was not able to parse your request.'
@@ -446,21 +467,18 @@ class Fun(AceMixin, commands.Cog):
 				if _id.startswith('Image'):
 					if has_image:
 						continue
+
 					has_image = True
 
-					commons_url = subpods[0]['imagesource']
+					imagesource = subpods[0]['imagesource']
 
-					async with ctx.http.get(commons_url) as resp:
-						if resp.status != 200:
-							continue
+					if 'en.wikipedia.org/wiki/File:' in imagesource:
+						commons_image = await self.unpack_commons_image(ctx.http, imagesource)
 
-						bs = BeautifulSoup(await resp.text(), 'html.parser')
-						tag = bs.find('a', href=True, text='Original file')
-
-						href = tag.get('href')
-
-						if href is not None:
-							e.set_thumbnail(url=href)
+						if commons_image is not None:
+							e.set_image(url=commons_image)
+					else:
+						e.set_image(url=imagesource)
 
 					continue
 
@@ -471,14 +489,17 @@ class Fun(AceMixin, commands.Cog):
 					plaintext = subpods[0]['plaintext']
 					value = plaintext.replace('\n', ' ').replace('  ', ' ')
 				else:
-					value = '\n'.join(subpod['plaintext'] for subpod in subpods)
+					value = []
+					for subpod in subpods:
+						plaintext = subpod['plaintext']
+						if plaintext:
+							value.append(plaintext)
+
+					value = '\n'.join(value)
 
 				if value:
 					wraps = '`' if _id == 'Input' else '```'
 					e.add_field(name=name, value='{0}{1}{0}'.format(wraps, value), inline=False)
-
-			e.set_author(name='Wolfram Alpha', icon_url='https://i.imgur.com/KFppH69.png')
-			e.set_footer(text='wolframalpha.com')
 
 			await ctx.send(embed=e)
 
@@ -497,7 +518,7 @@ class Fun(AceMixin, commands.Cog):
 			'background': '36393F',
 			'foreground': 'white',
 			'width': 500,
-			'fontsize': 24,
+			'fontsize': 20,
 			'ip': '',
 			'timeout': 5,
 		}
