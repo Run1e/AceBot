@@ -1,8 +1,9 @@
 import asyncio
 import logging
-from random import choice
 from datetime import date, datetime
+from io import BytesIO
 from json import loads
+from random import choice
 
 import aiohttp
 import discord
@@ -36,17 +37,17 @@ COMPLIMENT_EMOJIS = ('heart', 'kissing_heart', 'heart_eyes', 'two_hearts', 'spar
 
 NUMBER_URL = 'http://numbersapi.com/{number}?notfound=floor'
 
-
 BALL_RESPONSES = [
 	# yes
 	'It is certain', 'It is decidedly so', 'Without a doubt', 'Yes definitely', 'You may rely on it',
 	'As I see it, yes', 'Most likely', 'Outlook good', 'Yes',
-		# uncertain
+	# uncertain
 	'Signs point to yes', 'Reply hazy try again', 'Ask again later', 'Better not tell you now',
 	'Cannot predict now', 'Concentrate and ask again',
-		# no
+	# no
 	"Don't count on it", 'My reply is no', 'My sources say no', 'Outlook not so good', 'Very doubtful'
 ]
+
 QUERY_EXCEPTIONS = (discord.HTTPException, aiohttp.ClientError, asyncio.TimeoutError, commands.CommandError)
 
 log = logging.getLogger(__name__)
@@ -249,14 +250,14 @@ class Fun(AceMixin, commands.Cog):
 	@commands.cooldown(rate=3, per=10.0, type=commands.BucketType.user)
 	async def compliment(self, ctx):
 		'''Feels good man'''
-		
+
 		async with ctx.channel.typing():
 			try:
 				async with ctx.http.get(COMPLIMENT_URL) as resp:
 					if resp.status != 200:
 						raise QUERY_ERROR
 					json = await resp.json()
-				
+
 				text = json['compliment']
 
 				await ctx.send(f'{text} :{choice(COMPLIMENT_EMOJIS)}:')
@@ -384,36 +385,6 @@ class Fun(AceMixin, commands.Cog):
 
 		await ctx.send(embed=e)
 
-	@commands.command(aliases=['ws'])
-	@commands.cooldown(rate=3, per=10.0, type=commands.BucketType.user)
-	@commands.bot_has_permissions(embed_links=True)
-	async def wolframimage(self, ctx, *, query):
-		'''Queries wolfram.'''
-
-		from io import BytesIO
-
-		if WOLFRAM_KEY is None:
-			raise commands.CommandError('The host has not set up an API key.')
-
-		params = {
-			'appid': WOLFRAM_KEY,
-			'i': query,
-			'background': '36393F',
-			'foreground': 'white',
-			'timeout': 5,
-		}
-
-		async with ctx.channel.typing():
-			try:
-				async with ctx.http.get('https://api.wolframalpha.com/v1/simple', params=params, timeout=aiohttp.ClientTimeout(total=20)) as resp:
-					if resp.status != 200:
-						raise QUERY_ERROR
-					data = BytesIO(await resp.read())
-			except asyncio.TimeoutError:
-				raise QUERY_ERROR
-
-			await ctx.send(file=discord.File(data, filename='image.png'))
-
 	@commands.command(aliases=['w', 'wa'])
 	@commands.cooldown(rate=3, per=10.0, type=commands.BucketType.user)
 	@commands.bot_has_permissions(embed_links=True)
@@ -427,6 +398,7 @@ class Fun(AceMixin, commands.Cog):
 			'appid': WOLFRAM_KEY,
 			'input': query,
 			'output': 'json',
+			'ip': '',
 			'format': 'plaintext',
 		}
 
@@ -436,7 +408,8 @@ class Fun(AceMixin, commands.Cog):
 
 		async with ctx.channel.typing():
 			try:
-				async with ctx.http.get('https://api.wolframalpha.com/v2/query', params=params, headers=headers, timeout=aiohttp.ClientTimeout(total=20)) as resp:
+				async with ctx.http.get('https://api.wolframalpha.com/v2/query', params=params, headers=headers,
+					timeout=aiohttp.ClientTimeout(total=20)) as resp:
 					if resp.status != 200:
 						raise QUERY_ERROR
 					j = await resp.text()
@@ -508,6 +481,37 @@ class Fun(AceMixin, commands.Cog):
 			e.set_footer(text='wolframalpha.com')
 
 			await ctx.send(embed=e)
+
+	@commands.command(aliases=['ws'], hidden=True)
+	@commands.cooldown(rate=3, per=10.0, type=commands.BucketType.user)
+	@commands.bot_has_permissions(embed_links=True)
+	async def wolframimage(self, ctx, *, query):
+		'''Queries wolfram and returns an image.'''
+
+		if WOLFRAM_KEY is None:
+			raise commands.CommandError('The host has not set up an API key.')
+
+		params = {
+			'appid': WOLFRAM_KEY,
+			'i': query,
+			'background': '36393F',
+			'foreground': 'white',
+			'width': 500,
+			'fontsize': 24,
+			'ip': '',
+			'timeout': 5,
+		}
+
+		async with ctx.channel.typing():
+			try:
+				async with ctx.http.get('https://api.wolframalpha.com/v1/simple', params=params, timeout=aiohttp.ClientTimeout(total=20)) as resp:
+					if resp.status != 200:
+						raise QUERY_ERROR
+					data = BytesIO(await resp.read())
+			except asyncio.TimeoutError:
+				raise QUERY_ERROR
+
+			await ctx.send(file=discord.File(data, filename='image.png'))
 
 	@commands.command()
 	@commands.cooldown(rate=2, per=5.0, type=commands.BucketType.user)
