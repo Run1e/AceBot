@@ -18,7 +18,8 @@ from utils.converters import MaxLengthConverter, MaybeMemberConverter, RangeConv
 from utils.databasetimer import DatabaseTimer
 from utils.fakeuser import FakeUser
 from utils.string import po
-from utils.time import TimeDeltaConverter, TimeMultConverter, pretty_timedelta
+from utils.time import TimeDeltaConverter, TimeMultConverter, pretty_timedelta, pretty_datetime
+from utils.pager import Pager
 
 log = logging.getLogger(__name__)
 
@@ -175,6 +176,36 @@ class ActionConverter(commands.Converter):
 			)
 
 		return value
+
+
+class TempbanPager(Pager):
+	async def craft_page(self, e: discord.Embed, page, entries):
+		e.description = f'{len(self.entries)} active tempban(s).'
+
+		now = datetime.utcnow()
+
+		for record in entries:
+			_id = record.get('id')
+
+			userdata = loads(record.get('userdata'))
+			name = userdata['name']
+			discrim = userdata['discriminator']
+
+			user_id = record.get('user_id')
+
+			banner = self.bot.get_user(record.get('mod_id'))
+			when = record.get('created_at')
+			duration = record.get('duration')
+
+			e.add_field(
+				name=f'{_id}: {name}#{discrim} ({user_id})',
+				value='Banned: {0}\nBanner: {1}\nDuration: {2}\nUnban in {3}'.format(
+					pretty_datetime(when),
+					banner or 'UNKNOWN',
+					pretty_timedelta(duration),
+					pretty_timedelta(now - when + duration)
+				)
+			)
 
 
 reason_converter = MaxLengthConverter(1024)
@@ -526,6 +557,25 @@ class Moderation(AceMixin, commands.Cog):
 			'log', guild, member, action='TEMPBAN COMPLETED', severity=Severity.RESOLVED,
 			responsible=pretty_mod, duration=pretty_timedelta(duration), reason=reason
 		)
+
+	@commands.command(enabled=False)
+	@commands.has_permissions(ban_members=True)
+	@commands.bot_has_permissions(ban_members=True, embed_links=True)
+	async def tempbans(self, ctx):
+		'''See all current tempbans.'''
+
+		bans = await self.db.fetch('SELECT * FROM mod_timer WHERE guild_id=$1 AND event=$2', ctx.guild.id, 'BAN')
+
+		p = TempbanPager(ctx, bans[::-1], per_page=6)
+		await p.go()
+
+	@commands.command(enabled=False)
+	@commands.has_permissions(ban_members=True)
+	@commands.bot_has_permissions(ban_members=True, embed_links=True)
+	async def abortban(self, ctx, *, member: BannedMember):
+		'''Abort a tempban'''
+
+		# todo
 
 	@commands.Cog.listener()
 	async def on_member_unban(self, guild, user):

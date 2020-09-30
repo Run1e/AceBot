@@ -194,6 +194,7 @@ class AceBot(commands.Bot):
 		async with CommandErrorLogic(ctx, exc) as handler:
 			if isinstance(exc, commands.CommandInvokeError):
 				if isinstance(exc.original, discord.HTTPException):
+					log.debug('Command failed with %s', str(exc.original))
 					return
 				handler.oops()
 

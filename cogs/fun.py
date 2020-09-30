@@ -2,6 +2,7 @@ import asyncio
 import logging
 from random import choice
 from datetime import date, datetime
+from json import loads
 
 import aiohttp
 import discord
@@ -383,6 +384,36 @@ class Fun(AceMixin, commands.Cog):
 
 		await ctx.send(embed=e)
 
+	@commands.command(aliases=['ws'])
+	@commands.cooldown(rate=3, per=10.0, type=commands.BucketType.user)
+	@commands.bot_has_permissions(embed_links=True)
+	async def wolframimage(self, ctx, *, query):
+		'''Queries wolfram.'''
+
+		from io import BytesIO
+
+		if WOLFRAM_KEY is None:
+			raise commands.CommandError('The host has not set up an API key.')
+
+		params = {
+			'appid': WOLFRAM_KEY,
+			'i': query,
+			'background': '36393F',
+			'foreground': 'white',
+			'timeout': 5,
+		}
+
+		async with ctx.channel.typing():
+			try:
+				async with ctx.http.get('https://api.wolframalpha.com/v1/simple', params=params, timeout=aiohttp.ClientTimeout(total=20)) as resp:
+					if resp.status != 200:
+						raise QUERY_ERROR
+					data = BytesIO(await resp.read())
+			except asyncio.TimeoutError:
+				raise QUERY_ERROR
+
+			await ctx.send(file=discord.File(data, filename='image.png'))
+
 	@commands.command(aliases=['w', 'wa'])
 	@commands.cooldown(rate=3, per=10.0, type=commands.BucketType.user)
 	@commands.bot_has_permissions(embed_links=True)
@@ -394,33 +425,89 @@ class Fun(AceMixin, commands.Cog):
 
 		params = {
 			'appid': WOLFRAM_KEY,
-			'i': query
+			'input': query,
+			'output': 'json',
+			'format': 'plaintext',
+		}
+
+		headers = {
+			'Content-Type': 'application/json'
 		}
 
 		async with ctx.channel.typing():
 			try:
-				async with ctx.http.get('https://api.wolframalpha.com/v1/result', params=params) as resp:
+				async with ctx.http.get('https://api.wolframalpha.com/v2/query', params=params, headers=headers, timeout=aiohttp.ClientTimeout(total=20)) as resp:
 					if resp.status != 200:
 						raise QUERY_ERROR
-
-					res = await resp.text()
+					j = await resp.text()
 			except asyncio.TimeoutError:
 				raise QUERY_ERROR
 
-		query = query.replace('`', '\u200b`')
+			j = loads(j)
+			res = j['queryresult']
 
-		embed = discord.Embed()
+			success = res['success']
 
-		embed.add_field(name='Query', value=f'```{query}```')
-		embed.add_field(name='Result', value=f'```{res}```', inline=False)
+			e = discord.Embed()
 
-		embed.set_author(name='Wolfram Alpha', icon_url='https://i.imgur.com/KFppH69.png')
-		embed.set_footer(text='wolframalpha.com')
+			if not success:
+				e.description = 'Sorry, Wolfram Alpha was not able to parse your request.'
 
-		if len(query) + len(res) > 1200:
-			raise commands.CommandError('Wolfram response too long.')
+				means = res.get('didyoumeans', None)
+				if means is not None:
+					val = ', '.join(x['val'] for x in means) if isinstance(means, list) else means['val']
+					e.add_field(name='Wolfram is having issues with these word(s):', value='```{0}```'.format(val))
 
-		await ctx.send(embed=embed)
+				if 'tips' in res:
+					e.add_field(name='Tips from Wolfram Alpha:', value=res['tips']['text'])
+
+				await ctx.send(embed=e)
+				return
+
+			has_image = False
+			for idx, pod in enumerate(res['pods']):
+				name = pod['title']
+				_id = pod['id']
+				subpods = pod['subpods']
+
+				if _id.startswith('Image'):
+					if has_image:
+						continue
+					has_image = True
+
+					commons_url = subpods[0]['imagesource']
+
+					async with ctx.http.get(commons_url) as resp:
+						if resp.status != 200:
+							continue
+
+						bs = BeautifulSoup(await resp.text(), 'html.parser')
+						tag = bs.find('a', href=True, text='Original file')
+
+						href = tag.get('href')
+
+						if href is not None:
+							e.set_thumbnail(url=href)
+
+					continue
+
+				if len(e.fields) > 2:
+					continue
+
+				if _id == 'Input':
+					plaintext = subpods[0]['plaintext']
+					value = plaintext.replace('\n', ' ').replace('  ', ' ')
+				else:
+					value = '\n'.join(subpod['plaintext'] for subpod in subpods)
+
+				if value:
+					wraps = '`' if _id == 'Input' else '```'
+					e.add_field(name=name, value='{0}{1}{0}'.format(wraps, value), inline=False)
+
+			e.set_author(name='Wolfram Alpha', icon_url='https://i.imgur.com/KFppH69.png')
+			e.set_footer(text='wolframalpha.com')
+
+			await ctx.send(embed=e)
 
 	@commands.command()
 	@commands.cooldown(rate=2, per=5.0, type=commands.BucketType.user)
