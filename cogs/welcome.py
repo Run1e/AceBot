@@ -91,7 +91,7 @@ class Welcome(AceMixin, commands.Cog):
 	async def welcome(self, ctx):
 		await ctx.send_help(self.welcome)
 
-	@welcome.command(aliases=['msg'])
+	@welcome.command()
 	async def message(self, ctx, *, message: str):
 		'''Set a new welcome message.'''
 

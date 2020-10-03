@@ -64,7 +64,7 @@ class Fun(AceMixin, commands.Cog):
 		await asyncio.sleep(3)
 		await msg.edit(content=choice(('Heads!', 'Tails!')))
 
-	@commands.command(aliases=['choice'])
+	@commands.command()
 	async def choose(self, ctx, *choices: commands.clean_content):
 		'''Pick a random item from a list.'''
 
@@ -272,7 +272,7 @@ class Fun(AceMixin, commands.Cog):
 		await asyncio.sleep(3)
 		await message.edit(content='\N{BILLIARDS} ' + choice(BALL_RESPONSES))
 
-	@commands.command(aliases=['guild'])
+	@commands.command()
 	@commands.bot_has_permissions(embed_links=True)
 	async def server(self, ctx):
 		"""Show various information about the server."""
@@ -503,7 +503,7 @@ class Fun(AceMixin, commands.Cog):
 
 			await ctx.send(embed=e)
 
-	@commands.command(aliases=['ws'], hidden=True)
+	@commands.command(aliases=['wi'], hidden=True)
 	@commands.cooldown(rate=3, per=10.0, type=commands.BucketType.user)
 	@commands.bot_has_permissions(embed_links=True)
 	async def wolframimage(self, ctx, *, query):

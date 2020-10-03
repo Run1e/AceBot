@@ -70,6 +70,10 @@ class PaginatedHelpCommand(commands.HelpCommand):
 		elif not long_help:
 			help_message = help_message.split('\n')[0]
 
+		# unsure if I want this
+		#if command.aliases:
+		#	help_message += '\nAliases: `' + ', '.join(command.aliases) + '`'
+
 		return self.context.prefix + get_signature(command), help_message
 
 	async def prepare_help_command(self, ctx, command=None):
@@ -192,6 +196,7 @@ class EditedMinimalHelpCommand(commands.MinimalHelpCommand):
 # rip is just the signature command ripped from the lib, but with alias support removed.
 def get_signature(command):
 	"""Returns a POSIX-like signature useful for help command output."""
+
 	result = []
 	parent = command.full_parent_name
 

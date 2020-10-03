@@ -10,16 +10,16 @@ import discord
 from asyncpg.exceptions import UniqueViolationError
 from discord.ext import commands
 
-from ids import RULES_MSG_ID
 from cogs.mixins import AceMixin
+from ids import AHK_GUILD_ID, MEMBER_ROLE_ID, RULES_MSG_ID
 from utils.configtable import ConfigTable, ConfigTableRecord
 from utils.context import AceContext, can_prompt, is_mod
 from utils.converters import MaxLengthConverter, MaybeMemberConverter, RangeConverter
 from utils.databasetimer import DatabaseTimer
 from utils.fakeuser import FakeUser
-from utils.string import po
-from utils.time import TimeDeltaConverter, TimeMultConverter, pretty_timedelta, pretty_datetime
 from utils.pager import Pager
+from utils.string import po
+from utils.time import TimeDeltaConverter, TimeMultConverter, pretty_datetime, pretty_timedelta
 
 log = logging.getLogger(__name__)
 
@@ -208,6 +208,15 @@ class TempbanPager(Pager):
 			)
 
 
+async def can_mute_pred(ctx):
+	# members can mute if they are mod or have the manage_roles perm
+	return await ctx.is_mod() or ctx.author.permissions_in(ctx.channel).manage_roles
+
+
+def can_mute():
+	return commands.check(can_mute_pred)
+
+
 reason_converter = MaxLengthConverter(1024)
 count_converter = RangeConverter(8, 24)
 interval_converter = RangeConverter(8, 24)
@@ -306,7 +315,7 @@ class Moderation(AceMixin, commands.Cog):
 		await ctx.send('{0} unbanned.'.format(str(member.user)))
 
 	@commands.command()
-	@commands.has_permissions(manage_roles=True)
+	@can_mute()
 	@commands.bot_has_permissions(manage_roles=True)
 	async def mute(self, ctx, member: discord.Member, *, reason: reason_converter = None):
 		'''Mute a member. Requires Manage Roles perms.'''
@@ -339,7 +348,7 @@ class Moderation(AceMixin, commands.Cog):
 		)
 
 	@commands.command()
-	@commands.has_permissions(manage_roles=True)
+	@can_mute()
 	@commands.bot_has_permissions(manage_roles=True)
 	async def unmute(self, ctx, *, member: discord.Member):
 		'''Unmute a member. Requires Manage Roles perms.'''
@@ -374,12 +383,10 @@ class Moderation(AceMixin, commands.Cog):
 		)
 
 	@commands.command()
-	@commands.has_permissions(manage_roles=True)
+	@can_mute()
 	@commands.bot_has_permissions(manage_roles=True, embed_links=True)
 	async def tempmute(self, ctx, member: discord.Member, amount: TimeMultConverter, unit: TimeDeltaConverter, *, reason: reason_converter = None):
-		'''
-		Temporarily mute a member. Requires Manage Role perms. Example: `tempmute @member 1 day Reason goes here.`
-		'''
+		'''Temporarily mute a member. Requires Manage Role perms. Example: `tempmute @member 1 day Reason goes here.`'''
 
 		now = datetime.utcnow()
 		duration = amount * unit
@@ -575,7 +582,7 @@ class Moderation(AceMixin, commands.Cog):
 	async def abortban(self, ctx, *, member: BannedMember):
 		'''Abort a tempban'''
 
-		# todo
+	# todo
 
 	@commands.Cog.listener()
 	async def on_member_unban(self, guild, user):
@@ -595,7 +602,7 @@ class Moderation(AceMixin, commands.Cog):
 			)
 
 	@commands.Cog.listener()
-	async def on_member_update(self, before, after):
+	async def on_member_update(self, before: discord.Member, after: discord.Member):
 		if before.bot:
 			return
 
@@ -615,6 +622,8 @@ class Moderation(AceMixin, commands.Cog):
 		if before_has == after_has:
 			return
 
+		guild = after.guild
+
 		if before_has:
 			# mute role removed
 			_id = await self.db.fetchval(
@@ -623,6 +632,13 @@ class Moderation(AceMixin, commands.Cog):
 			)
 
 			self.event_timer.restart_if(lambda r: r.get('id') == _id)
+
+			# if this was in the AHK guild we can add the member role back
+			if guild.id == AHK_GUILD_ID:
+				try:
+					await after.add_roles(discord.Object(MEMBER_ROLE_ID), reason='Adding member role upon mute.')
+				except discord.HTTPException:
+					pass
 
 		elif after_has:  # not strictly necessary but more explicit
 			# mute role added
@@ -633,7 +649,14 @@ class Moderation(AceMixin, commands.Cog):
 					after.guild.id, after.id, 'MUTE', datetime.utcnow(), self._craft_user_data(after)
 				)
 			except UniqueViolationError:
-				return
+				pass
+
+			# if this was in the AHK guild we remove the member role
+			if guild.id == AHK_GUILD_ID:
+				try:
+					await after.remove_roles(discord.Object(MEMBER_ROLE_ID), reason='Removing member role upon mute.')
+				except discord.HTTPException:
+					pass
 
 	@commands.Cog.listener()
 	async def on_member_join(self, member):
