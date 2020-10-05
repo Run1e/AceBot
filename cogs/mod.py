@@ -320,6 +320,7 @@ class Moderation(AceMixin, commands.Cog):
 	async def mute(self, ctx, member: discord.Member, *, reason: reason_converter = None):
 		'''Mute a member. Requires Manage Roles perms.'''
 
+		# TODO: should also handle people with manage roles perms
 		if await ctx.is_mod(member):
 			raise commands.CommandError('Can\'t mute this member.')
 

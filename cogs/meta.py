@@ -31,6 +31,9 @@ class Meta(AceMixin, commands.Cog):
 
 		self.process = psutil.Process()
 
+		# no blockerino so we do this here in init
+		self.process.cpu_percent()
+
 	@commands.command()
 	@commands.bot_has_permissions(embed_links=True)
 	async def stats(self, ctx, member: MaybeMemberConverter = None):
@@ -162,7 +165,6 @@ class Meta(AceMixin, commands.Cog):
 			await self._about_command(ctx, cmd)
 
 	async def _about_bot(self, ctx):
-
 		e = discord.Embed(title='Official bot invite link here!', description=self.get_last_commits(), url=self.bot.invite_link)
 
 		owner = self.bot.get_user(self.bot.owner_id)
@@ -191,7 +193,7 @@ class Meta(AceMixin, commands.Cog):
 		memory_usage = self.process.memory_full_info().uss / 1024 ** 2
 		cpu_usage = self.process.cpu_percent() / psutil.cpu_count()
 
-		e.add_field(name='Process', value='CPU: {0}%\nMemory: {1:.2f} MiB'.format(cpu_usage, memory_usage))
+		e.add_field(name='Process', value='CPU: {0:.2f}%\nMemory: {1:.2f} MiB'.format(cpu_usage, memory_usage))
 
 		e.add_field(name='Members', value='{0:,d} total\n{1:,d} unique'.format(users, unique))
 		e.add_field(name='Channels', value='{0:,d} total\n{1:,d} text channels\n{2:,d} voice channels'.format(text + voice, text, voice))
