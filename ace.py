@@ -332,7 +332,7 @@ async def setup():
 
 	# init bot
 	log.info('Initializing bot')
-	bot = AceBot(db=db, loop=loop)
+	bot = AceBot(db=db, loop=loop, intents=BOT_INTENTS)
 
 	# start it
 	log.info('Logging in and starting bot')
