@@ -138,7 +138,7 @@ class Games(AceMixin, commands.Cog):
 
 		self.trivia_categories = None
 
-	# self.bot.loop.create_task(self.get_trivia_categories())
+		self.bot.loop.create_task(self.get_trivia_categories())
 
 	async def get_trivia_categories(self):
 		try:
@@ -186,7 +186,7 @@ class Games(AceMixin, commands.Cog):
 	async def trivia(self, ctx, category: Optional[CategoryConverter] = None, *, difficulty: DifficultyConverter = None):
 		'''Trivia time! Optionally specify a difficulty or category and difficulty as arguments. Valid difficulties are `easy`, `medium` and `hard`. Valid categories can be listed with `trivia categories`.'''
 
-		raise commands.CommandError('The trivia API is down currently. Sorry about that!')
+		#raise commands.CommandError('The trivia API is down currently. Sorry about that!')
 
 		diff = difficulty
 
@@ -347,7 +347,7 @@ class Games(AceMixin, commands.Cog):
 	async def categories(self, ctx):
 		'''Get a list of valid categories for the trivia command.'''
 
-		raise commands.CommandError('The trivia API is down currently. Sorry about that!')
+		#raise commands.CommandError('The trivia API is down currently. Sorry about that!')
 
 		e = discord.Embed(description='\n'.join(self.trivia_categories.keys()))
 		e.set_footer(text='Specifying a category halves your winnings.')
@@ -359,7 +359,7 @@ class Games(AceMixin, commands.Cog):
 	async def stats(self, ctx, *, member: discord.Member = None):
 		'''Get your own or another members' trivia stats.'''
 
-		raise commands.CommandError('The trivia API is down currently. Sorry about that!')
+		#raise commands.CommandError('The trivia API is down currently. Sorry about that!')
 
 		member = member or ctx.author
 
