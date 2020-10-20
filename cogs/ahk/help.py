@@ -1,5 +1,5 @@
 import logging
-from asyncio import sleep, gather
+from asyncio import sleep, gather, Lock
 from datetime import datetime, timedelta
 from json import dumps, loads, JSONDecodeError
 
@@ -40,6 +40,8 @@ class AutoHotkeyHelpSystem(AceMixin, commands.Cog):
 
 		self.claimed_channel = self._load_claims()
 		self.claimed_at = dict()
+
+		self.channel_claim_lock = Lock()
 
 		self.channel_reclaimer.start()
 
@@ -205,59 +207,72 @@ class AutoHotkeyHelpSystem(AceMixin, commands.Cog):
 			await channel.send(embed=discord.Embed(description=CLOSED_MESSAGE, color=discord.Color.red()))
 
 	async def on_open_message(self, message):
-		message: discord.Message = message
-		author: discord.Member = message.author
-		channel: discord.TextChannel = message.channel
+		# so this needs a lock since people can spam messages in open channels
+		# and cause a whole bigass ripple of claims happening for
+		# the same channel, which calls .edit() on it a billion times
+		# and also opens up a billion other channels
 
-		log.info(f'New message in open category: {message.author} - #{message.channel}')
+		# runie if you see this in the future don't remove the lock
+		# just make more help channels
 
-		# check whether author already has a claimed channel
-		claimed_id = self.claimed_channel.get(author.id, None)
-		if claimed_id is not None:  # and False:
-			log.info(f'User has already claimed #{message.guild.get_channel(claimed_id)}')
-			await self.post_error(message, f'You have already claimed <#{claimed_id}>, please ask your question there.')
-			return
+		async with self.channel_claim_lock:
+			message: discord.Message = message
+			author: discord.Member = message.author
+			channel: discord.TextChannel = message.channel
 
-		now = datetime.utcnow()
+			log.info(f'New message in open category: {message.author} - #{message.channel}')
 
-		# check whether author has claimed another channel within the last MINIMUM_CLAIM_INTERVAL time
-		last_claim_at = self.claimed_at.get(author.id, None)
-		if last_claim_at is not None and last_claim_at > now - MINIMUM_CLAIM_INTERVAL:  # and False:
-			log.info(f'User previously claimed a channel {pretty_timedelta(now - last_claim_at)} ago')
-			await self.post_error(message, f'Please wait at least {pretty_timedelta(MINIMUM_CLAIM_INTERVAL)} between each help channel claim.')
-			return
+			if self.is_claimed(channel.id):
+				log.info('Channel is already claimed (in the claimed category?)')
+				return
 
-		if self.is_claimed(channel.id):
-			log.info('Channel is already claimed (in the claimed category?)')
-			return
+			# check whether author already has a claimed channel
+			claimed_id = self.claimed_channel.get(author.id, None)
+			if claimed_id is not None:
+				log.info(f'User has already claimed #{message.guild.get_channel(claimed_id)}')
+				await self.post_error(message, f'You have already claimed <#{claimed_id}>, please ask your question there.')
+				return
 
-		log.info('%s claiming %s', po(author), po(channel))
+			now = datetime.utcnow()
 
-		# move channel
-		try:
-			opt = dict(
-				position=self.active_info_channel.position + 1,
-				category=self.active_category,
-				sync_permissions=True,
-				topic=message.jump_url
-			)
+			# check whether author has claimed another channel within the last MINIMUM_CLAIM_INTERVAL time
+			last_claim_at = self.claimed_at.get(author.id, None)
+			if last_claim_at is not None and last_claim_at > now - MINIMUM_CLAIM_INTERVAL:  # and False:
+				log.info(f'User previously claimed a channel {pretty_timedelta(now - last_claim_at)} ago')
+				await self.post_error(message, f'Please wait at least {pretty_timedelta(MINIMUM_CLAIM_INTERVAL)} between each help channel claim.')
+				return
 
-			if not self.has_postfix(channel):
-				opt['name'] = channel.name + '-' + NEW_EMOJI
+			log.info('%s claiming %s', po(author), po(channel))
 
-			await channel.edit(**opt)
+			# move channel
+			try:
+				opt = dict(
+					position=self.active_info_channel.position + 1,
+					category=self.active_category,
+					sync_permissions=True,
+					topic=message.jump_url
+				)
 
-		except discord.HTTPException as exc:
-			log.warning('Failed moving %s to claimed category: %s', po(channel), str(exc))
-			return
+				if not self.has_postfix(channel):
+					opt['name'] = channel.name + '-' + NEW_EMOJI
 
-		# set some metadata
-		self.claimed_channel[author.id] = channel.id
-		self.claimed_at[author.id] = now
+				# set some metadata
+				self.claimed_channel[author.id] = channel.id
+				self.claimed_at[author.id] = now
 
-		self._store_claims()
+				await channel.edit(**opt)
+
+			except discord.HTTPException as exc:
+				log.warning('Failed moving %s to claimed category: %s', po(channel), str(exc))
+				self.claimed_channel.pop(author.id, None)
+				self.claimed_at.pop(author.id, None)
+				return
+
+			self._store_claims()
 
 		# check whether we need to move any open channels
+		# this does not need to be in the lock since it's independent
+		# all the other logic
 
 		try:
 			channel = self.closed_category.text_channels[-1]
