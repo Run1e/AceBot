@@ -16,7 +16,7 @@ class WhoIs(AceMixin, commands.Cog):
 
 	@commands.command()
 	@commands.bot_has_permissions(embed_links=True)
-	async def info(self, ctx, member: discord.Member = None):
+	async def info(self, ctx, *, member: discord.Member = None):
 		'''Display information about user or self.'''
 
 		member = member or ctx.author
