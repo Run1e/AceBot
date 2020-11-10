@@ -71,7 +71,7 @@ class PaginatedHelpCommand(commands.HelpCommand):
 			help_message = help_message.split('\n')[0]
 
 		# unsure if I want this
-		#if command.aliases:
+		# if command.aliases:
 		#	help_message += '\nAliases: `' + ', '.join(command.aliases) + '`'
 
 		return self.context.prefix + get_signature(command), help_message
