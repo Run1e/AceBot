@@ -37,6 +37,9 @@ class Welcome(AceMixin, commands.Cog):
 	`{user}` - member mention
 	`{guild}` - server name
 	`{member_count}` - server member count
+
+	Example:
+	`.welcome message Welcome {user} to my server!`
 	'''
 
 	def __init__(self, bot):

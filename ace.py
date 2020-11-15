@@ -30,7 +30,6 @@ EXTENSIONS = (
 	'cogs.remind',
 	'cogs.welcome',
 	'cogs.roles',
-	'cogs.spotify',
 	'cogs.whois',
 	'cogs.hl',
 	'cogs.ahk.ahk',
@@ -38,7 +37,6 @@ EXTENSIONS = (
 	'cogs.ahk.internal.logger',
 	'cogs.ahk.internal.security',
 	'cogs.dwitter',
-	'cogs.linus',
 	'cogs.owner',
 )
 

@@ -1,7 +1,6 @@
 import asyncio
 import logging
 from datetime import date, datetime
-from io import BytesIO
 from json import loads
 from random import choice
 
@@ -55,222 +54,6 @@ log = logging.getLogger(__name__)
 
 class Fun(AceMixin, commands.Cog):
 	'''Fun commands!'''
-
-	@commands.command()
-	async def flip(self, ctx):
-		'''Flip a coin!'''
-
-		msg = await ctx.send('*Flipping...*')
-		await asyncio.sleep(3)
-		await msg.edit(content=choice(('Heads!', 'Tails!')))
-
-	@commands.command()
-	async def choose(self, ctx, *choices: commands.clean_content):
-		'''Pick a random item from a list.'''
-
-		choose_prompts = (
-			'I have chosen',
-			'I have a great feeling about',
-			'I\'ve decided on',
-			'Easy choice',
-			'I think',
-		)
-
-		if len(choices) < 2:
-			raise commands.CommandError('At least two choices are necessary.')
-
-		selected = choice(choices)
-
-		e = discord.Embed(
-			description=selected
-		)
-
-		e.set_author(name=choice(choose_prompts) + ':', icon_url=self.bot.user.avatar_url)
-
-		msg = await ctx.send(':thinking:')
-
-		await asyncio.sleep(3)
-		await msg.edit(content=None, embed=e)
-
-	def _create_embed(self, url=None):
-		e = discord.Embed(color=0x36393E)
-		if url is not None:
-			e.set_image(url=url)
-		log.info(url)
-		return e
-
-	@commands.command(aliases=['dog'])
-	@commands.cooldown(rate=6, per=10.0, type=commands.BucketType.user)
-	@commands.bot_has_permissions(embed_links=True)
-	async def woof(self, ctx):
-		'''Get a random doggo!'''
-
-		async with ctx.typing():
-			try:
-				async with ctx.http.get(WOOF_URL + 'woof', params=WOOF_HEADERS) as resp:
-					if resp.status != 200:
-						raise QUERY_ERROR
-					file = await resp.text()
-
-				if file.lower().endswith('.webm'):
-					log.info('woof got webm, reinvoking...')
-					await ctx.reinvoke()
-					return
-
-				await ctx.send(WOOF_URL + file)
-			except QUERY_EXCEPTIONS:
-				raise QUERY_ERROR
-
-	@commands.command(aliases=['cat'])
-	@commands.cooldown(rate=6, per=10.0, type=commands.BucketType.user)
-	@commands.bot_has_permissions(embed_links=True)
-	async def meow(self, ctx):
-		'''Get a random cat image!'''
-
-		if THECATAPI_KEY is None:
-			raise commands.CommandError('The host has not set up an API key.')
-
-		async with ctx.typing():
-			try:
-				async with ctx.http.get(MEOW_URL, headers=MEOW_HEADERS) as resp:
-					if resp.status != 200:
-						raise QUERY_ERROR
-					json = await resp.json()
-
-				data = json[0]
-				img_url = data['url']
-
-				await ctx.send(img_url)
-			except QUERY_EXCEPTIONS:
-				raise QUERY_ERROR
-
-	@commands.command()
-	@commands.cooldown(rate=6, per=10.0, type=commands.BucketType.user)
-	@commands.bot_has_permissions(embed_links=True)
-	async def breed(self, ctx):
-		'''Get an image and info about a random cat breed!'''
-
-		if THECATAPI_KEY is None:
-			raise commands.CommandError('The host has not set up an API key.')
-
-		async with ctx.typing():
-			try:
-				async with ctx.http.get(MEOW_URL, params=dict(breed_ids=choice(MEOW_BREEDS)), headers=MEOW_HEADERS) as resp:
-					if resp.status != 200:
-						raise QUERY_ERROR
-					json = await resp.json()
-
-				data = json[0]
-
-				img_url = data['url']
-
-				e = self._create_embed(img_url)
-
-				breed = data['breeds'][0]
-
-				e.set_author(name=breed['name'], url=breed.get('wikipedia_url', None))
-				e.description = breed['description']
-
-				e.add_field(name='Origin', value=breed['origin'])
-				e.add_field(name='Weight', value=breed['weight']['metric'] + ' kg')
-				e.add_field(name='Life span', value=breed['life_span'] + ' years')
-
-				await ctx.send(embed=e)
-			except QUERY_EXCEPTIONS:
-				raise QUERY_ERROR
-
-	@commands.command(aliases=['duck'])
-	@commands.cooldown(rate=6, per=10.0, type=commands.BucketType.user)
-	@commands.bot_has_permissions(embed_links=True)
-	async def quack(self, ctx):
-		'''Get a random duck image!'''
-
-		async with ctx.typing():
-			try:
-				async with ctx.http.get(QUACK_URL) as resp:
-					if resp.status != 200:
-						raise QUERY_ERROR
-					json = await resp.json()
-
-				img_url = json['url']
-
-				await ctx.send(img_url)
-			except QUERY_EXCEPTIONS:
-				raise QUERY_ERROR
-
-	@commands.command(aliases=['fox'])
-	@commands.cooldown(rate=6, per=10.0, type=commands.BucketType.user)
-	@commands.bot_has_permissions(embed_links=True)
-	async def floof(self, ctx):
-		'''~floooof~'''
-
-		async with ctx.typing():
-			try:
-				async with ctx.http.get(FLOOF_URL) as resp:
-					if resp.status != 200:
-						raise QUERY_ERROR
-					json = await resp.json()
-
-				img_url = json['image']
-
-				await ctx.send(img_url)
-			except QUERY_EXCEPTIONS:
-				raise QUERY_ERROR
-
-	@commands.command()
-	@commands.cooldown(rate=3, per=10.0, type=commands.BucketType.user)
-	async def number(self, ctx, number: int):
-		'''Get a fact about a number!'''
-
-		async with ctx.channel.typing():
-			try:
-				async with ctx.http.get(NUMBER_URL.format(number=str(number))) as resp:
-					if resp.status != 200:
-						raise QUERY_ERROR
-					text = await resp.text()
-			except asyncio.TimeoutError:
-				raise QUERY_ERROR
-
-		await ctx.send(text)
-
-	@commands.command()
-	async def fact(self, ctx):
-		'''Get a random fact.'''
-
-		fact = await self.db.fetchrow('SELECT * FROM facts ORDER BY random()')
-
-		e = discord.Embed(
-			title='Fact #{}'.format(fact.get('id')),
-			description=fact.get('content')
-		)
-
-		await ctx.send(embed=e)
-
-	@commands.command()
-	@commands.cooldown(rate=3, per=10.0, type=commands.BucketType.user)
-	async def compliment(self, ctx):
-		'''Feels good man'''
-
-		async with ctx.channel.typing():
-			try:
-				async with ctx.http.get(COMPLIMENT_URL) as resp:
-					if resp.status != 200:
-						raise QUERY_ERROR
-					json = await resp.json()
-
-				text = json['compliment']
-
-				await ctx.send(f'{text} :{choice(COMPLIMENT_EMOJIS)}:')
-			except QUERY_EXCEPTIONS:
-				raise QUERY_ERROR
-
-	@commands.command(name='8', aliases=['8ball'])
-	async def ball(self, ctx, *, question):
-		'''Classic Magic 8 Ball!'''
-
-		message = await ctx.send('Shaking...')
-		await asyncio.sleep(3)
-		await message.edit(content='\N{BILLIARDS} ' + choice(BALL_RESPONSES))
 
 	@commands.command()
 	@commands.bot_has_permissions(embed_links=True)
@@ -385,29 +168,11 @@ class Fun(AceMixin, commands.Cog):
 
 		await ctx.send(embed=e)
 
-	async def unpack_commons_image(self, http, url):
-		try:
-			async with http.get(url) as resp:
-				if resp.status != 200:
-					return None
-
-				bs = BeautifulSoup(await resp.text(), 'html.parser')
-				tag = bs.find('a', class_='internal', href=True)
-
-				if tag is not None:
-					href = tag.get('href')
-					if not href.startswith('http'):
-						href = 'https:' + href
-					return href
-			return None
-		except TimeoutError:
-			return None
-
 	@commands.command(aliases=['w', 'wa'])
 	@commands.cooldown(rate=3, per=10.0, type=commands.BucketType.user)
 	@commands.bot_has_permissions(embed_links=True)
 	async def wolfram(self, ctx, *, query):
-		'''Queries wolfram.'''
+		'''Run Wolfram Alpha queries from Discord!'''
 
 		if WOLFRAM_KEY is None:
 			raise commands.CommandError('The host has not set up an API key.')
@@ -503,37 +268,6 @@ class Fun(AceMixin, commands.Cog):
 
 			await ctx.send(embed=e)
 
-	@commands.command(aliases=['wi'], hidden=True)
-	@commands.cooldown(rate=3, per=10.0, type=commands.BucketType.user)
-	@commands.bot_has_permissions(embed_links=True)
-	async def wolframimage(self, ctx, *, query):
-		'''Queries wolfram and returns an image.'''
-
-		if WOLFRAM_KEY is None:
-			raise commands.CommandError('The host has not set up an API key.')
-
-		params = {
-			'appid': WOLFRAM_KEY,
-			'i': query,
-			'background': '36393F',
-			'foreground': 'white',
-			'width': 500,
-			'fontsize': 20,
-			'ip': '',
-			'timeout': 5,
-		}
-
-		async with ctx.channel.typing():
-			try:
-				async with ctx.http.get('https://api.wolframalpha.com/v1/simple', params=params, timeout=aiohttp.ClientTimeout(total=20)) as resp:
-					if resp.status != 200:
-						raise QUERY_ERROR
-					data = BytesIO(await resp.read())
-			except asyncio.TimeoutError:
-				raise QUERY_ERROR
-
-			await ctx.send(file=discord.File(data, filename='image.png'))
-
 	@commands.command()
 	@commands.cooldown(rate=2, per=5.0, type=commands.BucketType.user)
 	@commands.bot_has_permissions(embed_links=True)
@@ -587,6 +321,88 @@ class Fun(AceMixin, commands.Cog):
 
 			await ctx.send(embed=e)
 
+	def _create_embed(self, url=None):
+		e = discord.Embed(color=0x36393E)
+		if url is not None:
+			e.set_image(url=url)
+		log.info(url)
+		return e
+
+	@commands.command(name='8', aliases=['8ball'])
+	async def ball(self, ctx, *, question):
+		'''Ask the Magic 8 Ball anything!'''
+
+		message = await ctx.send('Shaking...')
+		await asyncio.sleep(3)
+		await message.edit(content='\N{BILLIARDS} ' + choice(BALL_RESPONSES))
+
+	@commands.command()
+	async def flip(self, ctx):
+		'''Flip a coin!'''
+
+		msg = await ctx.send('*Flipping...*')
+		await asyncio.sleep(3)
+		await msg.edit(content=choice(('Heads!', 'Tails!')))
+
+	@commands.command()
+	async def choose(self, ctx, *choices: commands.clean_content):
+		'''Pick a random item from a list separated by spaces.'''
+
+		choose_prompts = (
+			'I have chosen',
+			'I have a great feeling about',
+			'I\'ve decided on',
+			'Easy choice',
+			'I think',
+		)
+
+		if len(choices) < 2:
+			raise commands.CommandError('At least two choices are necessary.')
+
+		selected = choice(choices)
+
+		e = discord.Embed(
+			description=selected
+		)
+
+		e.set_author(name=choice(choose_prompts) + ':', icon_url=self.bot.user.avatar_url)
+
+		msg = await ctx.send(':thinking:')
+
+		await asyncio.sleep(3)
+		await msg.edit(content=None, embed=e)
+
+	@commands.command()
+	async def fact(self, ctx):
+		'''Get a random fact.'''
+
+		fact = await self.db.fetchrow('SELECT * FROM facts ORDER BY random()')
+
+		e = discord.Embed(
+			title='Fact #{}'.format(fact.get('id')),
+			description=fact.get('content')
+		)
+
+		await ctx.send(embed=e)
+
+	async def unpack_commons_image(self, http, url):
+		try:
+			async with http.get(url) as resp:
+				if resp.status != 200:
+					return None
+
+				bs = BeautifulSoup(await resp.text(), 'html.parser')
+				tag = bs.find('a', class_='internal', href=True)
+
+				if tag is not None:
+					href = tag.get('href')
+					if not href.startswith('http'):
+						href = 'https:' + href
+					return href
+			return None
+		except TimeoutError:
+			return None
+
 	@commands.command()
 	@commands.cooldown(rate=3, per=10.0, type=commands.BucketType.user)
 	async def bill(self, ctx):
@@ -606,7 +422,7 @@ class Fun(AceMixin, commands.Cog):
 
 			await ctx.send(url + tag['href'])
 
-	@commands.command()
+	@commands.command(hidden=True)
 	@commands.cooldown(rate=3, per=10.0, type=commands.BucketType.user)
 	@commands.bot_has_permissions(embed_links=True)
 	async def xkcd(self, ctx, *, id: int = None):
@@ -643,6 +459,124 @@ class Fun(AceMixin, commands.Cog):
 			e.set_footer(text=comic_url.lstrip('https://').rstrip('/'), icon_url='https://i.imgur.com/onzWnfd.png')
 
 			await ctx.send(embed=e)
+
+	@commands.command(aliases=['dog'])
+	@commands.cooldown(rate=6, per=10.0, type=commands.BucketType.user)
+	@commands.bot_has_permissions(embed_links=True)
+	async def woof(self, ctx):
+		'''Get a random doggo image!'''
+
+		async with ctx.typing():
+			try:
+				async with ctx.http.get(WOOF_URL + 'woof', params=WOOF_HEADERS) as resp:
+					if resp.status != 200:
+						raise QUERY_ERROR
+					file = await resp.text()
+
+				if file.lower().endswith('.webm'):
+					log.info('woof got webm, reinvoking...')
+					await ctx.reinvoke()
+					return
+
+				await ctx.send(WOOF_URL + file)
+			except QUERY_EXCEPTIONS:
+				raise QUERY_ERROR
+
+	@commands.command(aliases=['cat'])
+	@commands.cooldown(rate=6, per=10.0, type=commands.BucketType.user)
+	@commands.bot_has_permissions(embed_links=True)
+	async def meow(self, ctx):
+		'''Get a random cat image!'''
+
+		if THECATAPI_KEY is None:
+			raise commands.CommandError('The host has not set up an API key.')
+
+		async with ctx.typing():
+			try:
+				async with ctx.http.get(MEOW_URL, headers=MEOW_HEADERS) as resp:
+					if resp.status != 200:
+						raise QUERY_ERROR
+					json = await resp.json()
+
+				data = json[0]
+				img_url = data['url']
+
+				await ctx.send(img_url)
+			except QUERY_EXCEPTIONS:
+				raise QUERY_ERROR
+
+	@commands.command(aliases=['duck'])
+	@commands.cooldown(rate=6, per=10.0, type=commands.BucketType.user)
+	@commands.bot_has_permissions(embed_links=True)
+	async def quack(self, ctx):
+		'''Get a random duck image!'''
+
+		async with ctx.typing():
+			try:
+				async with ctx.http.get(QUACK_URL) as resp:
+					if resp.status != 200:
+						raise QUERY_ERROR
+					json = await resp.json()
+
+				img_url = json['url']
+
+				await ctx.send(img_url)
+			except QUERY_EXCEPTIONS:
+				raise QUERY_ERROR
+
+	@commands.command(aliases=['fox'])
+	@commands.cooldown(rate=6, per=10.0, type=commands.BucketType.user)
+	@commands.bot_has_permissions(embed_links=True)
+	async def floof(self, ctx):
+		'''~floooof~'''
+
+		async with ctx.typing():
+			try:
+				async with ctx.http.get(FLOOF_URL) as resp:
+					if resp.status != 200:
+						raise QUERY_ERROR
+					json = await resp.json()
+
+				img_url = json['image']
+
+				await ctx.send(img_url)
+			except QUERY_EXCEPTIONS:
+				raise QUERY_ERROR
+
+	@commands.command()
+	@commands.cooldown(rate=6, per=10.0, type=commands.BucketType.user)
+	@commands.bot_has_permissions(embed_links=True)
+	async def breed(self, ctx):
+		'''Get information on a random cat breed!'''
+
+		if THECATAPI_KEY is None:
+			raise commands.CommandError('The host has not set up an API key.')
+
+		async with ctx.typing():
+			try:
+				async with ctx.http.get(MEOW_URL, params=dict(breed_ids=choice(MEOW_BREEDS)), headers=MEOW_HEADERS) as resp:
+					if resp.status != 200:
+						raise QUERY_ERROR
+					json = await resp.json()
+
+				data = json[0]
+
+				img_url = data['url']
+
+				e = self._create_embed(img_url)
+
+				breed = data['breeds'][0]
+
+				e.set_author(name=breed['name'], url=breed.get('wikipedia_url', None))
+				e.description = breed['description']
+
+				e.add_field(name='Origin', value=breed['origin'])
+				e.add_field(name='Weight', value=breed['weight']['metric'] + ' kg')
+				e.add_field(name='Life span', value=breed['life_span'] + ' years')
+
+				await ctx.send(embed=e)
+			except QUERY_EXCEPTIONS:
+				raise QUERY_ERROR
 
 
 def setup(bot):

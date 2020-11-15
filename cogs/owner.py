@@ -228,7 +228,7 @@ class Owner(AceMixin, commands.Cog):
 
 		await ctx.send('```{0}```'.format(tabulate(data, headers)))
 
-	@commands.command(hidden=True)
+	@commands.command()
 	async def test(self, ctx):
 		raise ValueError('test')
 
@@ -353,34 +353,34 @@ class Owner(AceMixin, commands.Cog):
 		await ctx.message.delete()
 		await channel.send(content)
 
-	@commands.command(hidden=True, aliases=['gh'])
+	@commands.command(aliases=['gh'])
 	@commands.bot_has_permissions(embed_links=True)
 	async def github(self, ctx, *, query: str):
 		'''Google search for GitHub pages.'''
 
 		await ctx.invoke(self.google, query='site:github.com ' + query)
 
-	@commands.command(hidden=True, aliases=['f'])
+	@commands.command(aliases=['f'])
 	@commands.bot_has_permissions(embed_links=True)
 	async def forum(self, ctx, *, query: str):
 		'''Google search for AutoHotkey pages.'''
 
 		await ctx.invoke(self.google, query='site:autohotkey.com ' + query)
 
-	@commands.command(hidden=True)
+	@commands.command()
 	async def status(self, ctx):
 		'''Refresh the status of the bot in case Discord cleared it.'''
 
 		await self.bot.change_presence()
 		await self.bot.change_presence(activity=BOT_ACTIVITY)
 
-	@commands.command(hidden=True)
+	@commands.command()
 	async def pm(self, ctx, user: discord.User, *, content: str):
 		'''Private message a user.'''
 
 		await user.send(content)
 
-	@commands.command(hidden=True)
+	@commands.command()
 	async def print(self, ctx, *, body: str):
 		'''Calls eval but wraps code in print()'''
 

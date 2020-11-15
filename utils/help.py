@@ -71,8 +71,8 @@ class PaginatedHelpCommand(commands.HelpCommand):
 			help_message = help_message.split('\n')[0]
 
 		# unsure if I want this
-		# if command.aliases:
-		#	help_message += '\nAliases: `' + ', '.join(command.aliases) + '`'
+		if command.aliases:
+			help_message += '\nAliases: `' + ', '.join(command.aliases) + '`'
 
 		return self.context.prefix + get_signature(command), help_message
 
@@ -80,7 +80,7 @@ class PaginatedHelpCommand(commands.HelpCommand):
 		self.context = ctx
 		self.pager = HelpPager(ctx, list(), per_page=1)
 
-	async def add_cog(self, cog, force=False):
+	async def add_cog(self, cog: commands.Cog, force=False):
 		cog_name = cog.__class__.__name__
 		cog_desc = cog.__doc__
 

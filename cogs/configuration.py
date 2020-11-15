@@ -48,7 +48,7 @@ class Configuration(AceMixin, commands.Cog):
 
 	@commands.command()
 	async def prefix(self, ctx, *, prefix: PrefixConverter(1, 8) = None):
-		'''Set a guild-specific prefix. Leave argument empty to reset to default.'''
+		'''Set a guild-specific prefix. Leave argument empty to clear.'''
 
 		gc = await self.bot.config.get_entry(ctx.guild.id)
 

@@ -148,7 +148,7 @@ class TagPager(Pager):
 
 
 class Tags(AceMixin, commands.Cog):
-	'''Store and bring up text using tags.'''
+	'''Store and bring up text using tags. Tags are unique to each server.'''
 
 	def __init__(self, bot):
 		super().__init__(bot)
@@ -290,7 +290,7 @@ class Tags(AceMixin, commands.Cog):
 
 	@tag.command()
 	async def make(self, ctx):
-		'''Interactively create a tag.'''
+		'''Create a tag interactively.'''
 
 		def msg_check(message):
 			return message.channel is ctx.channel and message.author is ctx.author
@@ -399,7 +399,7 @@ class Tags(AceMixin, commands.Cog):
 	@tag.command(aliases=['stats'])
 	@commands.bot_has_permissions(embed_links=True)
 	async def info(self, ctx, *, tag_name: TagViewConverter()):
-		'''See stats about a tag.'''
+		'''See tag statistics.'''
 
 		tag_name, record = tag_name
 
@@ -449,7 +449,7 @@ class Tags(AceMixin, commands.Cog):
 	@tag.command()
 	@can_prompt()
 	async def transfer(self, ctx, tag_name: TagEditConverter(), *, new_owner: discord.Member):
-		'''Transfer a tag to another member.'''
+		'''Transfer ownership of a tag to another member.'''
 
 		tag_name, record = tag_name
 

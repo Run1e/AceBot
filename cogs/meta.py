@@ -34,6 +34,12 @@ class Meta(AceMixin, commands.Cog):
 		# no blockerino so we do this here in init
 		self.process.cpu_percent()
 
+	@commands.command(aliases=['join'])
+	async def invite(self, ctx):
+		'''Get bot invite link.'''
+
+		await ctx.send(self.bot.invite_link)
+
 	@commands.command()
 	@commands.bot_has_permissions(embed_links=True)
 	async def stats(self, ctx, member: MaybeMemberConverter = None):
@@ -238,12 +244,6 @@ class Meta(AceMixin, commands.Cog):
 
 		await ctx.send('Feedback sent. Thanks for helping improve the bot!')
 
-	@commands.command(aliases=['join'])
-	async def invite(self, ctx):
-		'''Get bot invite link.'''
-
-		await ctx.send(self.bot.invite_link)
-
 	@commands.command()
 	async def support(self, ctx):
 		'''Get link to support server.'''
@@ -271,25 +271,6 @@ class Meta(AceMixin, commands.Cog):
 
 		for page in paginator.pages:
 			await ctx.send(page)
-
-	@commands.command()
-	async def uptime(self, ctx):
-		'''Time since last bot restart.'''
-
-		await ctx.send(
-			f'It has been {pretty_timedelta(datetime.utcnow() - self.bot.startup_time)} '
-			'since the last bot restart.'
-		)
-
-	@commands.command(aliases=['dbl'])
-	async def topgg(self, ctx):
-		'''Get link to top.gg bot page.'''
-
-		await ctx.send('https://top.gg/bot/{0.id}'.format(self.bot.user))
-
-	@commands.command(hidden=True)
-	async def hello(self, ctx):
-		await ctx.send(f'Hello {ctx.author.mention}!')
 
 
 def setup(bot):

@@ -224,9 +224,3 @@ CREATE TABLE IF NOT EXISTS trivia_stats (
 	question_hash	BIGINT NOT NULL,
 	result			BOOL NOT NULL
 );
-
-CREATE TABLE IF NOT EXISTS linus_rant (
-	id 				SERIAL UNIQUE,
-	hate			DOUBLE PRECISION NOT NULL,
-	rant			VARCHAR(2000) NOT NULL
-);
