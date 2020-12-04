@@ -740,10 +740,10 @@ class Moderation(AceMixin, commands.Cog):
 		List of arguments:
 		```
 		--check <int>
-		Total amount of messages the bot will check for deletion.
+		Amount of messages the bot will check for deletion.
 
 		--max <int>
-		Total amount of messages the bot will delete.
+		Maximum amount of messages the bot will delete.
 
 		--bot
 		Only delete messages from bots.
