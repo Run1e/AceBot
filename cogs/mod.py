@@ -805,16 +805,16 @@ class Moderation(AceMixin, commands.Cog):
 			preds.append(lambda m: any(m.author.id == member.id for member in members))
 
 		if args.contains:
-			preds.append(lambda m: any((s in m.content) for s in args.contains))
+			preds.append(lambda m: any((s.lower() in m.content.lower()) for s in args.contains))
 
 		if args.bot:
 			preds.append(lambda m: m.author.bot)
 
 		if args.starts:
-			preds.append(lambda m: any(m.content.startswith(s) for s in args.starts))
+			preds.append(lambda m: any(m.content.lower().startswith(s.lower()) for s in args.starts))
 
 		if args.ends:
-			preds.append(lambda m: any(m.content.endswith(s) for s in args.ends))
+			preds.append(lambda m: any(m.content.lower().endswith(s.lower()) for s in args.ends))
 
 		count = args.max
 		deleted = 0

@@ -6,7 +6,6 @@ log = logging.getLogger(__name__)
 
 
 class ConfigTableRecord(object):
-	# TODO: figure out how to stop infinite recursion without having to set this in init
 	_data = dict()
 
 	def __init__(self, config, record):
