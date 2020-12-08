@@ -438,7 +438,7 @@ class AutoHotkeyHelpSystem(AceMixin, commands.Cog):
 		do_edit = last_message is not None and last_message.author == channel.guild.me and len(last_message.embeds)
 
 		if do_edit:
-			await last_message.edit(embed=e)
+			await last_message.edit(content=None, embed=e)
 		else:
 			await channel.send(embed=e)
 
