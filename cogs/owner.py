@@ -120,7 +120,6 @@ class Owner(AceMixin, commands.Cog):
 		)
 
 		e = discord.Embed(
-			title='Hi there!',
 			description=s
 		)
 

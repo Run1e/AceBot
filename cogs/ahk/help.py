@@ -352,10 +352,7 @@ class AutoHotkeyHelpSystem(AceMixin, commands.Cog):
 			'If your question is not about cheating in or automating a game, please disregard this message.'
 		)
 
-		e = discord.Embed(
-			title='Hi there!',
-			description=s
-		)
+		e = discord.Embed(description=s)
 
 		#e.set_footer(text=f'Score: {score}')
 
