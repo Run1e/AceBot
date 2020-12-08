@@ -233,6 +233,7 @@ class AutoHotkeyHelpSystem(AceMixin, commands.Cog):
 				break
 
 		self.claimed_channel.pop(owner_id, None)
+		self.claimed_messages.pop(channel.id, None)
 
 		self._store_claims()
 
