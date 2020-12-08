@@ -23,6 +23,8 @@ from utils.context import is_mod
 from utils.string import po
 from utils.time import pretty_timedelta
 
+from cogs.mod import Severity
+
 # from nltk.corpus.stopwords
 STOPWORDS_EN = [
 	'i', 'me', 'my', 'myself', 'we', 'our', 'ours', 'ourselves', 'you', "you're", "you've", "you'll", "you'd", 'your', 'yours', 'yourself',
@@ -364,12 +366,18 @@ class AutoHotkeyHelpSystem(AceMixin, commands.Cog):
 		author = msgs[0].author
 		content = ' '.join(m.content for m in msgs)
 
+		pivot = 0.6
 		c = self.classify(content)
 
-		if c > 0.6:
+		if c > pivot:
 			await channel.send(
 				content=author.mention,
 				embed=self._make_yell_embed(c)
+			)
+
+			self.bot.dispatch(
+				'log', channel.guild, author, action='GAME SCRIPT NOTIF',
+				severity=Severity.LOW, message=msgs[0], reason=f'Model class prediction {c:.2f} with pivot {pivot:.2f}'
 			)
 
 			self.claimed_messages.pop(channel.id, None)
