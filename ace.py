@@ -279,6 +279,7 @@ def setup_logger():
 	logging.getLogger('websockets').setLevel(logging.INFO)
 	logging.getLogger('asyncpg').setLevel(logging.INFO)
 	logging.getLogger('asyncio').setLevel(logging.INFO)
+	logging.getLogger()
 
 	# we want out logging formatted like this everywhere
 	fmt = logging.Formatter('{asctime} [{levelname}] {name}: {message}', datefmt='%Y-%m-%d %H:%M:%S', style='{')

@@ -112,8 +112,19 @@ class Owner(AceMixin, commands.Cog):
 			self.event_counter[t] += 1
 
 	@commands.command()
-	async def t(self, ctx, a: MaxValueConverter(2)):
-		await ctx.send(str(a))
+	async def t(self, ctx):
+		s = (
+			'Your scripting question looks like it might be about a game, which is not allowed here. '
+			'Please make sure you are familiar with the #rules, specifically rule 5.\n\n'
+			'If your question is not about cheating in or automating a game, please disregard this message.'
+		)
+
+		e = discord.Embed(
+			title='Hi there!',
+			description=s
+		)
+
+		await ctx.send(content=ctx.author.mention, embed=e)
 
 	@commands.command()
 	async def eval(self, ctx, *, body: str):

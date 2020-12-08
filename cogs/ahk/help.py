@@ -1,16 +1,42 @@
 import logging
-from asyncio import sleep, gather, Lock
+
+log = logging.getLogger(__name__)
+import re
+import string
+from asyncio import Lock
 from datetime import datetime, timedelta
-from json import dumps, loads, JSONDecodeError
+from json import JSONDecodeError, dumps, loads
 
 import discord
+import numpy as np
+import unidecode
 from discord.ext import commands, tasks
 
+log.info('Importing keras...')
+from tensorflow import keras
+
+log.info('Finished importing keras.')
+
 from cogs.mixins import AceMixin
-from ids import ACTIVE_CATEGORY_ID, AHK_GUILD_ID, CLOSED_CATEGORY_ID, IGNORE_ACTIVE_CHAN_IDS, OPEN_CATEGORY_ID, ACTIVE_INFO_CHAN_ID, GET_HELP_CHAN_ID
+from ids import ACTIVE_CATEGORY_ID, ACTIVE_INFO_CHAN_ID, AHK_GUILD_ID, CLOSED_CATEGORY_ID, GET_HELP_CHAN_ID, IGNORE_ACTIVE_CHAN_IDS, OPEN_CATEGORY_ID
 from utils.context import is_mod
 from utils.string import po
 from utils.time import pretty_timedelta
+
+# from nltk.corpus.stopwords
+STOPWORDS_EN = [
+	'i', 'me', 'my', 'myself', 'we', 'our', 'ours', 'ourselves', 'you', "you're", "you've", "you'll", "you'd", 'your', 'yours', 'yourself',
+	'yourselves', 'he', 'him', 'his', 'himself', 'she', "she's", 'her', 'hers', 'herself', 'it', "it's", 'its', 'itself', 'they', 'them', 'their',
+	'theirs', 'themselves', 'what', 'which', 'who', 'whom', 'this', 'that', "that'll", 'these', 'those', 'am', 'is', 'are', 'was', 'were', 'be',
+	'been', 'being', 'have', 'has', 'had', 'having', 'do', 'does', 'did', 'doing', 'an', 'the', 'and', 'but', 'if', 'or', 'because', 'as',
+	'until', 'while', 'of', 'at', 'by', 'for', 'with', 'about', 'against', 'between', 'into', 'through', 'during', 'before', 'after', 'above',
+	'below', 'to', 'from', 'up', 'down', 'in', 'out', 'on', 'off', 'over', 'under', 'again', 'further', 'then', 'once', 'here', 'there', 'when',
+	'where', 'why', 'how', 'all', 'any', 'both', 'each', 'few', 'more', 'most', 'other', 'some', 'such', 'no', 'nor', 'not', 'only', 'own', 'same',
+	'so', 'than', 'too', 'very', 't', 'can', 'will', 'just', 'don', "don't", 'should', "should've", 'now', 'll', 'm', 'o', 're', 've', 'y',
+	'ain', 'aren', "aren't", 'couldn', "couldn't", 'didn', "didn't", 'doesn', "doesn't", 'hadn', "hadn't", 'hasn', "hasn't", 'haven', "haven't",
+	'isn', "isn't", 'ma', 'mightn', "mightn't", 'mustn', "mustn't", 'needn', "needn't", 'shan', "shan't", 'shouldn', "shouldn't", 'wasn', "wasn't",
+	'weren', "weren't", 'won', "won't", 'wouldn', "wouldn't"
+]
 
 OPEN_CHANNEL_COUNT = 3
 MINIMUM_CLAIM_INTERVAL = timedelta(minutes=5)
@@ -31,7 +57,28 @@ CLOSED_MESSAGE = (
 	'If your question didn\'t get answered, you can claim a new channel.'
 )
 
-log = logging.getLogger(__name__)
+
+def standardize(s: str):
+	# make lowercase
+	s = s.lower()
+
+	# remove urls
+	s = re.sub(r'^https?:\/\/.*[\r\n]*', '', s, flags=re.MULTILINE)
+
+	# remove diacritics
+	s = unidecode.unidecode(s)
+
+	# remove numbers
+	s = re.sub(f'[{string.digits}]', ' ', s)
+
+	# remove punctuation
+	s = re.sub(f'[{re.escape(string.punctuation)}]', ' ', s)
+
+	# remove stopwords (and force multiple whitespaces to one)
+	split = s.split()
+	s = ' '.join(m for m in split if m not in STOPWORDS_EN)
+
+	return s, len(split)
 
 
 class AutoHotkeyHelpSystem(AceMixin, commands.Cog):
@@ -44,6 +91,14 @@ class AutoHotkeyHelpSystem(AceMixin, commands.Cog):
 		self.channel_claim_lock = Lock()
 
 		self.channel_reclaimer.start()
+		self.claimed_messages = dict()
+
+		log.debug('loading model')
+		self.model = keras.models.load_model('model')
+		log.debug('finished loading model')
+
+	def classify(self, text):
+		return self.model(np.array([standardize(text)[0]]))[0][0].numpy()
 
 	@property
 	def open_category(self):
@@ -260,12 +315,18 @@ class AutoHotkeyHelpSystem(AceMixin, commands.Cog):
 				self.claimed_channel[author.id] = channel.id
 				self.claimed_at[author.id] = now
 
+				msgs = [message]
+				self.claimed_messages[channel.id] = msgs
+
 				await channel.edit(**opt)
+
+				await self.maybe_yell(msgs)
 
 			except discord.HTTPException as exc:
 				log.warning('Failed moving %s to claimed category: %s', po(channel), str(exc))
 				self.claimed_channel.pop(author.id, None)
 				self.claimed_at.pop(author.id, None)
+				self.claimed_messages.pop(channel.id, None)
 				return
 
 			self._store_claims()
@@ -282,19 +343,62 @@ class AutoHotkeyHelpSystem(AceMixin, commands.Cog):
 			log.info(f'Opening new channel after claim: {channel}')
 			await self.open_channel(channel)
 
+	def _make_yell_embed(self, score):
+		s = (
+			'Your scripting question looks like it might be about a game, which is not allowed here. '
+			'Please make sure you are familiar with the #rules, specifically rule 5.\n\n'
+			'If your question is not about cheating in or automating a game, please disregard this message.'
+		)
+
+		e = discord.Embed(
+			title='Hi there!',
+			description=s
+		)
+
+		#e.set_footer(text=f'Score: {score}')
+
+		return e
+
+	async def maybe_yell(self, msgs):
+		channel = msgs[0].channel
+		author = msgs[0].author
+		content = ' '.join(m.content for m in msgs)
+
+		c = self.classify(content)
+
+		if c > 0.6:
+			await channel.send(
+				content=author.mention,
+				embed=self._make_yell_embed(c)
+			)
+
+			self.claimed_messages.pop(channel.id, None)
+
 	async def on_active_message(self, message):
 		if message.content.startswith('.close'):
 			return
 
 		channel = message.channel
-		has_postfix = self.has_postfix(channel)
 
-		if not has_postfix:
-			return
+		author_channel_id = self.claimed_channel.get(message.author.id, None)
 
-		author_claimed_id = self.claimed_channel.get(message.author.id, None)
-		if author_claimed_id is None or author_claimed_id != channel.id:
-			await self.strip_postfix(channel)
+		if author_channel_id is not None and author_channel_id == message.channel.id:
+			msgs = self.claimed_messages.get(author_channel_id, None)
+
+			# nothing there, skip for now
+			if msgs is None:
+				return
+
+			msgs.append(message)
+
+			await self.maybe_yell(msgs)
+		else:
+			# clear claimed_messages if someone else is talking now
+			self.claimed_messages.pop(channel.id, None)
+
+			# remove postfix if it's there
+			if self.has_postfix(channel):
+				await self.strip_postfix(channel)
 
 	@commands.Cog.listener()
 	async def on_message(self, message):
