@@ -18,7 +18,7 @@ from tensorflow import keras
 log.info('Finished importing keras.')
 
 from cogs.mixins import AceMixin
-from ids import ACTIVE_CATEGORY_ID, ACTIVE_INFO_CHAN_ID, AHK_GUILD_ID, CLOSED_CATEGORY_ID, GET_HELP_CHAN_ID, IGNORE_ACTIVE_CHAN_IDS, OPEN_CATEGORY_ID
+from ids import ACTIVE_CATEGORY_ID, ACTIVE_INFO_CHAN_ID, AHK_GUILD_ID, CLOSED_CATEGORY_ID, GET_HELP_CHAN_ID, IGNORE_ACTIVE_CHAN_IDS, OPEN_CATEGORY_ID, RULES_CHAN_ID
 from utils.context import is_mod
 from utils.string import po
 from utils.time import pretty_timedelta
@@ -348,7 +348,7 @@ class AutoHotkeyHelpSystem(AceMixin, commands.Cog):
 	def _make_yell_embed(self, score):
 		s = (
 			'Your scripting question looks like it might be about a game, which is not allowed here. '
-			'Please make sure you are familiar with the #rules, specifically rule 5.\n\n'
+			f'Please make sure you are familiar with the <#{RULES_CHAN_ID}>, specifically rule 5.\n\n'
 			'If your question is not about cheating in or automating a game, please disregard this message.'
 		)
 
