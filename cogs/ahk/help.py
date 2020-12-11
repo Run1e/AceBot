@@ -3,7 +3,7 @@ import logging
 log = logging.getLogger(__name__)
 import re
 import string
-from asyncio import Lock
+from asyncio import Lock, sleep
 from datetime import datetime, timedelta
 from json import JSONDecodeError, dumps, loads
 
@@ -95,12 +95,12 @@ class AutoHotkeyHelpSystem(AceMixin, commands.Cog):
 		self.channel_reclaimer.start()
 		self.claimed_messages = dict()
 
-		log.debug('loading model')
+		log.debug('Loading model')
 		self.model = keras.models.load_model('model')
-		log.debug('finished loading model')
+		log.debug('Finished loading model')
 
 	def classify(self, text):
-		return self.model(np.array([standardize(text)[0]]))[0][0].numpy()
+		return self.model(np.array([standardize(text)[0]])).numpy()[0][0]
 
 	@property
 	def open_category(self):
@@ -350,12 +350,15 @@ class AutoHotkeyHelpSystem(AceMixin, commands.Cog):
 		s = (
 			'Your scripting question looks like it might be about a game, which is not allowed here. '
 			f'Please make sure you are familiar with the <#{RULES_CHAN_ID}>, specifically rule 5.\n\n'
-			'If your question is not about cheating in or automating a game, please disregard this message.'
+			'If your question does not break the rules, you can safely ignore this message. '
+			'If you continue and your question is later found to break the rules, you might risk a ban.'
 		)
 
-		e = discord.Embed(description=s)
-
-		#e.set_footer(text=f'Score: {score}')
+		e = discord.Embed(
+			title='Hi there!',
+			description=s,
+			color=discord.Color.red()
+		)
 
 		return e
 
@@ -364,17 +367,20 @@ class AutoHotkeyHelpSystem(AceMixin, commands.Cog):
 		author = msgs[0].author
 		content = ' '.join(m.content for m in msgs)
 
-		pivot = 0.6
+		pivot = 0.75
 		c = self.classify(content)
 
-		if c > pivot:
+		if c >= pivot:
+			# wait a bit so it's not so confusing when the channel is grabbed
+			await sleep(2.0)
+
 			await channel.send(
 				content=author.mention,
 				embed=self._make_yell_embed(c)
 			)
 
 			self.bot.dispatch(
-				'log', channel.guild, author, action='GAME SCRIPT NOTIF',
+				'log', channel.guild, author, action='GAME SCRIPT PREDICTION',
 				severity=Severity.LOW, message=msgs[0], reason=f'Model class prediction {c:.2f} with pivot {pivot:.2f}'
 			)
 
