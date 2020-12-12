@@ -359,6 +359,9 @@ class Roles(AceMixin, commands.Cog):
 		self.editing = set()
 		self.messages = dict()
 
+		self.footer_tasks = dict()
+		self.footer_lock = asyncio.Lock()
+
 		self.config = ConfigTable(bot, table='role', primary='guild_id')
 
 	async def bot_check(self, ctx):
@@ -747,6 +750,8 @@ class Roles(AceMixin, commands.Cog):
 				except discord.HTTPException:
 					pass
 
+		self.cancel_footer(ctx.guild.id)
+
 		for selector in selectors:
 
 			# https://stackoverflow.com/questions/866465/order-by-the-in-value-list
@@ -797,16 +802,6 @@ class Roles(AceMixin, commands.Cog):
 				)
 
 		await conf.update(channel_id=ctx.channel.id, message_ids=list(msg.id for msg in msgs))
-
-	@roles.command()
-	async def notify(self, ctx):
-		'''Toggle whether bot sends a message for role updates.'''
-
-		conf = await self.config.get_entry(ctx.guild.id)
-
-		await conf.update(notify=not conf.notify)
-
-		await ctx.send('Role update messages are now {}.'.format('enabled' if conf.notify else 'disabled'))
 
 	@commands.Cog.listener()
 	async def on_raw_reaction_add(self, payload):
@@ -874,28 +869,19 @@ class Roles(AceMixin, commands.Cog):
 			)
 			return
 
-		e = discord.Embed()
-		e.set_author(name=member.display_name, icon_url=member.avatar_url)
-
 		do_add = role not in member.roles
 
 		try:
 			if do_add:
 				await member.add_roles(role, reason='Added through role selector')
-				e.description = 'Added role {}'.format(role.mention)
+				desc = '{}: added role {}'.format(member.display_name, role.name)
 			else:
 				await member.remove_roles(role, reason='Removed through role selector')
-				e.description = 'Removed role {}'.format(role.mention)
+				desc = '{}: removed role {}'.format(member.display_name, role.name)
 		except discord.HTTPException:
-			e.description = 'Unable to add role {}. Does the bot have the necessary permissions?'.format(role.mention)
+			desc = 'Unable to toggle role {}. Does the bot have Manage Roles permissions?'.format(role.name)
 
-			try:
-				await channel.send(embed=e, delete_after=30)
-			except discord.HTTPException:
-				pass
-
-		if conf.notify:
-			await channel.send(embed=e, delete_after=5)
+		await self.set_footer(message, desc)
 
 		log.info(
 			'%s %s %s %s in %s',
@@ -905,6 +891,31 @@ class Roles(AceMixin, commands.Cog):
 			po(member),
 			po(guild)
 		)
+
+	def cancel_footer(self, guild_id):
+		task = self.footer_tasks.pop(guild_id, None)
+		if task is not None:
+			task.cancel()
+
+	async def _set_footer_in(self, message, text='Click a reaction to add/remove roles.', wait=None):
+		if wait is not None:
+			await asyncio.sleep(wait)
+
+		embed = message.embeds[0]
+		embed.set_footer(text=text)
+
+		try:
+			await message.edit(embed=embed)
+		except discord.HTTPException:
+			pass
+
+	async def set_footer(self, message, text, clear_after=4.0):
+		async with self.footer_lock:
+			guild_id = message.guild.id
+			self.cancel_footer(message.guild.id)
+
+			await self._set_footer_in(message, text)
+			self.footer_tasks[guild_id] = asyncio.create_task(self._set_footer_in(message, wait=clear_after))
 
 
 def setup(bot):
