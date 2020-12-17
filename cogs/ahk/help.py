@@ -357,8 +357,10 @@ class AutoHotkeyHelpSystem(AceMixin, commands.Cog):
 		e = discord.Embed(
 			title='Hi there!',
 			description=s,
-			color=discord.Color.red()
+			color=discord.Color.orange()
 		)
+
+		e.set_footer(text='This message was sent by an automated system.')
 
 		return e
 
