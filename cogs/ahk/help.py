@@ -55,7 +55,7 @@ OPEN_MESSAGE = (
 
 CLOSED_MESSAGE = (
 	'This channel is currently **closed**. '
-	'It is not possible to send messages in it until it enters rotation again and is available under the `✅ Help: Open For Claiming` category.\n\n'
+	'It is not possible to send messages in it until it enters rotation again and is available under the `✅ Help: Ask Here` category.\n\n'
 	'If your question didn\'t get answered, you can claim a new channel.'
 )
 
