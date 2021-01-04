@@ -89,6 +89,7 @@ class Owner(AceMixin, commands.Cog):
 	def __init__(self, bot):
 		super().__init__(bot)
 
+		self.help_cog = bot.get_cog('AutoHotkeyHelpSystem')
 		self.event_counter = Counter()
 
 	async def cog_check(self, ctx):
@@ -110,6 +111,14 @@ class Owner(AceMixin, commands.Cog):
 
 		if t is not None:
 			self.event_counter[t] += 1
+
+	@commands.command(hidden=True)
+	async def c(self, ctx, *, text):
+		await ctx.send(self.help_cog.classify(text))
+
+	@commands.command(hidden=True)
+	async def cm(self, ctx, *, message: discord.Message):
+		await ctx.send(self.help_cog.classify(message.content))
 
 	@commands.command()
 	async def t(self, ctx):
