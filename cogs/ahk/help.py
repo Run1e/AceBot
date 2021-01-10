@@ -261,8 +261,13 @@ class AutoHotkeyHelpSystem(AceMixin, commands.Cog):
 			if self.has_postfix(channel):
 				opt['name'] = self._stripped_name(channel)
 
+			# send this before moving channel in case of rate limit shi
+			try:
+				await channel.send(embed=discord.Embed(description=CLOSED_MESSAGE, color=discord.Color.red()))
+			except discord.HTTPException:
+				pass
+
 			await channel.edit(**opt)
-			await channel.send(embed=discord.Embed(description=CLOSED_MESSAGE, color=discord.Color.red()))
 
 	async def on_open_message(self, message):
 		# so this needs a lock since people can spam messages in open channels

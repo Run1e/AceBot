@@ -11,7 +11,7 @@ from asyncpg.exceptions import UniqueViolationError
 from discord.ext import commands
 
 from cogs.mixins import AceMixin
-from ids import AHK_GUILD_ID, MEMBER_ROLE_ID, RULES_MSG_ID
+from ids import AHK_GUILD_ID, RULES_MSG_ID
 from utils.configtable import ConfigTable, ConfigTableRecord
 from utils.context import AceContext, can_prompt, is_mod
 from utils.converters import MaxLengthConverter, MaybeMemberConverter, RangeConverter
@@ -623,8 +623,6 @@ class Moderation(AceMixin, commands.Cog):
 		if before_has == after_has:
 			return
 
-		guild = after.guild
-
 		if before_has:
 			# mute role removed
 			_id = await self.db.fetchval(
@@ -633,13 +631,6 @@ class Moderation(AceMixin, commands.Cog):
 			)
 
 			self.event_timer.restart_if(lambda r: r.get('id') == _id)
-
-			# if this was in the AHK guild we can add the member role back
-			if guild.id == AHK_GUILD_ID:
-				try:
-					await after.add_roles(discord.Object(MEMBER_ROLE_ID), reason='Adding member role upon mute.')
-				except discord.HTTPException:
-					pass
 
 		elif after_has:  # not strictly necessary but more explicit
 			# mute role added
@@ -651,13 +642,6 @@ class Moderation(AceMixin, commands.Cog):
 				)
 			except UniqueViolationError:
 				pass
-
-			# if this was in the AHK guild we remove the member role
-			if guild.id == AHK_GUILD_ID:
-				try:
-					await after.remove_roles(discord.Object(MEMBER_ROLE_ID), reason='Removing member role upon mute.')
-				except discord.HTTPException:
-					pass
 
 	@commands.Cog.listener()
 	async def on_member_join(self, member):
