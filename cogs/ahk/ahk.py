@@ -110,6 +110,78 @@ class AutoHotkey(AceMixin, commands.Cog):
 
 				self.rss_time = time
 
+	def find_all_emoji(self, message, *, regex=re.compile(r'<a?:.+?:([0-9]{15,21})>')):
+		return regex.findall(message.content)
+
+	@commands.Cog.listener('on_message')
+	async def handle_emoji_suggestion_message(self, message: discord.Message):
+		if message.guild is None or message.guild.id != AHK_GUILD_ID:
+			return
+
+		if message.channel.id != EMOJI_SUGGESTIONS_CHAN_ID:
+			return
+
+		if message.author.bot:
+			return
+
+		matches = self.find_all_emoji(message)
+
+		if not matches and not message.attachments:
+			return await message.delete()
+		elif message.attachments:
+			# if more than one attachment, delete
+			if len(message.attachments) > 1:
+				return await message.delete()
+			# if attachment is not an image, delete
+			if message.attachments[0].height is None:
+				return await message.delete()
+		elif len(matches) > 1:
+			# if no attachments, make sure there's not multiple emojis
+			return await message.delete()
+
+		# Add voting reactions
+		await message.add_reaction('✅')
+		await message.add_reaction('❌')
+
+	@commands.Cog.listener('on_raw_reaction_add')
+	async def handle_emoji_suggestion_reaction(self, reaction: discord.RawReactionActionEvent):
+		if reaction.channel_id != EMOJI_SUGGESTIONS_CHAN_ID:
+			return
+
+		if reaction.member.bot:
+			return
+
+		emoji = str(reaction.emoji)
+
+		if emoji not in ('✅', '❌'):
+			return
+
+		channel: discord.TextChannel = self.bot.get_channel(reaction.channel_id)
+		if channel is None:
+			return
+
+		try:
+			message: discord.Message = await channel.fetch_message(reaction.message_id)
+		except discord.HTTPException:
+			return
+
+		remove_from = '✅' if emoji == '❌' else '❌'
+
+		for reac in message.reactions:
+			if str(reac.emoji) == remove_from:
+				try:
+					users = await reac.users().flatten()
+				except discord.HTTPException:
+					return
+
+				if reaction.member in users:
+					try:
+						await message.remove_reaction(remove_from, reaction.member)
+					except discord.HTTPException:
+						pass
+
+				return
+
 	def craft_docs_page(self, record):
 		page = record.get('page')
 
