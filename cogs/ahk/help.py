@@ -495,6 +495,23 @@ class AutoHotkeyHelpSystem(AceMixin, commands.Cog):
 	def is_claimed(self, channel_id):
 		return channel_id in self.claimed_channel.values()
 
+	@commands.command(hidden=True)
+    	async def wta(self,ctx):
+		'''Responds with the currently open for claiming channels.'''
+        	open_category = self.bot.get_channel(OPEN_CATEGORY_ID)
+        	channels = list(open_category.text_channels)
+        	channel_mentions = []
+        	for c in channels:
+        	    	if c.id == GET_HELP_CHAN_ID:
+                		continue
+            	channel_mentions.append(c.mention)
+        	wta_format = ""
+        	if len(channel_mentions) == 0:
+            		wta_format = "No help channels are available for questions at this time. Please wait to ask a question, or ask staff for guidance."
+        	else:
+            		wta_format = "Please ask in a channel under the **{}** category. Use " + (("{}, " *  (len(channel_mentions)-1) + "or ") if len(channel_mentions)-1 > 0 else "") + "{}."
+        	await ctx.send(wta_format.format(open_category.name,*channel_mentions))
+
 
 def setup(bot):
 	bot.add_cog(AutoHotkeyHelpSystem(bot))
