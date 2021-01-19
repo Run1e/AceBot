@@ -174,7 +174,7 @@ class AutoHotkey(AceMixin, commands.Cog):
 				except discord.HTTPException:
 					return
 
-				if reaction.member in users:
+				if message.author == reaction.member or reaction.member in users:
 					try:
 						await message.remove_reaction(remove_from, reaction.member)
 					except discord.HTTPException:
