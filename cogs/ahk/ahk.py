@@ -18,7 +18,6 @@ from utils.html2markdown import HTML2Markdown
 from utils.pager import Pager
 from utils.string import po
 from utils.time import pretty_timedelta
-from ids import OPEN_CATEGORY_ID, GET_HELP_CHANNEL_ID
 
 log = logging.getLogger(__name__)
 
@@ -429,18 +428,7 @@ class AutoHotkey(AceMixin, commands.Cog):
 		'''Compile and run Relax code through CloudAHK. Example: `rlx define i32 Main() {return 20}`'''
 
 		await self.cloudahk_call(ctx, code, 'rlx')
-	
-	@commands.command()
-	async def wta(self,ctx):
-		open_category = self.bot.get_channel(OPEN_CATEGORY_ID)
-		channels = list(open_category.text_channels)
-		channel_mentions = []
-		for i, c in enumerate(channels):
-			if c.id == GET_HELP_CHANNEL_ID:
-				continue
-		channel_mentions.append(c.mention)
-		await ctx.send("Please ask in a channel under **{}** category. Use either {} or {}.".format(open_category.name,*channel_mentions))
-	
+
 
 def setup(bot):
 	bot.add_cog(AutoHotkey(bot))
