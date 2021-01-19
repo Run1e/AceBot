@@ -165,22 +165,30 @@ class AutoHotkey(AceMixin, commands.Cog):
 		except discord.HTTPException:
 			return
 
-		remove_from = '✅' if emoji == '❌' else '❌'
+		# remove same emoji if from message author
+		if message.author == reaction.member:
+			try:
+				await message.remove_reaction(emoji, reaction.member)
+			except discord.HTTPException:
+				pass
+		else:
+			# remove opposite emoji if added
+			remove_from = '✅' if emoji == '❌' else '❌'
 
-		for reac in message.reactions:
-			if str(reac.emoji) == remove_from:
-				try:
-					users = await reac.users().flatten()
-				except discord.HTTPException:
-					return
-
-				if message.author == reaction.member or reaction.member in users:
+			for reac in message.reactions:
+				if str(reac.emoji) == remove_from:
 					try:
-						await message.remove_reaction(remove_from, reaction.member)
+						users = await reac.users().flatten()
 					except discord.HTTPException:
-						pass
+						return
 
-				return
+					if reaction.member in users:
+						try:
+							await message.remove_reaction(remove_from, reaction.member)
+						except discord.HTTPException:
+							pass
+
+					return
 
 	def craft_docs_page(self, record):
 		page = record.get('page')
