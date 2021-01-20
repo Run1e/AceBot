@@ -143,6 +143,18 @@ class AutoHotkey(AceMixin, commands.Cog):
 		await message.add_reaction('✅')
 		await message.add_reaction('❌')
 
+	@commands.Cog.listener('on_raw_message_edit')
+	async def handle_emoji_suggestion_message_edit(self, message: discord.RawMessageUpdateEvent):
+		if message.channel_id == EMOJI_SUGGESTIONS_CHAN_ID:
+			channel = self.bot.get_channel(EMOJI_SUGGESTIONS_CHAN_ID)
+			if channel is None:
+				return
+
+			try:
+				await channel.delete_messages([discord.Object(message.message_id)])
+			except discord.HTTPException:
+				pass
+
 	@commands.Cog.listener('on_raw_reaction_add')
 	async def handle_emoji_suggestion_reaction(self, reaction: discord.RawReactionActionEvent):
 		if reaction.channel_id != EMOJI_SUGGESTIONS_CHAN_ID:
