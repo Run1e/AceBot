@@ -135,6 +135,8 @@ class AutoHotkey(AceMixin, commands.Cog):
 			# if attachment is not an image, delete
 			if message.attachments[0].height is None:
 				return await message.delete()
+			if message.content:
+				return await message.delete()
 		elif len(matches) > 1:
 			# if no attachments, make sure there's not multiple emojis
 			return await message.delete()
