@@ -19,7 +19,7 @@ SUCCESS_EMOJI = '\U00002705'
 DEFAULT_REMINDER_MESSAGE = 'Hey, wake up!'
 MIN_DELTA = timedelta(minutes=1)
 MAX_DELTA = timedelta(days=365 * 10)
-MAX_REMINDERS = 9
+MAX_REMINDERS = 32
 
 
 class RemindPager(Pager):
@@ -55,19 +55,43 @@ class ReminderConverter(commands.Converter):
 	NO_DT_FOUND = commands.CommandError('No time/date found in input.')
 
 	async def convert(self, ctx, argument):
-
 		cal = parsedatetime.Calendar()
 		now = datetime.utcnow()
 
 		try:
-			when, when_type = cal.parseDT(argument, now)
-		except Exception:
+			ret = cal.nlp(argument, now)
+		except Exception as exc:
 			raise self.NO_DT_FOUND
 
-		if when_type == 0:
+		if not ret:
 			raise self.NO_DT_FOUND
 
-		return now, when, argument
+		(dt, flags, start, end, text), *rest = ret
+
+		if flags == 0:
+			raise self.NO_DT_FOUND
+
+		before = argument[:start].strip(' ')
+		end = argument[end:].strip(' ')
+
+		joiners = (',', )
+
+		for joiner in joiners:
+			if before.endswith(joiner) and end.startswith(joiner):
+				end = end[len(joiner):]
+
+		before = before.strip(' ')
+		end = end.strip(' ')
+
+		parts = list()
+		if before:
+			parts.append(before)
+		if end:
+			parts.append(end)
+
+		text = ' '.join(parts)
+
+		return now, dt, None if not text else text
 
 
 class Reminders(AceMixin, commands.Cog):
@@ -89,19 +113,25 @@ class Reminders(AceMixin, commands.Cog):
 	@commands.Cog.listener()
 	async def on_reminder_complete(self, record):
 		_id = record.get('id')
+		guild_id = record.get('guild_id')
 		channel_id = record.get('channel_id')
 		user_id = record.get('user_id')
+		message_id = record.get('message_id')
 		made_on = record.get('made_on')
 		message = record.get('message')
 
 		channel = self.bot.get_channel(channel_id)
 		user = self.bot.get_user(user_id)
 
-		e = discord.Embed(
-			title='Reminder:',
-			description=message or DEFAULT_REMINDER_MESSAGE,
-			timestamp=made_on
-		)
+		desc = message or DEFAULT_REMINDER_MESSAGE
+
+		if message_id is not None:
+			jump_url = 'https://discord.com/channels/{0}/{1}/{2}'.format(guild_id, channel_id, message_id)
+			desc += f'\n\n[Click for context!]({jump_url})'
+
+		e = discord.Embed(title='Reminder', description=desc, timestamp=made_on)
+
+		e.set_footer(text=f'#{channel.name}')
 
 		try:
 			if channel is not None:
@@ -111,7 +141,7 @@ class Reminders(AceMixin, commands.Cog):
 		except discord.HTTPException as exc:
 			log.info('Failed sending reminder #%s for %s - %s', _id, po(user), str(exc))
 
-	@commands.command(aliases=['remind'])
+	@commands.command(aliases=['remind', 'reminder'])
 	@commands.bot_has_permissions(add_reactions=True)
 	async def remindme(self, ctx, *, when_and_what: ReminderConverter()):
 		'''Create a new reminder.'''
@@ -132,8 +162,8 @@ class Reminders(AceMixin, commands.Cog):
 			raise commands.CommandError(f'Sorry, you can\'t have more than {MAX_REMINDERS} active reminders at once.')
 
 		await self.db.execute(
-			'INSERT INTO remind (guild_id, channel_id, user_id, made_on, remind_on, message) VALUES ($1, $2, $3, $4, $5, $6)',
-			ctx.guild.id, ctx.channel.id, ctx.author.id, now, when, message
+			'INSERT INTO remind (guild_id, channel_id, user_id, message_id, made_on, remind_on, message) VALUES ($1, $2, $3, $4, $5, $6, $7)',
+			ctx.guild.id, ctx.channel.id, ctx.author.id, ctx.message.id, now, when, message
 		)
 
 		self.timer.maybe_restart(when)

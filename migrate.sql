@@ -135,6 +135,7 @@ CREATE TABLE IF NOT EXISTS remind (
 	guild_id	BIGINT NOT NULL,
 	channel_id	BIGINT NOT NULL,
 	user_id		BIGINT NOT NULL,
+	message_id	BIGINT NULL,
 	made_on		TIMESTAMP NOT NULL,
 	remind_on	TIMESTAMP NOT NULL,
 	message		TEXT
