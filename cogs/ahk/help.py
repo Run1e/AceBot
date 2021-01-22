@@ -500,6 +500,24 @@ class AutoHotkeyHelpSystem(AceMixin, commands.Cog):
 	def is_claimed(self, channel_id):
 		return channel_id in self.claimed_channel.values()
 
+   	@commands.command(hidden=True, aliases=['ais'])
+    	async def wta(self,ctx):
+        	'''Responds with the currently open for claiming channels.'''
+        	async with self.channel_claim_lock:
+		    	open_category = self.bot.get_channel(OPEN_CATEGORY_ID)
+		    	if open_category is None: 
+				await ctx.send("Something went wrong.")
+				return
+		    	open_help_channels = [channel for channel in open_category.text_channels if channel.id != GET_HELP_CHAN_ID]
+		    	if not open_help_channels:
+				await ctx.send("No help channels are available for questions at this time. Please wait to ask a question, or ask staff for guidance.")
+				return
+		    	open_help_channel_mentions = [c.mention for c in open_help_channels]
+		    	if len(open_help_channel_mentions) > 1:
+				open_help_channel_mentions[-1] = 'or ' + open_help_channel_mentions[-1]
+		    	wta_format = "Please ask in a channel under the **{}** category. Use {}."
+		    	await ctx.send(wta_format.format(open_category.name,', '.join(open_help_channel_mentions)))
+
 
 def setup(bot):
 	bot.add_cog(AutoHotkeyHelpSystem(bot))
