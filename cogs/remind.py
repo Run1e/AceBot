@@ -60,7 +60,7 @@ class ReminderConverter(commands.Converter):
 
 		try:
 			ret = cal.nlp(argument, now)
-		except Exception as exc:
+		except Exception:
 			raise self.NO_DT_FOUND
 
 		if not ret:
