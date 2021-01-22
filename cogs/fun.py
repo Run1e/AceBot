@@ -452,6 +452,7 @@ class Fun(AceMixin, commands.Cog):
 
 			e = discord.Embed(
 				title=img['alt'],
+				url=comic_url,
 				description=img['title']
 			)
 
