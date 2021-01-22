@@ -18,7 +18,8 @@ from tensorflow import keras
 log.info('Finished importing keras.')
 
 from cogs.mixins import AceMixin
-from ids import ACTIVE_CATEGORY_ID, ACTIVE_INFO_CHAN_ID, AHK_GUILD_ID, CLOSED_CATEGORY_ID, GET_HELP_CHAN_ID, IGNORE_ACTIVE_CHAN_IDS, OPEN_CATEGORY_ID, RULES_CHAN_ID
+from ids import ACTIVE_CATEGORY_ID, ACTIVE_INFO_CHAN_ID, AHK_GUILD_ID, CLOSED_CATEGORY_ID, GET_HELP_CHAN_ID, IGNORE_ACTIVE_CHAN_IDS, OPEN_CATEGORY_ID, \
+	RULES_CHAN_ID
 from utils.context import is_mod
 from utils.string import po
 from utils.time import pretty_timedelta
@@ -500,23 +501,34 @@ class AutoHotkeyHelpSystem(AceMixin, commands.Cog):
 	def is_claimed(self, channel_id):
 		return channel_id in self.claimed_channel.values()
 
-   	@commands.command(hidden=True, aliases=['ais'])
-    	async def wta(self,ctx):
-        	'''Responds with the currently open for claiming channels.'''
-        	async with self.channel_claim_lock:
-		    	open_category = self.bot.get_channel(OPEN_CATEGORY_ID)
-		    	if open_category is None: 
-				await ctx.send("Something went wrong.")
-				return
-		    	open_help_channels = [channel for channel in open_category.text_channels if channel.id != GET_HELP_CHAN_ID]
-		    	if not open_help_channels:
-				await ctx.send("No help channels are available for questions at this time. Please wait to ask a question, or ask staff for guidance.")
-				return
-		    	open_help_channel_mentions = [c.mention for c in open_help_channels]
-		    	if len(open_help_channel_mentions) > 1:
-				open_help_channel_mentions[-1] = 'or ' + open_help_channel_mentions[-1]
-		    	wta_format = "Please ask in a channel under the **{}** category. Use {}."
-		    	await ctx.send(wta_format.format(open_category.name,', '.join(open_help_channel_mentions)))
+	@commands.command(hidden=True)
+	async def ask(self, ctx):
+		'''Responds with the currently open for claiming channels.'''
+
+		async with self.channel_claim_lock:
+			open_category = self.open_category
+			if open_category is None:
+				raise commands.CommandError('Open category not found.')
+
+			channels = [channel for channel in open_category.text_channels if channel.id != GET_HELP_CHAN_ID]
+			if not channels:
+				raise commands.CommandError('No help channels are currently open for claiming. Please wait for a channel to become available.')
+
+			mentions = [c.mention for c in channels]
+			mention_count = len(mentions)
+
+			if mention_count < 3:
+				ment = ' and '.join(mentions)
+			else:
+				mentions[-1] = 'and ' + mentions[-1]
+				ment = ', '.join(mentions)
+
+			text = (
+				'If you\'re looking for scripting help you should ask in an open help channel.\n\n'
+				'The currently available help channels are {1}.'
+			).format(open_category, ment)
+
+			await ctx.send(text)
 
 
 def setup(bot):
