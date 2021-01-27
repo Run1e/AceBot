@@ -140,7 +140,7 @@ Run `help welcome` for a complete list of commands.
 
 The bot can create a role selector for you. Here's an example of such a selector:
 # ![Role selector](https://i.imgur.com/1RoSHLs.png)
-By clicking the reactions the user is given the corrolated role.
+By clicking the reactions the user is given the correlated role.
 
 Run `help roles` for a full list of commands.
 
@@ -166,29 +166,74 @@ CREATE EXTENSION pg_trgm;
 Then in the root folder, make a file called `config.py` and insert, at minimum, your bot token, PostgreSQL bind and
 owner id:
 ```py
+import logging
 import discord
 
-DESCRIPTION     = 'A.C.E. - Autonomous Command Executor'
+DESCRIPTION = '''A.C.E. - Non-official Instance'''
 
-BOT_TOKEN       = 'your_bot_token'
-DEFAULT_PREFIX  = '.'
-OWNER_ID        = your_owner_id
-DB_BIND         = 'your_db_bind'  # in the form of: postgresql://user:pass@host/database
-LOG_LEVEL       = 'INFO'
+BOT_TOKEN = 'your_token'
+BOT_INTENTS = discord.Intents.all()
+DEFAULT_PREFIX = '.'
+OWNER_ID = your_discord_id
+DB_BIND = 'db_bind'
+LOG_LEVEL = logging.DEBUG  # logging.INFO recommended for production
 
-BOT_ACTIVITY    = discord.Game(name='@mention for help menu')
+BOT_ACTIVITY = discord.Game(name='@me for help menu')
 
-SPOTIFY_ID      = 'your spotify id'
-SPOTIFY_SECRET  = 'your spotify secret'
-DBL_KEY         = None
-THECATAPI_KEY   = None
-WOLFRAM_KEY     = None
-APIXU_KEY       = None
+CLOUDAHK_URL = None
+CLOUDAHK_USER = None
+CLOUDAHK_PASS = None
+
+DBL_KEY = None
+THECATAPI_KEY = None
+WOLFRAM_KEY = None
+APIXU_KEY = None
 ```
 
-Last step is to run the migrator. `python migrate.py` will set up the database tables needed. If you have data from a
+Then run the migrator. `python migrate.py` will set up the database tables needed. If you have data from a
 previous instance of the bot that ran on the old version, add your database bind from your old config to the
 `migrate_data.py` file and run that as well.
+
+Then you're also going to have to create the `ids.py` file in the root folder with misc. discord object ids.
+Here's a template though there might be some variables missing in the future:
+```py
+AHK_GUILD_ID = None
+
+# roles
+STAFF_ROLE_ID = None
+FORUM_ADM_ROLE_ID = None
+FORUM_MOD_ROLE_ID = None
+VIP_ROLE_ID = None
+LOUNGE_ROLE_ID = None
+
+# level roles
+LEVEL_ROLE_IDS = {}
+
+# channels
+ROLES_CHAN_ID = None
+RULES_CHAN_ID = None
+GENERAL_CHAN_ID = None
+LOGS_CHAN_ID = None
+FORUM_THRD_CHAN_ID = None
+ACTIVITY_CHAN_ID = None
+EDITED_CHAN_ID = None
+DELETED_CHAN_ID = None
+GUILD_CHAN_ID = None
+EMOJI_SUGGESTIONS_CHAN_ID = None
+SUGGESTIONS_CHAN_ID = None
+GET_HELP_CHAN_ID = None
+
+# messages
+RULES_MSG_ID = None
+
+# category ids
+OPEN_CATEGORY_ID = None
+ACTIVE_CATEGORY_ID = None
+ACTIVE_INFO_CHAN_ID = None
+CLOSED_CATEGORY_ID = None
+
+IGNORE_ACTIVE_CHAN_IDS = tuple()
+```
 
 ## Acknowledgements
 
