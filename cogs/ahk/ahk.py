@@ -304,9 +304,11 @@ class AutoHotkey(AceMixin, commands.Cog):
 			' No output.\n' if stdout == '' else '\n```autoit\n{0}\n```'.format(stdout),
 			'Timed out' if time is None else '{0:.1f} seconds'.format(time),
 		)
-
-		await ctx.send(out)
-
+		try:
+			await ctx.send(content=out,reference=ctx.message.reference)
+		except HTTPException as e:
+			await ctx.send(content=out)
+		
 		return stdout, time
 
 	@commands.command()
