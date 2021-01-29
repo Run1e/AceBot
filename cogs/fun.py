@@ -425,41 +425,47 @@ class Fun(AceMixin, commands.Cog):
 	@commands.command(hidden=True)
 	@commands.cooldown(rate=3, per=10.0, type=commands.BucketType.user)
 	@commands.bot_has_permissions(embed_links=True)
-	async def xkcd(self, ctx, *, id: int = None):
+	async def xkcd(self, ctx, id: typing.Union[int, str] = None):
 		'''Get a random or specified xkcd comic.'''
-
-		if id is None:
-			url = 'https://c.xkcd.com/random/comic/'
-		else:
-			url = 'https://xkcd.com/{}'.format(id)
-
 		async with ctx.typing():
-			async with ctx.http.get(url) as resp:
+			resp = None
+			comic_json = None
+			url = None
+			if isinstance(id,int) and not id == 0:
+				# specific comic
+				id = abs(id)
+				url = f"https://xkcd.com/{id}/info.0.json"
+			elif id == 0 or isinstance(id,str) and id.lower() in ("latest","recent","today"): 
+				#latest comic
+				url = 'https://xkcd.com/info.0.json'
+			else: # id must be None or a str that isn't asking for today
+				#random comic
+				resp = await http.get('https://c.xkcd.com/random/comic')
 				if resp.status != 200:
 					raise commands.CommandError('Request failed.')
-
-				content = await resp.text()
-
-				comic_url = str(resp.url)
-
-			bs = BeautifulSoup(content, 'html.parser')
-			brs = bs.find('div', attrs=dict(id='middleContainer'))
-			img = brs.find('img')
-
-			if img is None:
-				await ctx.send(url)
-				return
-
+				id = str(resp.url).lstrip('https://xkcd.com/').rstrip("/")
+				url = f"https://xkcd.com/{id}/info.0.json"
+			resp = await http.get(url)
+			if resp.status == 404:
+				raise commands.CommandError('Comic does not exist.')
+			if resp.status != 200:
+				raise commands.CommandError('Request failed.')
+			comic_json = await resp.json()
+			if id != comic_json['num']:
+				id = comic_json['num']
+			comic_url = f'https://xkcd.com/{id}'
 			e = discord.Embed(
-				title=img['alt'],
-				url=comic_url,
-				description=img['title']
-			)
-
-			e.set_image(url='https:' + img['src'])
-			e.set_footer(text=comic_url.lstrip('https://').rstrip('/'), icon_url='https://i.imgur.com/onzWnfd.png')
+				title=comic_json['safe_title'],
+				description=f"*{comic_json['alt']}*",
+				color=discord.Color.dark_theme(),
+				url=comic_url
+				)
+			comic_date = date(int(comic_json['year']),int(comic_json['month']),int(comic_json['day']))
+			e.set_image(url=comic_json['img'])
+			e.set_footer(text=f"{comic_url.lstrip('https://').rstrip('/')} • {str(comic_date)}", icon_url='https://i.imgur.com/onzWnfd.png')
 
 			await ctx.send(embed=e)
+
 
 	@commands.command(aliases=['dog'])
 	@commands.cooldown(rate=6, per=10.0, type=commands.BucketType.user)
