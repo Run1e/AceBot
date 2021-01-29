@@ -12,6 +12,19 @@ The bot was initially made for the
 
 Support server invite [here.](https://discord.gg/X7abzRe)
 
+## Table of Contents
+* Usage
+  * [General commands](#general-commands)
+  * [Starboard](#starboard)
+  * [Tags](#tags)
+  * [Bot configuration](#bot-configuration)
+  * [Moderation](#moderation)
+  * [Welcome](#welcome)
+  * [Roles](#roles)
+  * [Feedback](#feedback)
+* [Installing the bot](#installing-the-bot)
+* [Acknowledgements](#acknowledgements)
+
 ### General commands
 
 The bot has a plethora of commands. To invoke these, send a message starting with `.` followed by the command name.
