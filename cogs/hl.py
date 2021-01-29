@@ -71,7 +71,7 @@ class Highlighter(AceMixin, commands.Cog):
 			raise commands.CommandError('Code contents too long to paste.')
 		try:
 			message = await ctx.send(content=code,reference=ctx.message.reference)
-		except HTTPException as e:
+		except discord.HTTPException as e:
 			message = await ctx.send(content=code)
 
 		await self.db.execute(
