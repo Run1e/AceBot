@@ -3,7 +3,7 @@ import logging
 from datetime import date, datetime
 from json import loads
 from random import choice
-
+import typing
 import aiohttp
 import discord
 from bs4 import BeautifulSoup
@@ -431,21 +431,21 @@ class Fun(AceMixin, commands.Cog):
 			resp = None
 			comic_json = None
 			url = None
-			if isinstance(id,int) and not id == 0:
+			if isinstance(id, int) and not id == 0:
 				# specific comic
 				id = abs(id)
-				url = f"https://xkcd.com/{id}/info.0.json"
-			elif id == 0 or isinstance(id,str) and id.lower() in ("latest","recent","today"): 
+				url = f'https://xkcd.com/{id}/info.0.json'
+			elif id == 0 or isinstance(id, str) and id.lower() in ('latest', 'recent', 'today'): 
 				#latest comic
 				url = 'https://xkcd.com/info.0.json'
 			else: # id must be None or a str that isn't asking for today
 				#random comic
-				resp = await http.get('https://c.xkcd.com/random/comic')
+				resp = await ctx.http.get('https://c.xkcd.com/random/comic')
 				if resp.status != 200:
 					raise commands.CommandError('Request failed.')
 				id = str(resp.url).lstrip('https://xkcd.com/').rstrip("/")
-				url = f"https://xkcd.com/{id}/info.0.json"
-			resp = await http.get(url)
+				url = f'https://xkcd.com/{id}/info.0.json'
+			resp = await ctx.http.get(url)
 			if resp.status == 404:
 				raise commands.CommandError('Comic does not exist.')
 			if resp.status != 200:
@@ -462,7 +462,7 @@ class Fun(AceMixin, commands.Cog):
 				)
 			comic_date = date(int(comic_json['year']),int(comic_json['month']),int(comic_json['day']))
 			e.set_image(url=comic_json['img'])
-			e.set_footer(text=f"{comic_url.lstrip('https://').rstrip('/')} • {str(comic_date)}", icon_url='https://i.imgur.com/onzWnfd.png')
+			e.set_footer(text='{} • {}'.format(comic_url.lstrip('https://').rstrip('/'), str(comic_date)), icon_url='https://i.imgur.com/onzWnfd.png')
 
 			await ctx.send(embed=e)
 
