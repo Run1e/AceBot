@@ -176,6 +176,7 @@ If you want to permanently host your own instance, you should probably put it on
 but for development your local PC will suffice.
 
 ### Requirements:
+
 * PostgreSQL
 * Python 3
 * PIP (should come with Python)
@@ -184,6 +185,7 @@ but for development your local PC will suffice.
 Please install these according to their instructions.
 
 ### Setting up PostgreSQL
+
 * **Windows**
   * When installing PostgreSQL, you will be asked to choose a password. **Remember it.**
   * Open up a Command Prompt and run `psql -U postgres`.
@@ -204,6 +206,7 @@ Please install these according to their instructions.
 * On Linux, you can now `exit` to return to your own user account.
 
 ### Setting up AceBot
+
 * Clone this repository and change into its root folder:
   `git clone --recurse-submodules https://github.com/Run1e/AceBot && cd AceBot`
 * Create a file called `config.py` and add this content to it:
@@ -288,11 +291,13 @@ you can get the ID of channels, categories, roles, etc. by right-clicking on the
 (if you've got the Developer Mode enabled).
 
 ### Finishing up
+
 * Run `pip install -r requirements.txt`.
 * Run `python migrate.py` to setup all necessary databases automatically.
 * Create a folder called `logs`.
 
 ### That's it!
+
 You should be able to start the bot with `python ace.py`!
 
 ## Acknowledgements
