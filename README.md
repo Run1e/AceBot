@@ -175,7 +175,7 @@ You can setup a development environment on your local PC or on a dedicated sever
 If you want to permanently host your own instance, you should probably put it on a dedicated server,
 but for development your local PC will suffice.
 
-### Requirements:
+### Requirements
 
 * PostgreSQL
 * Python 3
