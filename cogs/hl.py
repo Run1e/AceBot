@@ -30,9 +30,20 @@ class Highlighter(AceMixin, commands.Cog):
 
 	@commands.command(aliases=['h1'])
 	@commands.bot_has_permissions(manage_messages=True, add_reactions=True)
-	async def hl(self, ctx, *, code):
+	async def hl(self, ctx, *, code: str = None):
 		'''Highlight some code.'''
-
+		if ctx.message.reference is not None:
+			# get the replied to message contents if there is one
+			ref_msg = ctx.message.reference.resolved
+			if ref_msg.author.bot:
+				raise commands.CommandError('Can not paste bot messages.')
+			code = ref_msg.content
+		else:
+			# include spaces/tabs at the beginning
+			code = ctx.message.content[len(ctx.prefix) + 3:]
+			if len(code) == 0:
+				raise commands.CommandError('No code to paste.')
+		
 		await ctx.message.delete()
 
 		# include spaces/tabs at the beginning
@@ -58,8 +69,10 @@ class Highlighter(AceMixin, commands.Cog):
 
 		if len(code) > 2000:
 			raise commands.CommandError('Code contents too long to paste.')
-
-		message = await ctx.send(code)
+		try:
+			message = await ctx.send(content=code,reference=ctx.message.reference)
+		except HTTPException as e:
+			message = await ctx.send(content=code)
 
 		await self.db.execute(
 			'INSERT INTO highlight_msg (guild_id, channel_id, user_id, message_id) VALUES ($1, $2, $3, $4)',
