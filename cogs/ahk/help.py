@@ -527,8 +527,10 @@ class AutoHotkeyHelpSystem(AceMixin, commands.Cog):
 				'If you\'re looking for scripting help you should ask in an open help channel.\n\n'
 				'The currently available help channels are {1}.'
 			).format(open_category, ment)
-
-			await ctx.send(text)
+			try:
+				await ctx.send(content=text,reference=ctx.message.reference)
+			except HTTPException as e:
+				await ctx.send(content=text)
 
 
 def setup(bot):
