@@ -13,7 +13,8 @@ The bot was initially made for the
 Support server invite [here.](https://discord.gg/X7abzRe)
 
 ## Table of Contents
-* Usage
+
+* [Usage](#usage)
   * [General commands](#general-commands)
   * [Starboard](#starboard)
   * [Tags](#tags)
@@ -24,6 +25,8 @@ Support server invite [here.](https://discord.gg/X7abzRe)
   * [Feedback](#feedback)
 * [Installing the bot](#installing-the-bot)
 * [Acknowledgements](#acknowledgements)
+
+## Usage
 
 ### General commands
 
