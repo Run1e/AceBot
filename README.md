@@ -24,6 +24,10 @@ Support server invite [here.](https://discord.gg/X7abzRe)
   * [Roles](#roles)
   * [Feedback](#feedback)
 * [Installing the bot](#installing-the-bot)
+  * [Requirements](#requirements)
+  * [Setting up PostgreSQL](#setting-up-postgresql)
+  * [Setting up AceBot](#setting-up-acebot)
+  * [Finishing up](#finishing-up)
 * [Acknowledgements](#acknowledgements)
 
 ## Usage
