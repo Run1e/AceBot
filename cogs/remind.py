@@ -29,7 +29,11 @@ class RemindPager(Pager):
 		e.set_author(name=self.author.name, icon_url=self.author.avatar_url)
 		e.description = 'All your reminders for this server.'
 
-		for _id, guild_id, channel_id, user_id, made_on, remind_on, message in entries:
+		for record in entries:
+			_id = record.get('id')
+			remind_on = record.get('remind_on')
+			message = record.get('message')
+
 			delta = remind_on - now
 
 			time_text = pretty_timedelta(delta)
