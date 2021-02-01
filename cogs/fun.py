@@ -422,45 +422,68 @@ class Fun(AceMixin, commands.Cog):
 
 			await ctx.send(url + tag['href'])
 
-	@commands.command(hidden=True)
-	@commands.cooldown(rate=3, per=10.0, type=commands.BucketType.user)
+	@commands.group(name='xkcd', invoke_without_command=True)
 	@commands.bot_has_permissions(embed_links=True)
 	async def xkcd(self, ctx, *, id: int = None):
 		'''Get a random or specified xkcd comic.'''
-
-		if id is None:
-			url = 'https://c.xkcd.com/random/comic/'
-		else:
-			url = 'https://xkcd.com/{}'.format(id)
-
 		async with ctx.typing():
+			if id is None:
+				await self.random(ctx)
+				return
+			url = f'https://xkcd.com/{id}/info.0.json'
 			async with ctx.http.get(url) as resp:
 				if resp.status != 200:
 					raise commands.CommandError('Request failed.')
-
-				content = await resp.text()
-
-				comic_url = str(resp.url)
-
-			bs = BeautifulSoup(content, 'html.parser')
-			brs = bs.find('div', attrs=dict(id='middleContainer'))
-			img = brs.find('img')
-
-			if img is None:
-				await ctx.send(url)
-				return
-
-			e = discord.Embed(
-				title=img['alt'],
-				url=comic_url,
-				description=img['title']
-			)
-
-			e.set_image(url='https:' + img['src'])
-			e.set_footer(text=comic_url.lstrip('https://').rstrip('/'), icon_url='https://i.imgur.com/onzWnfd.png')
-
+				comic_json = await resp.json()
+			e = await self.make_xkcd_embed(comic_json)
 			await ctx.send(embed=e)
 
+
+	@xkcd.command(aliases=('today','recent','now'))
+	async def latest(self, ctx):
+		async with ctx.typing():
+			url = 'https://xkcd.com/info.0.json'
+			comic_json = await self.get_xkcd_json(ctx,url)
+			e = await self.make_xkcd_embed(comic_json)
+			await ctx.send(embed=e)
+	
+	@xkcd.command()
+	async def random(self, ctx):
+		async with ctx.typing():
+			url = 'https://c.xkcd.com/random/comic/'
+			async with ctx.http.get(url) as resp:
+				if resp.status == 404:
+					raise commands.CommandError('Comic does not exist.')
+				if resp.status != 200:
+					raise commands.CommandError('Request failed.')
+				url = str(resp.url)
+				num = url.lstrip('https://xkcd.com/').rstrip('/')
+			url = 'https://xkcd.com/{}/info.0.json'.format(num)
+			comic_json = await self.get_xkcd_json(ctx, url)
+			e = await self.make_xkcd_embed(comic_json)
+			await ctx.send(embed=e)
+			return
+	
+	async def get_xkcd_json(self, ctx, url):
+		async with ctx.http.get(url) as resp:
+			if resp.status == 404:
+				raise commands.CommandError('Comic does not exist.')
+			if resp.status != 200:
+				raise commands.CommandError('Request failed.')
+			return await resp.json()
+	
+	async def make_xkcd_embed(self, comic_json):
+		comic_url = 'https://xkcd.com/{}'.format(comic_json['num'])
+		e = discord.Embed(
+				title=comic_json['title'],
+				url=comic_url,
+				description=comic_json['alt']
+			)
+		footer_text = 'xkcd.com/{} • {}-{}-{}'.format(comic_json['num'], comic_json['year'], comic_json['month'], comic_json['day'])
+		e.set_image(url=comic_json['img'])
+		e.set_footer(text=footer_text, icon_url='https://i.imgur.com/onzWnfd.png')
+		return e
+	
 	@commands.command(aliases=['dog'])
 	@commands.cooldown(rate=6, per=10.0, type=commands.BucketType.user)
 	@commands.bot_has_permissions(embed_links=True)
