@@ -4,6 +4,8 @@ from datetime import date, datetime
 from json import loads
 from random import choice
 
+import urllib.parse
+import typing
 import aiohttp
 import discord
 from bs4 import BeautifulSoup
@@ -422,48 +424,81 @@ class Fun(AceMixin, commands.Cog):
 
 			await ctx.send(url + tag['href'])
 
+
 	@commands.group(name='xkcd', invoke_without_command=True)
 	@commands.bot_has_permissions(embed_links=True)
-	async def xkcd(self, ctx, *, id: int = None):
-		'''Get a random or specified xkcd comic.'''
+	async def xkcd(self, ctx, *, search : typing.Union[int, str] = None):
+		'''Gets an xkcd comic.'''
 		async with ctx.typing():
-			if id is None:
+			if search is None:
 				await self.random(ctx)
-				return
-			url = f'https://xkcd.com/{id}/info.0.json'
-			async with ctx.http.get(url) as resp:
-				if resp.status != 200:
-					raise commands.CommandError('Request failed.')
-				comic_json = await resp.json()
-			e = await self.make_xkcd_embed(comic_json)
+			elif isinstance(search, int):
+				await self.num(ctx, search)
+			else:
+				await self.relevant(ctx, search=search)
+
+	@commands.cooldown(rate=3, per=10.0, type=commands.BucketType.user)
+	@xkcd.command(aliases=['id','#'])
+	async def num(self, ctx, id):
+		'''Shows a specific xkcd comic given a number'''
+		async with ctx.typing():
+			e = await self.get_xkcd_comic(ctx, id)
 			await ctx.send(embed=e)
 
 
-	@xkcd.command(aliases=('today','recent','now'))
+	@commands.cooldown(rate=3, per=10.0, type=commands.BucketType.user)
+	@xkcd.command(aliases=['today','recent','now'])
 	async def latest(self, ctx):
+		'''Returns the latest xkcd comic from xkcd.com'''
 		async with ctx.typing():
 			url = 'https://xkcd.com/info.0.json'
 			comic_json = await self.get_xkcd_json(ctx,url)
 			e = await self.make_xkcd_embed(comic_json)
 			await ctx.send(embed=e)
 	
-	@xkcd.command()
+	@commands.cooldown(rate=3, per=10.0, type=commands.BucketType.user)
+	@xkcd.command(aliases=['rand'])
 	async def random(self, ctx):
+		'''Returns a random xkcd comic'''
 		async with ctx.typing():
 			url = 'https://c.xkcd.com/random/comic/'
 			async with ctx.http.get(url) as resp:
-				if resp.status == 404:
-					raise commands.CommandError('Comic does not exist.')
 				if resp.status != 200:
 					raise commands.CommandError('Request failed.')
-				url = str(resp.url)
-				num = url.lstrip('https://xkcd.com/').rstrip('/')
+				num = str(resp.url).lstrip('https://xkcd.com/').rstrip('/')
 			url = 'https://xkcd.com/{}/info.0.json'.format(num)
 			comic_json = await self.get_xkcd_json(ctx, url)
 			e = await self.make_xkcd_embed(comic_json)
 			await ctx.send(embed=e)
-			return
 	
+	@commands.cooldown(rate=1, per=7.0, type=commands.BucketType.user)
+	@xkcd.command(aliases=['search'])
+	async def relevant(self, ctx, *, search : str):
+		'''Grabs a relevant xkcd from `relevantxkcd.appspot.com`.'''
+		async with ctx.typing():
+			relevant_xkcd_url = 'https://relevantxkcd.appspot.com/process?action=xkcd&query='
+			search_url = relevant_xkcd_url + urllib.parse.quote(search)
+			async with ctx.http.get(search_url) as resp:
+				text = await resp.text()
+				results = text.split('\n')
+				num = results[2].split(' ')[0]
+				e = await self.get_xkcd_comic(ctx, num)
+				more_results = f'[More results]({search_url})'
+				relevance = '**Relevancy:** {}%\n{}\n\n'.format(str(round(float(results[0])*100,2)), more_results)
+				e.description = relevance + e.description
+				await ctx.send(embed=e)
+			
+	
+	async def get_xkcd_comic(self, ctx, id):
+		url = f'https://xkcd.com/{id}/info.0.json'
+		async with ctx.http.get(url) as resp:
+			if resp.status != 200:
+				raise commands.CommandError('Request failed.')
+			comic_json = await resp.json()
+		e = await self.make_xkcd_embed(comic_json)
+		return e
+
+
 	async def get_xkcd_json(self, ctx, url):
 		async with ctx.http.get(url) as resp:
 			if resp.status == 404:
@@ -477,12 +512,13 @@ class Fun(AceMixin, commands.Cog):
 		e = discord.Embed(
 				title=comic_json['title'],
 				url=comic_url,
-				description=comic_json['alt']
+				description='*{}*'.format(comic_json['alt'])
 			)
-		footer_text = 'xkcd.com/{} • {}-{}-{}'.format(comic_json['num'], comic_json['year'], comic_json['month'], comic_json['day'])
+		footer_text = 'xkcd.com/{}  •  {}-{}-{}'.format(comic_json['num'], comic_json['year'], comic_json['month'], comic_json['day'])
 		e.set_image(url=comic_json['img'])
 		e.set_footer(text=footer_text, icon_url='https://i.imgur.com/onzWnfd.png')
 		return e
+	
 	
 	@commands.command(aliases=['dog'])
 	@commands.cooldown(rate=6, per=10.0, type=commands.BucketType.user)
