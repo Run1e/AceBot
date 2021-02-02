@@ -428,7 +428,7 @@ class Fun(AceMixin, commands.Cog):
 	@commands.group(name='xkcd', invoke_without_command=True)
 	@commands.bot_has_permissions(embed_links=True)
 	async def xkcd(self, ctx, *, search : typing.Union[int, str] = None):
-		'''Gets an xkcd comic.'''
+		'''Get an xkcd comic.'''
 		async with ctx.typing():
 			if search is None:
 				await self.random(ctx)
@@ -439,8 +439,8 @@ class Fun(AceMixin, commands.Cog):
 
 	@commands.cooldown(rate=3, per=10.0, type=commands.BucketType.user)
 	@xkcd.command(aliases=['id','#'])
-	async def num(self, ctx, id):
-		'''Shows a specific xkcd comic given a number'''
+	async def num(self, ctx, id: int):
+		'''Get a specific xkcd comic, given a number.'''
 		async with ctx.typing():
 			e = await self.get_xkcd_comic(ctx, id)
 			await ctx.send(embed=e)
@@ -449,7 +449,7 @@ class Fun(AceMixin, commands.Cog):
 	@commands.cooldown(rate=3, per=10.0, type=commands.BucketType.user)
 	@xkcd.command(aliases=['today','recent','now'])
 	async def latest(self, ctx):
-		'''Returns the latest xkcd comic from xkcd.com'''
+		'''Get the latest xkcd comic.'''
 		async with ctx.typing():
 			url = 'https://xkcd.com/info.0.json'
 			comic_json = await self.get_xkcd_json(ctx,url)
@@ -459,7 +459,7 @@ class Fun(AceMixin, commands.Cog):
 	@commands.cooldown(rate=3, per=10.0, type=commands.BucketType.user)
 	@xkcd.command(aliases=['rand'])
 	async def random(self, ctx):
-		'''Returns a random xkcd comic'''
+		'''Get a random xkcd comic.'''
 		async with ctx.typing():
 			url = 'https://c.xkcd.com/random/comic/'
 			async with ctx.http.get(url) as resp:
@@ -474,7 +474,7 @@ class Fun(AceMixin, commands.Cog):
 	@commands.cooldown(rate=1, per=7.0, type=commands.BucketType.user)
 	@xkcd.command(aliases=['search'])
 	async def relevant(self, ctx, *, search : str):
-		'''Grabs a relevant xkcd from `relevantxkcd.appspot.com`.'''
+		'''Grabs a relevant xkcd from [`relevantxkcd.appspot.com`](https://relevantxkcd.appspot.com).'''
 		async with ctx.typing():
 			relevant_xkcd_url = 'https://relevantxkcd.appspot.com/process?action=xkcd&query='
 			search_url = relevant_xkcd_url + urllib.parse.quote(search)
@@ -514,7 +514,8 @@ class Fun(AceMixin, commands.Cog):
 				url=comic_url,
 				description='*{}*'.format(comic_json['alt'])
 			)
-		footer_text = 'xkcd.com/{}  •  {}-{}-{}'.format(comic_json['num'], comic_json['year'], comic_json['month'], comic_json['day'])
+		comic_date = date(int(comic_json['year']),int(comic_json['month']),int(comic_json['day']))
+		footer_text = 'xkcd.com/{}  •  {}'.format(comic_json['num'], comic_date)
 		e.set_image(url=comic_json['img'])
 		e.set_footer(text=footer_text, icon_url='https://i.imgur.com/onzWnfd.png')
 		return e
