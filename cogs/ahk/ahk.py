@@ -5,6 +5,7 @@ from base64 import b64encode
 from collections import OrderedDict
 from datetime import datetime, timedelta, timezone
 
+import io
 import discord
 from bs4 import BeautifulSoup
 from discord.ext import commands, tasks
@@ -286,7 +287,7 @@ class AutoHotkey(AceMixin, commands.Cog):
 		code = code.strip('`').strip()
 
 		# call cloudahk with 20 in timeout
-		async with self.bot.aiohttp.post('{}/{}'.format(CLOUDAHK_URL, lang), data=code, headers=headers, timeout=16) as resp:
+		async with self.bot.aiohttp.post('{}/{}'.format(CLOUDAHK_URL, lang), data=code, headers=headers, timeout=20) as resp:
 			if resp.status == 200:
 				result = await resp.json()
 			else:
@@ -295,17 +296,35 @@ class AutoHotkey(AceMixin, commands.Cog):
 		stdout, time = result['stdout'].strip(), result['time']
 
 		stdout = stdout.replace('`', '`\u200b')
+		file = None
+		if len(stdout) < 1800 and stdout.count('\n') < 12 and stdout.count('\r') < 12:
+			#upload as plaintext
+			valid_response = 'No output.\n' if stdout == '' else '\n```autoit\n{0}\n```'.format(stdout)
+		elif len(stdout) < 100000:
+			#upload to ahkscript.org
+			data = {'name': 'Ace Bot (Clone)', 'code': stdout}
+			async with ctx.http.post('https://p.ahkscript.org/',data=data) as resp:
+				if resp.status != 200:
+					raise commands.CommandError('Pastebin failed.')
+				valid_response = ' No output.\n' if stdout == '' else f' Results too large. Pasted. {resp.url}\n'
+		elif len(stdout) < (1000*1000*4000): # should be 4mb
+			fp = io.BytesIO(stdout.encode('utf-8'))
+			file = discord.File(fp, 'results.txt')
+			valid_response = ' No output.\n' if stdout == '' else ' Results too large for pastebin. See attached file.\n'
+		else:
+			raise commands.CommandError('Output greater than 4mb.')
 
-		if len(stdout) > 1800 or stdout.count('\n') > 12:
-			raise commands.CommandError('Output too large.')
-
-		out = '{0}{1}`Processing time: {2}`'.format(
+		out = '{}{}{}'.format(
 			ctx.author.mention,
-			' No output.\n' if stdout == '' else '\n```autoit\n{0}\n```'.format(stdout),
-			'Timed out' if time is None else '{0:.1f} seconds'.format(time),
+			valid_response,
+			'`Processing time: {}`'.format('Timed out' if time is None else '{0:.1f} seconds'.format(time))
 		)
+		
 
-		await ctx.send(out)
+		try:
+			await ctx.reply(content=out, file=file)
+		except discord.HTTPException:
+			await ctx.send(content=out, file=file)
 
 		return stdout, time
 
@@ -313,6 +332,13 @@ class AutoHotkey(AceMixin, commands.Cog):
 	@commands.cooldown(rate=1.0, per=5.0, type=commands.BucketType.user)
 	async def ahk(self, ctx, *, code):
 		'''Run AHK code through CloudAHK. Example: `ahk print("hello world!")`'''
+		
+		if code.startswith('https://p.ahkscript.org/'):
+			url = code.replace('?p=','?r=')
+			async with ctx.http.get(url) as resp:
+				if resp.status == 200 and str(resp.url) == url:
+					code = await resp.text()
+
 
 		stdout, time = await self.cloudahk_call(ctx, code)
 
