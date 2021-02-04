@@ -12,6 +12,22 @@ The bot was initially made for the
 
 Support server invite [here.](https://discord.gg/X7abzRe)
 
+## Table of Contents
+
+* [Usage](#usage)
+  * [General commands](#general-commands)
+  * [Starboard](#starboard)
+  * [Tags](#tags)
+  * [Bot configuration](#bot-configuration)
+  * [Moderation](#moderation)
+  * [Welcome](#welcome)
+  * [Roles](#roles)
+  * [Feedback](#feedback)
+* [Installing the bot](#installing-the-bot)
+* [Acknowledgements](#acknowledgements)
+
+## Usage
+
 ### General commands
 
 The bot has a plethora of commands. To invoke these, send a message starting with `.` followed by the command name.
@@ -150,90 +166,10 @@ You can send thoughts, feedback and suggestions directly to me by using the `fee
 
 ## Installing the bot
 
-If you want this bot in your server, I would prefer if you invite the official instance using the
-[invite link](https://discordapp.com/oauth2/authorize?&client_id=367977994486022146&scope=bot&permissions=268823632).
-Nevertheless, here's how to set it up!
+**If you want this bot in your server, I would prefer if you invite the official instance using the
+[invite link](https://discordapp.com/oauth2/authorize?&client_id=367977994486022146&scope=bot&permissions=268823632).**
 
-Create a PostgreSQL role and database:
-```sql
-CREATE ROLE ace WITH LOGIN PASSWORD 'your_pw';
-CREATE DATABASE acebot OWNER ace;
-
--- connect to database and then do:
-CREATE EXTENSION pg_trgm;
-```
-
-Then in the root folder, make a file called `config.py` and insert, at minimum, your bot token, PostgreSQL bind and
-owner id:
-```py
-import logging
-import discord
-
-DESCRIPTION = '''A.C.E. - Non-official Instance'''
-
-BOT_TOKEN = 'your_token'
-BOT_INTENTS = discord.Intents.all()
-DEFAULT_PREFIX = '.'
-OWNER_ID = your_discord_id
-DB_BIND = 'db_bind'
-LOG_LEVEL = logging.DEBUG  # logging.INFO recommended for production
-
-BOT_ACTIVITY = discord.Game(name='@me for help menu')
-
-CLOUDAHK_URL = None
-CLOUDAHK_USER = None
-CLOUDAHK_PASS = None
-
-DBL_KEY = None
-THECATAPI_KEY = None
-WOLFRAM_KEY = None
-APIXU_KEY = None
-```
-
-Then run the migrator. `python migrate.py` will set up the database tables needed. If you have data from a
-previous instance of the bot that ran on the old version, add your database bind from your old config to the
-`migrate_data.py` file and run that as well.
-
-Then you're also going to have to create the `ids.py` file in the root folder with misc. discord object ids.
-Here's a template though there might be some variables missing in the future:
-```py
-AHK_GUILD_ID = None
-
-# roles
-STAFF_ROLE_ID = None
-FORUM_ADM_ROLE_ID = None
-FORUM_MOD_ROLE_ID = None
-VIP_ROLE_ID = None
-LOUNGE_ROLE_ID = None
-
-# level roles
-LEVEL_ROLE_IDS = {}
-
-# channels
-ROLES_CHAN_ID = None
-RULES_CHAN_ID = None
-GENERAL_CHAN_ID = None
-LOGS_CHAN_ID = None
-FORUM_THRD_CHAN_ID = None
-ACTIVITY_CHAN_ID = None
-EDITED_CHAN_ID = None
-DELETED_CHAN_ID = None
-GUILD_CHAN_ID = None
-EMOJI_SUGGESTIONS_CHAN_ID = None
-SUGGESTIONS_CHAN_ID = None
-GET_HELP_CHAN_ID = None
-
-# messages
-RULES_MSG_ID = None
-
-# category ids
-OPEN_CATEGORY_ID = None
-ACTIVE_CATEGORY_ID = None
-ACTIVE_INFO_CHAN_ID = None
-CLOSED_CATEGORY_ID = None
-
-IGNORE_ACTIVE_CHAN_IDS = tuple()
-```
+Nevertheless, if you want to set it up for yourself, follow the instuctions in [`INSTALL.md`](INSTALL.md).
 
 ## Acknowledgements
 
