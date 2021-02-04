@@ -56,7 +56,7 @@ class AceBot(commands.Bot):
 			owner_id=OWNER_ID,
 			description=DESCRIPTION,
 			help_command=EditedMinimalHelpCommand(),
-			max_messages=20000,
+			max_messages=5000,
 			activity=BOT_ACTIVITY,
 			**kwargs
 		)
