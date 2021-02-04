@@ -1,11 +1,11 @@
 import html
 import logging
 import re
+import io
 from base64 import b64encode
 from collections import OrderedDict
 from datetime import datetime, timedelta, timezone
 
-import io
 import discord
 from bs4 import BeautifulSoup
 from discord.ext import commands, tasks
@@ -297,23 +297,27 @@ class AutoHotkey(AceMixin, commands.Cog):
 
 		stdout = stdout.replace('`', '`\u200b')
 		file = None
-		encoded_out = stdout.encode('utf-8')
+		encoded_stdout = stdout.encode('utf-8')
+
 		if len(stdout) < 1800 and stdout.count('\n') < 20 and stdout.count('\r') < 20:
 			#upload as plaintext
-			valid_response = 'No output.\n' if stdout == '' else '\n```autoit\n{0}\n```'.format(stdout)
-		elif len(encoded_out) < 100000 and AHK_GUILD_ID == ctx.guild.id:
-			#upload to ahkscript.org
-			data = {'name': 'Ace Bot (Clone)', 'code': stdout}
-			async with ctx.http.post('https://p.ahkscript.org/',data=data) as resp:
+			valid_response = '` No Output.\n`' if stdout == '' else '\n```autoit\n{0}\n```'.format(stdout)
+			
+		elif len(encoded_stdout) < 100000 and AHK_GUILD_ID == ctx.guild.id: #limit to 100kb
+			#upload to p.ahkscript.org
+			data = {'name': 'Ace Bot', 'code': encoded_stdout}
+			async with ctx.http.post('https://p.ahkscript.org/', data=data) as resp:
 				if resp.status != 200:
 					raise commands.CommandError('Pastebin failed.')
-				valid_response = ' No output.\n' if stdout == '' else f' Results too large. Pasted. {resp.url}\n'
-		elif len(encoded_out) < (1000*1000*4000): # should be 4mb
-			fp = io.BytesIO(stdout.encode('utf-8'))
+				valid_response = f' Results too large. Pasted. {resp.url}\n'	
+				
+		elif len(encoded_stdout) < (8000000000): # limited to 8mb
+			fp = io.BytesIO(encoded_stdout)
 			file = discord.File(fp, 'results.txt')
-			valid_response = ' No output.\n' if stdout == '' else ' Results too large. See attached file.\n'
+			valid_response = ' Results too large. See attached file.\n'
+			
 		else:
-			raise commands.CommandError('Output greater than 4mb.')
+			raise commands.CommandError('Output greater than 8mb.')
 
 		out = '{}{}{}'.format(
 			ctx.author.mention,
@@ -339,6 +343,8 @@ class AutoHotkey(AceMixin, commands.Cog):
 			async with ctx.http.get(url) as resp:
 				if resp.status == 200 and str(resp.url) == url:
 					code = await resp.text()
+				else:
+					raise commands.CommandError('Invalid link or the server did not respond.')
 
 
 		stdout, time = await self.cloudahk_call(ctx, code)
