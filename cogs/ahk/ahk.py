@@ -297,20 +297,21 @@ class AutoHotkey(AceMixin, commands.Cog):
 
 		stdout = stdout.replace('`', '`\u200b')
 		file = None
-		if len(stdout) < 1800 and stdout.count('\n') < 12 and stdout.count('\r') < 12:
+		encoded_out = stdout.encode('utf-8')
+		if len(stdout) < 1800 and stdout.count('\n') < 20 and stdout.count('\r') < 20:
 			#upload as plaintext
 			valid_response = 'No output.\n' if stdout == '' else '\n```autoit\n{0}\n```'.format(stdout)
-		elif len(stdout) < 100000:
+		elif len(encoded_out) < 100000 and AHK_GUILD_ID == ctx.guild.id:
 			#upload to ahkscript.org
 			data = {'name': 'Ace Bot (Clone)', 'code': stdout}
 			async with ctx.http.post('https://p.ahkscript.org/',data=data) as resp:
 				if resp.status != 200:
 					raise commands.CommandError('Pastebin failed.')
 				valid_response = ' No output.\n' if stdout == '' else f' Results too large. Pasted. {resp.url}\n'
-		elif len(stdout) < (1000*1000*4000): # should be 4mb
+		elif len(encoded_out) < (1000*1000*4000): # should be 4mb
 			fp = io.BytesIO(stdout.encode('utf-8'))
 			file = discord.File(fp, 'results.txt')
-			valid_response = ' No output.\n' if stdout == '' else ' Results too large for pastebin. See attached file.\n'
+			valid_response = ' No output.\n' if stdout == '' else ' Results too large. See attached file.\n'
 		else:
 			raise commands.CommandError('Output greater than 4mb.')
 
