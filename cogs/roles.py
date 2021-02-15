@@ -12,6 +12,7 @@ from utils.string import po, shorten
 
 log = logging.getLogger(__name__)
 
+FOOTER_TEXT = 'Click a reaction to add/remove roles.'
 RERUN_PROMPT = 'Re-run `roles spawn` for changes to take effect.'
 
 UP_EMOJI = '🔼'
@@ -769,7 +770,13 @@ class Roles(AceMixin, commands.Cog):
 			if not roles:
 				continue
 
-			e = discord.Embed(description=selector.get('description') or 'Click the reactions to give or remove roles.')
+			e = discord.Embed()
+
+			description = selector.get('description')
+			if description is not None:
+				e.description = selector.get('description')
+
+			e.set_footer(text=FOOTER_TEXT)
 
 			icon = selector.get('icon')
 
@@ -897,7 +904,7 @@ class Roles(AceMixin, commands.Cog):
 		if task is not None:
 			task.cancel()
 
-	async def _set_footer_in(self, message, text='Click a reaction to add/remove roles.', wait=None):
+	async def _set_footer_in(self, message, text=FOOTER_TEXT, wait=None):
 		if wait is not None:
 			await asyncio.sleep(wait)
 
