@@ -281,7 +281,6 @@ class Games(AceMixin, commands.Cog):
 					color=discord.Color.green()
 				)
 
-				e.set_footer(text=FOOTER_FORMAT.format(current_score))
 				await ctx.send(embed=e)
 			else:
 				score = int(score / PENALTY_DIV)
@@ -292,8 +291,6 @@ class Games(AceMixin, commands.Cog):
 					description='You lost {} points.'.format(score),
 					color=discord.Color.red()
 				)
-
-				e.set_footer(text=FOOTER_FORMAT.format(current_score))
 
 				if question_type == 'multiple':
 					e.description += '\nThe correct answer is ***`{}`***'.format(correct_answer)
