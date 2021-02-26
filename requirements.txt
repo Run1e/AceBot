@@ -1,6 +1,6 @@
 discord.py==1.5.1
 asyncpg==0.20.1
-aiohttp==3.6.2
+aiohttp==3.7.4
 fuzzywuzzy==0.18.0
 parsedatetime==2.5
 python-Levenshtein==0.12.0
