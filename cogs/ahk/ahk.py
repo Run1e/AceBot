@@ -126,24 +126,40 @@ class AutoHotkey(AceMixin, commands.Cog):
 
 		matches = self.find_all_emoji(message)
 
-		async def delete():
+		async def delete(reason=None):
 			if not await self.bot.is_owner(message.author):
 				try:
 					await message.delete()
 				except discord.HTTPException:
-					pass
+					return
+
+				if reason is not None:
+					try:
+						await message.channel.send(content=f'{message.author.mention} {reason}', delete_after=10)
+					except discord.HTTPException:
+						pass
 
 		if not matches and not message.attachments:
 			return await delete()
+
 		elif message.attachments:
 			# if more than one attachment, delete
 			if len(message.attachments) > 1:
-				return await delete()
-			# if attachment is not an image, delete
-			if message.attachments[0].height is None:
-				return await delete()
+				return await delete('Please only send one attachment at a time.')
+
+			attachment = message.attachments[0]
+			if attachment.height is None:
+				return await delete('Your attachment is not an image.')
+
+			if attachment.height != attachment.width:
+				return await delete('The attached image is not square.')
+
+			if attachment.size > 256 * 1024:
+				return await delete('The attached image is larger than the emoji size limit (256KB).')
+
 			if message.content:
-				return await delete()
+				return await delete('Please do not put text in your suggestion.')
+
 		elif len(matches) > 1:
 			# if no attachments, make sure there's not multiple emojis
 			return await delete()
