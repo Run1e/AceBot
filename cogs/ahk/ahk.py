@@ -286,7 +286,7 @@ class AutoHotkey(AceMixin, commands.Cog):
 		code = code.strip('`').strip()
 
 		# call cloudahk with 20 in timeout
-		async with self.bot.aiohttp.post('{}/{}'.format(CLOUDAHK_URL, lang), data=code, headers=headers, timeout=16) as resp:
+		async with self.bot.aiohttp.post('{}/{}/run'.format(CLOUDAHK_URL, lang), data=code, headers=headers, timeout=16) as resp:
 			if resp.status == 200:
 				result = await resp.json()
 			else:
