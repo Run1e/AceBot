@@ -33,6 +33,7 @@ DOWNVOTE_EMOJI = '\N{Thumbs Down Sign}'
 
 INACTIVITY_LIMIT = timedelta(weeks=4)
 
+DISCORD_UPLOAD_LIMIT = 8000000000 # 8 MB 
 
 class DocsPagePager(Pager):
 	async def craft_page(self, e, page, entries):
@@ -294,16 +295,19 @@ class AutoHotkey(AceMixin, commands.Cog):
 
 		stdout, time = result['stdout'].strip(), result['time']
 
+
 		stdout = stdout.replace('`', '`\u200b')
+		stdout = stdout.replace('\r', '')
 		file = None
 		encoded_stdout = stdout.encode('utf-8')
+		stdout_length = len(stdout)
 
-		if len(stdout) < 1800 and stdout.count('\n') < 20 and stdout.count('\r') < 20:
+		if stdout_length < 1800 and stdout.count('\n') < 20:
 			#upload as plaintext
 			valid_response = '` No Output.\n`' if stdout == '' else '\n```autoit\n{0}\n```'.format(stdout)
 		
 
-		elif len(stdout) < (8000000000): # limited to 8mb
+		elif stdout_length < DISCORD_UPLOAD_LIMIT: 
 			fp = io.BytesIO(encoded_stdout)
 			file = discord.File(fp, 'results.txt')
 			valid_response = ' Results too large. See attached file.\n'
@@ -317,7 +321,9 @@ class AutoHotkey(AceMixin, commands.Cog):
 			'`Processing time: {}`'.format('Timed out' if time is None else '{0:.1f} seconds'.format(time))
 		)
 		
-
+		# because of how the api works, if the person has deleted their message then
+		# the api won't take the request and returns an error, so we catch it and don't
+		# reply. This ensures the output gets sent even if they delete their message.
 		try:
 			await ctx.reply(content=out, file=file)
 		except discord.HTTPException:
