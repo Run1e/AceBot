@@ -1,19 +1,18 @@
 import html
+import io
 import logging
 import re
-import io
 from base64 import b64encode
 from collections import OrderedDict
 from datetime import datetime, timedelta, timezone
 
 import discord
 from bs4 import BeautifulSoup
-from discord.ext import commands, tasks
-from fuzzywuzzy import fuzz, process
-
-from ids import *
 from cogs.mixins import AceMixin
 from config import CLOUDAHK_PASS, CLOUDAHK_URL, CLOUDAHK_USER
+from discord.ext import commands, tasks
+from fuzzywuzzy import fuzz, process
+from ids import *
 from utils.docs_parser import parse_docs
 from utils.html2markdown import HTML2Markdown
 from utils.pager import Pager
