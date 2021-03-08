@@ -287,7 +287,7 @@ class AutoHotkey(AceMixin, commands.Cog):
 		code = code.strip('`').strip()
 
 		# call cloudahk with 20 in timeout
-		async with self.bot.aiohttp.post('{}/{}'.format(CLOUDAHK_URL, lang), data=code, headers=headers, timeout=20) as resp:
+		async with self.bot.aiohttp.post('{}/{}/run'.format(CLOUDAHK_URL, lang), data=code, headers=headers, timeout=20) as resp:
 			if resp.status == 200:
 				result = await resp.json()
 			else:
@@ -302,16 +302,9 @@ class AutoHotkey(AceMixin, commands.Cog):
 		if len(stdout) < 1800 and stdout.count('\n') < 20 and stdout.count('\r') < 20:
 			#upload as plaintext
 			valid_response = '` No Output.\n`' if stdout == '' else '\n```autoit\n{0}\n```'.format(stdout)
-			
-		elif len(encoded_stdout) < 100000 and AHK_GUILD_ID == ctx.guild.id: #limit to 100kb
-			#upload to p.ahkscript.org
-			data = {'name': 'Ace Bot', 'code': encoded_stdout}
-			async with ctx.http.post('https://p.ahkscript.org/', data=data) as resp:
-				if resp.status != 200:
-					raise commands.CommandError('Pastebin failed.')
-				valid_response = f' Results too large. Pasted. {resp.url}\n'	
-				
-		elif len(encoded_stdout) < (8000000000): # limited to 8mb
+		
+
+		elif len(stdout) < (8000000000): # limited to 8mb
 			fp = io.BytesIO(encoded_stdout)
 			file = discord.File(fp, 'results.txt')
 			valid_response = ' Results too large. See attached file.\n'
