@@ -8,16 +8,15 @@ from datetime import datetime, timedelta, timezone
 
 import discord
 from bs4 import BeautifulSoup
-from cogs.mixins import AceMixin
-from config import CLOUDAHK_PASS, CLOUDAHK_URL, CLOUDAHK_USER
 from discord.ext import commands, tasks
 from fuzzywuzzy import fuzz, process
+
+from cogs.mixins import AceMixin
+from config import CLOUDAHK_PASS, CLOUDAHK_URL, CLOUDAHK_USER
 from ids import *
 from utils.docs_parser import parse_docs
 from utils.html2markdown import HTML2Markdown
 from utils.pager import Pager
-from utils.string import po
-from utils.time import pretty_timedelta
 
 log = logging.getLogger(__name__)
 
@@ -33,7 +32,8 @@ DOWNVOTE_EMOJI = '\N{Thumbs Down Sign}'
 
 INACTIVITY_LIMIT = timedelta(weeks=4)
 
-DISCORD_UPLOAD_LIMIT = 8000000000 # 8 MB 
+DISCORD_UPLOAD_LIMIT = 8000000000  # 8 MB
+
 
 class DocsPagePager(Pager):
 	async def craft_page(self, e, page, entries):
@@ -47,6 +47,19 @@ class DocsPagePager(Pager):
 				DOCS_FORMAT.format(entry.get('link'))
 			) for entry in entries
 		)
+
+
+class RunnableCodeConverter(commands.Converter):
+	async def convert(self, ctx, code):
+		if code.startswith('https://p.ahkscript.org/'):
+			url = code.replace('?p=', '?r=')
+			async with ctx.http.get(url) as resp:
+				if resp.status == 200 and str(resp.url) == url:
+					code = await resp.text()
+				else:
+					raise commands.CommandError('Failed fetching code from pastebin.')
+
+		return code
 
 
 class AutoHotkey(AceMixin, commands.Cog):
@@ -288,7 +301,7 @@ class AutoHotkey(AceMixin, commands.Cog):
 		return results
 
 	async def cloudahk_call(self, ctx, code, lang='ahk'):
-		'''Call to CloudAHK to run %code% written in %lang%. Replies to invoking user with stdout/runtime of code. '''
+		'''Call to CloudAHK to run "code" written in "lang". Replies to invoking user with stdout/runtime of code. '''
 
 		token = '{0}:{1}'.format(CLOUDAHK_USER, CLOUDAHK_PASS)
 
@@ -302,8 +315,10 @@ class AutoHotkey(AceMixin, commands.Cog):
 		# strip backticks on both sides
 		code = code.strip('`').strip()
 
+		url = f'{CLOUDAHK_URL}/{lang}/run'
+
 		# call cloudahk with 20 in timeout
-		async with self.bot.aiohttp.post('{}/{}/run'.format(CLOUDAHK_URL, lang), data=code, headers=headers, timeout=20) as resp:
+		async with self.bot.aiohttp.post(url, data=code, headers=headers, timeout=20) as resp:
 			if resp.status == 200:
 				result = await resp.json()
 			else:
@@ -311,63 +326,49 @@ class AutoHotkey(AceMixin, commands.Cog):
 
 		stdout, time = result['stdout'].strip(), result['time']
 
-
-
-		stdout = stdout.replace('\r', '')
 		file = None
-		encoded_stdout = stdout.encode('utf-8')
-		stdout_length = len(stdout)
+		stdout = stdout.replace('\r', '')
 
-		if stdout_length < (1800) and stdout.count('\n') < 20:
-			#upload as plaintext
-			while '```' in stdout:
-				stdout = stdout.replace('```', '`\u200b``')
-			valid_response = '` No Output.\n`' if stdout == '' else '\n```autoit\n{0}\n```'.format(stdout)
-		
-
-		elif stdout_length < DISCORD_UPLOAD_LIMIT: 
-			fp = io.BytesIO(encoded_stdout)
-			file = discord.File(fp, 'results.txt')
-			valid_response = ' Results too large. See attached file.\n'
-			
+		if time is None:
+			resp = 'Program ran for too long and was aborted.'
 		else:
-			raise commands.CommandError('Output greater than 8mb.')
+			stdout_len = len(stdout)
+			display_time = f'Runtime: `{time:.2f}` seconds'
 
-		out = '{}{}{}'.format(
-			ctx.author.mention,
-			valid_response,
-			'`Processing time: {}`'.format('Timed out' if time is None else '{0:.1f} seconds'.format(time))
-		)
-		
+			if stdout_len < 1800 and stdout.count('\n') < 20:
+				# upload as plaintext
+				resp = '```autoit\n{0}\n```{1}'.format(
+					stdout.replace('```', '`\u200b``') if stdout else 'No output.',
+					display_time
+				)
+
+			elif stdout_len < DISCORD_UPLOAD_LIMIT:
+				fp = io.BytesIO(bytes(stdout.encode('utf-8')))
+				file = discord.File(fp, 'output.txt')
+				resp = f'Output dumped to file.\n{display_time}'
+
+			else:
+				raise commands.CommandError('Output greater than 8 MB.')
+
+		# logging for security purposes and checking for abuse
+		filename = 'ahk_eval/{0}_{1}_{2}_{3}'.format(ctx.guild.id, ctx.author.id, ctx.message.id, lang)
+		with open(filename, 'w', encoding='utf-8-sig') as f:
+			f.write('{0}\n\nLANG: {1}\n\nCODE:\n{2}\n\nPROCESSING TIME: {3}\n\nSTDOUT:\n{4}\n'.format(ctx.stamp, lang, code, time, stdout))
+
 		# because of how the api works, if the person has deleted their message then
 		# the api won't take the request and returns an error, so we catch it and don't
 		# reply. This ensures the output gets sent even if they delete their message.
 		try:
-			await ctx.reply(content=out, file=file)
+			await ctx.reply(content=resp, file=file)
 		except discord.HTTPException:
-			await ctx.send(content=out, file=file)
-
-		return stdout, time
+			await ctx.send(content=resp, file=file)
 
 	@commands.command()
-	@commands.cooldown(rate=1.0, per=5.0, type=commands.BucketType.user)
-	async def ahk(self, ctx, *, code):
+	@commands.cooldown(rate=1, per=5.0, type=commands.BucketType.user)
+	async def ahk(self, ctx, *, code: RunnableCodeConverter):
 		'''Run AHK code through CloudAHK. Example: `ahk print("hello world!")`'''
-		
-		if code.startswith('https://p.ahkscript.org/'):
-			url = code.replace('?p=','?r=')
-			async with ctx.http.get(url) as resp:
-				if resp.status == 200 and str(resp.url) == url:
-					code = await resp.text()
-				else:
-					raise commands.CommandError('Invalid link or the server did not respond.')
 
-
-		stdout, time = await self.cloudahk_call(ctx, code)
-
-		# logging for security purposes and checking for abuse
-		with open('ahk_eval/{0}_{1}_{2}'.format(ctx.guild.id, ctx.author.id, ctx.message.id), 'w', encoding='utf-8-sig') as f:
-			f.write('{0}\n\nCODE:\n{1}\n\nPROCESSING TIME: {2}\n\nSTDOUT:\n{3}\n'.format(ctx.stamp, code, time, stdout))
+		await self.cloudahk_call(ctx, code)
 
 	@commands.command(aliases=['d', 'doc', 'rtfm'])
 	@commands.bot_has_permissions(embed_links=True)
@@ -573,8 +574,8 @@ class AutoHotkey(AceMixin, commands.Cog):
 		await ctx.send(embed=e)
 
 	@commands.command(hidden=True)
-	@commands.cooldown(rate=1.0, per=5.0, type=commands.BucketType.user)
-	async def rlx(self, ctx, *, code):
+	@commands.cooldown(rate=1, per=5.0, type=commands.BucketType.user)
+	async def rlx(self, ctx, *, code: RunnableCodeConverter):
 		'''Compile and run Relax code through CloudAHK. Example: `rlx define i32 Main() {return 20}`'''
 
 		await self.cloudahk_call(ctx, code, 'rlx')
