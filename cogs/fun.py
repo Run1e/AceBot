@@ -424,7 +424,7 @@ class Fun(AceMixin, commands.Cog):
 
 			await ctx.send(url + tag['href'])
 
-	@commands.group(name='xkcd', invoke_without_command=True)
+	@commands.command()
 	@commands.bot_has_permissions(embed_links=True)
 	async def xkcd(self, ctx, *, search: typing.Union[int, str] = None):
 		'''Get an xkcd comic. Search can be `latest`, a comic id, a search string, or nothing for a random comic.'''

@@ -39,7 +39,7 @@ class Highlighter(AceMixin, commands.Cog):
 		code = ctx.message.content[len(ctx.prefix) + 3:]
 
 		# don't allow three backticks in a row, alternative is to throw error upon this case
-		code = code.replace('```', '`\u200b``')
+		code = code.replace('``', '`\u200b`')
 
 		# replace triple+ newlines with double newlines
 		code = re.sub('\n\n+', '\n\n', code)

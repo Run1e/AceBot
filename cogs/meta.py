@@ -266,7 +266,7 @@ class Meta(AceMixin, commands.Cog):
 		code = '\n'.join(line[1:] for line in inspect.getsource(command.callback).splitlines())
 
 		paginator = commands.Paginator(prefix='```py')
-		for line in code.replace('`', '\u200b`').split('\n'):
+		for line in code.replace('``', '`\u200b`').split('\n'):
 			paginator.add_line(line)
 
 		for page in paginator.pages:
