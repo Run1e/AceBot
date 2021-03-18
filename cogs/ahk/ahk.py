@@ -32,7 +32,7 @@ DOWNVOTE_EMOJI = '\N{Thumbs Down Sign}'
 
 INACTIVITY_LIMIT = timedelta(weeks=4)
 
-DISCORD_UPLOAD_LIMIT = 8000000000  # 8 MB
+DISCORD_UPLOAD_LIMIT = 8000000  # 8 MB
 
 
 class DocsPagePager(Pager):
