@@ -1,4 +1,5 @@
 import html
+import io
 import logging
 import re
 from base64 import b64encode
@@ -7,12 +8,11 @@ from datetime import datetime, timedelta, timezone
 
 import discord
 from bs4 import BeautifulSoup
-from discord.ext import commands, tasks
-from fuzzywuzzy import fuzz, process
-
-from ids import *
 from cogs.mixins import AceMixin
 from config import CLOUDAHK_PASS, CLOUDAHK_URL, CLOUDAHK_USER
+from discord.ext import commands, tasks
+from fuzzywuzzy import fuzz, process
+from ids import *
 from utils.docs_parser import parse_docs
 from utils.html2markdown import HTML2Markdown
 from utils.pager import Pager
@@ -33,6 +33,7 @@ DOWNVOTE_EMOJI = '\N{Thumbs Down Sign}'
 
 INACTIVITY_LIMIT = timedelta(weeks=4)
 
+DISCORD_UPLOAD_LIMIT = 8000000000 # 8 MB 
 
 class DocsPagePager(Pager):
 	async def craft_page(self, e, page, entries):
@@ -302,7 +303,7 @@ class AutoHotkey(AceMixin, commands.Cog):
 		code = code.strip('`').strip()
 
 		# call cloudahk with 20 in timeout
-		async with self.bot.aiohttp.post('{}/{}'.format(CLOUDAHK_URL, lang), data=code, headers=headers, timeout=16) as resp:
+		async with self.bot.aiohttp.post('{}/{}/run'.format(CLOUDAHK_URL, lang), data=code, headers=headers, timeout=20) as resp:
 			if resp.status == 200:
 				result = await resp.json()
 			else:
@@ -310,18 +311,41 @@ class AutoHotkey(AceMixin, commands.Cog):
 
 		stdout, time = result['stdout'].strip(), result['time']
 
-		stdout = stdout.replace('`', '`\u200b')
 
-		if len(stdout) > 1800 or stdout.count('\n') > 12:
-			raise commands.CommandError('Output too large.')
 
-		out = '{0}{1}`Processing time: {2}`'.format(
+		stdout = stdout.replace('\r', '')
+		file = None
+		encoded_stdout = stdout.encode('utf-8')
+		stdout_length = len(stdout)
+
+		if stdout_length < (1800) and stdout.count('\n') < 20:
+			#upload as plaintext
+			while '```' in stdout:
+				stdout = stdout.replace('```', '`\u200b``')
+			valid_response = '` No Output.\n`' if stdout == '' else '\n```autoit\n{0}\n```'.format(stdout)
+		
+
+		elif stdout_length < DISCORD_UPLOAD_LIMIT: 
+			fp = io.BytesIO(encoded_stdout)
+			file = discord.File(fp, 'results.txt')
+			valid_response = ' Results too large. See attached file.\n'
+			
+		else:
+			raise commands.CommandError('Output greater than 8mb.')
+
+		out = '{}{}{}'.format(
 			ctx.author.mention,
-			' No output.\n' if stdout == '' else '\n```autoit\n{0}\n```'.format(stdout),
-			'Timed out' if time is None else '{0:.1f} seconds'.format(time),
+			valid_response,
+			'`Processing time: {}`'.format('Timed out' if time is None else '{0:.1f} seconds'.format(time))
 		)
-
-		await ctx.send(out)
+		
+		# because of how the api works, if the person has deleted their message then
+		# the api won't take the request and returns an error, so we catch it and don't
+		# reply. This ensures the output gets sent even if they delete their message.
+		try:
+			await ctx.reply(content=out, file=file)
+		except discord.HTTPException:
+			await ctx.send(content=out, file=file)
 
 		return stdout, time
 
@@ -329,6 +353,15 @@ class AutoHotkey(AceMixin, commands.Cog):
 	@commands.cooldown(rate=1.0, per=5.0, type=commands.BucketType.user)
 	async def ahk(self, ctx, *, code):
 		'''Run AHK code through CloudAHK. Example: `ahk print("hello world!")`'''
+		
+		if code.startswith('https://p.ahkscript.org/'):
+			url = code.replace('?p=','?r=')
+			async with ctx.http.get(url) as resp:
+				if resp.status == 200 and str(resp.url) == url:
+					code = await resp.text()
+				else:
+					raise commands.CommandError('Invalid link or the server did not respond.')
+
 
 		stdout, time = await self.cloudahk_call(ctx, code)
 
