@@ -302,9 +302,10 @@ class AutoHotkey(AceMixin, commands.Cog):
 		encoded_stdout = stdout.encode('utf-8')
 		stdout_length = len(stdout)
 
-		if stdout_length < (1800 - stdout.count('```')*4/3) and stdout.count('\n') < 20:
+		if stdout_length < (1800) and stdout.count('\n') < 20:
 			#upload as plaintext
-			stdout = stdout.replace('```', '`\u200b``')
+			while '```' in stdout:
+				stdout = stdout.replace('```', '`\u200b``')
 			valid_response = '` No Output.\n`' if stdout == '' else '\n```autoit\n{0}\n```'.format(stdout)
 		
 
