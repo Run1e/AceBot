@@ -337,8 +337,11 @@ class AutoHotkey(AceMixin, commands.Cog):
 
 			if stdout_len < 1800 and stdout.count('\n') < 20:
 				# upload as plaintext
+				if '```' in stdout:
+					raise commands.CommandError('Please make sure your output has no triple backticks.')
+
 				resp = '```autoit\n{0}\n```{1}'.format(
-					stdout.replace('```', '`\u200b``') if stdout else 'No output.',
+					stdout if stdout else 'No output.',
 					display_time
 				)
 
