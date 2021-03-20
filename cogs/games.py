@@ -436,6 +436,9 @@ class Games(AceMixin, commands.Cog):
 				right.append(asd[0] if isinstance(asd, tuple) else asd)
 			await ctx.send(f'Sorry, that was wrong! The correct answer was `{" ".join(right).upper()}`')
 
+		if len(answer) != len(lets):
+			return await failed()
+
 		for index, part in enumerate(answer):
 			answer = NATO[lets[index]]
 			if isinstance(answer, tuple):
