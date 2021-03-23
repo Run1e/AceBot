@@ -141,20 +141,22 @@ class AutoHotkey(AceMixin, commands.Cog):
 		matches = self.find_all_emoji(message)
 
 		async def delete(reason=None):
-			if not await self.bot.is_owner(message.author):
-				try:
-					await message.delete()
-				except discord.HTTPException:
-					return
+			if await self.bot.is_owner(message.author):
+				return
 
-				if reason is not None:
-					try:
-						await message.channel.send(content=f'{message.author.mention} {reason}', delete_after=10)
-					except discord.HTTPException:
-						pass
+			try:
+				await message.delete()
+			except discord.HTTPException:
+				return
+
+			if reason is not None:
+				try:
+					await message.channel.send(content=f'{message.author.mention} {reason}', delete_after=10)
+				except discord.HTTPException:
+					pass
 
 		if not matches and not message.attachments:
-			return await delete()
+			return await delete('Your message has to contain an emoji suggestion.')
 
 		elif message.attachments:
 			# if more than one attachment, delete
@@ -174,9 +176,16 @@ class AutoHotkey(AceMixin, commands.Cog):
 			if message.content:
 				return await delete('Please do not put text in your suggestion.')
 
-		elif len(matches) > 1:
-			# if no attachments, make sure there's not multiple emojis
-			return await delete()
+		else:
+			if len(matches) > 1:
+				return await delete('Please make sure your message only contains only one emoji.')
+
+			if not re.match(r'^<a?:.+?:([0-9]{15,21})>$', message.content.strip()):
+				return await delete('Please do not put text alongside your emoji suggestion.')
+
+			match = int(matches[0])
+			if any(emoji.id == match for emoji in message.guild.emojis):
+				return await delete('Please do not suggest emojis that have already been added.')
 
 		# Add voting reactions
 		await message.add_reaction('✅')
