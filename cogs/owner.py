@@ -462,7 +462,11 @@ class Owner(AceMixin, commands.Cog):
 			cat: discord.CategoryChannel
 
 			# ignore channel if there is no overwrites
-			if len(cat.overwrites) == 1 and all(overwrite.is_empty() for overwrite in cat.overwrites.values()):
+			# so, turns out, if you create a new category and don't touch the permissions,
+			# the overwrites entry for the default_role will not be there.
+			# so a category (or channel) with zero overwrites can either have an empty overwrites map,
+			# or one of size one with the default_role entry with value 0
+			if len(cat.overwrites) <= 1 and all(overwrite.is_empty() for overwrite in cat.overwrites.values()):
 				continue
 
 			# if there are overwrites but no synced channels, notify of this
