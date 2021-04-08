@@ -22,7 +22,11 @@ def shorten(text, max_char=2000):
 
 
 def po(obj):
-	return '{0} ({1})'.format(str(obj), obj.id)
+	try:
+		name = str(obj)
+	except:
+		name = 'Unknown'
+	return '{0} ({1})'.format(name, obj.id)
 
 
 def yesno(b):

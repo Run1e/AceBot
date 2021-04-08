@@ -452,7 +452,7 @@ class Owner(AceMixin, commands.Cog):
 						break
 
 		for role, perms in rp.items():
-			out += f'`ROLE {role.name}`\n```{nl.join(perms)}```\n'
+			out += f'`ROLE {role.name}`\n```\n{nl.join(perms)}```\n'
 
 		# categories
 
@@ -482,7 +482,7 @@ class Owner(AceMixin, commands.Cog):
 								break
 
 		for (cat, role), perms in catp.items():
-			out += f'`CATEGORY {cat.name} ROLE {role.name}`\n```{nl.join(perms)}```\n'
+			out += f'`CATEGORY {cat.name} ROLE {role.name}`\n```\n{nl.join(perms)}```\n'
 
 		# channels (non-synced, anyway)
 
@@ -505,7 +505,7 @@ class Owner(AceMixin, commands.Cog):
 							break
 
 		for (c, role), perms in cp.items():
-			out += f'`CHANNEL {c.name} ROLE {role.name}`\n```{nl.join(perms)}```\n'
+			out += f'`CHANNEL {c.name} ROLE {role.name}`\n```\n{nl.join(perms)}```\n'
 
 		if not out:
 			await ctx.send('No potentially dangerous permissions found.')
