@@ -3,18 +3,18 @@ import asyncio
 import io
 import logging
 import shlex
-import textwrap
 from collections import defaultdict
 from datetime import datetime, timedelta
 from enum import Enum, IntEnum
 from json import dumps, loads
+from textwrap import indent
 
 import discord
 from asyncpg.exceptions import UniqueViolationError
 from discord.ext import commands
 
 from cogs.mixins import AceMixin
-from ids import AHK_GUILD_ID, RULES_MSG_ID
+from ids import RULES_MSG_ID
 from utils.configtable import ConfigTable, ConfigTableRecord
 from utils.context import AceContext, can_prompt, is_mod
 from utils.converters import MaxLengthConverter, MaybeMemberConverter, RangeConverter
@@ -1108,7 +1108,7 @@ class Moderation(AceMixin, commands.Cog):
 
 		await ctx.send(self._craft_string(ctx, 'mention', conf, now=True))
 
-	@commands.command(aliases=['pc'])
+	@commands.command(aliases=['pc'], hidden=True)
 	@is_mod()
 	@commands.bot_has_permissions(attach_files=True)
 	async def permcheck(self, ctx):
@@ -1152,15 +1152,13 @@ class Moderation(AceMixin, commands.Cog):
 			# find dangerous perms
 			for dangerous_permission in dangerous_permissions:
 				if getattr(r.permissions, dangerous_permission):
-					rp[r].append(dangerous_permission)
+					rp[r].append('- ' + dangerous_permission)
 					if dangerous_permission == 'administrator':
 						break
-		
+
 		for role, perms in rp.items():
-			out +=  f'ROLE {role.name}\n' \
-					f"{textwrap.indent(nl.join(perms),prefix='- ', predicate=lambda line: True)}" \
-					'\n'
-		out += '\n'
+			out += f'ROLE {role.name}\n{nl.join(perms)}\n\n'
+
 		# categories
 
 		catp = defaultdict(list)
@@ -1178,25 +1176,23 @@ class Moderation(AceMixin, commands.Cog):
 
 			# if there are overwrites but no synced channels, notify of this
 			if not any(c.permissions_synced for c in cat.text_channels):
-				out += f'CATEGORY {cat.name}\n/ This category has overwrites but no synced channels!\n'
+				out += f'CATEGORY {cat.name}\n+ This category has overwrites but no synced channels!\n\n'
 				continue
 
 			# find dangerous perms for each role
 			for role, permissions in cat.overwrites.items():
 				if role is not guild.default_role and permissions.is_empty():
-					catp[(cat, role)].append('Value of zero (does nothing)')
+					catp[(cat, role)].append('+ Value of zero (does nothing)')
 				else:
 					for dangerous_permission in dangerous_permissions:
 						if getattr(permissions, dangerous_permission):
-							catp[(cat, role)].append(dangerous_permission)
+							catp[(cat, role)].append('- ' + dangerous_permission)
 							if dangerous_permission == 'administrator':
 								break
 
 		for (cat, role), perms in catp.items():
-			out +=  f'CATEGORY {cat.name} ROLE {role.name}\n' \
-					f"{textwrap.indent(nl.join(perms),prefix='- ', predicate=lambda line: True)}" \
-					'\n'
-		out += '\n'
+			out += f'CATEGORY {cat.name} ROLE {role.name}\n{nl.join(perms)}\n\n'
+
 		# channels (non-synced, anyway)
 
 		cp = defaultdict(list)
@@ -1211,24 +1207,28 @@ class Moderation(AceMixin, commands.Cog):
 
 			# etc
 			for role, permissions in c.overwrites.items():
+				if role is not guild.default_role and permissions.is_empty():
+					cp[(c, role)].append('+ Value of zero (does nothing)')
 				for dangerous_permission in dangerous_permissions:
 					if getattr(permissions, dangerous_permission):
-						cp[(c, role)].append(dangerous_permission)
+						cp[(c, role)].append('- ' + dangerous_permission)
 						if dangerous_permission == 'administrator':
 							break
 
 		for (chan, role), perms in cp.items():
-			out +=  f'CHANNEL {chan.name} ROLE {role.name}\n' \
-					f"{textwrap.indent(nl.join(perms),prefix='- ', predicate=lambda line: True)}" \
-					'\n'
+			out += f'CHANNEL {chan.name} ROLE {role.name}\n{nl.join(perms)}\n\n'
+
 		out = out.strip()
-		
-		if out == '':
+
+		if not out:
 			await ctx.send('No potentially dangerous permissions found.')
 			return
 
-		fp = io.BytesIO(out.encode('utf-8'))
-		await ctx.send(file=discord.File(fp, 'perms.diff'))
+		if len(out) > 2000:
+			fp = io.BytesIO(out.encode('utf-8'))
+			await ctx.send(file=discord.File(fp, 'perms.diff'))
+		else:
+			await ctx.send(f'```diff\n{out}\n```')
 
 
 def setup(bot):
