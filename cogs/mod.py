@@ -1110,6 +1110,7 @@ class Moderation(AceMixin, commands.Cog):
 
 	@commands.command(aliases=['pc'])
 	@is_mod()
+	@commands.bot_has_permissions(attach_files=True)
 	async def permcheck(self, ctx):
 		'''Checks for potentially dangerous permissions.'''
 
