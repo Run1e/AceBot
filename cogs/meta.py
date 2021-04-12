@@ -1,6 +1,8 @@
 import inspect
+import io
 from datetime import datetime, timedelta, timezone
 from itertools import islice
+from pathlib import Path
 
 import discord
 import psutil
@@ -13,6 +15,7 @@ from utils.string import yesno
 from utils.time import pretty_datetime, pretty_timedelta
 
 GITHUB_LINK = 'https://github.com/Run1e/AceBot'
+GITHUB_BRANCH = 'master'
 
 MEDALS = (
 	'\N{FIRST PLACE MEDAL}',
@@ -250,27 +253,61 @@ class Meta(AceMixin, commands.Cog):
 
 		await ctx.send(self.bot.support_link)
 
-	@commands.command(aliases=['source'])
-	async def code(self, ctx, *, command: str = None):
-		'''Show command code or get GitHub repo link.'''
+	@commands.command(name="source", aliases=["src", "code"])
+	async def source(self, ctx: commands.Context, source_item: str = None):
+		"""Get a github link to the source code of a command."""
 
-		if command is None:
-			await ctx.send('https://github.com/Run1e/AceBot')
+		if source_item is None:
+			await ctx.send(GITHUB_LINK)
 			return
 
-		command = self.bot.get_command(command)
+		# send a typing event while we get from github
+		# normally this would be an async with,
+		# but no reason to do so since it shouldn't take very long to do this code,
+		# therefore no reason to make it with.
+		# if its been long enough that it has to fire again we've errorer or send a response
+		await ctx.trigger_typing()
 
-		if command is None or command.hidden:
-			raise commands.CommandError('Couldn\'t find command.')
+		cmd: commands.Command = self.bot.get_command(source_item)
 
-		code = '\n'.join(line[1:] for line in inspect.getsource(command.callback).splitlines())
+		if cmd is None:
+			raise commands.CommandError("Couldn't find command.")
+		callback = cmd.callback
+		source_file = str(
+			Path(inspect.getsourcefile(callback)).relative_to(str(Path.cwd()))
+		)
+		if "internal" in source_file:
+			# hide all commands in cogs.ahk.internal
+			raise commands.CommandError("Couldn't find command.")
 
-		paginator = commands.Paginator(prefix='```py')
-		for line in code.replace('``', '`\u200b`').split('\n'):
-			paginator.add_line(line)
+		lines, first_line_no = inspect.getsourcelines(callback)
 
-		for page in paginator.pages:
-			await ctx.send(page)
+		lines_extension = f"#L{first_line_no}-L{first_line_no+len(lines)-1}"
+		link = f"{GITHUB_LINK}/blob/{GITHUB_BRANCH}/{source_file}{lines_extension}"
+
+		# check for image permissions and if we don't have them then just send the link
+		if not ctx.channel.permissions_for(ctx.me) >= discord.Permissions(
+			embed_links=True, attach_files=True
+		):
+			await ctx.send(link)
+			return
+
+		# make a fancy embed!
+		e = discord.Embed()
+		e.description = f"{cmd.short_doc}\n\n"
+		e.title = cmd.qualified_name
+		thumb = discord.File(
+			io.BytesIO(await self.bot.user.avatar_url_as(format="png").read()),
+			filename="thumb.png",
+		)
+		e.set_thumbnail(url="attachment://thumb.png")
+		e.set_footer(text=f"/{source_file}")
+		e.add_field(
+			name="Source Code",
+			value=f"[Open in Github]({link})",
+			inline=True,
+		)
+		await ctx.send(embed=e, file=thumb)
 
 
 def setup(bot):
