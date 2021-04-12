@@ -1109,7 +1109,6 @@ class Moderation(AceMixin, commands.Cog):
 		await ctx.send(self._craft_string(ctx, 'mention', conf, now=True))
 
 	@commands.command(aliases=['pc'])
-	@commands.bot_has_permissions(attach_files=True)
 	@is_mod()
 	async def permcheck(self, ctx):
 		'''Checks for potentially dangerous permissions.'''
