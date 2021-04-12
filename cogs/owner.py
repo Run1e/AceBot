@@ -450,9 +450,11 @@ class Owner(AceMixin, commands.Cog):
 					rp[r].append(dangerous_permission)
 					if dangerous_permission == 'administrator':
 						break
-
+		
 		for role, perms in rp.items():
-			out += f'`ROLE {role.name}`\n```\n{nl.join(perms)}```\n'
+			out +=  f'ROLE {role.name}\n' \
+					f"{textwrap.indent(nl.join(perms),prefix='- ', predicate=lambda line: True)}" \
+					'\n'
 
 		# categories
 
@@ -471,7 +473,7 @@ class Owner(AceMixin, commands.Cog):
 
 			# if there are overwrites but no synced channels, notify of this
 			if not any(c.permissions_synced for c in cat.text_channels):
-				out += f'`CATEGORY {cat.name}`\n```This category has overwrites but no synced channels!```\n'
+				out += f'CATEGORY {cat.name}\n/ This category has overwrites but no synced channels!\n'
 				continue
 
 			# find dangerous perms for each role
@@ -486,7 +488,9 @@ class Owner(AceMixin, commands.Cog):
 								break
 
 		for (cat, role), perms in catp.items():
-			out += f'`CATEGORY {cat.name} ROLE {role.name}`\n```\n{nl.join(perms)}```\n'
+			out +=  f'CATEGORY {cat.name} ROLE {role.name}\n' \
+					f"{textwrap.indent(nl.join(perms),prefix='- ', predicate=lambda line: True)}" \
+					'\n'
 
 		# channels (non-synced, anyway)
 
@@ -508,20 +512,19 @@ class Owner(AceMixin, commands.Cog):
 						if dangerous_permission == 'administrator':
 							break
 
-		for (c, role), perms in cp.items():
-			out += f'`CHANNEL {c.name} ROLE {role.name}`\n```\n{nl.join(perms)}```\n'
+		for (chan, role), perms in cp.items():
+			out +=  f'CHANNEL {chan.name} ROLE {role.name}\n' \
+					f"{textwrap.indent(nl.join(perms),prefix='- ', predicate=lambda line: True)}" \
+					'\n'
 
-		if not out:
+		if out == '':
 			await ctx.send('No potentially dangerous permissions found.')
 			return
 
-		value = discord.utils.escape_mentions(out).strip()
+		# value = discord.utils.escape_mentions(out).strip()
 
-		if len(value) > 1990:
-			fp = io.BytesIO(value.encode('utf-8'))
-			await ctx.send(file=discord.File(fp, 'perms.txt'))
-		else:
-			await ctx.send(value)
+		fp = io.BytesIO(out.encode('utf-8'))
+		await ctx.send(file=discord.File(fp, 'perms.diff'))
 
 
 def setup(bot):
