@@ -4,7 +4,7 @@ import io
 import logging
 import textwrap
 import traceback
-from collections import Counter, defaultdict
+from collections import Counter
 from contextlib import redirect_stdout
 from datetime import datetime, timedelta
 from urllib.parse import urlparse
@@ -404,127 +404,6 @@ class Owner(AceMixin, commands.Cog):
 		'''Calls eval but wraps code in print()'''
 
 		await ctx.invoke(self.eval, body=f'pprint({body})')
-
-	@commands.command(aliases=['pc'])
-	async def permcheck(self, ctx):
-		'''Checks for potentially dangerous permissions.'''
-
-		dangerous_permissions = (
-			'administrator',
-			'ban_members',
-			'kick_members',
-			'manage_channels',
-			'manage_emojis',
-			'manage_nicknames',
-			'manage_permissions',
-			'manage_roles',
-			'manage_webhooks',
-			'mention_everyone',
-			'view_audit_log',
-			'view_guild_insights',
-			'send_tts_messages',
-			'move_members',
-			'deafen_members',
-			'mute_members',
-			'priority_speaker',
-		)
-
-		guild: discord.Guild = ctx.guild
-		roles = guild.roles
-		categories = guild.categories
-		text_channels = guild.text_channels
-
-		out = ''
-		nl = '\n'
-
-		# roles
-
-		rp = defaultdict(list)
-
-		for r in roles:
-			r: discord.Role
-
-			# find dangerous perms
-			for dangerous_permission in dangerous_permissions:
-				if getattr(r.permissions, dangerous_permission):
-					rp[r].append(dangerous_permission)
-					if dangerous_permission == 'administrator':
-						break
-		
-		for role, perms in rp.items():
-			out +=  f'ROLE {role.name}\n' \
-					f"{textwrap.indent(nl.join(perms),prefix='- ', predicate=lambda line: True)}" \
-					'\n'
-
-		# categories
-
-		catp = defaultdict(list)
-
-		for cat in categories:
-			cat: discord.CategoryChannel
-
-			# ignore channel if there is no overwrites
-			# so, turns out, if you create a new category and don't touch the permissions,
-			# the overwrites entry for the default_role will not be there.
-			# so a category (or channel) with zero overwrites can either have an empty overwrites map,
-			# or one of size one with the default_role entry with value 0
-			if len(cat.overwrites) <= 1 and all(overwrite.is_empty() for overwrite in cat.overwrites.values()):
-				continue
-
-			# if there are overwrites but no synced channels, notify of this
-			if not any(c.permissions_synced for c in cat.text_channels):
-				out += f'CATEGORY {cat.name}\n/ This category has overwrites but no synced channels!\n'
-				continue
-
-			# find dangerous perms for each role
-			for role, permissions in cat.overwrites.items():
-				if role is not guild.default_role and permissions.is_empty():
-					catp[(cat, role)].append('Value of zero (does nothing)')
-				else:
-					for dangerous_permission in dangerous_permissions:
-						if getattr(permissions, dangerous_permission):
-							catp[(cat, role)].append(dangerous_permission)
-							if dangerous_permission == 'administrator':
-								break
-
-		for (cat, role), perms in catp.items():
-			out +=  f'CATEGORY {cat.name} ROLE {role.name}\n' \
-					f"{textwrap.indent(nl.join(perms),prefix='- ', predicate=lambda line: True)}" \
-					'\n'
-
-		# channels (non-synced, anyway)
-
-		cp = defaultdict(list)
-
-		for c in text_channels:
-			c: discord.TextChannel
-
-			# if this channel has synced permissions it should have been handled by the category check
-			# also if it's not a text channel I don't care about it
-			if c.permissions_synced or not isinstance(c, discord.TextChannel):
-				continue
-
-			# etc
-			for role, permissions in c.overwrites.items():
-				for dangerous_permission in dangerous_permissions:
-					if getattr(permissions, dangerous_permission):
-						cp[(c, role)].append(dangerous_permission)
-						if dangerous_permission == 'administrator':
-							break
-
-		for (chan, role), perms in cp.items():
-			out +=  f'CHANNEL {chan.name} ROLE {role.name}\n' \
-					f"{textwrap.indent(nl.join(perms),prefix='- ', predicate=lambda line: True)}" \
-					'\n'
-
-		if out == '':
-			await ctx.send('No potentially dangerous permissions found.')
-			return
-
-		# value = discord.utils.escape_mentions(out).strip()
-
-		fp = io.BytesIO(out.encode('utf-8'))
-		await ctx.send(file=discord.File(fp, 'perms.diff'))
 
 
 def setup(bot):
