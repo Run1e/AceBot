@@ -253,7 +253,7 @@ class Meta(AceMixin, commands.Cog):
 
 		await ctx.send(self.bot.support_link)
 
-	@commands.command(name="source", aliases=["src", "code"])
+	@commands.command(name="code", aliases=["src", "source"])
 	async def source(self, ctx: commands.Context, source_item: str = None):
 		"""Get a github link to the source code of a command."""
 
@@ -261,11 +261,9 @@ class Meta(AceMixin, commands.Cog):
 			await ctx.send(GITHUB_LINK)
 			return
 
-		# send a typing event while we get from github
-		# normally this would be an async with,
-		# but no reason to do so since it shouldn't take very long to do this code,
-		# therefore no reason to make it with.
-		# if its been long enough that it has to fire again we've errorer or send a response
+		# send a typing event 
+		# normally would be an async with,
+		# but no need to do so since it shouldn't take very long to do this code,
 		await ctx.trigger_typing()
 
 		cmd: commands.Command = self.bot.get_command(source_item)
@@ -276,8 +274,12 @@ class Meta(AceMixin, commands.Cog):
 		source_file = str(
 			Path(inspect.getsourcefile(callback)).relative_to(str(Path.cwd()))
 		)
-		if "internal" in source_file:
-			# hide all commands in cogs.ahk.internal
+
+		# get repo to check if its an ignored file
+		repo = pygit2.Repository('.git')
+
+		if pygit2.GIT_STATUS_IGNORED & repo.status_file(source_file):
+			# hide all commands in all git ignored files
 			raise commands.CommandError("Couldn't find command.")
 
 		lines, first_line_no = inspect.getsourcelines(callback)
