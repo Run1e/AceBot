@@ -288,28 +288,16 @@ class Meta(AceMixin, commands.Cog):
 		link = f"{GITHUB_LINK}/blob/{GITHUB_BRANCH}/{source_file}{lines_extension}"
 
 		# check for image permissions and if we don't have them then just send the link
-		if not ctx.channel.permissions_for(ctx.me) >= discord.Permissions(
-			embed_links=True, attach_files=True
-		):
+		if not ctx.channel.permissions_for(ctx.me) >= discord.Permissions(embed_links=True):
 			await ctx.send(link)
 			return
 
 		# make a fancy embed!
-		e = discord.Embed()
-		e.description = f"{cmd.short_doc}\n\n"
-		e.title = cmd.qualified_name
-		thumb = discord.File(
-			io.BytesIO(await self.bot.user.avatar_url_as(format="png").read()),
-			filename="thumb.png",
-		)
-		e.set_thumbnail(url="attachment://thumb.png")
-		e.set_footer(text=f"/{source_file}")
-		e.add_field(
-			name="Source Code",
-			value=f"[Open in Github]({link})",
-			inline=True,
-		)
-		await ctx.send(embed=e, file=thumb)
+		embed = discord.Embed(title=cmd.qualified_name,
+		                      description=f'[Open in Github]({link} "Github Repository Link")',)
+		embed.set_footer(
+			text=f"/{source_file}", icon_url='https://github.githubassets.com/images/modules/logos_page/GitHub-Mark.png')
+		await ctx.send(embed=embed)
 
 
 def setup(bot):
