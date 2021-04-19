@@ -7,7 +7,7 @@ from pathlib import Path
 import discord
 import psutil
 from discord.ext import commands
-from pygit2 import GIT_STATUS_IGNORED, Repository
+from pygit2 import GIT_SORT_TOPOLOGICAL, GIT_STATUS_IGNORED, Repository
 
 from cogs.mixins import AceMixin
 from utils.context import AceContext
@@ -161,8 +161,7 @@ class Meta(AceMixin, commands.Cog):
 		return f'[`{short_sha2}`]({GITHUB_LINK}/commit/{commit.hex}) {short} ({offset})'
 
 	def get_last_commits(self, count=3):
-		repo = pygit2.Repository('.git')
-		return '\n'.join(self.format_commit(c) for c in islice(repo.walk(repo.head.target, pygit2.GIT_SORT_TOPOLOGICAL), count))
+		return '\n'.join(self.format_commit(c) for c in islice(self.repo.walk(self.repo.head.target, GIT_SORT_TOPOLOGICAL), count))
 
 	@commands.command()
 	@commands.bot_has_permissions(embed_links=True)
