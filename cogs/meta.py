@@ -1,20 +1,23 @@
 import inspect
 from datetime import datetime, timedelta, timezone
 from itertools import islice
+from os import getcwd
 from pathlib import Path
 
 import discord
 import psutil
-import pygit2
 from discord.ext import commands
+from pygit2 import GIT_STATUS_IGNORED, Repository
 
 from cogs.mixins import AceMixin
+from utils.context import AceContext
 from utils.converters import MaybeMemberConverter
 from utils.string import yesno
 from utils.time import pretty_datetime, pretty_timedelta
 
 GITHUB_LINK = 'https://github.com/Run1e/AceBot'
 GITHUB_BRANCH = 'master'
+COULD_NOT_FIND = commands.CommandError("Couldn't find command.")
 
 MEDALS = (
 	'\N{FIRST PLACE MEDAL}',
@@ -30,6 +33,8 @@ class Meta(AceMixin, commands.Cog):
 
 	def __init__(self, bot):
 		super().__init__(bot)
+
+		self.repo = Repository('.')
 
 		self.process = psutil.Process()
 
@@ -252,58 +257,38 @@ class Meta(AceMixin, commands.Cog):
 
 		await ctx.send(self.bot.support_link)
 
-	@commands.command(name="code", aliases=["src", "source"])
-	async def source(self, ctx: commands.Context, source_item: str = None):
+	@commands.command(aliases=['source'])
+	async def code(self, ctx: AceContext, command: str = None):
 		"""Get a github link to the source code of a command."""
 
-		if source_item is None:
-			# check for image permissions and if we don't have them then just send the link
-			if not ctx.channel.permissions_for(ctx.me) >= discord.Permissions(embed_links=True):
-				await ctx.send(GITHUB_LINK)
-			else:
-				# send an embed
-				embed = discord.Embed(title='Bot Source', description=f'[Open in Github]({GITHUB_LINK} "Github Link")')
-				embed.set_footer(icon_url='https://github.githubassets.com/images/modules/logos_page/GitHub-Mark.png')
-				await ctx.send(embed=embed)
-				return
-
-		# send a typing event 
-		# normally would be an async with,
-		# but no need to do so since it shouldn't take very long to do this code,
-		await ctx.trigger_typing()
-
-		cmd: commands.Command = self.bot.get_command(source_item)
-
-		if cmd is None:
-			raise commands.CommandError("Couldn't find command.")
-		callback = cmd.callback
-		source_file = str(
-			Path(inspect.getsourcefile(callback)).relative_to(str(Path.cwd()))
-		)
-
-		# get repo to check if its an ignored file
-		repo = pygit2.Repository('.git')
-
-		if pygit2.GIT_STATUS_IGNORED & repo.status_file(source_file):
-			# hide all commands in all git ignored files
-			raise commands.CommandError("Couldn't find command.")
-
-		lines, first_line_no = inspect.getsourcelines(callback)
-
-		link = f"{GITHUB_LINK}/blob/{GITHUB_BRANCH}/{source_file}" \
-			   f"#L{first_line_no}-L{first_line_no + len(lines) - 1}"
-
-		# check for image permissions and if we don't have them then just send the link
-		if not ctx.channel.permissions_for(ctx.me) >= discord.Permissions(embed_links=True):
-			await ctx.send(link)
+		if command is None:
+			await ctx.send(GITHUB_LINK)
 			return
 
-		# make a fancy embed!
-		embed = discord.Embed(title=f'Command: {cmd.qualified_name}',
-			description=f'[Open in Github]({link} "Github Repository Link")', )
-		embed.set_footer(
-			text=f"/{source_file}", icon_url='https://github.githubassets.com/images/modules/logos_page/GitHub-Mark.png')
-		await ctx.send(embed=embed)
+		cmd: commands.Command = self.bot.get_command(command)
+
+		# not a command
+		if cmd is None:
+			raise COULD_NOT_FIND
+
+		callback = cmd.callback
+		source_file = Path(inspect.getsourcefile(callback)).relative_to(getcwd())
+
+		# pygit2 expects forward slashes which breaks on windows with pathlib
+		source_file_str = str(source_file).replace('\\', '/')
+
+		# not in repo
+		try:
+			file_status = self.repo.status_file(source_file_str)
+		except KeyError:
+			raise COULD_NOT_FIND
+
+		# ignored
+		if file_status & GIT_STATUS_IGNORED:
+			raise COULD_NOT_FIND
+
+		lines, first_line_no = inspect.getsourcelines(callback)
+		await ctx.send(f'<{GITHUB_LINK}/blob/{GITHUB_BRANCH}/{source_file}#L{first_line_no}-L{first_line_no + len(lines) - 1}>')
 
 
 def setup(bot):
