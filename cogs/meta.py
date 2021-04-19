@@ -1,18 +1,23 @@
 import inspect
 from datetime import datetime, timedelta, timezone
 from itertools import islice
+from os import getcwd
+from pathlib import Path
 
 import discord
 import psutil
-import pygit2
 from discord.ext import commands
+from pygit2 import GIT_STATUS_IGNORED, Repository
 
 from cogs.mixins import AceMixin
+from utils.context import AceContext
 from utils.converters import MaybeMemberConverter
 from utils.string import yesno
 from utils.time import pretty_datetime, pretty_timedelta
 
 GITHUB_LINK = 'https://github.com/Run1e/AceBot'
+GITHUB_BRANCH = 'master'
+COULD_NOT_FIND = commands.CommandError("Couldn't find command.")
 
 MEDALS = (
 	'\N{FIRST PLACE MEDAL}',
@@ -28,6 +33,8 @@ class Meta(AceMixin, commands.Cog):
 
 	def __init__(self, bot):
 		super().__init__(bot)
+
+		self.repo = Repository('.')
 
 		self.process = psutil.Process()
 
@@ -251,26 +258,37 @@ class Meta(AceMixin, commands.Cog):
 		await ctx.send(self.bot.support_link)
 
 	@commands.command(aliases=['source'])
-	async def code(self, ctx, *, command: str = None):
-		'''Show command code or get GitHub repo link.'''
+	async def code(self, ctx: AceContext, command: str = None):
+		"""Get a github link to the source code of a command."""
 
 		if command is None:
-			await ctx.send('https://github.com/Run1e/AceBot')
+			await ctx.send(GITHUB_LINK)
 			return
 
-		command = self.bot.get_command(command)
+		cmd: commands.Command = self.bot.get_command(command)
 
-		if command is None or command.hidden:
-			raise commands.CommandError('Couldn\'t find command.')
+		# not a command
+		if cmd is None:
+			raise COULD_NOT_FIND
 
-		code = '\n'.join(line[1:] for line in inspect.getsource(command.callback).splitlines())
+		callback = cmd.callback
+		source_file = Path(inspect.getsourcefile(callback)).relative_to(getcwd())
 
-		paginator = commands.Paginator(prefix='```py')
-		for line in code.replace('``', '`\u200b`').split('\n'):
-			paginator.add_line(line)
+		# pygit2 expects forward slashes which breaks on windows with pathlib
+		source_file_str = str(source_file).replace('\\', '/')
 
-		for page in paginator.pages:
-			await ctx.send(page)
+		# not in repo
+		try:
+			file_status = self.repo.status_file(source_file_str)
+		except KeyError:
+			raise COULD_NOT_FIND
+
+		# ignored
+		if file_status & GIT_STATUS_IGNORED:
+			raise COULD_NOT_FIND
+
+		lines, first_line_no = inspect.getsourcelines(callback)
+		await ctx.send(f'<{GITHUB_LINK}/blob/{GITHUB_BRANCH}/{source_file}#L{first_line_no}-L{first_line_no + len(lines) - 1}>')
 
 
 def setup(bot):
