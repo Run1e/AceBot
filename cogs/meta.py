@@ -258,8 +258,15 @@ class Meta(AceMixin, commands.Cog):
 		"""Get a github link to the source code of a command."""
 
 		if source_item is None:
-			await ctx.send(GITHUB_LINK)
-			return
+			# check for image permissions and if we don't have them then just send the link
+			if not ctx.channel.permissions_for(ctx.me) >= discord.Permissions(embed_links=True):
+				await ctx.send(GITHUB_LINK)
+			else:
+				# send an embed
+				embed = discord.Embed(title='Bot Source',description=f'[Open in Github]({GITHUB_LINK} "Github Link")')
+				embed.set_footer(icon_url='https://github.githubassets.com/images/modules/logos_page/GitHub-Mark.png')
+				await ctx.send(embed=embed)
+				return
 
 		# send a typing event 
 		# normally would be an async with,
@@ -284,8 +291,8 @@ class Meta(AceMixin, commands.Cog):
 
 		lines, first_line_no = inspect.getsourcelines(callback)
 
-		lines_extension = f"#L{first_line_no}-L{first_line_no+len(lines)-1}"
-		link = f"{GITHUB_LINK}/blob/{GITHUB_BRANCH}/{source_file}{lines_extension}"
+		link = f"{GITHUB_LINK}/blob/{GITHUB_BRANCH}/{source_file}" \
+			f"#L{first_line_no}-L{first_line_no+len(lines)-1}"
 
 		# check for image permissions and if we don't have them then just send the link
 		if not ctx.channel.permissions_for(ctx.me) >= discord.Permissions(embed_links=True):
@@ -293,7 +300,7 @@ class Meta(AceMixin, commands.Cog):
 			return
 
 		# make a fancy embed!
-		embed = discord.Embed(title=cmd.qualified_name,
+		embed = discord.Embed(title=f'Command: {cmd.qualified_name}',
 		                      description=f'[Open in Github]({link} "Github Repository Link")',)
 		embed.set_footer(
 			text=f"/{source_file}", icon_url='https://github.githubassets.com/images/modules/logos_page/GitHub-Mark.png')
