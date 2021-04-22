@@ -139,7 +139,7 @@ class Reminders(AceMixin, commands.Cog):
 
 		try:
 			if channel is not None:
-				await channel.send(content=f'<@{user_id}>', embed=e)
+				await channel.send(content=f'<@{user_id}>', embed=e, allowed_mentions=discord.AllowedMentions(users=True))
 			elif user is not None:
 				await user.send(embed=e)
 		except discord.HTTPException as exc:
