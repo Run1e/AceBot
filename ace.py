@@ -331,7 +331,8 @@ async def setup():
 	# create allowed mentions
 	log.debug('Creating allowed mentions')
 	allowed_mentions = discord.AllowedMentions.none()
-	allowed_mentions.users= True
+	allowed_mentions.users = True
+	allowed_mentions.replied_user = True
 
 	# init bot
 	log.info('Initializing bot')
