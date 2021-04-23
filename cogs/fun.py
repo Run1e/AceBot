@@ -183,7 +183,8 @@ class Fun(AceMixin, commands.Cog):
 			'appid': WOLFRAM_KEY,
 			'input': query,
 			'output': 'json',
-			'ip': '',
+			'ip': '1.1.1.1',
+			'latlong': '0.0,0.0',
 			'units': 'metric',
 			'format': 'plaintext',
 		}
@@ -201,6 +202,8 @@ class Fun(AceMixin, commands.Cog):
 					j = await resp.text()
 			except asyncio.TimeoutError:
 				raise QUERY_ERROR
+
+			log.debug(resp.url)
 
 			j = loads(j)
 			res = j['queryresult']
