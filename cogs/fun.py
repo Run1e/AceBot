@@ -7,8 +7,10 @@ from random import choice
 import urllib.parse
 import typing
 import aiohttp
+import bs4
 import discord
 from bs4 import BeautifulSoup
+from fuzzywuzzy import fuzz, process
 from discord.ext import commands
 
 from cogs.mixins import AceMixin
@@ -37,6 +39,8 @@ COMPLIMENT_URL = 'https://complimentr.com/api'
 COMPLIMENT_EMOJIS = ('heart', 'kissing_heart', 'heart_eyes', 'two_hearts', 'sparkling_heart', 'gift_heart')
 
 NUMBER_URL = 'http://numbersapi.com/{number}?notfound=floor'
+
+BILL_WURTZ_URL = 'https://billwurtz.com/'
 
 BALL_RESPONSES = [
 	# yes
@@ -416,25 +420,81 @@ class Fun(AceMixin, commands.Cog):
 			return None
 		except TimeoutError:
 			return None
+	
+	async def get_bill_vids(self, *, file: str = "videos.html"):
+		"""Get bill videos and return the bs object"""
 
-	@commands.command()
+		async with self.bot.aiohttp.get(BILL_WURTZ_URL + file) as resp:
+			if resp.status != 200:
+				raise commands.CommandError('Request failed.')
+
+			content = await resp.text()
+
+		soup = BeautifulSoup(content, 'lxml')
+
+		def bill_filter(el):
+			# needs to have 2 td children
+			names = [c.name for c in el.children if c.name is not None]
+			return len(names)==2 and all(name=="td" for name in names)
+
+		tokens = [(toke if toke('a') is not None else None) for toke in soup.find_all(bill_filter)]
+		return tokens
+
+	def get_bill_video(self, query, videos):
+		
+		fuzzed = process.extractOne(query, videos)
+		log.debug(f"{query}: {fuzzed}")
+		if fuzzed[-1] > 89:
+			query = fuzzed[0]
+		else:
+			raise commands.CommandError('No video with that name was found.')
+		return query
+
+
+	@commands.group(aliases=('wurtz',),invoke_without_command=True)
 	@commands.cooldown(rate=3, per=10.0, type=commands.BucketType.user)
-	async def bill(self, ctx):
+	async def bill(self, ctx, *, query: str = None):
 		'''Get a random Bill Wurtz video from his website.'''
+		
+		async with ctx.typing():
+			soup = await self.get_bill_vids()
+			tag: bs4.Tag = None
+			if query is None:
+				tag = choice(soup)
+			else:
+				query = self.get_bill_video(query, [v('a')[0].string for v in soup])
+				for v in soup:
+					if query in v('a')[0].string:
+						tag = v
+						break
 
-		url = 'https://billwurtz.com/'
+			tag = tag('a')[0]
+		await ctx.send(f'**{tag.string}**' \
+			"\n" \
+			f"{BILL_WURTZ_URL + tag['href']}")
+
+	@bill.command(aliases=['s'])
+	async def song(self, ctx, *, query: str = None):
+		'''Get a random Bill Wurtz song from his website.'''
 
 		async with ctx.typing():
-			async with ctx.http.get(url + 'videos.html') as resp:
-				if resp.status != 200:
-					raise commands.CommandError('Request failed.')
+			soup = await self.get_bill_vids(file='songs.html')
+			tag: bs4.Tag = None
+			if query is None:
+				tag = choice(soup)
+			else:
+				query = self.get_bill_video(query, [v('a')[0].string for v in soup])
+				for v in soup:
+					if query in v('a')[0].string:
+						tag = v
+						break
 
-				content = await resp.text()
+			tag = tag('a')[0]
+		await ctx.send(f'**{tag.string}**' \
+			"\n" \
+			f"{BILL_WURTZ_URL + tag['href']}")
 
-			bs = BeautifulSoup(content, 'html.parser')
-			tag = choice(bs.find_all('a'))
 
-			await ctx.send(url + tag['href'])
 
 	@commands.command()
 	@commands.bot_has_permissions(embed_links=True)
