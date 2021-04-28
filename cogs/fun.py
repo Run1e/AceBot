@@ -437,7 +437,9 @@ class Fun(AceMixin, commands.Cog):
 			names = [c.name for c in el.children if c.name is not None]
 			return len(names)==2 and all(name=="td" for name in names)
 
-		tokens = [(toke if toke('a') is not None else None) for toke in soup.find_all(bill_filter)]
+		tokens = [(toke if getattr(toke,'a', None) is not None else None) for toke in soup.find_all(bill_filter)]
+		while tokens.count(None) > 0:
+			tokens.remove(None)
 		return tokens
 
 	def get_bill_video(self, query, videos):
