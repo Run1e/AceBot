@@ -464,6 +464,8 @@ class Fun(AceMixin, commands.Cog):
 		
 		while tokens.count(None) > 0:
 			tokens.remove(None)
+
+		BILL_CACHE[file] = tokens
 		
 		return tokens
 
@@ -490,6 +492,7 @@ class Fun(AceMixin, commands.Cog):
 		if query and query.split(' ')[0] in BILL_CACHE.keys():
 			file = query.split(' ')[0]
 			query = ' '.join(query.split(' ')[1:])
+
 			if query == '':
 				query = None
 	
@@ -497,23 +500,23 @@ class Fun(AceMixin, commands.Cog):
 		log.debug('file: ' + (file or "None"))
 
 		async with ctx.typing():
-			soup = await self.get_bill_soup(file=file)
+			soup = await self.get_bill_soup(file=file, use_cache=not (query or '').lower().startswith('latest'))
 
 			tag: bs4.Tag = None
 
 			if query is None:
 				tag = choice(soup)
 
-			else:
-				if query.startswith('latest'):
-					query: str = soup[0]('a')[0].string
-				else:
-					query = self.get_bill_file(query, [tag('a')[0].string for tag in soup])[0]
+			elif query.startswith('latest'):
+				query: str = soup[0]('a')[0].string
 
-				for v in soup:
-					if query == v('a')[0].string:
-						tag = v
-						break
+			else:
+				query = self.get_bill_file(query, [tag('a')[0].string for tag in soup])[0]
+
+			for v in soup:
+				if query == v('a')[0].string:
+					tag = v
+					break
 
 			tag = tag('a')[0]
 
