@@ -60,6 +60,15 @@ CLOSED_MESSAGE = (
 	'If your question didn\'t get answered, you can claim a new channel.'
 )
 
+ASK_MESSAGE = (
+	"If you're looking for scripting help you should ask in an open help channel.\n\n"
+	'The currently available help channels are {1}.'
+)
+
+EDITED_ASK_MESSAGE = (
+	"If you're looking for scripting help you should ask in an open help channel.\n\n"
+	'See <#{}> for more information.'
+)
 
 def standardize(s: str):
 	# make lowercase
@@ -88,6 +97,7 @@ class AutoHotkeyHelpSystem(AceMixin, commands.Cog):
 	def __init__(self, bot):
 		super().__init__(bot)
 
+		self.ask_messages = list()
 		self.claimed_channel = self._load_claims()
 		self.claimed_at = dict()
 
@@ -99,6 +109,10 @@ class AutoHotkeyHelpSystem(AceMixin, commands.Cog):
 		log.debug('Loading model')
 		self.model = keras.models.load_model('model')
 		log.debug('Finished loading model')
+
+
+	def cog_unload(self):
+		self.channel_reclaimer.cancel()
 
 	def classify(self, text):
 		return self.model(np.array([standardize(text)[0]])).numpy()[0][0]
@@ -352,6 +366,14 @@ class AutoHotkeyHelpSystem(AceMixin, commands.Cog):
 			log.info(f'Opening new channel after claim: {channel}')
 			await self.open_channel(channel)
 
+
+		# update recent ask messages
+		for msg in self.ask_messages:
+			await msg.edit(content=EDITED_ASK_MESSAGE.format(GET_HELP_CHAN_ID))
+		
+		#clear the list since all of them have been resolved now.
+		self.ask_messages = list()
+
 	def _make_yell_embed(self, score):
 		s = (
 			'Your scripting question looks like it might be about a game, which is not allowed here. '
@@ -523,12 +545,9 @@ class AutoHotkeyHelpSystem(AceMixin, commands.Cog):
 				mentions[-1] = 'and ' + mentions[-1]
 				ment = ', '.join(mentions)
 
-			text = (
-				'If you\'re looking for scripting help you should ask in an open help channel.\n\n'
-				'The currently available help channels are {1}.'
-			).format(open_category, ment)
+			text = ASK_MESSAGE.format(open_category, ment)
 
-			await ctx.send(text)
+			self.ask_messages.append(await ctx.send(text))
 
 
 def setup(bot):
