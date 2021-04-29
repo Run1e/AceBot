@@ -517,10 +517,23 @@ class Fun(AceMixin, commands.Cog):
 				if query == v('a')[0].string:
 					tag = v
 					break
+			
+			bill_date = tag('td')[0].string.strip().split('.')
+			bill_date = (
+				'20' + bill_date[2], 
+				bill_date[0].rjust(2,'0'), 
+				bill_date[1].rjust(2, '0')
+			)
+			bill_date = [int(x) for x in bill_date]
+			bill_date = date(*bill_date).strftime('%B %d, %Y')
 
 			tag = tag('a')[0]
 
-		await ctx.send(f"**{tag.string}**\n{BILL_WURTZ_URL + tag['href']}")
+		await ctx.send(
+			f"{bill_date}: "
+			f"*{discord.utils.escape_markdown(tag.string.strip())}* \n"
+			f"{BILL_WURTZ_URL + tag['href']}"
+		)
 
 	@commands.command()
 	@commands.bot_has_permissions(embed_links=True)
