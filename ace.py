@@ -3,6 +3,7 @@ import json
 import logging.handlers
 import os
 import sys
+import traceback
 from datetime import datetime
 
 import aiohttp
@@ -169,12 +170,17 @@ class AceBot(commands.Bot):
 					if name in self.extensions.keys():
 						self.unload_extension(name)
 
-					log.debug('Loading %s', name)
+					try:
+						log.debug('Loading %s', name)
 
-					self.load_extension(name)
-					self.modified_times[name] = mtime
+						self.load_extension(name)
+						self.modified_times[name] = mtime
 
-					reloaded.append(name)
+						reloaded.append(name)
+					except Exception as e:
+						log.error(f'Failed to load extension: {name}')
+						log.error(e)
+						traceback.print_tb(sys.exc_info()[2])
 
 		return reloaded
 
