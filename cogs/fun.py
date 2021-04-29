@@ -11,7 +11,7 @@ import bs4
 import discord
 from bs4 import BeautifulSoup
 from fuzzywuzzy import fuzz, process
-from discord.ext import commands
+from discord.ext import commands, tasks
 
 from cogs.mixins import AceMixin
 from config import APIXU_KEY, THECATAPI_KEY, WOLFRAM_KEY
@@ -42,6 +42,8 @@ NUMBER_URL = 'http://numbersapi.com/{number}?notfound=floor'
 
 BILL_WURTZ_URL = 'https://billwurtz.com/'
 
+BILL_CACHE = {'videos': None, 'songs': None, 'instrumentals': None}
+
 BALL_RESPONSES = [
 	# yes
 	'It is certain', 'It is decidedly so', 'Without a doubt', 'Yes definitely', 'You may rely on it',
@@ -60,6 +62,13 @@ log = logging.getLogger(__name__)
 
 class Fun(AceMixin, commands.Cog):
 	'''Fun commands!'''
+
+	def __init__(self, bot):
+		self.bot = bot
+		self.cache_bill_vids.start()
+	
+	def cog_unload(self):
+		self.cache_bill_vids.cancel()
 
 	@commands.command()
 	@commands.bot_has_permissions(embed_links=True)
@@ -420,16 +429,30 @@ class Fun(AceMixin, commands.Cog):
 			return None
 		except TimeoutError:
 			return None
-	
-	async def get_bill_vids(self, *, file: str = "videos.html"):
-		"""Get bill videos and return the bs object"""
 
-		async with self.bot.aiohttp.get(BILL_WURTZ_URL + file) as resp:
+	@tasks.loop(hours=1.0)
+	async def cache_bill_vids(self):
+		'''Requests the bill videos from the website. 
+		Caching is done in order to speed up searching'''
+		
+		for key in BILL_CACHE.keys():
+			BILL_CACHE[key] = await self.get_bill_soup(file=key, use_cache=False)
+	
+
+	async def get_bill_soup(self, *, file: str = "videos.html", use_cache=True):
+		"""Get bill videos/songs and return the beautifulsoup object"""
+
+		if file.endswith('.html'):
+			file = file.rstrip('.html')
+
+		if use_cache and BILL_CACHE[file] is not None:
+			return BILL_CACHE[file]
+
+		async with self.bot.aiohttp.get(BILL_WURTZ_URL + file + '.html') as resp:
 			if resp.status != 200:
 				raise commands.CommandError('Request failed.')
-
 			content = await resp.text()
-
+		
 		soup = BeautifulSoup(content, 'lxml')
 
 		def bill_filter(el):
@@ -438,65 +461,63 @@ class Fun(AceMixin, commands.Cog):
 			return len(names)==2 and all(name=="td" for name in names)
 
 		tokens = [(toke if getattr(toke,'a', None) is not None else None) for toke in soup.find_all(bill_filter)]
+		
 		while tokens.count(None) > 0:
 			tokens.remove(None)
+		
 		return tokens
 
-	def get_bill_video(self, query, videos):
-		
-		fuzzed = process.extractOne(query, videos)
-		log.debug(f"{query}: {fuzzed}")
-		if fuzzed[-1] > 89:
-			query = fuzzed[0]
-		else:
-			raise commands.CommandError('No video with that name was found.')
-		return query
+	def get_bill_file(self, query, title, fuzzed_threshold=89):
+		"""
+		Take a query and fuzzy match it to titles list and return it
+		if it matches above the threshold.
+		"""
+		fuzzed = process.extractOne(query, title)
+
+		log.debug("fuzzed: " + str(fuzzed))
+
+		if fuzzed[-1] < fuzzed_threshold:
+			raise commands.CommandError('No file with that name was found.')
+
+		return fuzzed
 
 
 	@commands.group(aliases=('wurtz',),invoke_without_command=True)
 	@commands.cooldown(rate=3, per=10.0, type=commands.BucketType.user)
-	async def bill(self, ctx, *, query: str = None):
+	async def bill(self, ctx, *, query: str = None, file='videos'):
 		'''Get a random Bill Wurtz video from his website.'''
-		
+
+		if query and query.split(' ')[0] in BILL_CACHE.keys():
+			file = query.split(' ')[0]
+			query = ' '.join(query.split(' ')[1:])
+			if query == '':
+				query = None
+	
+		log.debug('query: ' + (query or "None"))
+		log.debug('file: ' + (file or "None"))
+
 		async with ctx.typing():
-			soup = await self.get_bill_vids()
+			soup = await self.get_bill_soup(file=file)
+
 			tag: bs4.Tag = None
+
 			if query is None:
 				tag = choice(soup)
+
 			else:
-				query = self.get_bill_video(query, [v('a')[0].string for v in soup])
+				if query.startswith('latest'):
+					query: str = soup[0]('a')[0].string
+				else:
+					query = self.get_bill_file(query, [tag('a')[0].string for tag in soup])[0]
+
 				for v in soup:
-					if query in v('a')[0].string:
+					if query == v('a')[0].string:
 						tag = v
 						break
 
 			tag = tag('a')[0]
-		await ctx.send(f'**{tag.string}**' \
-			"\n" \
-			f"{BILL_WURTZ_URL + tag['href']}")
 
-	@bill.command(aliases=['s'])
-	async def song(self, ctx, *, query: str = None):
-		'''Get a random Bill Wurtz song from his website.'''
-
-		async with ctx.typing():
-			soup = await self.get_bill_vids(file='songs.html')
-			tag: bs4.Tag = None
-			if query is None:
-				tag = choice(soup)
-			else:
-				query = self.get_bill_video(query, [v('a')[0].string for v in soup])
-				for v in soup:
-					if query in v('a')[0].string:
-						tag = v
-						break
-
-			tag = tag('a')[0]
-		await ctx.send(f'**{tag.string}**' \
-			"\n" \
-			f"{BILL_WURTZ_URL + tag['href']}")
-
-
+		await ctx.send(f"**{tag.string}**\n{BILL_WURTZ_URL + tag['href']}")
 
 	@commands.command()
 	@commands.bot_has_permissions(embed_links=True)
