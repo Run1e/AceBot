@@ -186,7 +186,7 @@ class Fun(AceMixin, commands.Cog):
 			'ip': '',
 			'units': 'metric',
 			'format': 'plaintext',
-			'podindex': '1,2,3'
+			# 'podindex': '1,2,3'
 		}
 
 		headers = {
@@ -216,21 +216,20 @@ class Fun(AceMixin, commands.Cog):
 
 			if not success:
 				e.description = 'Sorry, Wolfram Alpha was not able to parse your request.'
-
 				means = res.get('didyoumeans', None)
 				if means is not None:
 					val = ', '.join(x['val'] for x in means) if isinstance(means, list) else means['val']
-					e.add_field(name='Wolfram is having issues with these word(s):', value='```{0}```'.format(val))
+					e.add_field(name='Wolfram is having issues with these word(s):', value='```{0}```'.format(val), inline=False)
 
 				if 'tips' in res:
-					e.add_field(name='Tips from Wolfram Alpha:', value=res['tips']['text'])
+					e.add_field(name='Tips from Wolfram Alpha:', value=res['tips']['text'], inline=False)
 
-				if res['numpods'] == 0:
-					e.add_field(name='Possible Reason:', 
-					value=(
-						'Its possible this errored due to not providing a location.\n'
-						'Try providing a location within your query.\n'
-						'*This message was not provided by wolfram.*')
+				if len(e.fields) == 0 and res['numpods'] == 0:
+					e.add_field(name='Possible Reason:',
+									value=(
+										'Its possible this errored due to not providing a location.\n'
+										'Try providing a location within your query.'),
+									inline=False
 					)
 
 				await ctx.send(embed=e)
