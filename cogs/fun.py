@@ -183,8 +183,7 @@ class Fun(AceMixin, commands.Cog):
 			'appid': WOLFRAM_KEY,
 			'input': query,
 			'output': 'json',
-			'ip': '1.1.1.1',
-			'latlong': '0.0,0.0',
+			'ip': '',
 			'units': 'metric',
 			'format': 'plaintext',
 		}
@@ -213,6 +212,11 @@ class Fun(AceMixin, commands.Cog):
 			e = discord.Embed(color=0xFF6600)
 			e.set_author(name='Wolfram|Alpha', icon_url='https://i.imgur.com/KFppH69.png')
 			e.set_footer(text='wolframalpha.com')
+
+			try:
+				res['pods']
+			except KeyError:
+				success = False
 
 			if not success:
 				e.description = 'Sorry, Wolfram Alpha was not able to parse your request.'
