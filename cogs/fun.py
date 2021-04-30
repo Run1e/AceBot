@@ -484,11 +484,12 @@ class Fun(AceMixin, commands.Cog):
 		return (True, fuzzed)
 
 
-	@commands.group(aliases=('wurtz',),invoke_without_command=True)
+	@commands.command(aliases=('wurtz',))
 	@commands.cooldown(rate=3, per=10.0, type=commands.BucketType.user)
-	async def bill(self, ctx, *, query: str = None, file='videos'):
-		'''Get a random Bill Wurtz video from his website.'''
+	async def bill(self, ctx, *, query: str = None):
+		'''Get a random Bill Wurtz video from his website, with optional search.'''
 
+		file = 'videos'
 		if query and query.split(' ')[0] in BILL_CACHE.keys():
 			file = query.split(' ')[0]
 			query = ' '.join(query.split(' ')[1:])
