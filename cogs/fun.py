@@ -476,12 +476,12 @@ class Fun(AceMixin, commands.Cog):
 		"""
 		fuzzed = process.extractOne(query, title)
 
-		log.debug("fuzzed: " + str(fuzzed))
+		log.debug("bill query fuzzed: " + str(fuzzed))
 
 		if fuzzed[-1] < fuzzed_threshold:
-			raise commands.CommandError('No file with that name was found.')
+			return (False, fuzzed)
 
-		return fuzzed
+		return (True, fuzzed)
 
 
 	@commands.group(aliases=('wurtz',),invoke_without_command=True)
@@ -511,7 +511,15 @@ class Fun(AceMixin, commands.Cog):
 				query: str = soup[0]('a')[0].string
 
 			else:
-				query = self.get_bill_file(query, [tag('a')[0].string for tag in soup])[0]
+				accept, query = self.get_bill_file(query, [tag('a')[0].string for tag in soup])
+				
+				if not accept:
+					raise commands.CommandError(
+							"Couldn't match that search with certainty.\n"
+							f"Closest match: '{query[0].strip()}'"
+						)
+
+				query = query[0]
 
 			for v in soup:
 				if query == v('a')[0].string:
