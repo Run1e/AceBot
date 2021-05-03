@@ -290,13 +290,25 @@ class Owner(AceMixin, commands.Cog):
 	async def _reload(self, ctx):
 		'''Reload edited extensions.'''
 
-		reloaded = self.bot.load_extensions()
+		reloaded, errored = self.bot.load_extensions(reload=True)
+		out = ''
+		if reloaded or errored:
+			if reloaded:
+				log.info('Reloaded cogs: %s', ', '.join(reloaded))
+				out += 'Reloaded cogs: ' + ', '.join('`{0}`'.format(ext) for ext in reloaded)
+			if errored:
+				# some cogs failed to reload
+				out += '\n\nThese cogs errored:```diff\n'
 
-		if reloaded:
-			log.info('Reloaded cogs: %s', ', '.join(reloaded))
-			await ctx.send('Reloaded cogs: ' + ', '.join('`{0}`'.format(ext) for ext in reloaded))
+				for e in errored:
+					log.error(f'{e[0]} failed to reload: {e[1]}')
+					out += f'- {e[0]}: {e[1]}'
+				out += '\n```'
+				out = out.strip('\n')
 		else:
 			await ctx.send('Nothing to reload.')
+
+		await ctx.send(out)
 
 	@commands.command()
 	async def decache(self, ctx, guild_id: int):

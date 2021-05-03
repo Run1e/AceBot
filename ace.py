@@ -21,6 +21,7 @@ from utils.string import po
 from utils.time import pretty_seconds
 
 EXTENSIONS = (
+	'cogs.owner',
 	'cogs.fun',
 	'cogs.configuration',
 	'cogs.tags',
@@ -38,7 +39,6 @@ EXTENSIONS = (
 	'cogs.ahk.internal.logger',
 	'cogs.ahk.internal.security',
 	'cogs.dwitter',
-	'cogs.owner',
 )
 
 
@@ -157,8 +157,16 @@ class AceBot(commands.Bot):
 		gc = await self.config.get_entry(message.guild.id)
 		return gc.prefix or DEFAULT_PREFIX
 
-	def load_extensions(self):
+	def load_extensions(self, reload: bool =False):
+		"""Reload bot Extensions. 
+
+		If `reload` is False, then cogs are unloaded and loaded.
+		If `reload` is True, then cogs are reloaded using `reload_extension()`
+
+		"""
+
 		reloaded = list()
+		errored = list()
 
 		for name in EXTENSIONS:
 			file_name = name.replace('.', '/') + '.py'
@@ -167,22 +175,33 @@ class AceBot(commands.Bot):
 				mtime = os.stat(file_name).st_mtime_ns
 
 				if mtime > self.modified_times.get(name, 0):
-					if name in self.extensions.keys():
+
+					if name in self.extensions.keys() and not reload:
 						self.unload_extension(name)
 
 					try:
 						log.debug('Loading %s', name)
 
-						self.load_extension(name)
+						if reload:
+
+							try:
+								self.reload_extension(name)
+							except commands.ExtensionNotLoaded:
+								self.load_extension(name)
+						else:
+							self.load_extension(name)
 						self.modified_times[name] = mtime
 
 						reloaded.append(name)
+
 					except Exception as e:
+
 						log.error(f'Failed to load extension: {name}')
 						log.error(e)
+						errored.append((name, e.args[0].lstrip(f"Extension '{name}' raised an error:")))
 						traceback.print_tb(sys.exc_info()[2])
 
-		return reloaded
+		return reloaded, errored
 
 	async def on_command(self, ctx):
 		spl = ctx.message.content.split('\n')
