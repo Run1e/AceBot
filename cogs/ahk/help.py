@@ -14,9 +14,9 @@ from discord.ext import commands, tasks
 from config import USE_GAME_MODEL
 
 if USE_GAME_MODEL:
-	import numpy as np
+	import numpy as np  # type: ignore
 	log.info('Importing keras...')
-	from tensorflow import keras
+	from tensorflow import keras  # type: ignore
 	log.info('Finished importing keras.')
 else:
 	log.info('keras.model has not been loaded.')
@@ -100,10 +100,15 @@ class AutoHotkeyHelpSystem(AceMixin, commands.Cog):
 		self.channel_reclaimer.start()
 		self.claimed_messages = dict()
 
-		log.debug('Loading model')
+		
 		if USE_GAME_MODEL:
-			self.model = keras.models.load_model('model')
-		log.debug('Finished loading model')
+			log.debug('Loading model')
+			self.model = keras.models.load_model('model')  # type: ignore
+			log.debug('Finished loading model')
+		else:
+			log.info('Model is disabled.')
+			self.model = None
+		
 
 	def classify(self, text):
 		if USE_GAME_MODEL:
