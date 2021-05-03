@@ -1,19 +1,40 @@
+# Byte-compiled / optimized / DLL files
 __pycache__
+
+# IDE Files
 .idea
 .vscode
+
+# Enviroment
+.env
+.venv
+env/
+venv/
+ENV/
+Pipfile
+Pipfile.lock
+
+# Ace Config
+config.py
+ids.py
+
+# Ace's data folders
 data
 error
 feedback
 logs
 ahk_eval
-venv
-config.py
+
+
+# Internal cogs
+cogs/ahk/internal
+
+# Game Model
 model
 tensorflow-2.3.1-cp37-cp37m-linux_x86_64.whl
 
+# Tests
 test.py
-ids.py
 test_md.py
 test_docs_parser.py
 notes.md
-cogs/ahk/internal
