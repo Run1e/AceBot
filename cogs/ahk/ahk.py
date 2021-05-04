@@ -199,8 +199,10 @@ class AutoHotkey(AceMixin, commands.Cog):
 			# it could be that person is blocked, but it also could be that the bot doesn't have perms
 			# we treat it the same since this is only used in the ahk discord.
 			if e.text == 'Reaction blocked':
-				return await delete("I must be able to add reactions to your message! "
-									"If I'm blocked, you'll need to unblock me!")
+				return await delete(
+					'I must be able to add reactions to your message!\n'
+					"If I'm blocked, you'll need to unblock me!"
+					)
 
 	@commands.Cog.listener('on_raw_message_edit')
 	async def handle_emoji_suggestion_message_edit(self, message: discord.RawMessageUpdateEvent):
