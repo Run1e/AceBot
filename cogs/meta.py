@@ -257,7 +257,7 @@ class Meta(AceMixin, commands.Cog):
 		await ctx.send(self.bot.support_link)
 
 	@commands.command(aliases=['source'])
-	async def code(self, ctx: AceContext, command: str = None):
+	async def code(self, ctx: AceContext, *, command: str = None):
 		"""Get a github link to the source code of a command."""
 
 		if command is None:
