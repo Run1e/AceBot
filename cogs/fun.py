@@ -186,7 +186,7 @@ class Fun(AceMixin, commands.Cog):
 			'ip': '',
 			'units': 'metric',
 			'format': 'plaintext',
-			# 'podindex': '1,2,3'
+			'podindex': '1,2,3'
 		}
 
 		headers = {
@@ -208,7 +208,7 @@ class Fun(AceMixin, commands.Cog):
 			j = loads(j)
 			res = j['queryresult']
 
-			success = bool(res['success'] and res['numpods'])
+			success = res['success'] and res['numpods']
 
 			e = discord.Embed(color=0xFF6600)
 			e.set_author(name='Wolfram|Alpha', icon_url='https://i.imgur.com/KFppH69.png')
@@ -224,12 +224,13 @@ class Fun(AceMixin, commands.Cog):
 				if 'tips' in res:
 					e.add_field(name='Tips from Wolfram Alpha:', value=res['tips']['text'], inline=False)
 
-				if len(e.fields) == 0 and res['numpods'] == 0:
-					e.add_field(name='Possible Reason:',
-									value=(
-										'Its possible this errored due to not providing a location.\n'
-										'Try providing a location within your query.'),
-									inline=False
+				if not e.fields and res['numpods'] == 0:
+					e.add_field(
+						name='Possible Reason:',
+						value=(
+							'Its possible this errored due to not providing a location.\n'
+							'Try providing a location within your query.'),
+						inline=False
 					)
 
 				await ctx.send(embed=e)
