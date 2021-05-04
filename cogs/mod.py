@@ -607,8 +607,7 @@ class Moderation(AceMixin, commands.Cog):
 
 	@commands.Cog.listener()
 	async def on_member_update(self, before: discord.Member, after: discord.Member):
-		if before.bot:
-			return
+		'''Syncs a manual mute with the database'''
 
 		if before.roles == after.roles:
 			return
@@ -648,8 +647,7 @@ class Moderation(AceMixin, commands.Cog):
 
 	@commands.Cog.listener()
 	async def on_member_join(self, member):
-		if member.bot:
-			return
+		'''check members at join for mute evasion'''
 
 		conf = await self.config.get_entry(member.guild.id)
 		mute_role_id = conf.mute_role_id
