@@ -1,4 +1,4 @@
-discord.py==1.6.0
+discord.py==1.7.2
 asyncpg==0.20.1
 aiohttp==3.7.4
 fuzzywuzzy==0.18.0
