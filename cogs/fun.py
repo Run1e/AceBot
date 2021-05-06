@@ -195,8 +195,8 @@ class Fun(AceMixin, commands.Cog):
 
 		async with ctx.channel.typing():
 			try:
-				async with ctx.http.get('https://api.wolframalpha.com/v2/query', params=params, headers=headers,
-					timeout=aiohttp.ClientTimeout(total=20)) as resp:
+				cntx = ctx.http.get('https://api.wolframalpha.com/v2/query', params=params, headers=headers, timeout=aiohttp.ClientTimeout(total=20))
+				async with cntx as resp:
 					if resp.status != 200:
 						raise QUERY_ERROR
 					j = await resp.text()
@@ -217,6 +217,7 @@ class Fun(AceMixin, commands.Cog):
 			if not success:
 				e.description = 'Sorry, Wolfram Alpha was not able to parse your request.'
 				means = res.get('didyoumeans', None)
+
 				if means is not None:
 					val = ', '.join(x['val'] for x in means) if isinstance(means, list) else means['val']
 					e.add_field(name='Wolfram is having issues with these word(s):', value='```{0}```'.format(val), inline=False)
@@ -224,11 +225,11 @@ class Fun(AceMixin, commands.Cog):
 				if 'tips' in res:
 					e.add_field(name='Tips from Wolfram Alpha:', value=res['tips']['text'], inline=False)
 
-				if not e.fields and res['numpods'] == 0:
+				if not e.fields and not res['numpods']:
 					e.add_field(
-						name='Possible Reason:',
+						name='Possible reason:',
 						value=(
-							'Its possible this errored due to not providing a location.\n'
+							'It is possible this failed due to not providing a location.\n'
 							'Try providing a location within your query.'),
 						inline=False
 					)
