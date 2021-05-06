@@ -219,7 +219,7 @@ class Tags(AceMixin, commands.Cog):
 			return
 
 		tag_name, record = tag_name
-		await ctx.send(record.get('content'))
+		await ctx.send(record.get('content'), allowed_mentions=discord.AllowedMentions.none())
 
 		await self.db.execute(
 			'UPDATE tag SET uses=$2, viewed_at=$3 WHERE id=$1',
@@ -227,7 +227,7 @@ class Tags(AceMixin, commands.Cog):
 		)
 
 	@tag.command(aliases=['add', 'new'])
-	async def create(self, ctx, tag_name: tag_create_converter, *, content: commands.clean_content = None):
+	async def create(self, ctx, tag_name: tag_create_converter, *, content: str = None):
 		'''Create a new tag.'''
 
 		await self.create_tag(ctx, tag_name, self.craft_tag_contents(ctx, content))
@@ -235,7 +235,7 @@ class Tags(AceMixin, commands.Cog):
 
 	@tag.command()
 	@can_prompt()
-	async def edit(self, ctx, tag_name: TagEditConverter(), *, new_content: commands.clean_content = None):
+	async def edit(self, ctx, tag_name: TagEditConverter(), *, new_content: str = None):
 		'''Edit an existing tag.'''
 
 		tag_name, record = tag_name
@@ -344,7 +344,7 @@ class Tags(AceMixin, commands.Cog):
 			if content is None:
 				old_message = ctx.message
 				ctx.message = message
-				content = self.craft_tag_contents(ctx, await commands.clean_content().convert(ctx, message.content))
+				content = self.craft_tag_contents(ctx, message.content)
 				ctx.message = old_message
 				break
 
@@ -363,7 +363,10 @@ class Tags(AceMixin, commands.Cog):
 		'''View raw contents of a tag. Useful when editing tags.'''
 
 		tag_name, record = tag_name
-		await ctx.send(discord.utils.escape_markdown(record.get('content')))
+		await ctx.send(
+			discord.utils.escape_markdown(record.get('content')),
+			allowed_mentions=discord.AllowedMentions.none()
+		)
 
 	@tag.command()
 	@can_prompt()
