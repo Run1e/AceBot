@@ -186,6 +186,7 @@ class Fun(AceMixin, commands.Cog):
 			'ip': '',
 			'units': 'metric',
 			'format': 'plaintext',
+			'podindex': '1,2,3'
 		}
 
 		headers = {
@@ -194,18 +195,20 @@ class Fun(AceMixin, commands.Cog):
 
 		async with ctx.channel.typing():
 			try:
-				async with ctx.http.get('https://api.wolframalpha.com/v2/query', params=params, headers=headers,
-					timeout=aiohttp.ClientTimeout(total=20)) as resp:
+				cntx = ctx.http.get('https://api.wolframalpha.com/v2/query', params=params, headers=headers, timeout=aiohttp.ClientTimeout(total=20))
+				async with cntx as resp:
 					if resp.status != 200:
 						raise QUERY_ERROR
 					j = await resp.text()
 			except asyncio.TimeoutError:
 				raise QUERY_ERROR
 
+			log.debug(resp.url)
+
 			j = loads(j)
 			res = j['queryresult']
 
-			success = res['success']
+			success = res['success'] and res['numpods']
 
 			e = discord.Embed(color=0xFF6600)
 			e.set_author(name='Wolfram|Alpha', icon_url='https://i.imgur.com/KFppH69.png')
@@ -213,14 +216,23 @@ class Fun(AceMixin, commands.Cog):
 
 			if not success:
 				e.description = 'Sorry, Wolfram Alpha was not able to parse your request.'
-
 				means = res.get('didyoumeans', None)
+
 				if means is not None:
 					val = ', '.join(x['val'] for x in means) if isinstance(means, list) else means['val']
-					e.add_field(name='Wolfram is having issues with these word(s):', value='```{0}```'.format(val))
+					e.add_field(name='Wolfram is having issues with these word(s):', value='```{0}```'.format(val), inline=False)
 
 				if 'tips' in res:
-					e.add_field(name='Tips from Wolfram Alpha:', value=res['tips']['text'])
+					e.add_field(name='Tips from Wolfram Alpha:', value=res['tips']['text'], inline=False)
+
+				if not e.fields and not res['numpods']:
+					e.add_field(
+						name='Possible reason:',
+						value=(
+							'It is possible this failed due to not providing a location.\n'
+							'Try providing a location within your query.'),
+						inline=False
+					)
 
 				await ctx.send(embed=e)
 				return
