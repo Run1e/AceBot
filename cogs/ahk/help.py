@@ -384,7 +384,8 @@ class AutoHotkeyHelpSystem(AceMixin, commands.Cog):
 
 			await channel.send(
 				content=author.mention,
-				embed=self._make_yell_embed(c)
+				embed=self._make_yell_embed(c),
+				allowed_mentions=discord.AllowedMentions(users=[author])
 			)
 
 			self.bot.dispatch(
