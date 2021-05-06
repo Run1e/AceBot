@@ -370,7 +370,6 @@ class AutoHotkey(AceMixin, commands.Cog):
 		reference.fail_if_not_exists = False
 		await ctx.send(content=resp, file=file, reference=reference)
 
-
 	@commands.command()
 	@commands.cooldown(rate=1, per=5.0, type=commands.BucketType.user)
 	async def ahk(self, ctx, *, code: RunnableCodeConverter):
