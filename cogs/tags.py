@@ -363,8 +363,10 @@ class Tags(AceMixin, commands.Cog):
 		'''View raw contents of a tag. Useful when editing tags.'''
 
 		tag_name, record = tag_name
-		await ctx.send(discord.utils.escape_markdown(record.get('content')), 
-						allowed_mentions=discord.AllowedMentions.none())
+		await ctx.send(
+			discord.utils.escape_markdown(record.get('content')),
+			allowed_mentions=discord.AllowedMentions.none()
+		)
 
 	@tag.command()
 	@can_prompt()
@@ -463,9 +465,7 @@ class Tags(AceMixin, commands.Cog):
 		res = await self.db.execute('UPDATE tag SET user_id=$1 WHERE id=$2', new_owner.id, record.get('id'))
 
 		if res == 'UPDATE 1':
-			await ctx.send('Tag \'{}\' transferred to \'{}\''.format(record.get('name'), new_owner.display_name), 
-							allowed_mentions=discord.AllowedMentions.none())
-
+			await ctx.send('Tag \'{}\' transferred to \'{}\''.format(record.get('name'), new_owner.display_name))
 		else:
 			raise commands.CommandError('Unknown error occured.')
 

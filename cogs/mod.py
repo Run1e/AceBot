@@ -647,7 +647,7 @@ class Moderation(AceMixin, commands.Cog):
 
 	@commands.Cog.listener()
 	async def on_member_join(self, member):
-		'''check members at join for mute evasion'''
+		'''Check members at join for mute evasion'''
 
 		conf = await self.config.get_entry(member.guild.id)
 		mute_role_id = conf.mute_role_id

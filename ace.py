@@ -329,10 +329,7 @@ async def setup():
 	db = await asyncpg.create_pool(DB_BIND)
 
 	# create allowed mentions
-	log.debug('Creating allowed mentions')
-	allowed_mentions = discord.AllowedMentions.none()
-	allowed_mentions.users = True
-	allowed_mentions.replied_user = True
+	allowed_mentions = discord.AllowedMentions(everyone=False, users=True, roles=False, replied_user=True)
 
 	# init bot
 	log.info('Initializing bot')
