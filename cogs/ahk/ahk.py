@@ -366,13 +366,10 @@ class AutoHotkey(AceMixin, commands.Cog):
 		with open(filename, 'w', encoding='utf-8-sig') as f:
 			f.write('{0}\n\nLANG: {1}\n\nCODE:\n{2}\n\nPROCESSING TIME: {3}\n\nSTDOUT:\n{4}\n'.format(ctx.stamp, lang, code, time, stdout))
 
-		# because of how the api works, if the person has deleted their message then
-		# the api won't take the request and returns an error, so we catch it and don't
-		# reply. This ensures the output gets sent even if they delete their message.
-		try:
-			await ctx.reply(content=resp, file=file)
-		except discord.HTTPException:
-			await ctx.send(content=resp, file=file)
+		reference = ctx.message.to_reference()
+		reference.fail_if_not_exists = False
+		await ctx.send(content=resp, file=file, reference=reference)
+
 
 	@commands.command()
 	@commands.cooldown(rate=1, per=5.0, type=commands.BucketType.user)
