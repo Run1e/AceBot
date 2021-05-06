@@ -199,7 +199,7 @@ class AceBot(commands.Bot):
 						log.error(f'Failed to load extension: {name}')
 						log.error(e)
 						errored.append((name, e.args[0].lstrip(f"Extension '{name}' raised an error:")))
-						traceback.print_tb(sys.exc_info()[2])
+						print("".join(traceback.format_exception(*sys.exc_info())).strip())
 
 		return reloaded, errored
 
