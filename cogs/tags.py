@@ -189,7 +189,9 @@ class Tags(AceMixin, commands.Cog):
 		if not being_made:
 			self._being_made.pop(ctx.guild.id)
 
-	def craft_tag_contents(self, ctx, content):
+	async def craft_tag_contents(self, ctx, content):
+		content = await commands.clean_content().convert(ctx, content)
+
 		if ctx.message.attachments:
 			content = content or ''
 			content += ('\n' if len(content) else '') + ctx.message.attachments[0].url
@@ -230,7 +232,9 @@ class Tags(AceMixin, commands.Cog):
 	async def create(self, ctx, tag_name: tag_create_converter, *, content: str = None):
 		'''Create a new tag.'''
 
-		await self.create_tag(ctx, tag_name, self.craft_tag_contents(ctx, content))
+		content = await self.craft_tag_contents(ctx, content)
+
+		await self.create_tag(ctx, tag_name, content)
 		await ctx.send(f'Tag \'{tag_name}\' created.')
 
 	@tag.command()
@@ -240,7 +244,7 @@ class Tags(AceMixin, commands.Cog):
 
 		tag_name, record = tag_name
 
-		new_content = self.craft_tag_contents(ctx, new_content)
+		new_content = await self.craft_tag_contents(ctx, new_content)
 
 		await self.db.execute(
 			'UPDATE tag SET content=$2, edited_at=$3 WHERE id=$1',
@@ -344,7 +348,7 @@ class Tags(AceMixin, commands.Cog):
 			if content is None:
 				old_message = ctx.message
 				ctx.message = message
-				content = self.craft_tag_contents(ctx, message.content)
+				content = await self.craft_tag_contents(ctx, message.content)
 				ctx.message = old_message
 				break
 
