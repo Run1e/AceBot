@@ -7,7 +7,7 @@ import discord
 from discord.ext import commands
 
 from cogs.mixins import AceMixin
-from utils.context import can_prompt
+from utils.context import AceContext, can_prompt
 from utils.converters import LengthConverter, MaybeMemberConverter
 from utils.pager import Pager
 from utils.time import pretty_datetime
@@ -455,7 +455,7 @@ class Tags(AceMixin, commands.Cog):
 
 	@tag.command()
 	@can_prompt()
-	async def transfer(self, ctx, tag_name: TagEditConverter(), *, new_owner: discord.Member):
+	async def transfer(self, ctx: AceContext, tag_name: TagEditConverter(), *, new_owner: discord.Member):
 		'''Transfer ownership of a tag to another member.'''
 
 		tag_name, record = tag_name
@@ -465,6 +465,15 @@ class Tags(AceMixin, commands.Cog):
 
 		if record.get('user_id') == new_owner.id:
 			raise commands.CommandError('User already owns tag.')
+
+		prompt = ctx.prompt(
+			title='Tag transfer request',
+			prompt=f'{ctx.author.mention} wants to transfer ownership of the tag \'{tag_name}\' to you.\n\nDo you accept?',
+			user_override=new_owner
+		)
+
+		if not await prompt:
+			raise commands.CommandError('Tag transfer aborted.')
 
 		res = await self.db.execute('UPDATE tag SET user_id=$1 WHERE id=$2', new_owner.id, record.get('id'))
 
