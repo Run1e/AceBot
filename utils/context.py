@@ -103,7 +103,7 @@ class AceContext(commands.Context):
 
 		await help_cmd.command_callback(self, command=command)
 
-	async def prompt(self, title=None, prompt=None):
+	async def prompt(self, title=None, prompt=None, user_override=None):
 		'''Creates a yes/no prompt.'''
 
 		perms = self.perms
@@ -115,17 +115,19 @@ class AceContext(commands.Context):
 
 		e = discord.Embed(description=prompt)
 
-		e.set_author(name=title or 'Prompter', icon_url=self.bot.user.avatar_url)
+		e.set_author(name=title or 'Prompt', icon_url=self.bot.user.avatar_url)
 
 		try:
-			msg = await self.send(embed=e)
+			msg = await self.send(content=None if user_override is None else user_override.mention, embed=e)
 			for emoji in PROMPT_EMOJIS:
 				await msg.add_reaction(emoji)
 		except discord.HTTPException:
 			return False
 
+		check_user = user_override or self.author
+
 		def check(reaction, user):
-			return reaction.message.id == msg.id and user == self.author and str(reaction) in PROMPT_EMOJIS
+			return reaction.message.id == msg.id and user == check_user and str(reaction) in PROMPT_EMOJIS
 
 		try:
 			reaction, user = await self.bot.wait_for('reaction_add', check=check, timeout=60.0)
