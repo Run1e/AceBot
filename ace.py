@@ -21,7 +21,6 @@ from utils.string import po
 from utils.time import pretty_seconds
 
 EXTENSIONS = (
-	'cogs.owner',
 	'cogs.fun',
 	'cogs.configuration',
 	'cogs.tags',
@@ -39,6 +38,7 @@ EXTENSIONS = (
 	'cogs.ahk.internal.logger',
 	'cogs.ahk.internal.security',
 	'cogs.dwitter',
+	'cogs.owner',
 )
 
 
@@ -157,7 +157,7 @@ class AceBot(commands.Bot):
 		gc = await self.config.get_entry(message.guild.id)
 		return gc.prefix or DEFAULT_PREFIX
 
-	def load_extensions(self, reload: bool =False):
+	def load_extensions(self, reload: bool=False):
 		"""Reload bot Extensions. 
 
 		If `reload` is False, then cogs are unloaded and loaded.
@@ -195,6 +195,9 @@ class AceBot(commands.Bot):
 						reloaded.append(name)
 
 					except Exception as e:
+
+						if not DEV_MODE:
+							raise e
 
 						log.error(f'Failed to load extension: {name}')
 						log.error(e)
