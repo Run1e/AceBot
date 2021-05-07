@@ -84,6 +84,9 @@ class AutoHotkey(AceMixin, commands.Cog):
 
 		self.rss.start()
 
+	def cog_unload(self):
+		self.rss.cancel()
+
 	def parse_date(self, date_str):
 		date_str = date_str.strip()
 		return datetime.strptime(date_str[:-3] + date_str[-2:], "%Y-%m-%dT%H:%M:%S%z")
@@ -188,8 +191,17 @@ class AutoHotkey(AceMixin, commands.Cog):
 				return await delete('Please do not suggest emojis that have already been added.')
 
 		# Add voting reactions
-		await message.add_reaction('✅')
-		await message.add_reaction('❌')
+		try:
+			await message.add_reaction('✅')
+			await message.add_reaction('❌')
+		except discord.Forbidden as e:
+			# catch if we can't add the reactions
+			# it could be that person is blocked, but it also could be that the bot doesn't have perms
+			# we treat it the same since this is only used in the ahk discord.
+			if e.text == 'Reaction blocked':
+				# runie: don't send error message to user since they have the bot blocked anyways.
+				# people who block ace don't deserve answers to their misfortunes
+				return await delete()
 
 	@commands.Cog.listener('on_raw_message_edit')
 	async def handle_emoji_suggestion_message_edit(self, message: discord.RawMessageUpdateEvent):
@@ -366,13 +378,9 @@ class AutoHotkey(AceMixin, commands.Cog):
 		with open(filename, 'w', encoding='utf-8-sig') as f:
 			f.write('{0}\n\nLANG: {1}\n\nCODE:\n{2}\n\nPROCESSING TIME: {3}\n\nSTDOUT:\n{4}\n'.format(ctx.stamp, lang, code, time, stdout))
 
-		# because of how the api works, if the person has deleted their message then
-		# the api won't take the request and returns an error, so we catch it and don't
-		# reply. This ensures the output gets sent even if they delete their message.
-		try:
-			await ctx.reply(content=resp, file=file)
-		except discord.HTTPException:
-			await ctx.send(content=resp, file=file)
+		reference = ctx.message.to_reference()
+		reference.fail_if_not_exists = False
+		await ctx.send(content=resp, file=file, reference=reference)
 
 	@commands.command()
 	@commands.cooldown(rate=1, per=5.0, type=commands.BucketType.user)
