@@ -353,9 +353,12 @@ async def setup():
 	log.info('Creating postgres pool')
 	db = await asyncpg.create_pool(DB_BIND)
 
+	# create allowed mentions
+	allowed_mentions = discord.AllowedMentions(everyone=False, users=True, roles=False, replied_user=True)
+
 	# init bot
 	log.info('Initializing bot')
-	bot = AceBot(db=db, loop=loop, intents=BOT_INTENTS)
+	bot = AceBot(db=db, loop=loop, intents=BOT_INTENTS, allowed_mentions=allowed_mentions)
 
 	# start it
 	log.info('Logging in and starting bot')
