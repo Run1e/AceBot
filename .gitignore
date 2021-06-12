@@ -9,7 +9,6 @@ ahk_eval
 venv
 config.py
 model
-tensorflow-2.3.1-cp37-cp37m-linux_x86_64.whl
 
 test.py
 ids.py
@@ -17,3 +16,7 @@ test_md.py
 test_docs_parser.py
 notes.md
 cogs/ahk/internal
+
+torch_config.py
+model_state.pth
+model.pth
