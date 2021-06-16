@@ -21,7 +21,7 @@ model = TextCNN(
 )
 
 device = torch.device('cpu')
-model.load_state_dict(torch.load('model_state.pth', map_location=device))
+model.load_state_dict(torch.load('model.pth', map_location=device))
 model.eval()
 
 text_processing = TextProcessor(
@@ -44,6 +44,8 @@ async def game(request: Request):
 
 	pred = model(x)
 	pred = torch.squeeze(pred).item()
+
+	# TODO: add logging
 
 	return json(dict(p=pred))
 
