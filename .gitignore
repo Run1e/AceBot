@@ -20,3 +20,4 @@ cogs/ahk/internal
 torch_config.py
 model_state.pth
 model.pth
+neural/embeddings

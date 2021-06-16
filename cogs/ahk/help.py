@@ -1,45 +1,23 @@
 import logging
 
 log = logging.getLogger(__name__)
-import re
-import string
 from asyncio import Lock, sleep
 from datetime import datetime, timedelta
 from json import JSONDecodeError, dumps, loads
 
 import discord
-import numpy as np
-import unidecode
 from discord.ext import commands, tasks
 
-log.info('Importing keras...')
-from tensorflow import keras
-
-log.info('Finished importing keras.')
-
 from cogs.mixins import AceMixin
-from ids import ACTIVE_CATEGORY_ID, ACTIVE_INFO_CHAN_ID, AHK_GUILD_ID, CLOSED_CATEGORY_ID, GET_HELP_CHAN_ID, IGNORE_ACTIVE_CHAN_IDS, OPEN_CATEGORY_ID, \
-	RULES_CHAN_ID
+from ids import (
+	ACTIVE_CATEGORY_ID, ACTIVE_INFO_CHAN_ID, AHK_GUILD_ID, CLOSED_CATEGORY_ID,
+	GET_HELP_CHAN_ID, IGNORE_ACTIVE_CHAN_IDS, OPEN_CATEGORY_ID, RULES_CHAN_ID
+)
 from utils.context import is_mod
 from utils.string import po
 from utils.time import pretty_timedelta
-
+from config import GAME_PRED_URL
 from cogs.mod import Severity
-
-# from nltk.corpus.stopwords
-STOPWORDS_EN = [
-	'i', 'me', 'my', 'myself', 'we', 'our', 'ours', 'ourselves', 'you', "you're", "you've", "you'll", "you'd", 'your', 'yours', 'yourself',
-	'yourselves', 'he', 'him', 'his', 'himself', 'she', "she's", 'her', 'hers', 'herself', 'it', "it's", 'its', 'itself', 'they', 'them', 'their',
-	'theirs', 'themselves', 'what', 'which', 'who', 'whom', 'this', 'that', "that'll", 'these', 'those', 'am', 'is', 'are', 'was', 'were', 'be',
-	'been', 'being', 'have', 'has', 'had', 'having', 'do', 'does', 'did', 'doing', 'an', 'the', 'and', 'but', 'if', 'or', 'because', 'as',
-	'until', 'while', 'of', 'at', 'by', 'for', 'with', 'about', 'against', 'between', 'into', 'through', 'during', 'before', 'after', 'above',
-	'below', 'to', 'from', 'up', 'down', 'in', 'out', 'on', 'off', 'over', 'under', 'again', 'further', 'then', 'once', 'here', 'there', 'when',
-	'where', 'why', 'how', 'all', 'any', 'both', 'each', 'few', 'more', 'most', 'other', 'some', 'such', 'no', 'nor', 'not', 'only', 'own', 'same',
-	'so', 'than', 'too', 'very', 't', 'can', 'will', 'just', 'don', "don't", 'should', "should've", 'now', 'll', 'm', 'o', 're', 've', 'y',
-	'ain', 'aren', "aren't", 'couldn', "couldn't", 'didn', "didn't", 'doesn', "doesn't", 'hadn', "hadn't", 'hasn', "hasn't", 'haven', "haven't",
-	'isn', "isn't", 'ma', 'mightn', "mightn't", 'mustn', "mustn't", 'needn', "needn't", 'shan', "shan't", 'shouldn', "shouldn't", 'wasn', "wasn't",
-	'weren', "weren't", 'won', "won't", 'wouldn', "wouldn't"
-]
 
 OPEN_CHANNEL_COUNT = 3
 MINIMUM_CLAIM_INTERVAL = timedelta(minutes=5)
@@ -61,29 +39,6 @@ CLOSED_MESSAGE = (
 )
 
 
-def standardize(s: str):
-	# make lowercase
-	s = s.lower()
-
-	# remove urls
-	s = re.sub(r'^https?:\/\/.*[\r\n]*', '', s, flags=re.MULTILINE)
-
-	# remove diacritics
-	s = unidecode.unidecode(s)
-
-	# remove numbers
-	s = re.sub(f'[{string.digits}]', ' ', s)
-
-	# remove punctuation
-	s = re.sub(f'[{re.escape(string.punctuation)}]', ' ', s)
-
-	# remove stopwords (and force multiple whitespaces to one)
-	split = s.split()
-	s = ' '.join(m for m in split if m not in STOPWORDS_EN)
-
-	return s, len(split)
-
-
 class AutoHotkeyHelpSystem(AceMixin, commands.Cog):
 	def __init__(self, bot):
 		super().__init__(bot)
@@ -96,12 +51,13 @@ class AutoHotkeyHelpSystem(AceMixin, commands.Cog):
 		self.channel_reclaimer.start()
 		self.claimed_messages = dict()
 
-		log.debug('Loading model')
-		self.model = keras.models.load_model('model')
-		log.debug('Finished loading model')
+	async def classify(self, text):
+		async with self.bot.aiohttp.post(GAME_PRED_URL, data=dict(q=text)) as resp:
+			if resp.status != 200:
+				return 0.0
 
-	def classify(self, text):
-		return self.model(np.array([standardize(text)[0]])).numpy()[0][0]
+			json = await resp.json()
+			return json['p']
 
 	@property
 	def open_category(self):
@@ -375,8 +331,8 @@ class AutoHotkeyHelpSystem(AceMixin, commands.Cog):
 		author = msgs[0].author
 		content = ' '.join(m.content for m in msgs)
 
-		pivot = 0.75
-		c = self.classify(content)
+		pivot = 0.5
+		c = await self.classify(content)
 
 		if c >= pivot:
 			# wait a bit so it's not so confusing when the channel is grabbed

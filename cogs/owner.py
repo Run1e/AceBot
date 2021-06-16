@@ -114,11 +114,11 @@ class Owner(AceMixin, commands.Cog):
 
 	@commands.command(hidden=True)
 	async def c(self, ctx, *, text):
-		await ctx.send(self.help_cog.classify(text))
+		await ctx.send(await self.help_cog.classify(text))
 
 	@commands.command(hidden=True)
 	async def cm(self, ctx, *, message: discord.Message):
-		await ctx.send(self.help_cog.classify(message.content))
+		await ctx.send(await self.help_cog.classify(message.content))
 
 	@commands.command()
 	async def t(self, ctx):
