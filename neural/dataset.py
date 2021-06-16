@@ -1,14 +1,21 @@
 import os
 
 import torch
+import torch.nn.functional as F
 from torch.utils.data import Dataset
 
 
-def pad(tokens, seq_len):
-	# pad([3, 6, 4], 5) -> [3, 6, 4, 0, 0]
-	out = torch.zeros(seq_len, dtype=torch.int64)
-	out[:len(tokens)] = tokens
-	return out
+def pad(tokens, seq_len, value=0):
+	orig_len = tokens.size(0)
+
+	# if too long, we need to strip
+	if orig_len > seq_len:
+		return tokens[:seq_len]
+
+	if seq_len == orig_len:
+		return tokens
+
+	return F.pad(input=tokens, pad=(0, seq_len - orig_len), value=value)
 
 
 class TextDataset(Dataset):
@@ -67,12 +74,10 @@ class Sequencer:
 	def __call__(self, batch):
 		# sort the batch from longest to shortest sentences
 		# not necessarily necessary for convnet but is for LSTM layer with padding and packing
-		batch = sorted(batch, key=lambda x: x[0].size(), reverse=True)
+		#batch = sorted(batch, key=lambda x: x[0].size(), reverse=True)
 
-		# strip tokens
-		tokens = [token_list for token_list, _ in batch]
 		# and pad and stack into a LongTensor
-		tokens = torch.stack([pad(token_list, self.sequence_len) for token_list in tokens])
+		tokens = torch.stack([pad(token_list, self.sequence_len) for token_list, _ in batch])
 
 		# strip labels
 		labels = torch.tensor([label for _, label in batch], dtype=torch.float32)

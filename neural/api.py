@@ -28,6 +28,7 @@ text_processing = TextProcessor(
 	wti=pickle.load(open(f'{EMBEDDINGS_DIR}/wti.pkl', 'rb')),
 	tokenizer=get_tokenizer('basic_english'),
 	standardize=True,
+	min_len=3,
 )
 
 

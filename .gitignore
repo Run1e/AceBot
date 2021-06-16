@@ -18,6 +18,6 @@ notes.md
 cogs/ahk/internal
 
 torch_config.py
-model_state.pth
-model.pth
+*.pth
 neural/embeddings
+neural/models

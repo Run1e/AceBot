@@ -1,4 +1,6 @@
 import pickle
+import os
+import glob
 
 import torch
 from torch import nn
@@ -23,7 +25,8 @@ def main():
 	text_processor = TextProcessor(
 		wti=pickle.load(open(f'{EMBEDDINGS_DIR}/wti.pkl', 'rb')),
 		tokenizer=get_tokenizer('basic_english'),
-		standardize=True
+		standardize=True,
+		min_len=3,
 	)
 
 	dataset = TextDataset(CORPUS_DIR, text_processor)
@@ -90,7 +93,7 @@ def main():
 	criterion = nn.BCELoss()
 	optimizer = torch.optim.Adam(model.parameters(), lr=1e-3)
 
-	EPOCHS = 6
+	EPOCHS = 12
 
 	best_acc = 0.0
 
@@ -147,7 +150,9 @@ def main():
 			acc = correct / (correct + wrong)
 			if acc > best_acc:
 				best_acc = acc
-				torch.save(model.state_dict(), 'model_state.pth')
+				for file in glob.glob('models/model_*.pth'):
+					os.remove(file)
+				torch.save(model.state_dict(), f'models/state_{epoch}.pth')
 
 			print()
 			print('Correct:', f'{correct}/{correct + wrong}', 'Accuracy:', acc)
@@ -169,4 +174,6 @@ def main():
 
 
 if __name__ == '__main__':
+	if not os.path.isdir('models'):
+		os.mkdir('models')
 	main()
