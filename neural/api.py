@@ -20,7 +20,8 @@ model = TextCNN(
 	dropout=0.0,
 )
 
-model.load_state_dict(torch.load('model_state.pth'))
+device = torch.device('cpu')
+model.load_state_dict(torch.load('model_state.pth', map_location=device))
 model.eval()
 
 text_processing = TextProcessor(

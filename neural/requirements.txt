@@ -1,2 +1,4 @@
+torch==1.8.1
 torchtext==0.9.1
-Flask==2.0.1
+sanic==21.3.4
+Unidecode==1.1.1
