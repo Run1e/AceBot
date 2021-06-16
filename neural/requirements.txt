@@ -1,1 +1,2 @@
 torchtext==0.9.1
+Flask==2.0.1

@@ -1116,6 +1116,7 @@ class Moderation(AceMixin, commands.Cog):
 			'administrator',
 			'ban_members',
 			'kick_members',
+			'manage_guild',
 			'manage_channels',
 			'manage_emojis',
 			'manage_nicknames',

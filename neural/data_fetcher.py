@@ -10,21 +10,15 @@ async def fetch_data():
 	db = await asyncpg.connect(DB_BIND)
 	rs = await db.fetch('SELECT * FROM corpus WHERE truth IN (0, 1)')
 
-	required_dirs = [
-		CORPUS_DIR,
-		f'{CORPUS_DIR}/raw',
-		f'{CORPUS_DIR}/proc',
-	]
-
-	for dir in required_dirs:
-		if not os.path.exists(dir):
-			os.mkdir(dir)
-
 	for r in rs:
 		_id = r.get('id')
 
+		if not os.path.isdir(CORPUS_DIR):
+			os.mkdir(CORPUS_DIR)
+
 		label = '1' if r.get('truth') else '0'
-		path = f'{CORPUS_DIR}/raw/{label}'
+		path = f'{CORPUS_DIR}/{label}'
+
 		if not os.path.isdir(path):
 			os.mkdir(path)
 

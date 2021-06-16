@@ -4,18 +4,23 @@ from collections import Counter
 
 import torch
 from torchtext.data.utils import get_tokenizer
+from tqdm import tqdm
 
 from torch_config import CORPUS_DIR, EMBEDDINGS_DIR, GLOVE_DIR
 
 tokenizer = get_tokenizer('basic_english')
 counter = Counter()
 
-for dir, subdir, files in os.walk(f'{CORPUS_DIR}/proc'):
+for dir, subdir, files in os.walk(CORPUS_DIR):
 	dir = dir.replace(r'\\', '/')
 
-	for file in files:
-		with open(f'{dir}/{file}', 'r') as f:
+	print('\nReading:', dir)
+	for file in tqdm(files):
+		with open(f'{dir}/{file}', 'r', encoding='utf-8') as f:
 			text = f.read()
+
+		if not len(text):
+			continue
 
 		counter.update(tokenizer(text))
 
@@ -26,6 +31,7 @@ embed_idx = 0
 embed_wti = dict()
 embed_vectors = []
 
+print('Copying relevant embeddings...')
 for word in counter.keys():
 	glove_idx = glove_wti.get(word, None)
 

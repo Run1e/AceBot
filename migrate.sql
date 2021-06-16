@@ -31,7 +31,11 @@ CREATE TABLE IF NOT EXISTS mod_config (
 
 	mention_action		security_action NULL,
 	mention_count		SMALLINT NOT NULL DEFAULT 8,
-	mention_per			SMALLINT NOT NULL DEFAULT 16
+	mention_per			SMALLINT NOT NULL DEFAULT 16,
+
+	raid				BOOLEAN NOT NULL DEFAULT FALSE,
+	raid_age			INTERVAL NULL,
+	raid_default_avatar	BOOLEAN NOT NULL DEFAULT FALSE
 );
 
 CREATE TABLE IF NOT EXISTS mod_timer (

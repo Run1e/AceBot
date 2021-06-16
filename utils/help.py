@@ -53,7 +53,7 @@ class PaginatedHelpCommand(commands.HelpCommand):
 	'''Cog that implements the help command and help pager.'''
 
 	async def package_command(self, command, force=False, long_help=False):
-		if command.hidden:
+		if command.hidden or not command.enabled:
 			return None
 
 		if not force:
