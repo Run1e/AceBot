@@ -1046,6 +1046,11 @@ class Moderation(AceMixin, commands.Cog):
 			async with CONTENT_LOCK:
 				res = mc.content_cooldown.update_rate_limit(message)
 
+				# since we're using the bucket key (guild_id, author_id, message_content)
+				# we can just as well reset the bucket after a ban
+				if res is not None:
+					mc.content_cooldown._cache[mc.content_cooldown._bucket_key(message)].reset()
+
 			if res is not None:
 				await self.do_action(
 					message, SecurityAction.BAN, reason='Member is spamming (with cleanup)', delete_message_days=1
