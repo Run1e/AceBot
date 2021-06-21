@@ -14,7 +14,7 @@ from asyncpg.exceptions import UniqueViolationError
 from discord.ext import commands
 
 from cogs.mixins import AceMixin
-from ids import RULES_MSG_ID
+from ids import RULES_MSG_ID, AHK_GUILD_ID
 from utils.configtable import ConfigTable, ConfigTableRecord
 from utils.context import AceContext, can_prompt, is_mod
 from utils.converters import MaxLengthConverter, MaybeMemberConverter, RangeConverter
@@ -31,6 +31,7 @@ OK_EMOJI = '\U00002705'
 
 SPAM_LOCK = asyncio.Lock()
 MENTION_LOCK = asyncio.Lock()
+CONTENT_LOCK = asyncio.Lock()
 
 MOD_PERMS = (
 	'administrator',
@@ -87,14 +88,47 @@ class SeverityColors(Enum):
 	RESOLVED = 0x32CD32
 
 
+OTHER_CHANNEL_PENALTY = 2
+
+
+class CooldownByContent(commands.CooldownMapping):
+	def __init__(self, original):
+		super().__init__(original)
+
+		self.bucket_to_channel = dict()
+
+	def _bucket_key(self, message):
+		return (message.guild.id, message.author.id, message.content)
+
+	def update_rate_limit(self, message, current=None):
+		bucket = self.get_bucket(message, current)
+
+		current_channel_id = message.channel.id
+		prev_channel_id = self.bucket_to_channel.get(bucket, None)
+
+		self.bucket_to_channel[bucket] = current_channel_id
+
+		ret = bucket.update_rate_limit(current)
+
+		if prev_channel_id is not None and current_channel_id != prev_channel_id:
+			for _ in range(OTHER_CHANNEL_PENALTY):
+				ret = bucket.update_rate_limit(current)
+				if ret is not None:
+					break
+
+		return ret
+
+
 class SecurityConfigRecord(ConfigTableRecord):
 	spam_cooldown = None
 	mention_cooldown = None
+	content_cooldown = None
 
 	def __init__(self, *args, **kwargs):
 		super().__init__(*args, **kwargs)
 		self.create_spam_cooldown()
 		self.create_mention_cooldown()
+		self.create_content_cooldown()
 
 	@property
 	def guild(self):
@@ -125,12 +159,17 @@ class SecurityConfigRecord(ConfigTableRecord):
 
 	def create_spam_cooldown(self):
 		self.spam_cooldown = commands.CooldownMapping.from_cooldown(
-			self.spam_count, self.spam_per, commands.BucketType.user
+			self.spam_count, self.spam_per, commands.BucketType.member
 		)
 
 	def create_mention_cooldown(self):
 		self.mention_cooldown = commands.CooldownMapping.from_cooldown(
-			self.mention_count, self.mention_per, commands.BucketType.user
+			self.mention_count, self.mention_per, commands.BucketType.member
+		)
+
+	def create_content_cooldown(self):
+		self.content_cooldown = CooldownByContent.from_cooldown(
+			5, 32.0, commands.BucketType.member
 		)
 
 
@@ -908,7 +947,7 @@ class Moderation(AceMixin, commands.Cog):
 
 		await ctx.send(content)
 
-	async def do_action(self, message, action, reason):
+	async def do_action(self, message, action, reason, delete_message_days=0):
 		'''Called when an event happens.'''
 
 		member = message.author
@@ -940,7 +979,7 @@ class Moderation(AceMixin, commands.Cog):
 				await member.kick(reason=reason)
 
 			elif action is SecurityAction.BAN:
-				await member.ban(delete_message_days=0, reason=reason)
+				await member.ban(delete_message_days=delete_message_days, reason=reason)
 
 		except Exception as exc:
 			# log error if something happened
@@ -990,7 +1029,6 @@ class Moderation(AceMixin, commands.Cog):
 				)
 
 		if mc.mention_action is not None and message.mentions:
-
 			# same here. however run once for each mention
 			async with MENTION_LOCK:
 				for mention in message.mentions:
@@ -1002,6 +1040,15 @@ class Moderation(AceMixin, commands.Cog):
 			if res is not None:
 				await self.do_action(
 					message, SecurityAction[mc.mention_action], reason='Member is mention spamming'
+				)
+
+		if message.guild.id == AHK_GUILD_ID:
+			async with CONTENT_LOCK:
+				res = mc.content_cooldown.update_rate_limit(message)
+
+			if res is not None:
+				await self.do_action(
+					message, SecurityAction.BAN, reason='Member is spamming (with cleanup)', delete_message_days=1
 				)
 
 	def _craft_string(self, ctx, type, conf, now=False):
