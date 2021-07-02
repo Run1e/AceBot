@@ -11,3 +11,5 @@ emoji==0.5.4
 pygit2==1.2.1
 psutil==5.7.0
 unidecode==1.1.1
+colorama==0.4.4
+coloredlogs==15.0.1

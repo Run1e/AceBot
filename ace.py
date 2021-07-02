@@ -2,15 +2,14 @@ import asyncio
 import json
 import logging.handlers
 import os
-import sys
 from datetime import datetime
 
 import aiohttp
 import asyncpg
+import coloredlogs
 from discord.ext import commands
 
 from config import *
-from utils.colorstreamhandler import ColorStreamHandler
 from utils.commanderrorlogic import CommandErrorLogic
 from utils.configtable import ConfigTable
 from utils.context import AceContext
@@ -235,7 +234,7 @@ class AceBot(commands.Bot):
 		await self.update_dbl()
 
 	async def on_guild_unavailable(self, guild):
-		pass #log.info('Unavailable guild %s', str(guild))
+		pass  # log.info('Unavailable guild %s', str(guild))
 
 	@property
 	def invite_link(self):
@@ -283,9 +282,13 @@ def setup_logger():
 	# we want out logging formatted like this everywhere
 	fmt = logging.Formatter('{asctime} [{levelname}] {name}: {message}', datefmt='%Y-%m-%d %H:%M:%S', style='{')
 
-	stream = ColorStreamHandler(sys.stdout)
-	stream.setFormatter(fmt)
-	stream.setLevel(logging.DEBUG)
+	coloredlogs.install(
+		level=LOG_LEVEL,
+		fmt='{asctime} [{levelname}] {name}: {message}',
+		style='{',
+		level_styles=dict(debug=dict(color=12), info=dict(color=15), warning=dict(bold=True, color=13), critical=dict(bold=True, color=9))
+
+	)
 
 	file = logging.handlers.TimedRotatingFileHandler('logs/log.log', when='midnight', encoding='utf-8-sig')
 	file.setFormatter(fmt)
@@ -294,7 +297,6 @@ def setup_logger():
 	# get the __main__ logger and add handlers
 	root = logging.getLogger()
 	root.setLevel(LOG_LEVEL)
-	root.addHandler(stream)
 	root.addHandler(file)
 
 	return logging.getLogger(__name__)
