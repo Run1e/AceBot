@@ -21,6 +21,7 @@ log = logging.getLogger(__name__)
 ALIASES = {
 	'commands/For.htm': ['For'],
 	'commands/IfExpression.htm': ['If'],
+	'misc/EscapeChar.htm': ['EscapeChar'],
 }
 
 
