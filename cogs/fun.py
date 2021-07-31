@@ -1,17 +1,17 @@
 import asyncio
 import logging
+import typing
+import urllib.parse
 from datetime import date, datetime
 from json import loads
 from random import choice
 
-import urllib.parse
-import typing
 import aiohttp
 import bs4
 import discord
 from bs4 import BeautifulSoup
-from fuzzywuzzy import fuzz, process
 from discord.ext import commands, tasks
+from fuzzywuzzy import process
 
 from cogs.mixins import AceMixin
 from config import APIXU_KEY, THECATAPI_KEY, WOLFRAM_KEY
@@ -42,8 +42,6 @@ NUMBER_URL = 'http://numbersapi.com/{number}?notfound=floor'
 
 BILL_WURTZ_URL = 'https://billwurtz.com/'
 
-BILL_CACHE = {'videos': None, 'songs': None, 'instrumentals': None}
-
 BALL_RESPONSES = [
 	# yes
 	'It is certain', 'It is decidedly so', 'Without a doubt', 'Yes definitely', 'You may rely on it',
@@ -65,8 +63,11 @@ class Fun(AceMixin, commands.Cog):
 
 	def __init__(self, bot):
 		self.bot = bot
+		self.bill_cache = dict()
+		self.bill_latest = None
+		self.bill_latest_date = date(1337, 1, 1)
 		self.cache_bill_vids.start()
-	
+
 	def cog_unload(self):
 		self.cache_bill_vids.cancel()
 
@@ -434,114 +435,93 @@ class Fun(AceMixin, commands.Cog):
 	async def cache_bill_vids(self):
 		'''Requests the bill videos from the website. 
 		Caching is done in order to speed up searching'''
-		
-		for key in BILL_CACHE.keys():
-			BILL_CACHE[key] = await self.get_bill_soup(file=key, use_cache=False)
-	
 
-	async def get_bill_soup(self, *, file: str = "videos.html", use_cache=True):
+		self.bill_cache.clear()
+
+		for key in ('videos', 'songs', 'instrumentals'):
+			data = await self.get_bill_data(file=key)
+			self.bill_cache.update(data)
+
+	async def get_bill_data(self, file):
 		"""Get bill videos/songs and return the beautifulsoup object"""
-
-		if file.endswith('.html'):
-			file = file.rstrip('.html')
-
-		if use_cache and BILL_CACHE[file] is not None:
-			return BILL_CACHE[file]
 
 		async with self.bot.aiohttp.get(BILL_WURTZ_URL + file + '.html') as resp:
 			if resp.status != 200:
 				raise commands.CommandError('Request failed.')
 			content = await resp.text()
-		
+
 		soup = BeautifulSoup(content, 'lxml')
 
 		def bill_filter(el):
 			# needs to have 2 td children
 			names = [c.name for c in el.children if c.name is not None]
-			return len(names)==2 and all(name=="td" for name in names)
+			return len(names) == 2 and all(name == "td" for name in names)
 
-		tokens = [(toke if getattr(toke,'a', None) is not None else None) for toke in soup.find_all(bill_filter)]
-		
-		while tokens.count(None) > 0:
-			tokens.remove(None)
+		data = dict()
 
-		BILL_CACHE[file] = tokens
-		
-		return tokens
+		def handle_bill_date(bill_date):
+			bill_date = bill_date.split('.')
 
-	def get_bill_file(self, query, title, fuzzed_threshold=89):
-		"""
-		Take a query and fuzzy match it to titles list and return it
-		if it matches above the threshold.
-		"""
-		fuzzed = process.extractOne(query, title)
+			try:
+				year = 2000 + int(bill_date[2])
+				month = int(bill_date[0])
+				day = int(bill_date[1])
+			except (ValueError, IndexError):
+				return None
 
-		log.debug("bill query fuzzed: " + str(fuzzed))
+			return date(year, month, day)
 
-		if fuzzed[-1] < fuzzed_threshold:
-			return (False, fuzzed)
+		for tag in soup.find_all(bill_filter):
+			td = tag.find('td')
+			a = tag.find('a')
 
-		return (True, fuzzed)
+			if a is None:
+				continue
+			elif a.text == '':
+				continue
+
+			name = a.text.strip()
+
+			if td is not None:
+				bill_date = handle_bill_date(td.text)
+				if bill_date is not None and bill_date > self.bill_latest_date:
+					self.bill_latest = name
+					self.bill_latest_date = bill_date
+			else:
+				bill_date = None
 
 
-	@commands.command(aliases=('wurtz',))
+			data[name] = (a.attrs['href'], bill_date)
+
+		return data
+
+	@commands.command()
 	@commands.cooldown(rate=3, per=10.0, type=commands.BucketType.user)
 	async def bill(self, ctx, *, query: str = None):
 		'''Get a random Bill Wurtz video from his website, with optional search.'''
 
-		file = 'videos'
-		if query and query.split(' ')[0] in BILL_CACHE.keys():
-			file = query.split(' ')[0]
-			query = ' '.join(query.split(' ')[1:])
-
-			if query == '':
-				query = None
-	
-		log.debug('query: ' + (query or "None"))
-		log.debug('file: ' + (file or "None"))
-
 		async with ctx.typing():
-			soup = await self.get_bill_soup(file=file, use_cache=not (query or '').lower().startswith('latest'))
-
-			tag: bs4.Tag = None
-
 			if query is None:
-				tag = choice(soup)
+				picked = choice(list(self.bill_cache.keys()))
 
 			elif query.startswith('latest'):
-				query: str = soup[0]('a')[0].string
+				picked = self.bill_latest
 
 			else:
-				accept, query = self.get_bill_file(query, [tag('a')[0].string for tag in soup])
-				
-				if not accept:
+				picked, score = process.extractOne(query, self.bill_cache.keys())
+
+				if score < 89:
 					raise commands.CommandError(
-							"Couldn't match that search with certainty.\n"
-							f"Closest match: '{query[0].strip()}'"
-						)
+						"Couldn't match that search with certainty.\n"
+						f"Closest match: '{query[0].strip()}'"
+					)
 
-				query = query[0]
-
-			for v in soup:
-				if query == v('a')[0].string:
-					tag = v
-					break
-			
-			bill_date = tag('td')[0].string.strip().split('.')
-			bill_date = (
-				'20' + bill_date[2], 
-				bill_date[0].rjust(2,'0'), 
-				bill_date[1].rjust(2, '0')
-			)
-			bill_date = [int(x) for x in bill_date]
-			bill_date = date(*bill_date).strftime('%B %d, %Y')
-
-			tag = tag('a')[0]
+		href, bill_date = self.bill_cache[picked]
 
 		await ctx.send(
 			f"{bill_date}: "
-			f"*{discord.utils.escape_markdown(tag.string.strip())}* \n"
-			f"{BILL_WURTZ_URL + tag['href']}"
+			f"*{discord.utils.escape_markdown(picked)}* \n"
+			f"{BILL_WURTZ_URL + href}"
 		)
 
 	@commands.command()
