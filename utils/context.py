@@ -70,7 +70,7 @@ class AceContext(commands.Context):
 			return True
 
 		# true if member has administrator perms in this channel
-		if member.permissions_in(self.channel).administrator:
+		if self.channel.permissions_for(member).administrator:
 			return True
 
 		# only last way member can be mod if they're in the moderator role

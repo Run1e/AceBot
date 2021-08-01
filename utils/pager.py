@@ -32,7 +32,7 @@ class Pager:
 		self.missing_perms = []
 
 		# overrides to a static view if missing perms!
-		perms = ctx.guild.me.permissions_in(ctx.channel)
+		perms = ctx.channel.permissions_for(ctx.guild.me)
 
 		for perm in STATIC_PERMS:
 			if not getattr(perms, perm):

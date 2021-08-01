@@ -252,7 +252,7 @@ class TempbanPager(Pager):
 
 async def can_mute_pred(ctx):
 	# members can mute if they are mod or have the manage_roles perm
-	return await ctx.is_mod() or ctx.author.permissions_in(ctx.channel).manage_roles
+	return await ctx.is_mod() or ctx.channel.permissions_for(ctx.author).manage_roles
 
 
 def can_mute():
@@ -920,7 +920,7 @@ class Moderation(AceMixin, commands.Cog):
 		if channel is None:
 			channel = ctx.channel
 
-		perms = user.permissions_in(channel)
+		perms = channel.permissions_for(user)
 
 		mod_perms = []
 		general_perms = []
