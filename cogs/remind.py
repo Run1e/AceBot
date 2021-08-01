@@ -26,7 +26,7 @@ class RemindPager(Pager):
 	async def craft_page(self, e, page, entries):
 		now = datetime.utcnow()
 
-		e.set_author(name=self.author.name, icon_url=self.author.avatar_url)
+		e.set_author(name=self.author.name, icon_url=self.author.display_avatar.url)
 		e.description = 'All your reminders for this server.'
 
 		for record in entries:

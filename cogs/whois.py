@@ -33,7 +33,7 @@ class WhoIs(AceMixin, commands.Cog):
 		if member.activity:
 			e.add_field(name='Activity', value=member.activity.name)
 
-		e.set_author(name=str(member), icon_url=member.avatar_url)
+		e.set_author(name=str(member), icon_url=member.display_avatar.url)
 
 		now = datetime.utcnow()
 		created = member.created_at
@@ -80,7 +80,7 @@ class WhoIs(AceMixin, commands.Cog):
 	async def avatar(self, ctx, *, member: discord.Member):
 		'''Show an enlarged version of a members avatar.'''
 
-		await ctx.send(member.avatar_url)
+		await ctx.send(member.display_avatar.url)
 
 
 def setup(bot):

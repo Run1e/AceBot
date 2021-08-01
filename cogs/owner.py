@@ -73,10 +73,10 @@ class DiscordObjectPager(Pager):
 		if hasattr(entry, 'mention'):
 			e.description = entry.mention
 
-		if hasattr(entry, 'avatar_url'):
-			e.set_thumbnail(url=entry.avatar_url)
-		elif hasattr(entry, 'icon_url'):
-			e.set_thumbnail(url=entry.icon_url)
+		if hasattr(entry, 'display_avatar'):
+			e.set_thumbnail(url=entry.display_avatar.url)
+		elif hasattr(entry, 'icon'):
+			e.set_thumbnail(url=entry.icon.url)
 
 
 class Owner(AceMixin, commands.Cog):
@@ -325,10 +325,11 @@ class Owner(AceMixin, commands.Cog):
 
 		headers = {
 			'User-Agent': (
-				'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_10_1) AppleWebKit/537.36 (KHTML, like Gecko) '
-				'Chrome/39.0.2171.95 Safari/537.36'
+			'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_10_1) AppleWebKit/537.36 (KHTML, like Gecko) '
+			'Chrome/39.0.2171.95 Safari/537.36'
 			),
-			'Accept:': 'text/html'
+			'Accept:':
+			'text/html'
 		}
 
 		params = dict(

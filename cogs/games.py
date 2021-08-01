@@ -371,7 +371,7 @@ class Games(AceMixin, commands.Cog):
 
 		e = discord.Embed()
 
-		e.set_author(name=member.display_name, icon_url=member.avatar_url)
+		e.set_author(name=member.display_name, icon_url=member.display_avatar.url)
 
 		e.add_field(name='Score', value=str(entry.score))
 		e.add_field(name='Correct', value='{} games'.format(str(entry.correct_count)))

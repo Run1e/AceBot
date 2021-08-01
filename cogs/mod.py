@@ -299,8 +299,8 @@ class Moderation(AceMixin, commands.Cog):
 		for name, value in fields.items():
 			e.add_field(name=name.title(), value=value, inline=False)
 
-		if hasattr(subject, 'avatar_url'):
-			e.set_thumbnail(url=subject.avatar_url)
+		if hasattr(subject, 'display_avatar'):
+			e.set_thumbnail(url=subject.display_avatar.url)
 
 		e.set_footer(text=severity.name)
 
@@ -314,7 +314,7 @@ class Moderation(AceMixin, commands.Cog):
 			name=member.name,
 			nick=member.nick,
 			discriminator=member.discriminator,
-			avatar_url=str(member.avatar_url),
+			avatar_url=str(member.display_avatar.url),
 		)
 
 		return dumps(data)

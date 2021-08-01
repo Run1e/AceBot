@@ -417,7 +417,7 @@ class Tags(AceMixin, commands.Cog):
 			avatar = ctx.guild.icon.url
 		else:
 			nick = owner.display_name
-			avatar = owner.avatar_url
+			avatar = owner.display_avatar.url
 
 		e = discord.Embed(
 			description=f"**{record.get('name')}**",

@@ -81,7 +81,7 @@ class Meta(AceMixin, commands.Cog):
 		)
 
 		e = discord.Embed()
-		e.set_author(name=member.name, icon_url=member.avatar_url)
+		e.set_author(name=member.name, icon_url=member.display_avatar.url)
 		e.add_field(name='Top Commands', value=self._stats_craft_list(commands_alltime))
 		e.add_field(name='Top Commands Today', value=self._stats_craft_list(commands_today))
 
@@ -180,7 +180,7 @@ class Meta(AceMixin, commands.Cog):
 		e = discord.Embed(title='Official bot invite link here!', description=self.get_last_commits(), url=self.bot.invite_link)
 
 		owner = self.bot.get_user(self.bot.owner_id)
-		e.set_author(name=str(owner), icon_url=owner.avatar_url)
+		e.set_author(name=str(owner), icon_url=owner.display_avatar.url)
 
 		e.add_field(name='Developer', value=str(self.bot.get_user(self.bot.owner_id)))
 

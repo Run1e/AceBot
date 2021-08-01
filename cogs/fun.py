@@ -393,7 +393,7 @@ class Fun(AceMixin, commands.Cog):
 			description=selected
 		)
 
-		e.set_author(name=choice(choose_prompts) + ':', icon_url=self.bot.user.avatar_url)
+		e.set_author(name=choice(choose_prompts) + ':', icon_url=self.bot.user.display_avatar.url)
 
 		msg = await ctx.send(':thinking:')
 
@@ -433,7 +433,7 @@ class Fun(AceMixin, commands.Cog):
 
 	@tasks.loop(hours=1.0)
 	async def cache_bill_vids(self):
-		'''Requests the bill videos from the website. 
+		'''Requests the bill videos from the website.
 		Caching is done in order to speed up searching'''
 
 		self.bill_cache.clear()
