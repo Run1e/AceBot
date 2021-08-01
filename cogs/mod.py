@@ -92,8 +92,8 @@ OTHER_CHANNEL_PENALTY = 2
 
 
 class CooldownByContent(commands.CooldownMapping):
-	def __init__(self, original):
-		super().__init__(original)
+	def __init__(self, original, type):
+		super().__init__(original, type)
 
 		self.bucket_to_channel = dict()
 
