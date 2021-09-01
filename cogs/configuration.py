@@ -29,7 +29,7 @@ class Configuration(AceMixin, commands.Cog):
 		gc = await self.bot.config.get_entry(ctx.guild.id)
 
 		e = discord.Embed(description='Bot configuration.')
-		e.set_author(name=ctx.guild.name, icon_url=ctx.guild.icon_url)
+		e.set_author(name=ctx.guild.name, icon_url=ctx.guild.icon.url)
 
 		mod_role = gc.mod_role
 

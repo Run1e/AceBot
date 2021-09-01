@@ -170,8 +170,8 @@ class Fun(AceMixin, commands.Cog):
 		if guild.premium_subscribers:
 			# actually get the last premium subscriber. this list is always fucked
 			booster = sorted(guild.premium_subscribers, key=lambda m: m.premium_since)[-1]
-			boost_desc += '\nLast boost by {} {} ago'.format(
-				booster.mention, pretty_timedelta(datetime.utcnow() - booster.premium_since)
+			boost_desc += '\nLast boost by {} {}'.format(
+				booster.mention, f"<t:{round((booster.premium_since.replace(tzinfo=None) - datetime.utcfromtimestamp(0)).total_seconds())}:R>"
 			)
 
 		e.add_field(
@@ -179,7 +179,7 @@ class Fun(AceMixin, commands.Cog):
 			value=boost_desc
 		)
 
-		e.set_thumbnail(url=guild.icon_url)
+		e.set_thumbnail(url=guild.icon.url)
 		e.set_footer(text='Created')
 
 		await ctx.send(embed=e)

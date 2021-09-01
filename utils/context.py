@@ -115,7 +115,7 @@ class AceContext(commands.Context):
 
 		e = discord.Embed(description=prompt)
 
-		e.set_author(name=title or 'Prompt', icon_url=self.bot.user.avatar_url)
+		e.set_author(name=title or 'Prompt', icon_url=self.bot.user.avatar.url)
 
 		try:
 			msg = await self.send(content=None if user_override is None else user_override.mention, embed=e)
