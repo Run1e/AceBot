@@ -6,6 +6,7 @@ from base64 import b64encode
 from collections import OrderedDict
 from datetime import datetime, timedelta, timezone
 
+from aiohttp.client_exceptions import ClientConnectorError
 import discord
 from bs4 import BeautifulSoup
 from discord.ext import commands, tasks
@@ -339,11 +340,16 @@ class AutoHotkey(AceMixin, commands.Cog):
 		url = f'{CLOUDAHK_URL}/{lang}/run'
 
 		# call cloudahk with 20 in timeout
-		async with self.bot.aiohttp.post(url, data=code, headers=headers, timeout=20) as resp:
-			if resp.status == 200:
-				result = await resp.json()
-			else:
-				raise commands.CommandError('Something went wrong.')
+		try:
+			async with self.bot.aiohttp.post(url, data=code, headers=headers, timeout=20) as resp:
+				if resp.status == 200:
+					result = await resp.json()
+				else:
+					raise commands.CommandError('Something went wrong.')
+		except ClientConnectorError as e:
+			raise commands.CommandError('I was unable to connect to the api. Please try again later.') from e
+		except TimeoutError as e:
+			raise commands.CommandError('I timed out. Please try again later.') from e
 
 		stdout, time = result['stdout'].strip(), result['time']
 
