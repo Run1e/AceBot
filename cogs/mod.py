@@ -7,14 +7,13 @@ from collections import defaultdict
 from datetime import datetime, timedelta
 from enum import Enum, IntEnum
 from json import dumps, loads
-from textwrap import indent
 
 import discord
 from asyncpg.exceptions import UniqueViolationError
 from discord.ext import commands
 
 from cogs.mixins import AceMixin
-from ids import RULES_MSG_ID, AHK_GUILD_ID
+from ids import AHK_GUILD_ID, RULES_MSG_ID
 from utils.configtable import ConfigTable, ConfigTableRecord
 from utils.context import AceContext, can_prompt, is_mod
 from utils.converters import MaxLengthConverter, MaybeMemberConverter, RangeConverter
@@ -532,6 +531,65 @@ class Moderation(AceMixin, commands.Cog):
 		self.bot.dispatch(
 			'log', ctx.guild, member, action='TEMPBAN', severity=Severity.HIGH, message=ctx.message,
 			responsible=po(ctx.author), duration=pretty_duration, reason=reason
+		)
+
+	@commands.command()
+	@commands.has_permissions(ban_members=True)
+	@commands.bot_has_permissions(ban_members=True, embed_links=True)
+	async def alterban(self, ctx: AceContext, member: BannedMember, amount: TimeMultConverter, *, unit: TimeDeltaConverter):
+		'''Set a new duration for a tempban.'''
+
+		duration = amount * unit
+
+		if duration > MAX_DELTA:
+			raise commands.CommandError('Can\'t tempban for longer than {0}. Please `ban` instead.'.format(pretty_timedelta(MAX_DELTA)))
+
+		record = await self.bot.db.fetchrow(
+			'SELECT * FROM mod_timer WHERE guild_id=$1 AND user_id=$2 AND event=$3',
+			ctx.guild.id, member.user.id, 'BAN'
+		)
+
+		if record is None:
+			raise commands.CommandError('Could not find a tempban referencing this member.')
+
+		now = datetime.utcnow()
+		old_now = record.get('created_at')
+		old_duration = record.get('duration')
+		new_until = old_now + duration
+		old_until = old_now + old_duration
+
+		if duration == old_duration:
+			raise commands.CommandError('Now ban duration is the same as the current duration.')
+
+		old_duration_pretty = pretty_timedelta(old_duration)
+		old_end_pretty = pretty_timedelta(old_until - now)
+		duration_pretty = pretty_timedelta(duration)
+
+		prompt = f'The previous ban duration was {old_duration_pretty} and will end in {old_end_pretty}.\n\n'
+
+		if new_until < now:
+			prompt += 'The new duration ends in the past and will cause an immediate unban.'
+		else:
+			prompt += f'The new ban duration is {duration_pretty} and will end in {pretty_timedelta(new_until - now)}.'
+
+		should_continue = await ctx.prompt(
+			title='Are you sure you want to alter this tempban?',
+			prompt=prompt
+		)
+
+		if not should_continue:
+			return
+
+		await self.db.execute(
+			'UPDATE mod_timer SET duration=$1 WHERE guild_id=$2 AND user_id=$3 AND event=$4',
+			duration, ctx.guild.id, member.user.id, 'BAN'
+		)
+
+		self.event_timer.maybe_restart(new_until)
+
+		self.bot.dispatch(
+			'log', ctx.guild, member.user, action='TEMPBAN UPDATE', severity=Severity.HIGH, message=ctx.message,
+			responsible=po(ctx.author), duration=duration_pretty, reason=f'Old duration was {old_duration_pretty}'
 		)
 
 	@commands.Cog.listener()
