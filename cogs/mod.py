@@ -3,6 +3,7 @@ import asyncio
 import io
 import logging
 import shlex
+from typing import Union
 from collections import defaultdict
 from datetime import datetime, timedelta
 from enum import Enum, IntEnum
@@ -481,30 +482,47 @@ class Moderation(AceMixin, commands.Cog):
 	@commands.command()
 	@commands.has_permissions(ban_members=True)
 	@commands.bot_has_permissions(ban_members=True, embed_links=True)
-	async def tempban(self, ctx, member: discord.Member, amount: TimeMultConverter, unit: TimeDeltaConverter, *, reason: reason_converter = None):
+	async def tempban(self, ctx, member: Union[discord.Member, BannedMember], amount: TimeMultConverter, unit: TimeDeltaConverter, *, reason: reason_converter = None):
 		'''Temporarily ban a member. Requires Ban Members perms. Same formatting as `tempmute` explained above.'''
 
 		now = datetime.utcnow()
 		duration = amount * unit
 		until = now + duration
 
-		if await ctx.is_mod(member):
-			raise commands.CommandError('Can\'t tempban this member.')
+		on_guild = isinstance(member, discord.Member)
+
+		if on_guild:
+			if await ctx.is_mod(member):
+				raise commands.CommandError('Can\'t tempban this member.')
+		else:
+			user: discord.User = member.user
+			member = FakeUser(user.id, ctx.guild, name=user.name, avatar_url=user.avatar_url, discriminator=user.discriminator)
+
+		is_tempbanned = await self.bot.db.fetchval(
+			'SELECT id FROM mod_timer WHERE guild_id=$1 AND user_id=$2 AND event=$3',
+			ctx.guild.id, member.id, 'BAN'
+		)
+
+		if is_tempbanned:
+			raise commands.CommandError('This member is already tempbanned. Use `alterban` to change duration?')
 
 		if duration > MAX_DELTA:
 			raise commands.CommandError('Can\'t tempban for longer than {0}. Please `ban` instead.'.format(pretty_timedelta(MAX_DELTA)))
 
 		pretty_duration = pretty_timedelta(duration)
 
-		ban_msg = 'You have received a ban lasting {0} from {1}.\n\nReason:\n```\n{2}\n```'.format(
-			pretty_duration, ctx.guild.name, reason
-		)
+		# only send DMs for initial bans
+		if on_guild:
+			ban_msg = 'You have received a ban lasting {0} from {1}.\n\nReason:\n```\n{2}\n```'.format(
+				pretty_duration, ctx.guild.name, reason
+			)
 
-		try:
-			await member.send(ban_msg)
-		except discord.HTTPException:
-			pass
+			try:
+				await member.send(ban_msg)
+			except discord.HTTPException:
+				pass
 
+		# reason we start a transaction is so it auto-rollbacks if the CommandError on ban fails is raised
 		async with self.db.acquire() as con:
 			async with con.transaction():
 				try:
@@ -514,12 +532,13 @@ class Moderation(AceMixin, commands.Cog):
 						ctx.guild.id, member.id, ctx.author.id, 'BAN', now, duration, reason, self._craft_user_data(member)
 					)
 				except UniqueViolationError:
-					raise commands.CommandError('Member is already banned.')
+					# this *should* never happen but I'd rather leave it in
+					raise commands.CommandError('Member is already tempbanned.')
 
 				try:
 					await ctx.guild.ban(member, delete_message_days=0, reason=reason)
 				except discord.HTTPException:
-					raise commands.CommandError('Failed banning member.')
+					raise commands.CommandError('Failed tempbanning member.')
 
 		self.event_timer.maybe_restart(until)
 
@@ -585,7 +604,7 @@ class Moderation(AceMixin, commands.Cog):
 			duration, ctx.guild.id, member.user.id, 'BAN'
 		)
 
-		self.event_timer.maybe_restart(new_until)
+		self.event_timer.restart_task()
 
 		self.bot.dispatch(
 			'log', ctx.guild, member.user, action='TEMPBAN UPDATE', severity=Severity.HIGH, message=ctx.message,
