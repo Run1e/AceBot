@@ -171,7 +171,7 @@ class Fun(AceMixin, commands.Cog):
 			# actually get the last premium subscriber. this list is always fucked
 			booster = sorted(guild.premium_subscribers, key=lambda m: m.premium_since)[-1]
 			boost_desc += '\nLast boost by {} {}'.format(
-				booster.mention, f"<t:{round((booster.premium_since.replace(tzinfo=None) - datetime.utcfromtimestamp(0)).total_seconds())}:R>"
+				booster.mention, f"<t:{round(booster.premium_since.timestamp())}:R>"
 			)
 
 		e.add_field(

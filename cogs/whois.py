@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timezone
 
 import discord
 from discord.ext import commands
@@ -35,19 +35,19 @@ class WhoIs(AceMixin, commands.Cog):
 
 		e.set_author(name=str(member), icon_url=member.display_avatar.url)
 
-		now = datetime.utcnow()
+		now = datetime.now(timezone.utc)
 		created = member.created_at
 		joined = member.joined_at
 
 		e.add_field(
 			name='Account age',
-			value='{0} • Created {1}'.format(pretty_timedelta(now - created), pretty_datetime(created)),
+			value='{0} • Created <t:{1}:F>'.format(pretty_timedelta(now - created), round(created.timestamp())),
 			inline=False
 		)
 
 		e.add_field(
 			name='Member for',
-			value='{0} • Joined {1}'.format(pretty_timedelta(now - joined), pretty_datetime(joined))
+			value='{0} • Joined <t:{1}:F>'.format(pretty_timedelta(now - joined), round(joined.timestamp()))
 		)
 
 		if len(member.roles) > 1:
@@ -64,7 +64,7 @@ class WhoIs(AceMixin, commands.Cog):
 
 		count = min(max(count, 5), 25)
 
-		now = datetime.utcnow()
+		now = datetime.now(timezone.utc)
 		e = discord.Embed()
 
 		for idx, member in enumerate(sorted(ctx.guild.members, key=lambda m: m.joined_at, reverse=True)):
