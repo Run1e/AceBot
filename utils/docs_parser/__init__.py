@@ -22,6 +22,7 @@ ALIASES = {
 	'commands/For.htm': ['For'],
 	'commands/IfExpression.htm': ['If'],
 	'misc/EscapeChar.htm': ['EscapeChar'],
+	'Hotstrings.htm': ['hotstrings'],
 }
 
 
