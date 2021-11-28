@@ -399,8 +399,12 @@ class AutoHotkey(AceMixin, commands.Cog):
 
 	@commands.command(aliases=['d', 'doc', 'rtfm'])
 	@commands.bot_has_permissions(embed_links=True)
-	async def docs(self, ctx, *, query):
+	async def docs(self, ctx, *, query = None):
 		'''Search the AutoHotkey documentation. Enter multiple queries by separating with commas.'''
+
+		if query is None:
+			await ctx.send(DOCS_FORMAT.format(''))
+			return
 
 		spl = OrderedDict.fromkeys(sq.strip() for sq in query.lower().split(','))
 
