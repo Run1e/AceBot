@@ -92,8 +92,8 @@ OTHER_CHANNEL_PENALTY = 2
 
 
 class CooldownByContent(commands.CooldownMapping):
-	def __init__(self, original):
-		super().__init__(original)
+	def __init__(self, original, type):
+		super().__init__(original, type)
 
 		self.bucket_to_channel = dict()
 
@@ -252,7 +252,7 @@ class TempbanPager(Pager):
 
 async def can_mute_pred(ctx):
 	# members can mute if they are mod or have the manage_roles perm
-	return await ctx.is_mod() or ctx.author.permissions_in(ctx.channel).manage_roles
+	return await ctx.is_mod() or ctx.channel.permissions_for(ctx.author).manage_roles
 
 
 def can_mute():
@@ -299,8 +299,8 @@ class Moderation(AceMixin, commands.Cog):
 		for name, value in fields.items():
 			e.add_field(name=name.title(), value=value, inline=False)
 
-		if hasattr(subject, 'avatar_url'):
-			e.set_thumbnail(url=subject.avatar_url)
+		if hasattr(subject, 'display_avatar'):
+			e.set_thumbnail(url=subject.display_avatar.url)
 
 		e.set_footer(text=severity.name)
 
@@ -314,7 +314,7 @@ class Moderation(AceMixin, commands.Cog):
 			name=member.name,
 			nick=member.nick,
 			discriminator=member.discriminator,
-			avatar_url=str(member.avatar_url),
+			avatar_url=str(member.display_avatar.url),
 		)
 
 		return dumps(data)
@@ -997,7 +997,7 @@ class Moderation(AceMixin, commands.Cog):
 		if channel is None:
 			channel = ctx.channel
 
-		perms = user.permissions_in(channel)
+		perms = channel.permissions_for(user)
 
 		mod_perms = []
 		general_perms = []

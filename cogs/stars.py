@@ -296,7 +296,7 @@ class Starboard(AceMixin, commands.Cog):
 		stars = star_ret + 1
 
 		e = discord.Embed()
-		e.set_author(name=author.display_name, icon_url=author.avatar_url)
+		e.set_author(name=author.display_name, icon_url=author.avatar.url)
 
 		e.add_field(name='Stars', value=self.star_emoji(stars) + ' ' + str(stars))
 		e.add_field(name='Starred in', value='<#{}>'.format(row.get('channel_id')))
@@ -840,7 +840,7 @@ class Starboard(AceMixin, commands.Cog):
 
 		embed.set_author(
 			name=message.author.display_name,
-			icon_url=message.author.avatar_url_as(format='png'),
+			icon_url=message.author.avatar.url_as(format='png'),
 		)
 
 		embed.set_footer(text='#' + message.channel.name)

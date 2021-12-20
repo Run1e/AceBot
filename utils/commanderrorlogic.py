@@ -79,7 +79,7 @@ class CommandErrorLogic:
 		)
 
 		e = self.new_embed(description=desc)
-		e.set_author(name='Oops!', icon_url=self.bot.user.avatar_url)
+		e.set_author(name='Oops!', icon_url=self.bot.user.display_avatar.url)
 
 		self.save = True
 		self.embed = e

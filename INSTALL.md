@@ -13,7 +13,7 @@ but for development your local PC will suffice.
 ## Requirements
 
 * PostgreSQL
-* Python 3
+* Python 3.8
 * PIP (should come with Python)
 * Git (or GitHub etc.)
 
@@ -68,6 +68,8 @@ Please install these according to their instructions.
   THECATAPI_KEY = None
   WOLFRAM_KEY = None
   APIXU_KEY = None
+
+  GAME_PRED_URL = ""
   ```
   * You can get your bot token from the [Discord Developer Portal](https://discord.com/developers/applications).
     If you haven't already:
