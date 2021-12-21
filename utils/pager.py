@@ -21,7 +21,7 @@ class Pager:
 		self.guild = ctx.guild
 		self.channel = ctx.channel
 		self.entries = entries or []
-		self.embed = discord.Embed()
+		self.embed = disnake.Embed()
 		self.page = page
 		self.timeout = timeout
 		self.separator = separator
@@ -59,7 +59,7 @@ class Pager:
 			for emoji in emojis:
 				try:
 					await msg.add_reaction(emoji)
-				except discord.HTTPException:
+				except disnake.HTTPException:
 					pass
 
 		def pred(reaction, user):
@@ -102,7 +102,7 @@ class Pager:
 
 		try:
 			await msg.clear_reactions()
-		except discord.HTTPException:
+		except disnake.HTTPException:
 			pass
 
 	@property

@@ -39,7 +39,7 @@ class BaseParser:
 		self.entries = list()
 
 		self.h2m = DocsHTML2Markdown(
-			escaper=discord.utils.escape_markdown, base_url=self.DOCS_URL + self.page,
+			escaper=disnake.utils.escape_markdown, base_url=self.DOCS_URL + self.page,
 			big_box=False, lang='autoit', max_len=2000
 		)
 

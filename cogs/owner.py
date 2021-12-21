@@ -142,7 +142,7 @@ class Owner(AceMixin, commands.Cog):
 		from tabulate import tabulate
 
 		env = {
-			'discord': discord,
+			'disnake': disnake,
 			'bot': self.bot,
 			'ctx': ctx,
 			'channel': ctx.channel,
