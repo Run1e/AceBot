@@ -1,4 +1,4 @@
-from discord import Object
+from disnake import Object
 
 
 class FakeUser(Object):

@@ -1,8 +1,8 @@
 import asyncio
 import logging
 
-import discord
-from discord.ext import commands
+import disnake
+from disnake.ext import commands
 
 from cogs.mixins import AceMixin
 from utils.configtable import ConfigTable
@@ -262,7 +262,7 @@ class RoleHead(MaybeDirty):
 				self.selector_pos = (self.selector_pos + 1) % (self.selector_max + 1)
 
 	def embed(self, footer=''):
-		e = discord.Embed(
+		e = disnake.Embed(
 			description=(
 				f'{ADD_SEL_EMOJI} Add selector\n{ADD_ROLE_EMOJI} Add role\n{UP_EMOJI} {DOWN_EMOJI} Move up/down\n'
 				f'{MOVEUP_EMOJI} {MOVEDOWN_EMOJI} Move item up/down\n{EDIT_EMOJI} Edit item\n'
@@ -428,7 +428,7 @@ class Roles(AceMixin, commands.Cog):
 		# so converters can access the head for data integrity tests...
 		ctx.head = head
 
-		msg = await ctx.send(embed=discord.Embed(description='Please wait while reactions are being added...'))
+		msg = await ctx.send(embed=disnake.Embed(description='Please wait while reactions are being added...'))
 
 		self.messages[ctx.guild.id] = msg
 
@@ -443,7 +443,7 @@ class Roles(AceMixin, commands.Cog):
 			try:
 				await msg.delete()
 				self.messages.pop(ctx.guild.id)
-			except discord.HTTPException:
+			except disnake.HTTPException:
 				pass
 
 		while True:
@@ -462,7 +462,7 @@ class Roles(AceMixin, commands.Cog):
 				if reac == ADD_SEL_EMOJI:
 					if len(head.selectors) > 7:
 						await ctx.send(
-							embed=discord.Embed(description='No more than 8 selectors, sorry!'),
+							embed=disnake.Embed(description='No more than 8 selectors, sorry!'),
 							delete_after=6
 						)
 						continue
@@ -497,7 +497,7 @@ class Roles(AceMixin, commands.Cog):
 				if reac == ADD_ROLE_EMOJI:
 					if len(head.selector.roles) > 24:
 						await ctx.send(
-							embed=discord.Embed(description='No more than 25 roles in one selector, sorry!'),
+							embed=disnake.Embed(description='No more than 25 roles in one selector, sorry!'),
 							delete_after=6
 						)
 						continue
@@ -567,7 +567,7 @@ class Roles(AceMixin, commands.Cog):
 		try:
 			msg = self.messages.pop(ctx.guild.id)
 			await msg.delete()
-		except (KeyError, discord.HTTPException):
+		except (KeyError, disnake.HTTPException):
 			pass
 
 	async def _multiprompt(self, ctx, msg, preds):
@@ -577,14 +577,14 @@ class Roles(AceMixin, commands.Cog):
 			return message.author.id == ctx.author.id and ctx.channel.id == ctx.channel.id
 
 		def new_embed(question):
-			e = discord.Embed(description=question)
+			e = disnake.Embed(description=question)
 			e.set_footer(text=EDIT_FOOTER)
 			return e
 
 		for question, conv in preds:
 			try:
 				await msg.edit(embed=new_embed(question))
-			except discord.HTTPException:
+			except disnake.HTTPException:
 				raise commands.CommandError('Could not replace the message embed. Did the message get deleted?')
 
 			while True:
@@ -603,7 +603,7 @@ class Roles(AceMixin, commands.Cog):
 					if not msg.embeds:
 						try:
 							await msg.delete()
-						except discord.HTTPException:
+						except disnake.HTTPException:
 							pass
 						raise commands.CommandError('Embed seems to have been removed, aborting.')
 
@@ -637,7 +637,7 @@ class Roles(AceMixin, commands.Cog):
 
 		opt_string = '\n'.join('{} {}'.format(key, value) for key, value in opts.items())
 
-		e = discord.Embed(
+		e = disnake.Embed(
 			description='What would you like to edit?\n\n' + opt_string
 		)
 
@@ -693,7 +693,7 @@ class Roles(AceMixin, commands.Cog):
 				if not msg.embeds:
 					try:
 						await msg.delete()
-					except discord.HTTPException:
+					except disnake.HTTPException:
 						pass
 					raise commands.CommandError('Embed seems to have been removed, aborting.')
 
@@ -739,7 +739,7 @@ class Roles(AceMixin, commands.Cog):
 						msg = await channel.fetch_message(message_id)
 						if msg:
 							await msg.delete()
-					except discord.HTTPException:
+					except disnake.HTTPException:
 						pass
 
 		msgs = list()
@@ -748,7 +748,7 @@ class Roles(AceMixin, commands.Cog):
 			for m in msgs:
 				try:
 					await m.delete()
-				except discord.HTTPException:
+				except disnake.HTTPException:
 					pass
 
 		self.cancel_footer(ctx.guild.id)
@@ -770,7 +770,7 @@ class Roles(AceMixin, commands.Cog):
 			if not roles:
 				continue
 
-			e = discord.Embed()
+			e = disnake.Embed()
 
 			description = selector.get('description')
 			if description is not None:
@@ -800,7 +800,7 @@ class Roles(AceMixin, commands.Cog):
 				for role in roles:
 					emoj = role.get('emoji')
 					await msg.add_reaction(emoj)
-			except discord.HTTPException:
+			except disnake.HTTPException:
 				await delete_all()
 				raise commands.CommandError(
 					'Failed adding the emoji {}.\nIf the emoji has been deleted, change it in the editor.'.format(
@@ -849,7 +849,7 @@ class Roles(AceMixin, commands.Cog):
 
 		try:
 			await message.remove_reaction(emoji, member)
-		except discord.HTTPException:
+		except disnake.HTTPException:
 			pass
 
 		selector_id = conf.selectors[conf.message_ids.index(message_id)]
@@ -869,7 +869,7 @@ class Roles(AceMixin, commands.Cog):
 		role = guild.get_role(role_row.get('role_id'))
 		if role is None:
 			await channel.send(
-				embed=discord.Embed(
+				embed=disnake.Embed(
 					description='Could not find role with ID {}. Has it been deleted?'.format(role_row.get('role_id'))
 				),
 				delete_after=30
@@ -885,7 +885,7 @@ class Roles(AceMixin, commands.Cog):
 			else:
 				await member.remove_roles(role, reason='Removed through role selector')
 				desc = '{}: removed role {}'.format(member.display_name, role.name)
-		except discord.HTTPException:
+		except disnake.HTTPException:
 			desc = 'Unable to toggle role {}. Does the bot have Manage Roles permissions?'.format(role.name)
 
 		await self.set_footer(message, desc)
@@ -913,7 +913,7 @@ class Roles(AceMixin, commands.Cog):
 
 		try:
 			await message.edit(embed=embed)
-		except discord.HTTPException:
+		except disnake.HTTPException:
 			pass
 
 	async def set_footer(self, message, text, clear_after=4.0):

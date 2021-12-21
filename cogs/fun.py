@@ -8,9 +8,9 @@ from random import choice
 
 import aiohttp
 import bs4
-import discord
+import disnake
 from bs4 import BeautifulSoup
-from discord.ext import commands, tasks
+from disnake.ext import commands, tasks
 from fuzzywuzzy import process
 
 from cogs.mixins import AceMixin
@@ -53,7 +53,7 @@ BALL_RESPONSES = [
 	"Don't count on it", 'My reply is no', 'My sources say no', 'Outlook not so good', 'Very doubtful'
 ]
 
-QUERY_EXCEPTIONS = (discord.HTTPException, aiohttp.ClientError, asyncio.TimeoutError, commands.CommandError)
+QUERY_EXCEPTIONS = (disnake.HTTPException, aiohttp.ClientError, asyncio.TimeoutError, commands.CommandError)
 
 log = logging.getLogger(__name__)
 
@@ -62,7 +62,8 @@ class Fun(AceMixin, commands.Cog):
 	'''Fun commands!'''
 
 	def __init__(self, bot):
-		self.bot = bot
+		super().__init__(bot)
+
 		self.bill_cache = dict()
 		self.bill_latest = None
 		self.bill_latest_date = date(1337, 1, 1)
@@ -82,7 +83,7 @@ class Fun(AceMixin, commands.Cog):
 			ID=guild.id,
 		)
 
-		e = discord.Embed(
+		e = disnake.Embed(
 			title=guild.name,
 			description='\n'.join('**{}**: {}'.format(key, value) for key, value in desc.items()),
 			timestamp=guild.created_at
@@ -101,8 +102,8 @@ class Fun(AceMixin, commands.Cog):
 		# CHANNELS
 
 		channels = {
-			discord.TextChannel: 0,
-			discord.VoiceChannel: 0,
+			disnake.TextChannel: 0,
+			disnake.VoiceChannel: 0,
 		}
 
 		for channel in guild.channels:
@@ -112,9 +113,9 @@ class Fun(AceMixin, commands.Cog):
 
 		channel_desc = '{} {}\n{} {}'.format(
 			'<:text_channel:635021087247171584>',
-			channels[discord.TextChannel],
+			channels[disnake.TextChannel],
 			'<:voice_channel:635021113134546944>',
-			channels[discord.VoiceChannel]
+			channels[disnake.VoiceChannel]
 		)
 
 		e.add_field(
@@ -224,7 +225,7 @@ class Fun(AceMixin, commands.Cog):
 
 			success = res['success'] and res['numpods']
 
-			e = discord.Embed(color=0xFF6600)
+			e = disnake.Embed(color=0xFF6600)
 			e.set_author(name='Wolfram|Alpha', icon_url='https://i.imgur.com/KFppH69.png')
 			e.set_footer(text='wolframalpha.com')
 
@@ -296,6 +297,24 @@ class Fun(AceMixin, commands.Cog):
 
 			await ctx.send(embed=e)
 
+	async def unpack_commons_image(self, http, url):
+		try:
+			async with http.get(url) as resp:
+				if resp.status != 200:
+					return None
+
+				bs = BeautifulSoup(await resp.text(), 'html.parser')
+				tag = bs.find('a', class_='internal', href=True)
+
+				if tag is not None:
+					href = tag.get('href')
+					if not href.startswith('http'):
+						href = 'https:' + href
+					return href
+			return None
+		except TimeoutError:
+			return None
+
 	@commands.command()
 	@commands.cooldown(rate=2, per=5.0, type=commands.BucketType.user)
 	@commands.bot_has_permissions(embed_links=True)
@@ -329,7 +348,7 @@ class Fun(AceMixin, commands.Cog):
 
 			observation_time = datetime.strptime(current['observation_time'], '%I:%M %p').time()
 
-			e = discord.Embed(
+			e = disnake.Embed(
 				title='Weather for {}, {} {}'.format(location['name'], location['region'], location['country'].upper()),
 				description='*{}*'.format(' / '.join(current["weather_descriptions"])),
 				timestamp=datetime.combine(date.today(), observation_time),
@@ -350,7 +369,7 @@ class Fun(AceMixin, commands.Cog):
 			await ctx.send(embed=e)
 
 	def _create_embed(self, url=None):
-		e = discord.Embed(color=0x36393E)
+		e = disnake.Embed(color=0x36393E)
 		if url is not None:
 			e.set_image(url=url)
 		log.info(url)
@@ -389,7 +408,7 @@ class Fun(AceMixin, commands.Cog):
 
 		selected = choice(choices)
 
-		e = discord.Embed(
+		e = disnake.Embed(
 			description=selected
 		)
 
@@ -406,32 +425,14 @@ class Fun(AceMixin, commands.Cog):
 
 		fact = await self.db.fetchrow('SELECT * FROM facts ORDER BY random()')
 
-		e = discord.Embed(
+		e = disnake.Embed(
 			title='Fact #{}'.format(fact.get('id')),
 			description=fact.get('content')
 		)
 
 		await ctx.send(embed=e)
 
-	async def unpack_commons_image(self, http, url):
-		try:
-			async with http.get(url) as resp:
-				if resp.status != 200:
-					return None
-
-				bs = BeautifulSoup(await resp.text(), 'html.parser')
-				tag = bs.find('a', class_='internal', href=True)
-
-				if tag is not None:
-					href = tag.get('href')
-					if not href.startswith('http'):
-						href = 'https:' + href
-					return href
-			return None
-		except TimeoutError:
-			return None
-
-	@tasks.loop(hours=1.0)
+	@tasks.loop(hours=24.0)
 	async def cache_bill_vids(self):
 		'''Requests the bill videos from the website.
 		Caching is done in order to speed up searching'''
@@ -520,7 +521,7 @@ class Fun(AceMixin, commands.Cog):
 
 		await ctx.send(
 			f"{bill_date}: "
-			f"*{discord.utils.escape_markdown(picked)}* \n"
+			f"*{disnake.utils.escape_markdown(picked)}* \n"
 			f"{BILL_WURTZ_URL + href}"
 		)
 
@@ -609,7 +610,7 @@ class Fun(AceMixin, commands.Cog):
 
 	def make_xkcd_embed(self, comic_json):
 		comic_url = 'https://xkcd.com/{}'.format(comic_json['num'])
-		e = discord.Embed(
+		e = disnake.Embed(
 			title=comic_json['title'],
 			url=comic_url,
 			description='{}'.format(comic_json['alt'])
@@ -700,41 +701,6 @@ class Fun(AceMixin, commands.Cog):
 				img_url = json['image']
 
 				await ctx.send(img_url)
-			except QUERY_EXCEPTIONS:
-				raise QUERY_ERROR
-
-	@commands.command()
-	@commands.cooldown(rate=6, per=10.0, type=commands.BucketType.user)
-	@commands.bot_has_permissions(embed_links=True)
-	async def breed(self, ctx):
-		'''Get information on a random cat breed!'''
-
-		if THECATAPI_KEY is None:
-			raise commands.CommandError('The host has not set up an API key.')
-
-		async with ctx.typing():
-			try:
-				async with ctx.http.get(MEOW_URL, params=dict(breed_ids=choice(MEOW_BREEDS)), headers=MEOW_HEADERS) as resp:
-					if resp.status != 200:
-						raise QUERY_ERROR
-					json = await resp.json()
-
-				data = json[0]
-
-				img_url = data['url']
-
-				e = self._create_embed(img_url)
-
-				breed = data['breeds'][0]
-
-				e.set_author(name=breed['name'], url=breed.get('wikipedia_url', None))
-				e.description = breed['description']
-
-				e.add_field(name='Origin', value=breed['origin'])
-				e.add_field(name='Weight', value=breed['weight']['metric'] + ' kg')
-				e.add_field(name='Life span', value=breed['life_span'] + ' years')
-
-				await ctx.send(embed=e)
 			except QUERY_EXCEPTIONS:
 				raise QUERY_ERROR
 

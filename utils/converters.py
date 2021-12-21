@@ -1,9 +1,9 @@
 import re
 from inspect import Parameter
 
-import discord
+import disnake
 import emoji
-from discord.ext import commands
+from disnake.ext import commands
 
 from .fakeuser import FakeUser
 

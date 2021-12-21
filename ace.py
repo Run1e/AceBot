@@ -7,14 +7,14 @@ from datetime import datetime
 import aiohttp
 import asyncpg
 import coloredlogs
-from discord.ext import commands
+from disnake.ext import commands
 
 from config import *
 from utils.commanderrorlogic import CommandErrorLogic
 from utils.configtable import ConfigTable
 from utils.context import AceContext
 from utils.guildconfigrecord import GuildConfigRecord
-from utils.help import EditedMinimalHelpCommand, PaginatedHelpCommand
+from utils.help import PaginatedHelpCommand
 from utils.string import po
 from utils.time import pretty_seconds
 
@@ -54,7 +54,7 @@ class AceBot(commands.Bot):
 			command_prefix=self.prefix_resolver,
 			owner_id=OWNER_ID,
 			description=DESCRIPTION,
-			help_command=EditedMinimalHelpCommand(),
+			help_command=PaginatedHelpCommand(),
 			max_messages=20000,
 			activity=BOT_ACTIVITY,
 			**kwargs
@@ -86,24 +86,11 @@ class AceBot(commands.Bot):
 
 		self.modified_times = dict()
 
-		# help command. this is messy but it has to be because the lib doesn't really like you having
-		# two different help commands. maybe I will see if I can clean this up in the future
-		self.static_help_command = self.help_command
-		command_impl = self.help_command._command_impl
-		self.help_command = PaginatedHelpCommand()
-		self.static_help_command._command_impl = command_impl
-
-		self.remove_command('help')
-		self.add_command(commands.Command(self._help, name='help'))
-
-	async def _help(self, ctx, *, command=None):
-		await ctx.send_help(command)
-
 	async def on_connect(self):
-		log.info('Connected...')
+		log.info('Connected to gateway!')
 
 	async def on_resumed(self):
-		log.info('Resumed...')
+		log.info('Reconnected to gateway!')
 
 		# re-set presence on connection resumed
 		await self.change_presence()
@@ -113,21 +100,21 @@ class AceBot(commands.Bot):
 		if not self.ready.is_set():
 			self.load_extensions()
 
-			self.loop.create_task(self.update_dbl())
-
 			self.ready.set()
 			log.info('Ready! %s', po(self.user))
 
 	async def on_message(self, message):
+		# ignore DMs and bot accounts
 		if message.guild is None or message.author.bot:
 			return
 
+		# don't process commands before bot is ready
 		if not self.ready.is_set():
 			await self.ready.wait()
 
 		await self.process_commands(message)
 
-	async def process_commands(self, message: discord.Message):
+	async def process_commands(self, message: disnake.Message):
 		ctx: AceContext = await self.get_context(message, cls=AceContext)
 
 		# if messages starts with a bot mention...
@@ -190,7 +177,7 @@ class AceBot(commands.Bot):
 	async def on_command_error(self, ctx, exc):
 		async with CommandErrorLogic(ctx, exc) as handler:
 			if isinstance(exc, commands.CommandInvokeError):
-				if isinstance(exc.original, discord.HTTPException):
+				if isinstance(exc.original, disnake.HTTPException):
 					log.debug('Command failed with %s', str(exc.original))
 					return
 				handler.oops()
@@ -222,50 +209,14 @@ class AceBot(commands.Bot):
 			elif isinstance(exc, commands.CommandError):
 				handler.set(description=str(exc))
 
-			elif isinstance(exc, discord.DiscordException):
+			elif isinstance(exc, disnake.DiscordException):
 				handler.oops()
-
-	async def on_guild_join(self, guild):
-		log.info('Join guild %s', po(guild))
-		await self.update_dbl()
-
-	async def on_guild_remove(self, guild):
-		log.info('Left guild %s', po(guild))
-		await self.update_dbl()
-
-	async def on_guild_unavailable(self, guild):
-		pass  # log.info('Unavailable guild %s', str(guild))
 
 	@property
 	def invite_link(self):
 		return 'https://discordapp.com/oauth2/authorize?&client_id={0}&scope=bot&permissions={1}'.format(
 			self.user.id, 268823632
 		)
-
-	async def update_dbl(self):
-		'''Sends an update on guild count to dbl.'''
-
-		if DBL_KEY is None:
-			return
-
-		if not self.is_ready():
-			await self.wait_until_ready()
-
-		url = 'https://discordbots.org/api/bots/{}/stats'.format(self.user.id)
-
-		server_count = len(self.guilds)
-		data = dict(server_count=server_count)
-
-		headers = {
-			'Content-Type': 'application/json',
-			'Authorization': DBL_KEY
-		}
-
-		async with self.aiohttp.post(url, data=json.dumps(data), headers=headers) as resp:
-			if resp.status == 200:
-				log.info('Updated DBL with server count %s', server_count)
-			else:
-				log.info('Failed updating DBL: %s - %s', resp.reason, await resp.text())
 
 
 def setup_logger():
@@ -310,12 +261,12 @@ async def setup():
 			os.makedirs(path)
 
 	# misc. monkey-patching
-	class Embed(discord.Embed):
-		def __init__(self, color=discord.Color.blue(), **attrs):
+	class Embed(disnake.Embed):
+		def __init__(self, color=disnake.Color.blue(), **attrs):
 			attrs['color'] = color
 			super().__init__(**attrs)
 
-	discord.Embed = Embed
+	disnake.Embed = Embed
 
 	def patched_execute(old):
 		async def new(self, query, args, limit, timeout, return_status=False):
@@ -331,7 +282,7 @@ async def setup():
 	db = await asyncpg.create_pool(DB_BIND)
 
 	# create allowed mentions
-	allowed_mentions = discord.AllowedMentions(everyone=False, users=True, roles=False, replied_user=True)
+	allowed_mentions = disnake.AllowedMentions(everyone=False, users=True, roles=False, replied_user=True)
 
 	# init bot
 	log.info('Initializing bot')

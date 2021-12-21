@@ -1,4 +1,4 @@
-git+https://github.com/Pycord-Development/pycord
+disnake
 asyncpg==0.21.0
 aiohttp==3.7.4
 fuzzywuzzy==0.18.0

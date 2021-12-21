@@ -9,9 +9,9 @@ from datetime import datetime, timedelta
 from enum import Enum, IntEnum
 from json import dumps, loads
 
-import discord
+import disnake
 from asyncpg.exceptions import UniqueViolationError
-from discord.ext import commands
+from disnake.ext import commands
 
 from cogs.mixins import AceMixin
 from ids import AHK_GUILD_ID, RULES_MSG_ID
@@ -82,7 +82,7 @@ class Severity(Enum):
 
 
 class SeverityColors(Enum):
-	LOW = discord.Embed().color
+	LOW = disnake.Embed().color
 	MEDIUM = 0xFF8C00
 	HIGH = 0xFF2000
 	RESOLVED = 0x32CD32
@@ -194,9 +194,9 @@ class BannedMember(commands.Converter):
 		ban_list = await ctx.guild.bans()
 		try:
 			member_id = int(argument, base=10)
-			entity = discord.utils.find(lambda u: u.user.id == member_id, ban_list)
+			entity = disnake.utils.find(lambda u: u.user.id == member_id, ban_list)
 		except ValueError:
-			entity = discord.utils.find(lambda u: str(u.user) == argument, ban_list)
+			entity = disnake.utils.find(lambda u: str(u.user) == argument, ban_list)
 
 		if entity is None:
 			raise commands.BadArgument('Not a valid previously banned member.')
@@ -221,7 +221,7 @@ class ActionConverter(commands.Converter):
 
 
 class TempbanPager(Pager):
-	async def craft_page(self, e: discord.Embed, page, entries):
+	async def craft_page(self, e: disnake.Embed, page, entries):
 		e.description = f'{len(self.entries)} active tempban(s).'
 
 		now = datetime.utcnow()
@@ -289,7 +289,7 @@ class Moderation(AceMixin, commands.Cog):
 
 		color = SeverityColors[severity.name].value
 
-		e = discord.Embed(
+		e = disnake.Embed(
 			title=action or 'INFO',
 			description=desc,
 			color=color,
@@ -309,7 +309,7 @@ class Moderation(AceMixin, commands.Cog):
 
 		await log_channel.send(embed=e)
 
-	def _craft_user_data(self, member: discord.Member):
+	def _craft_user_data(self, member: disnake.Member):
 		data = dict(
 			name=member.name,
 			nick=member.nick,
@@ -322,12 +322,12 @@ class Moderation(AceMixin, commands.Cog):
 	@commands.command()
 	@commands.has_permissions(ban_members=True)
 	@commands.bot_has_permissions(ban_members=True)
-	async def ban(self, ctx, member: discord.Member, *, reason: reason_converter = None):
+	async def ban(self, ctx, member: disnake.Member, *, reason: reason_converter = None):
 		'''Ban a member. Requires Ban Members perms.'''
 
 		try:
 			await member.ban(reason=reason, delete_message_days=0)
-		except discord.HTTPException:
+		except disnake.HTTPException:
 			raise commands.CommandError('Failed banning member.')
 
 		await ctx.send('{0} banned.'.format(str(member)))
@@ -351,7 +351,7 @@ class Moderation(AceMixin, commands.Cog):
 
 		try:
 			await ctx.guild.unban(member.user, reason=reason)
-		except discord.HTTPException:
+		except disnake.HTTPException:
 			raise commands.CommandError('Failed unbanning member.')
 
 		await ctx.send('{0} unbanned.'.format(str(member.user)))
@@ -359,7 +359,7 @@ class Moderation(AceMixin, commands.Cog):
 	@commands.command()
 	@can_mute()
 	@commands.bot_has_permissions(manage_roles=True)
-	async def mute(self, ctx, member: discord.Member, *, reason: reason_converter = None):
+	async def mute(self, ctx, member: disnake.Member, *, reason: reason_converter = None):
 		'''Mute a member. Requires Manage Roles perms.'''
 
 		# TODO: should also handle people with manage roles perms
@@ -377,12 +377,12 @@ class Moderation(AceMixin, commands.Cog):
 
 		try:
 			await member.add_roles(mute_role, reason=reason)
-		except discord.HTTPException:
+		except disnake.HTTPException:
 			raise commands.CommandError('Mute failed.')
 
 		try:
 			await ctx.send('{0} muted.'.format(str(member)))
-		except discord.HTTPException:
+		except disnake.HTTPException:
 			pass
 
 		self.bot.dispatch(
@@ -393,7 +393,7 @@ class Moderation(AceMixin, commands.Cog):
 	@commands.command()
 	@can_mute()
 	@commands.bot_has_permissions(manage_roles=True)
-	async def unmute(self, ctx, *, member: discord.Member):
+	async def unmute(self, ctx, *, member: disnake.Member):
 		'''Unmute a member. Requires Manage Roles perms.'''
 
 		if await ctx.is_mod(member):
@@ -412,12 +412,12 @@ class Moderation(AceMixin, commands.Cog):
 
 		try:
 			await member.remove_roles(mute_role, reason='Unmuted by {0}'.format(pretty_author))
-		except discord.HTTPException:
+		except disnake.HTTPException:
 			raise commands.CommandError('Failed removing mute role.')
 
 		try:
 			await ctx.send('{0} unmuted.'.format(str(member)))
-		except discord.HTTPException:
+		except disnake.HTTPException:
 			pass
 
 		self.bot.dispatch(
@@ -428,7 +428,7 @@ class Moderation(AceMixin, commands.Cog):
 	@commands.command()
 	@can_mute()
 	@commands.bot_has_permissions(manage_roles=True, embed_links=True)
-	async def tempmute(self, ctx, member: discord.Member, amount: TimeMultConverter, unit: TimeDeltaConverter, *, reason: reason_converter = None):
+	async def tempmute(self, ctx, member: disnake.Member, amount: TimeMultConverter, unit: TimeDeltaConverter, *, reason: reason_converter = None):
 		'''Temporarily mute a member. Requires Manage Role perms. Example: `tempmute @member 1 day Reason goes here.`'''
 
 		now = datetime.utcnow()
@@ -462,7 +462,7 @@ class Moderation(AceMixin, commands.Cog):
 
 				try:
 					await member.add_roles(mute_role)
-				except discord.HTTPException:
+				except disnake.HTTPException:
 					raise commands.CommandError('Failed adding mute role.')
 
 		self.event_timer.maybe_restart(until)
@@ -471,7 +471,7 @@ class Moderation(AceMixin, commands.Cog):
 
 		try:
 			await ctx.send('{0} tempmuted for {1}.'.format(str(member), pretty_duration))
-		except discord.HTTPException:
+		except disnake.HTTPException:
 			pass
 
 		self.bot.dispatch(
@@ -482,20 +482,20 @@ class Moderation(AceMixin, commands.Cog):
 	@commands.command()
 	@commands.has_permissions(ban_members=True)
 	@commands.bot_has_permissions(ban_members=True, embed_links=True)
-	async def tempban(self, ctx, member: Union[discord.Member, BannedMember], amount: TimeMultConverter, unit: TimeDeltaConverter, *, reason: reason_converter = None):
+	async def tempban(self, ctx, member: Union[disnake.Member, BannedMember], amount: TimeMultConverter, unit: TimeDeltaConverter, *, reason: reason_converter = None):
 		'''Temporarily ban a member. Requires Ban Members perms. Same formatting as `tempmute` explained above.'''
 
 		now = datetime.utcnow()
 		duration = amount * unit
 		until = now + duration
 
-		on_guild = isinstance(member, discord.Member)
+		on_guild = isinstance(member, disnake.Member)
 
 		if on_guild:
 			if await ctx.is_mod(member):
 				raise commands.CommandError('Can\'t tempban this member.')
 		else:
-			user: discord.User = member.user
+			user: disnake.User = member.user
 			member = FakeUser(user.id, ctx.guild, name=user.name, avatar_url=user.avatar_url, discriminator=user.discriminator)
 
 		is_tempbanned = await self.bot.db.fetchval(
@@ -519,7 +519,7 @@ class Moderation(AceMixin, commands.Cog):
 
 			try:
 				await member.send(ban_msg)
-			except discord.HTTPException:
+			except disnake.HTTPException:
 				pass
 
 		# reason we start a transaction is so it auto-rollbacks if the CommandError on ban fails is raised
@@ -537,14 +537,14 @@ class Moderation(AceMixin, commands.Cog):
 
 				try:
 					await ctx.guild.ban(member, delete_message_days=0, reason=reason)
-				except discord.HTTPException:
+				except disnake.HTTPException:
 					raise commands.CommandError('Failed tempbanning member.')
 
 		self.event_timer.maybe_restart(until)
 
 		try:
 			await ctx.send('{0} tempbanned for {1}.'.format(str(member), pretty_duration))
-		except discord.HTTPException:
+		except disnake.HTTPException:
 			pass
 
 		self.bot.dispatch(
@@ -650,7 +650,7 @@ class Moderation(AceMixin, commands.Cog):
 
 		try:
 			await member.remove_roles(mute_role, reason='Completed tempmute issued by {0}'.format(pretty_mod))
-		except discord.HTTPException:
+		except disnake.HTTPException:
 			return
 
 		self.bot.dispatch(
@@ -677,7 +677,7 @@ class Moderation(AceMixin, commands.Cog):
 
 		try:
 			await guild.unban(member, reason='Completed tempban issued by {0}'.format(pretty_mod))
-		except discord.HTTPException:
+		except disnake.HTTPException:
 			return  # rip :)
 
 		self.bot.dispatch(
@@ -722,7 +722,7 @@ class Moderation(AceMixin, commands.Cog):
 			)
 
 	@commands.Cog.listener()
-	async def on_member_update(self, before: discord.Member, after: discord.Member):
+	async def on_member_update(self, before: disnake.Member, after: disnake.Member):
 		'''Syncs a manual mute with the database'''
 
 		if before.roles == after.roles:
@@ -811,12 +811,12 @@ class Moderation(AceMixin, commands.Cog):
 
 		try:
 			await ctx.message.delete()
-		except discord.HTTPException:
+		except disnake.HTTPException:
 			pass
 
 		try:
 			deleted = await ctx.channel.purge(limit=message_count, check=all_check if user is None else user_check)
-		except discord.HTTPException:
+		except disnake.HTTPException:
 			raise commands.CommandError('Failed deleting messages. Does the bot have the necessary permissions?')
 
 		count = len(deleted)
@@ -901,7 +901,7 @@ class Moderation(AceMixin, commands.Cog):
 				except commands.CommandError:
 					raise commands.CommandError('Unknown user: "{0}"'.format(id))
 
-			# yes, if both objects were discord.Member I could do m.author in members,
+			# yes, if both objects were disnake.Member I could do m.author in members,
 			# but since member can be FakeUser I need to do an explicit id comparison
 			preds.append(lambda m: any(m.author.id == member.id for member in members))
 
@@ -937,11 +937,11 @@ class Moderation(AceMixin, commands.Cog):
 
 		# set to 512 if after flag is set
 		if args.after:
-			after = discord.Object(id=args.after)
+			after = disnake.Object(id=args.after)
 			limit = PURGE_LIMIT
 
 		if args.before:
-			before = discord.Object(id=args.before)
+			before = disnake.Object(id=args.before)
 
 		# if we actually want to manually specify it doe
 		if args.check is not None:
@@ -949,7 +949,7 @@ class Moderation(AceMixin, commands.Cog):
 
 		try:
 			deleted_messages = await ctx.channel.purge(limit=limit, check=predicate, before=before, after=after)
-		except discord.HTTPException:
+		except disnake.HTTPException:
 			raise commands.CommandError('Error occurred when deleting messages.')
 
 		deleted_count = len(deleted_messages)
@@ -960,7 +960,7 @@ class Moderation(AceMixin, commands.Cog):
 
 	@commands.command()
 	@commands.has_permissions(administrator=True)
-	async def muterole(self, ctx, *, role: discord.Role = None):
+	async def muterole(self, ctx, *, role: disnake.Role = None):
 		'''Set the mute role. Only modifiable by server administrators. Leave argument empty to clear.'''
 
 		conf = await self.config.get_entry(ctx.guild.id)
@@ -974,7 +974,7 @@ class Moderation(AceMixin, commands.Cog):
 
 	@commands.command()
 	@is_mod()
-	async def logchannel(self, ctx, *, channel: discord.TextChannel = None):
+	async def logchannel(self, ctx, *, channel: disnake.TextChannel = None):
 		'''Set a channel for the bot to log moderation-related messages.'''
 
 		conf = await self.config.get_entry(ctx.guild.id)
@@ -988,7 +988,7 @@ class Moderation(AceMixin, commands.Cog):
 
 	@commands.command(hidden=True)
 	@is_mod()
-	async def perms(self, ctx, user: discord.Member = None, channel: discord.TextChannel = None):
+	async def perms(self, ctx, user: disnake.Member = None, channel: disnake.TextChannel = None):
 		'''Lists a users permissions in a channel.'''
 
 		if user is None:
@@ -1076,7 +1076,7 @@ class Moderation(AceMixin, commands.Cog):
 			await message.channel.send('{0} {1}: {2}'.format(
 				po(member), SecurityVerb[action.name].value, reason
 			))
-		except discord.HTTPException:
+		except disnake.HTTPException:
 			pass
 
 	@commands.Cog.listener()
@@ -1262,7 +1262,7 @@ class Moderation(AceMixin, commands.Cog):
 			'priority_speaker',
 		)
 
-		guild: discord.Guild = ctx.guild
+		guild: disnake.Guild = ctx.guild
 		roles = guild.roles
 		categories = guild.categories
 		text_channels = guild.text_channels
@@ -1275,7 +1275,7 @@ class Moderation(AceMixin, commands.Cog):
 		rp = defaultdict(list)
 
 		for r in roles:
-			r: discord.Role
+			r: disnake.Role
 
 			# find dangerous perms
 			for dangerous_permission in dangerous_permissions:
@@ -1292,7 +1292,7 @@ class Moderation(AceMixin, commands.Cog):
 		catp = defaultdict(list)
 
 		for cat in categories:
-			cat: discord.CategoryChannel
+			cat: disnake.CategoryChannel
 
 			# ignore channel if there is no overwrites
 			# so, turns out, if you create a new category and don't touch the permissions,
@@ -1326,11 +1326,11 @@ class Moderation(AceMixin, commands.Cog):
 		cp = defaultdict(list)
 
 		for c in text_channels:
-			c: discord.TextChannel
+			c: disnake.TextChannel
 
 			# if this channel has synced permissions it should have been handled by the category check
 			# also if it's not a text channel I don't care about it
-			if c.permissions_synced or not isinstance(c, discord.TextChannel):
+			if c.permissions_synced or not isinstance(c, disnake.TextChannel):
 				continue
 
 			# etc
@@ -1354,7 +1354,7 @@ class Moderation(AceMixin, commands.Cog):
 
 		if len(out) > 2000:
 			fp = io.BytesIO(out.encode('utf-8'))
-			await ctx.send(file=discord.File(fp, 'perms.diff'))
+			await ctx.send(file=disnake.File(fp, 'perms.diff'))
 		else:
 			await ctx.send(f'```diff\n{out}\n```')
 

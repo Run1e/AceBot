@@ -1,4 +1,4 @@
-import discord
+import disnake
 import re
 
 from bs4 import BeautifulSoup, NavigableString

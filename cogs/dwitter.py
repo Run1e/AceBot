@@ -1,7 +1,7 @@
-import discord
+import disnake
 import re
 
-from discord.ext import commands
+from disnake.ext import commands
 from datetime import datetime
 from collections import OrderedDict
 from itertools import islice
@@ -45,11 +45,11 @@ class Dwitter(AceMixin, commands.Cog):
 
 		try:
 			await message.channel.send(embed=e)
-		except discord.HTTPException:
+		except disnake.HTTPException:
 			pass
 
 	async def embeddweet(self, dweet):
-		e = discord.Embed(description='```js\n{}\n```'.format(dweet['code']))
+		e = disnake.Embed(description='```js\n{}\n```'.format(dweet['code']))
 
 		e.add_field(name='Awesomes', value=dweet['awesome_count'])
 		e.add_field(name='Link', value='[d/{}]({})'.format(dweet['id'], dweet['link']))

@@ -1,5 +1,5 @@
-import discord
-from discord.ext import commands
+import disnake
+from disnake.ext import commands
 
 from cogs.mixins import AceMixin
 from config import DEFAULT_PREFIX
@@ -10,7 +10,7 @@ class PrefixConverter(LengthConverter):
 	async def convert(self, ctx, argument):
 		argument = await super().convert(ctx, argument)
 
-		if argument != discord.utils.escape_markdown(argument):
+		if argument != disnake.utils.escape_markdown(argument):
 			raise commands.BadArgument('No markdown allowed in prefix.')
 
 		return argument
@@ -28,7 +28,7 @@ class Configuration(AceMixin, commands.Cog):
 
 		gc = await self.bot.config.get_entry(ctx.guild.id)
 
-		e = discord.Embed(description='Bot configuration.')
+		e = disnake.Embed(description='Bot configuration.')
 		e.set_author(name=ctx.guild.name, icon_url=ctx.guild.icon.url)
 
 		mod_role = gc.mod_role
@@ -65,7 +65,7 @@ class Configuration(AceMixin, commands.Cog):
 
 	@commands.command()
 	@commands.has_permissions(administrator=True)  # only allow administrators to change the moderator role
-	async def modrole(self, ctx, *, role: discord.Role = None):
+	async def modrole(self, ctx, *, role: disnake.Role = None):
 		'''Set the moderator role. Only modifiable by server administrators. Leave argument empty to clear.'''
 
 		gc = await self.bot.config.get_entry(ctx.guild.id)

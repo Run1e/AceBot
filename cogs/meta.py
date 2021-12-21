@@ -4,9 +4,9 @@ from itertools import islice
 from os import getcwd
 from pathlib import Path
 
-import discord
+import disnake
 import psutil
-from discord.ext import commands
+from disnake.ext import commands
 from pygit2 import GIT_SORT_TOPOLOGICAL, GIT_STATUS_IGNORED, Repository
 
 from cogs.mixins import AceMixin
@@ -80,7 +80,7 @@ class Meta(AceMixin, commands.Cog):
 			'GROUP BY command ORDER BY COUNT DESC LIMIT 5', ctx.guild.id, member.id, past_day
 		)
 
-		e = discord.Embed()
+		e = disnake.Embed()
 		e.set_author(name=member.name, icon_url=member.display_avatar.url)
 		e.add_field(name='Top Commands', value=self._stats_craft_list(commands_alltime))
 		e.add_field(name='Top Commands Today', value=self._stats_craft_list(commands_today))
@@ -117,7 +117,7 @@ class Meta(AceMixin, commands.Cog):
 			'ORDER BY COUNT DESC LIMIT 5', ctx.guild.id
 		)
 
-		e = discord.Embed()
+		e = disnake.Embed()
 		e.set_author(name=ctx.guild.name, icon_url=ctx.guild.icon.url)
 		e.add_field(name='Top Commands', value=self._stats_craft_list(commands_alltime))
 		e.add_field(name='Top Commands Today', value=self._stats_craft_list(commands_today))
@@ -177,7 +177,7 @@ class Meta(AceMixin, commands.Cog):
 			await self._about_command(ctx, cmd)
 
 	async def _about_bot(self, ctx):
-		e = discord.Embed(title='Official bot invite link here!', description=self.get_last_commits(), url=self.bot.invite_link)
+		e = disnake.Embed(title='Official bot invite link here!', description=self.get_last_commits(), url=self.bot.invite_link)
 
 		owner = self.bot.get_user(self.bot.owner_id)
 		e.set_author(name=str(owner), icon_url=owner.display_avatar.url)
@@ -193,9 +193,9 @@ class Meta(AceMixin, commands.Cog):
 			guilds += 1
 			users += len(guild.members)
 			for channel in guild.channels:
-				if isinstance(channel, discord.TextChannel):
+				if isinstance(channel, disnake.TextChannel):
 					text += 1
-				elif isinstance(channel, discord.VoiceChannel):
+				elif isinstance(channel, disnake.VoiceChannel):
 					voice += 1
 
 		unique = len(self.bot.users)
@@ -216,7 +216,7 @@ class Meta(AceMixin, commands.Cog):
 		await ctx.send(embed=e)
 
 	async def _about_command(self, ctx, command: commands.Command):
-		e = discord.Embed(title=command.qualified_name + ' ' + command.signature, description=command.description or command.help)
+		e = disnake.Embed(title=command.qualified_name + ' ' + command.signature, description=command.description or command.help)
 
 		e.add_field(name='Qualified name', value=command.qualified_name)
 

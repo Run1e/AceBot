@@ -7,11 +7,11 @@ from base64 import b64encode
 from collections import OrderedDict
 from datetime import datetime, timedelta, timezone
 
-import discord
+import disnake
 from aiohttp.client_exceptions import ClientConnectorError
 from aiohttp import ClientTimeout
 from bs4 import BeautifulSoup
-from discord.ext import commands, tasks
+from disnake.ext import commands, tasks
 from fuzzywuzzy import fuzz, process
 
 from cogs.mixins import AceMixin
@@ -72,13 +72,13 @@ class AutoHotkey(AceMixin, commands.Cog):
 		super().__init__(bot)
 
 		self.h2m = HTML2Markdown(
-			escaper=discord.utils.escape_markdown,
+			escaper=disnake.utils.escape_markdown,
 			big_box=True, lang='autoit',
 			max_len=512
 		)
 
 		self.h2m_version = HTML2Markdown(
-			escaper=discord.utils.escape_markdown,
+			escaper=disnake.utils.escape_markdown,
 			big_box=False, max_len=512
 		)
 
@@ -113,7 +113,7 @@ class AutoHotkey(AceMixin, commands.Cog):
 				content = self.h2m.convert(content)
 				content = content.replace('\nCODE: ', '')
 
-				e = discord.Embed(
+				e = disnake.Embed(
 					title=title,
 					description=content,
 					url=str(entry.id.text),
@@ -134,7 +134,7 @@ class AutoHotkey(AceMixin, commands.Cog):
 		return regex.findall(message.content)
 
 	@commands.Cog.listener('on_message')
-	async def handle_emoji_suggestion_message(self, message: discord.Message):
+	async def handle_emoji_suggestion_message(self, message: disnake.Message):
 		if message.guild is None or message.guild.id != AHK_GUILD_ID:
 			return
 
@@ -152,13 +152,13 @@ class AutoHotkey(AceMixin, commands.Cog):
 
 			try:
 				await message.delete()
-			except discord.HTTPException:
+			except disnake.HTTPException:
 				return
 
 			if reason is not None:
 				try:
 					await message.channel.send(content=f'{message.author.mention} {reason}', delete_after=10)
-				except discord.HTTPException:
+				except disnake.HTTPException:
 					pass
 
 		if not matches and not message.attachments:
@@ -197,7 +197,7 @@ class AutoHotkey(AceMixin, commands.Cog):
 		try:
 			await message.add_reaction('✅')
 			await message.add_reaction('❌')
-		except discord.Forbidden as e:
+		except disnake.Forbidden as e:
 			# catch if we can't add the reactions
 			# it could be that person is blocked, but it also could be that the bot doesn't have perms
 			# we treat it the same since this is only used in the ahk discord.
@@ -207,19 +207,19 @@ class AutoHotkey(AceMixin, commands.Cog):
 				return await delete()
 
 	@commands.Cog.listener('on_raw_message_edit')
-	async def handle_emoji_suggestion_message_edit(self, message: discord.RawMessageUpdateEvent):
+	async def handle_emoji_suggestion_message_edit(self, message: disnake.RawMessageUpdateEvent):
 		if message.channel_id == EMOJI_SUGGESTIONS_CHAN_ID:
 			channel = self.bot.get_channel(EMOJI_SUGGESTIONS_CHAN_ID)
 			if channel is None:
 				return
 
 			try:
-				await channel.delete_messages([discord.Object(message.message_id)])
-			except discord.HTTPException:
+				await channel.delete_messages([disnake.Object(message.message_id)])
+			except disnake.HTTPException:
 				pass
 
 	@commands.Cog.listener('on_raw_reaction_add')
-	async def handle_emoji_suggestion_reaction(self, reaction: discord.RawReactionActionEvent):
+	async def handle_emoji_suggestion_reaction(self, reaction: disnake.RawReactionActionEvent):
 		if reaction.channel_id != EMOJI_SUGGESTIONS_CHAN_ID:
 			return
 
@@ -231,20 +231,20 @@ class AutoHotkey(AceMixin, commands.Cog):
 		if emoji not in ('✅', '❌'):
 			return
 
-		channel: discord.TextChannel = self.bot.get_channel(reaction.channel_id)
+		channel: disnake.TextChannel = self.bot.get_channel(reaction.channel_id)
 		if channel is None:
 			return
 
 		try:
-			message: discord.Message = await channel.fetch_message(reaction.message_id)
-		except discord.HTTPException:
+			message: disnake.Message = await channel.fetch_message(reaction.message_id)
+		except disnake.HTTPException:
 			return
 
 		# remove same emoji if from message author
 		if message.author == reaction.member:
 			try:
 				await message.remove_reaction(emoji, reaction.member)
-			except discord.HTTPException:
+			except disnake.HTTPException:
 				pass
 		else:
 			# remove opposite emoji if added
@@ -254,13 +254,13 @@ class AutoHotkey(AceMixin, commands.Cog):
 				if str(reac.emoji) == remove_from:
 					try:
 						users = await reac.users().flatten()
-					except discord.HTTPException:
+					except disnake.HTTPException:
 						return
 
 					if reaction.member in users:
 						try:
 							await message.remove_reaction(remove_from, reaction.member)
-						except discord.HTTPException:
+						except disnake.HTTPException:
 							pass
 
 					return
@@ -268,7 +268,7 @@ class AutoHotkey(AceMixin, commands.Cog):
 	def craft_docs_page(self, record):
 		page = record.get('page')
 
-		e = discord.Embed(
+		e = disnake.Embed(
 			title=record.get('name'),
 			description=record.get('content') or 'No description for this page.',
 			color=AHK_COLOR,
@@ -375,7 +375,7 @@ class AutoHotkey(AceMixin, commands.Cog):
 
 			elif stdout_len < DISCORD_UPLOAD_LIMIT:
 				fp = io.BytesIO(bytes(stdout.encode('utf-8')))
-				file = discord.File(fp, 'output.txt')
+				file = disnake.File(fp, 'output.txt')
 				resp = f'Output dumped to file.\n{display_time}'
 
 			else:
@@ -444,7 +444,7 @@ class AutoHotkey(AceMixin, commands.Cog):
 		for res in results:
 			entries.append('[`{}`]({})'.format(res.get('name'), DOCS_FORMAT.format(res.get('link'))))
 
-		e = discord.Embed(
+		e = disnake.Embed(
 			description='\n'.join(entries),
 			color=AHK_COLOR
 		)
@@ -563,7 +563,7 @@ class AutoHotkey(AceMixin, commands.Cog):
 		else:
 			description = html.unescape(result['description'])
 
-		e = discord.Embed(
+		e = disnake.Embed(
 			title=html.unescape(result['title']),
 			description=description,
 			color=AHK_COLOR,
@@ -591,7 +591,7 @@ class AutoHotkey(AceMixin, commands.Cog):
 
 		content = self.h2m_version.convert(latest['body'])
 
-		e = discord.Embed(description=content, color=discord.Color.green())
+		e = disnake.Embed(description=content, color=disnake.Color.green())
 
 		e.set_author(
 			name='AutoHotkey_L ' + latest['name'],

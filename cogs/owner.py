@@ -9,10 +9,10 @@ from contextlib import redirect_stdout
 from datetime import datetime, timedelta
 from urllib.parse import urlparse
 
-import discord
+import disnake
 from bs4 import BeautifulSoup
-from discord.ext import commands
-from discord.mixins import Hashable
+from disnake.ext import commands
+from disnake.mixins import Hashable
 from tabulate import tabulate
 
 from cogs.mixins import AceMixin
@@ -83,7 +83,7 @@ class Owner(AceMixin, commands.Cog):
 	'''Commands accessible only to the bot owner.'''
 
 	DISCORD_BASE_TYPES = (
-		discord.Object, discord.Emoji, discord.abc.Messageable, discord.mixins.Hashable
+		disnake.Object, disnake.Emoji, disnake.abc.Messageable, disnake.mixins.Hashable
 	)
 
 	def __init__(self, bot):
@@ -117,7 +117,7 @@ class Owner(AceMixin, commands.Cog):
 		await ctx.send(await self.help_cog.classify(text))
 
 	@commands.command(hidden=True)
-	async def cm(self, ctx, *, message: discord.Message):
+	async def cm(self, ctx, *, message: disnake.Message):
 		await ctx.send(await self.help_cog.classify(message.content))
 
 	@commands.command()
@@ -128,7 +128,7 @@ class Owner(AceMixin, commands.Cog):
 			'If your question is not about cheating in or automating a game, please disregard this message.'
 		)
 
-		e = discord.Embed(
+		e = disnake.Embed(
 			description=s
 		)
 
@@ -184,7 +184,7 @@ class Owner(AceMixin, commands.Cog):
 				if value:
 					if len(value) > 1990:
 						fp = io.BytesIO(value.encode('utf-8'))
-						await ctx.send('Log too large...', file=discord.File(fp, 'results.txt'))
+						await ctx.send('Log too large...', file=disnake.File(fp, 'results.txt'))
 					else:
 						await ctx.send(f'```py\n{value}\n```')
 
@@ -212,9 +212,9 @@ class Owner(AceMixin, commands.Cog):
 
 			if len(res) > 2000:
 				fp = io.BytesIO(str(res).encode('utf-8'))
-				await ctx.send('Log too large...', file=discord.File(fp, 'results.txt'))
+				await ctx.send('Log too large...', file=disnake.File(fp, 'results.txt'))
 			else:
-				await ctx.send(embed=discord.Embed(description=res))
+				await ctx.send(embed=disnake.Embed(description=res))
 
 	@commands.command()
 	async def sql(self, ctx, *, query: str):
@@ -233,7 +233,7 @@ class Owner(AceMixin, commands.Cog):
 
 		if len(table) > 1994:
 			fp = io.BytesIO(table.encode('utf-8'))
-			await ctx.send('Too many results...', file=discord.File(fp, 'results.txt'))
+			await ctx.send('Too many results...', file=disnake.File(fp, 'results.txt'))
 		else:
 			await ctx.send('```' + table + '```')
 
@@ -246,10 +246,6 @@ class Owner(AceMixin, commands.Cog):
 		headers = ('Event', 'Count')
 
 		await ctx.send('```{0}```'.format(tabulate(data, headers)))
-
-	@commands.command()
-	async def test(self, ctx):
-		raise ValueError('test')
 
 	@commands.command()
 	async def level(self, ctx, *, level):
@@ -318,74 +314,13 @@ class Owner(AceMixin, commands.Cog):
 
 		await ctx.send('Cleared entries for:\n```\n{0}\n```'.format('\n'.join(config.table for config in cleared)))
 
-	@commands.command(aliases=['g'])
-	@commands.bot_has_permissions(embed_links=True)
-	async def google(self, ctx, *, query: str):
-		'''Get first result from google.'''
-
-		headers = {
-			'User-Agent': (
-			'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_10_1) AppleWebKit/537.36 (KHTML, like Gecko) '
-			'Chrome/39.0.2171.95 Safari/537.36'
-			),
-			'Accept:':
-			'text/html'
-		}
-
-		params = dict(
-			hl='en',
-			safe='on',
-			q=query
-		)
-
-		async with ctx.channel.typing():
-			try:
-				async with ctx.http.get(f'http://google.com/search', params=params, headers=headers) as resp:
-					if resp.status != 200:
-						raise commands.CommandError(f'Query returned status {resp.status} {resp.reason}')
-
-					text = await resp.text()
-
-				soup = BeautifulSoup(text, 'lxml')
-
-				g = soup.find(class_='g', lang=None)
-
-				if g is None:
-					raise commands.CommandError('No results found.')
-
-				title = g.h3.string
-				link = g.a['href']
-				desc = g.find(class_='st').text
-				site = urlparse(link).netloc
-
-				embed = discord.Embed(title=title, url=link, description=desc)
-				embed.set_footer(text=site)
-				await ctx.send(embed=embed)
-
-			except asyncio.TimeoutError:
-				raise commands.CommandError('Query timed out.')
-
 	@commands.command()
 	@commands.bot_has_permissions(manage_messages=True)
-	async def say(self, ctx, channel: discord.TextChannel, *, content: str):
+	async def say(self, ctx, channel: disnake.TextChannel, *, content: str):
 		'''Send a message in a channel.'''
 
 		await ctx.message.delete()
 		await channel.send(content)
-
-	@commands.command(aliases=['gh'])
-	@commands.bot_has_permissions(embed_links=True)
-	async def github(self, ctx, *, query: str):
-		'''Google search for GitHub pages.'''
-
-		await ctx.invoke(self.google, query='site:github.com ' + query)
-
-	@commands.command(aliases=['f'])
-	@commands.bot_has_permissions(embed_links=True)
-	async def forum(self, ctx, *, query: str):
-		'''Google search for AutoHotkey pages.'''
-
-		await ctx.invoke(self.google, query='site:autohotkey.com ' + query)
 
 	@commands.command()
 	async def status(self, ctx):
@@ -393,12 +328,6 @@ class Owner(AceMixin, commands.Cog):
 
 		await self.bot.change_presence()
 		await self.bot.change_presence(activity=BOT_ACTIVITY)
-
-	@commands.command()
-	async def pm(self, ctx, user: discord.User, *, content: str):
-		'''Private message a user.'''
-
-		await user.send(content)
 
 	@commands.command()
 	async def print(self, ctx, *, body: str):

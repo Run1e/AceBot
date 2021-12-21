@@ -7,8 +7,8 @@ from random import choice, randrange, sample
 from typing import Optional
 from urllib.parse import unquote
 
-import discord
-from discord.ext import commands
+import disnake
+from disnake.ext import commands
 from fuzzywuzzy import fuzz, process
 
 from cogs.mixins import AceMixin
@@ -52,9 +52,9 @@ WRONG_MESSAGES = (
 FOOTER_FORMAT = 'Score: {} • You can go again in 5 minutes.'
 
 DIFFICULTY_COLORS = {
-	Difficulty.EASY: discord.Color.blue(),
-	Difficulty.MEDIUM: discord.Color.from_rgb(212, 212, 35),
-	Difficulty.HARD: discord.Color.red()
+	Difficulty.EASY: disnake.Color.blue(),
+	Difficulty.MEDIUM: disnake.Color.from_rgb(212, 212, 35),
+	Difficulty.HARD: disnake.Color.red()
 }
 
 API_BASE = 'https://opentdb.com/'
@@ -244,7 +244,7 @@ class Games(AceMixin, commands.Cog):
 			'\n'.join('{} {}'.format(emoji, option) for emoji, option in zip(option_emojis, options))
 		)
 
-		e = discord.Embed(
+		e = disnake.Embed(
 			title='Trivia time!',
 			description='**Category**: {}\n**Difficulty**: {}'.format(category, diff.name.lower()),
 			color=DIFFICULTY_COLORS[diff]
@@ -275,10 +275,10 @@ class Games(AceMixin, commands.Cog):
 
 				current_score = await self._on_correct(ctx, answered_at, question_hash, score)
 
-				e = discord.Embed(
+				e = disnake.Embed(
 					title='{}  {}'.format(CORRECT_EMOJI, choice(CORRECT_MESSAGES)),
 					description='You gained {} points.'.format(score),
-					color=discord.Color.green()
+					color=disnake.Color.green()
 				)
 
 				await ctx.send(embed=e)
@@ -286,10 +286,10 @@ class Games(AceMixin, commands.Cog):
 				score = int(score / PENALTY_DIV)
 				current_score = await self._on_wrong(ctx, answered_at, question_hash, score)
 
-				e = discord.Embed(
+				e = disnake.Embed(
 					title='{}  {}'.format(WRONG_EMOJI, choice(WRONG_MESSAGES)),
 					description='You lost {} points.'.format(score),
-					color=discord.Color.red()
+					color=disnake.Color.red()
 				)
 
 				if question_type == 'multiple':
@@ -303,7 +303,7 @@ class Games(AceMixin, commands.Cog):
 
 			try:
 				await msg.clear_reactions()
-			except discord.HTTPException:
+			except disnake.HTTPException:
 				pass
 
 			await ctx.send('Question timed out and you lost {} points. Answer within {} seconds next time!'.format(
@@ -346,14 +346,14 @@ class Games(AceMixin, commands.Cog):
 
 		#raise commands.CommandError('The trivia API is down currently. Sorry about that!')
 
-		e = discord.Embed(description='\n'.join(self.trivia_categories.keys()))
+		e = disnake.Embed(description='\n'.join(self.trivia_categories.keys()))
 		e.set_footer(text='Specifying a category halves your winnings.')
 
 		await ctx.send(embed=e)
 
 	@trivia.command()
 	@commands.bot_has_permissions(embed_links=True)
-	async def stats(self, ctx, *, member: discord.Member = None):
+	async def stats(self, ctx, *, member: disnake.Member = None):
 		'''Get your own or another members' trivia stats.'''
 
 		#raise commands.CommandError('The trivia API is down currently. Sorry about that!')
@@ -369,7 +369,7 @@ class Games(AceMixin, commands.Cog):
 		else:
 			win_rate = int(entry.correct_count / total_games * 100)
 
-		e = discord.Embed()
+		e = disnake.Embed()
 
 		e.set_author(name=member.display_name, icon_url=member.display_avatar.url)
 
@@ -391,7 +391,7 @@ class Games(AceMixin, commands.Cog):
 			ctx.guild.id
 		)
 
-		e = discord.Embed(
+		e = disnake.Embed(
 			title='Trivia leaderboard',
 			color=DIFFICULTY_COLORS[Difficulty.MEDIUM]
 		)

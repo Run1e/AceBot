@@ -2,7 +2,7 @@ import traceback
 from datetime import datetime
 from pprint import saferepr
 
-import discord
+import disnake
 
 
 class CommandErrorLogic:

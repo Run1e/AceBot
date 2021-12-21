@@ -1,7 +1,7 @@
 import re
 
-import discord
-from discord.ext import commands
+import disnake
+from disnake.ext import commands
 
 from ids import AHK_GUILD_ID
 from cogs.mixins import AceMixin
@@ -16,7 +16,7 @@ class LangConverter(LengthConverter):
 	async def convert(self, ctx, argument):
 		argument = await super().convert(ctx, argument)
 
-		if argument != discord.utils.escape_markdown(argument):
+		if argument != disnake.utils.escape_markdown(argument):
 			raise commands.BadArgument('No markdown allowed in the codebox language.')
 
 		return argument
@@ -90,12 +90,12 @@ class Highlighter(AceMixin, commands.Cog):
 
 		try:
 			message = await channel.fetch_message(payload.message_id)
-		except discord.HTTPException:
+		except disnake.HTTPException:
 			return
 
 		try:
 			await message.delete()
-		except discord.HTTPException:
+		except disnake.HTTPException:
 			pass
 
 	@commands.command()
@@ -114,7 +114,7 @@ class Highlighter(AceMixin, commands.Cog):
 				ctx.guild.id, ctx.author.id
 			)
 
-			e = discord.Embed(description='Do `.lang clear` to clear preference.')
+			e = disnake.Embed(description='Do `.lang clear` to clear preference.')
 
 			e.add_field(
 				name='Server setting',

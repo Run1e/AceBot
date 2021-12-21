@@ -1,4 +1,4 @@
-import discord
+import disnake
 import ast
 
 from datetime import datetime, timedelta

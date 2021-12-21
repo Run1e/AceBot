@@ -1,8 +1,8 @@
-import discord
+import disnake
 import logging
 import asyncio
 
-from discord.ext import commands
+from disnake.ext import commands
 
 
 from cogs.mixins import AceMixin
@@ -87,7 +87,7 @@ class Welcome(AceMixin, commands.Cog):
 
 		try:
 			await channel.send(message)
-		except discord.HTTPException:
+		except disnake.HTTPException:
 			pass
 
 	@commands.group(hidden=True, invoke_without_command=True)
@@ -108,7 +108,7 @@ class Welcome(AceMixin, commands.Cog):
 		await ctx.send('Welcome message updated. Do `welcome test` to test.')
 
 	@welcome.command()
-	async def channel(self, ctx, *, channel: discord.TextChannel = None):
+	async def channel(self, ctx, *, channel: disnake.TextChannel = None):
 		'''Set or view welcome message channel.'''
 
 		entry = await self.config.get_entry(ctx.guild.id)
@@ -135,7 +135,7 @@ class Welcome(AceMixin, commands.Cog):
 		if entry is None or entry.content is None:
 			raise WELCOME_NOT_SET_UP_ERROR
 
-		await ctx.send(discord.utils.escape_markdown(entry.content))
+		await ctx.send(disnake.utils.escape_markdown(entry.content))
 
 	@welcome.command()
 	async def test(self, ctx):

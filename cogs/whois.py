@@ -1,7 +1,7 @@
 from datetime import datetime, timezone
 
-import discord
-from discord.ext import commands
+import disnake
+from disnake.ext import commands
 
 from cogs.mixins import AceMixin
 from utils.time import pretty_timedelta, pretty_datetime
@@ -11,17 +11,14 @@ from utils.string import po
 class WhoIs(AceMixin, commands.Cog):
 	'''View info about a member.'''
 
-	def __init__(self, bot):
-		super().__init__(bot)
-
 	@commands.command()
 	@commands.bot_has_permissions(embed_links=True)
-	async def info(self, ctx, *, member: discord.Member = None):
+	async def info(self, ctx, *, member: disnake.Member = None):
 		'''Display information about user or self.'''
 
 		member = member or ctx.author
 
-		e = discord.Embed(description='')
+		e = disnake.Embed(description='')
 
 		if member.bot:
 			e.description = 'This account is a bot.\n\n'
@@ -65,7 +62,7 @@ class WhoIs(AceMixin, commands.Cog):
 		count = min(max(count, 5), 25)
 
 		now = datetime.now(timezone.utc)
-		e = discord.Embed()
+		e = disnake.Embed()
 
 		for idx, member in enumerate(sorted(ctx.guild.members, key=lambda m: m.joined_at, reverse=True)):
 			if idx >= count:
@@ -77,7 +74,7 @@ class WhoIs(AceMixin, commands.Cog):
 		await ctx.send(embed=e)
 
 	@commands.command()
-	async def avatar(self, ctx, *, member: discord.Member):
+	async def avatar(self, ctx, *, member: disnake.Member):
 		'''Show an enlarged version of a members avatar.'''
 
 		await ctx.send(member.display_avatar.url)

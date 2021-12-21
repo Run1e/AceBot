@@ -3,8 +3,8 @@ import logging
 from datetime import datetime
 
 import asyncpg
-import discord
-from discord.ext import commands
+import disnake
+from disnake.ext import commands
 
 from cogs.mixins import AceMixin
 from utils.context import AceContext, can_prompt
@@ -221,7 +221,7 @@ class Tags(AceMixin, commands.Cog):
 			return
 
 		tag_name, record = tag_name
-		await ctx.send(record.get('content'), allowed_mentions=discord.AllowedMentions.none())
+		await ctx.send(record.get('content'), allowed_mentions=disnake.AllowedMentions.none())
 
 		await self.db.execute(
 			'UPDATE tag SET uses=$2, viewed_at=$3 WHERE id=$1',
@@ -368,8 +368,8 @@ class Tags(AceMixin, commands.Cog):
 
 		tag_name, record = tag_name
 		await ctx.send(
-			discord.utils.escape_markdown(record.get('content')),
-			allowed_mentions=discord.AllowedMentions.none()
+			disnake.utils.escape_markdown(record.get('content')),
+			allowed_mentions=disnake.AllowedMentions.none()
 		)
 
 	@tag.command()
@@ -419,7 +419,7 @@ class Tags(AceMixin, commands.Cog):
 			nick = owner.display_name
 			avatar = owner.display_avatar.url
 
-		e = discord.Embed(
+		e = disnake.Embed(
 			description=f"**{record.get('name')}**",
 		)
 
@@ -455,7 +455,7 @@ class Tags(AceMixin, commands.Cog):
 
 	@tag.command()
 	@can_prompt()
-	async def transfer(self, ctx: AceContext, tag_name: TagEditConverter(), *, new_owner: discord.Member):
+	async def transfer(self, ctx: AceContext, tag_name: TagEditConverter(), *, new_owner: disnake.Member):
 		'''Transfer ownership of a tag to another member.'''
 
 		tag_name, record = tag_name
@@ -497,11 +497,11 @@ class Tags(AceMixin, commands.Cog):
 
 		tag_list = '\n'.join(build_tag_name(record) for record in similars)
 
-		await ctx.send(embed=discord.Embed(description=tag_list))
+		await ctx.send(embed=disnake.Embed(description=tag_list))
 
 	@commands.command()
 	@commands.bot_has_permissions(embed_links=True)
-	async def tags(self, ctx, member: discord.Member = None):
+	async def tags(self, ctx, member: disnake.Member = None):
 		'''View your or someone elses tags.'''
 
 		await ctx.invoke(self._list, member=member or ctx.author)

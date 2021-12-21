@@ -1,7 +1,7 @@
-import discord
+import disnake
 import asyncio
 
-from discord.ext import commands
+from disnake.ext import commands
 
 from utils.pager import STATIC_PERMS
 from utils.time import pretty_datetime

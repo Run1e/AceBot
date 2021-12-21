@@ -1,4 +1,4 @@
-from discord.ext import commands
+from disnake.ext import commands
 
 from utils.pager import Pager
 
@@ -180,17 +180,6 @@ class PaginatedHelpCommand(commands.HelpCommand):
 				return
 
 		await self.context.send('Command \'{0}\' not found.'.format(command_name))
-
-
-class EditedMinimalHelpCommand(commands.MinimalHelpCommand):
-	def get_ending_note(self):
-		return (
-			'The interactive help menu did not get sent because the bot is missing '
-			'the following permissions: ' + ', '.join(self.missing_perms)
-		)
-
-	async def send_error_message(self, error):
-		return
 
 
 # rip is just the signature command ripped from the lib, but with alias support removed.

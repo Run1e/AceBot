@@ -47,7 +47,7 @@ Please install these according to their instructions.
 * Create a file called `config.py` and add this content to it:
   ```python
   import logging
-  import discord
+  import disnake
 
   DESCRIPTION = '''A.C.E. - Non-official Instance'''
 

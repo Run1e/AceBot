@@ -1,4 +1,4 @@
-import discord
+import disnake
 import asyncio
 
 from math import ceil

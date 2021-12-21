@@ -1,5 +1,5 @@
 import asyncio
-import discord
+import disnake
 import asyncpg
 import logging
 

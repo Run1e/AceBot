@@ -2,9 +2,9 @@ import logging
 from datetime import datetime, timedelta
 from enum import IntEnum
 
-import discord
+import disnake
 import parsedatetime
-from discord.ext import commands
+from disnake.ext import commands
 
 from cogs.mixins import AceMixin
 from utils.converters import SerialConverter
@@ -130,10 +130,10 @@ class Reminders(AceMixin, commands.Cog):
 		desc = message or DEFAULT_REMINDER_MESSAGE
 
 		if message_id is not None:
-			jump_url = 'https://discord.com/channels/{0}/{1}/{2}'.format(guild_id, channel_id, message_id)
+			jump_url = 'https://disnake.com/channels/{0}/{1}/{2}'.format(guild_id, channel_id, message_id)
 			desc += f'\n\n[Click for context!]({jump_url})'
 
-		e = discord.Embed(title='Reminder', description=desc, timestamp=made_on)
+		e = disnake.Embed(title='Reminder', description=desc, timestamp=made_on)
 
 		e.set_footer(text=f'#{channel.name}')
 
@@ -142,7 +142,7 @@ class Reminders(AceMixin, commands.Cog):
 				await channel.send(content=f'<@{user_id}>', embed=e)
 			elif user is not None:
 				await user.send(embed=e)
-		except discord.HTTPException as exc:
+		except disnake.HTTPException as exc:
 			log.info('Failed sending reminder #%s for %s - %s', _id, po(user), str(exc))
 
 	@commands.command(aliases=['remind', 'reminder'])

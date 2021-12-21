@@ -5,8 +5,8 @@ from asyncio import Lock, sleep
 from datetime import datetime, timedelta
 from json import JSONDecodeError, dumps, loads
 
-import discord
-from discord.ext import commands, tasks
+import disnake
+from disnake.ext import commands, tasks
 
 from cogs.mixins import AceMixin
 from ids import (
@@ -98,7 +98,7 @@ class AutoHotkeyHelpSystem(AceMixin, commands.Cog):
 
 		try:
 			active_category = await self.bot.fetch_channel(ACTIVE_CATEGORY_ID)
-		except discord.HTTPException:
+		except disnake.HTTPException:
 			return
 
 		for channel in active_category.text_channels:
@@ -126,7 +126,7 @@ class AutoHotkeyHelpSystem(AceMixin, commands.Cog):
 
 	@commands.command(hidden=True)
 	@is_mod()
-	async def open(self, ctx, channel: discord.TextChannel):
+	async def open(self, ctx, channel: disnake.TextChannel):
 		'''Open a help channel.'''
 
 		if channel.category != self.closed_category:
@@ -156,7 +156,7 @@ class AutoHotkeyHelpSystem(AceMixin, commands.Cog):
 		else:
 			raise commands.CommandError('You can\'t do that.')
 
-	async def open_channel(self, channel: discord.TextChannel):
+	async def open_channel(self, channel: disnake.TextChannel):
 		'''Move a channel from dormant to open.'''
 
 		try:
@@ -172,12 +172,12 @@ class AutoHotkeyHelpSystem(AceMixin, commands.Cog):
 			reason=None
 		)
 
-		await self.post_message(channel, OPEN_MESSAGE, color=discord.Color.green())
+		await self.post_message(channel, OPEN_MESSAGE, color=disnake.Color.green())
 
 	def should_open(self):
 		return len(self.open_category.text_channels) < OPEN_CHANNEL_COUNT
 
-	async def close_channel(self, channel: discord.TextChannel):
+	async def close_channel(self, channel: disnake.TextChannel):
 		'''Release a claimed channel from a member, making it closed.'''
 
 		log.info(f'Closing #{channel}')
@@ -220,8 +220,8 @@ class AutoHotkeyHelpSystem(AceMixin, commands.Cog):
 
 			# send this before moving channel in case of rate limit shi
 			try:
-				await channel.send(embed=discord.Embed(description=CLOSED_MESSAGE, color=discord.Color.red()))
-			except discord.HTTPException:
+				await channel.send(embed=disnake.Embed(description=CLOSED_MESSAGE, color=disnake.Color.red()))
+			except disnake.HTTPException:
 				pass
 
 			await channel.edit(**opt)
@@ -236,9 +236,9 @@ class AutoHotkeyHelpSystem(AceMixin, commands.Cog):
 		# just make more help channels
 
 		async with self.channel_claim_lock:
-			message: discord.Message = message
-			author: discord.Member = message.author
-			channel: discord.TextChannel = message.channel
+			message: disnake.Message = message
+			author: disnake.Member = message.author
+			channel: disnake.TextChannel = message.channel
 
 			log.info(f'New message in open category: {message.author} - #{message.channel}')
 
@@ -287,7 +287,7 @@ class AutoHotkeyHelpSystem(AceMixin, commands.Cog):
 
 				await self.maybe_yell(msgs)
 
-			except discord.HTTPException as exc:
+			except disnake.HTTPException as exc:
 				log.warning('Failed moving %s to claimed category: %s', po(channel), str(exc))
 				self.claimed_channel.pop(author.id, None)
 				self.claimed_at.pop(author.id, None)
@@ -316,10 +316,10 @@ class AutoHotkeyHelpSystem(AceMixin, commands.Cog):
 			'If you continue and your question is later found to break the rules, you might risk a ban.'
 		)
 
-		e = discord.Embed(
+		e = disnake.Embed(
 			title='Hi there!',
 			description=s,
-			color=discord.Color.orange()
+			color=disnake.Color.orange()
 		)
 
 		e.set_footer(text='This message was sent by an automated system.')
@@ -386,7 +386,7 @@ class AutoHotkeyHelpSystem(AceMixin, commands.Cog):
 		if message.author.bot:
 			return
 
-		category: discord.CategoryChannel = message.channel.category
+		category: disnake.CategoryChannel = message.channel.category
 
 		if category is None:
 			return
@@ -396,14 +396,14 @@ class AutoHotkeyHelpSystem(AceMixin, commands.Cog):
 		elif category == self.active_category:
 			await self.on_active_message(message)
 
-	async def post_message(self, channel: discord.TextChannel, content: str, color=None):
+	async def post_message(self, channel: disnake.TextChannel, content: str, color=None):
 		last_message = await self.get_last_message(channel)
 
 		opt = dict(description=content)
 		if color is not None:
 			opt['color'] = color
 
-		e = discord.Embed(**opt)
+		e = disnake.Embed(**opt)
 
 		do_edit = last_message is not None and last_message.author == channel.guild.me and len(last_message.embeds)
 
@@ -412,7 +412,7 @@ class AutoHotkeyHelpSystem(AceMixin, commands.Cog):
 		else:
 			await channel.send(embed=e)
 
-	async def post_error(self, message: discord.Message, content: str):
+	async def post_error(self, message: disnake.Message, content: str):
 		await message.delete()
 		await message.channel.send(f'{message.author.mention} {content}', delete_after=10)
 
@@ -425,7 +425,7 @@ class AutoHotkeyHelpSystem(AceMixin, commands.Cog):
 		if last_message_id is not None:
 			try:
 				last_message = await channel.fetch_message(channel.last_message_id)
-			except discord.NotFound:
+			except disnake.NotFound:
 				pass
 
 		if last_message is None:
@@ -435,22 +435,22 @@ class AutoHotkeyHelpSystem(AceMixin, commands.Cog):
 					last_message = last_message[0]
 				else:
 					last_message = None
-			except discord.HTTPException:
+			except disnake.HTTPException:
 				pass
 
 		return last_message
 
-	def has_postfix(self, channel: discord.TextChannel):
+	def has_postfix(self, channel: disnake.TextChannel):
 		return channel.name.endswith(f'-{NEW_EMOJI}')
 
-	def _stripped_name(self, channel: discord.TextChannel):
+	def _stripped_name(self, channel: disnake.TextChannel):
 		return channel.name[:-2]
 
-	async def strip_postfix(self, channel: discord.TextChannel):
+	async def strip_postfix(self, channel: disnake.TextChannel):
 		new_name = self._stripped_name(channel)
 		try:
 			await channel.edit(name=new_name)
-		except discord.HTTPException as exc:
+		except disnake.HTTPException as exc:
 			log.warning(f'Failed changing name of {channel} to {new_name}: {exc}')
 			pass
 

@@ -1,9 +1,9 @@
 import logging
 from datetime import datetime, timedelta
 
-import discord
+import disnake
 from asyncpg.exceptions import UniqueViolationError
-from discord.ext import commands, tasks
+from disnake.ext import commands, tasks
 
 from cogs.mixins import AceMixin
 from utils.configtable import ConfigTable, ConfigTableRecord
@@ -114,7 +114,7 @@ class Starboard(AceMixin, commands.Cog):
 				try:
 					star_message = await star_channel.fetch_message(row.get('star_message_id'))
 					await star_message.delete()
-				except discord.HTTPException:
+				except disnake.HTTPException:
 					continue
 
 		if to_delete:
@@ -164,7 +164,7 @@ class Starboard(AceMixin, commands.Cog):
 		await self.db.execute('DELETE FROM star_msg WHERE guild_id=$1', ctx.guild.id)
 
 		overwrites = {
-			ctx.me: discord.PermissionOverwrite(
+			ctx.me: disnake.PermissionOverwrite(
 				read_messages=True,
 				send_messages=True,
 				manage_messages=True,
@@ -172,7 +172,7 @@ class Starboard(AceMixin, commands.Cog):
 				read_message_history=True,
 				add_reactions=True
 			),
-			ctx.guild.default_role: discord.PermissionOverwrite(
+			ctx.guild.default_role: disnake.PermissionOverwrite(
 				read_messages=True,
 				send_messages=False,
 				read_message_history=True,
@@ -190,7 +190,7 @@ class Starboard(AceMixin, commands.Cog):
 			channel = await ctx.guild.create_text_channel(
 				name='starboard', overwrites=overwrites, reason=reason, topic=topic
 			)
-		except discord.HTTPException:
+		except disnake.HTTPException:
 			raise commands.CommandError('An unexpected error happened when creating the starboard channel.')
 
 		await board.update(channel_id=channel.id)
@@ -242,7 +242,7 @@ class Starboard(AceMixin, commands.Cog):
 
 	@commands.group(name='star', invoke_without_command=True)
 	@commands.bot_has_permissions(embed_links=True, add_reactions=True)
-	async def _star(self, ctx, *, message_id: discord.Message = None):
+	async def _star(self, ctx, *, message_id: disnake.Message = None):
 		'''Star a message by ID.'''
 
 		if message_id is None:
@@ -256,7 +256,7 @@ class Starboard(AceMixin, commands.Cog):
 
 	@commands.command()
 	@commands.bot_has_permissions(embed_links=True, add_reactions=True)
-	async def unstar(self, ctx, *, message_id: discord.Message):
+	async def unstar(self, ctx, *, message_id: disnake.Message):
 		'''Unstar a message by ID.'''
 
 		board = await self.get_board(ctx.guild.id)
@@ -278,7 +278,7 @@ class Starboard(AceMixin, commands.Cog):
 
 		try:
 			message = await star_channel.fetch_message(row.get('star_message_id'))
-		except discord.HTTPException:
+		except disnake.HTTPException:
 			raise SB_STAR_MSG_NOT_FOUND_ERROR
 
 		await ctx.send(content=message.content, embed=message.embeds[0])
@@ -295,7 +295,7 @@ class Starboard(AceMixin, commands.Cog):
 		author = await ctx.guild.fetch_member(row.get('user_id'))
 		stars = star_ret + 1
 
-		e = discord.Embed()
+		e = disnake.Embed()
 		e.set_author(name=author.display_name, icon_url=author.avatar.url)
 
 		e.add_field(name='Stars', value=self.star_emoji(stars) + ' ' + str(stars))
@@ -324,7 +324,7 @@ class Starboard(AceMixin, commands.Cog):
 
 		starrers = await self.db.fetch('SELECT user_id FROM starrers WHERE star_id=$1', row.get('id'))
 
-		e = discord.Embed()
+		e = disnake.Embed()
 
 		e.add_field(name='Original starrer', value='<@{}>'.format(row.get('starrer_id')), inline=False)
 
@@ -368,14 +368,14 @@ class Starboard(AceMixin, commands.Cog):
 
 		try:
 			message = await channel.fetch_message(row.get('message_id'))
-		except discord.HTTPException:
+		except disnake.HTTPException:
 			raise SB_ORIG_MSG_NOT_FOUND_ERROR
 
 		star_channel = await self._get_star_channel(ctx.guild)
 
 		try:
 			star_message = await star_channel.fetch_message(row.get('star_message_id'))
-		except discord.HTTPException:
+		except disnake.HTTPException:
 			raise SB_STAR_MSG_NOT_FOUND_ERROR
 
 		added = 0
@@ -458,7 +458,7 @@ class Starboard(AceMixin, commands.Cog):
 				star_channel = await self._get_star_channel(ctx.guild)
 				star_message = await star_channel.fetch_message(star_message_id)
 				await star_message.delete()
-			except (discord.HTTPException, commands.CommandError):
+			except (disnake.HTTPException, commands.CommandError):
 				pass
 
 		await ctx.send('Star deleted.')
@@ -470,7 +470,7 @@ class Starboard(AceMixin, commands.Cog):
 				embed=self.get_embed(message, starrer_count)
 			)
 			await star_message.add_reaction(STAR_EMOJI)
-		except discord.HTTPException:
+		except disnake.HTTPException:
 			raise commands.CommandError(
 				'Failed posting to starboard.\nMake sure the bot has permissions to post there.'
 			)
@@ -520,7 +520,7 @@ class Starboard(AceMixin, commands.Cog):
 			if star_message_id is not None:
 				try:
 					await star_message.add_reaction(STAR_EMOJI)
-				except discord.HTTPException:
+				except disnake.HTTPException:
 					pass
 
 		else:
@@ -611,7 +611,7 @@ class Starboard(AceMixin, commands.Cog):
 				# if we have the record we catch fetch the starred message
 				try:
 					star_message = await star_channel.fetch_message(star_message_id)
-				except discord.HTTPException:
+				except disnake.HTTPException:
 					raise SB_STAR_MSG_NOT_FOUND_ERROR
 
 		# stop if attempted star is too old
@@ -654,7 +654,7 @@ class Starboard(AceMixin, commands.Cog):
 
 		try:
 			message = await channel.fetch_message(payload.message_id)
-		except discord.HTTPException:
+		except disnake.HTTPException:
 			return
 
 		# pass event down to event_meta which handles the event but with actual discord models
@@ -669,7 +669,7 @@ class Starboard(AceMixin, commands.Cog):
 			if event == self._on_star:
 				try:
 					await message.remove_reaction(payload.emoji, starrer)
-				except discord.HTTPException:
+				except disnake.HTTPException:
 					pass
 
 			# I've decided to suppress errors here. in order to see why a star fails it has to be invoked
@@ -746,12 +746,12 @@ class Starboard(AceMixin, commands.Cog):
 
 		try:
 			star_message = await star_channel.fetch_message(row.get('star_message_id'))
-		except discord.HTTPException:
+		except disnake.HTTPException:
 			return
 
 		try:
 			await star_message.delete()
-		except discord.HTTPException:
+		except disnake.HTTPException:
 			return
 
 	@commands.Cog.listener()
@@ -792,7 +792,7 @@ class Starboard(AceMixin, commands.Cog):
 		for sm in sms:
 			try:
 				message = await star_channel.fetch_message(sm.get('star_message_id'))
-			except discord.HTTPException:
+			except disnake.HTTPException:
 				continue
 
 			to_delete.append(message)
@@ -800,7 +800,7 @@ class Starboard(AceMixin, commands.Cog):
 		# bulk delete the starboard messages
 		try:
 			await star_channel.delete_messages(to_delete)
-		except discord.HTTPException:
+		except disnake.HTTPException:
 			pass
 
 	async def update_star(self, message_id, star_message, stars):
@@ -820,7 +820,7 @@ class Starboard(AceMixin, commands.Cog):
 		https://github.com/Rapptz/RoboDanny/blob/rewrite/cogs/stars.py#L168-L193
 		'''
 
-		embed = discord.Embed(description=message.content)
+		embed = disnake.Embed(description=message.content)
 
 		embed.description += '{}[Click for context!]({})'.format(
 			'\n\n' if len(embed.description) else '', message.jump_url
