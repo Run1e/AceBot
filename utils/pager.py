@@ -47,6 +47,10 @@ class Pager(disnake.ui.View):
 			return
 
 		self.page = page
+
+		if self.top_page:
+			self.embed.set_footer(text=f'Page {page + 1}/{self.top_page + 1}')
+
 		await self.update_page_embed(self.embed, page, self.get_page_entries(page))
 
 	@disnake.ui.button(label='Previous page', emoji=PREV_EMOJI, style=disnake.ButtonStyle.primary, row=0)

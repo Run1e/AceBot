@@ -117,7 +117,7 @@ class PaginatedHelpCommand(commands.HelpCommand):
 		await self.go()
 
 	async def go(self):
-		await self.context.send(embed=await self.pager.init(), view=self.pager)
+		await self.context.send(embed=await self.pager.init(), view=self.pager if self.pager.top_page else None)
 
 	async def send_cog_help(self, cog):
 		if await self.add_cog(cog, force=True):
