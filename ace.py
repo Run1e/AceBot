@@ -50,6 +50,11 @@ class AceBot(commands.Bot):
 	startup_time: datetime
 
 	def __init__(self, db, **kwargs):
+		# if TEST_GUILDS is supplied, pass it to the super
+		try:
+			from config import TEST_GUILDS
+		except ImportError:
+			TEST_GUILDS = None
 		super().__init__(
 			command_prefix=self.prefix_resolver,
 			owner_id=OWNER_ID,
@@ -57,6 +62,7 @@ class AceBot(commands.Bot):
 			help_command=PaginatedHelpCommand(),
 			max_messages=20000,
 			activity=BOT_ACTIVITY,
+			test_guilds=TEST_GUILDS,
 			**kwargs
 		)
 
