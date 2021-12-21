@@ -1,3 +1,4 @@
+import disnake
 from disnake.ext import commands
 
 from utils.pager import Pager
@@ -16,7 +17,10 @@ class HelpPager(Pager):
 	def craft_invite_string(self):
 		return '[Enjoying the bot? Invite it to your own server!]({0})'.format(self.ctx.bot.invite_link)
 
-	async def craft_page(self, e, page, entries):
+	async def create_base_embed(self):
+		return disnake.Embed()
+
+	async def update_page_embed(self, embed, page, entries):
 		cog_name, cog_desc, commands = entries[0]
 
 		name = f'{cog_name} Commands'
@@ -28,11 +32,12 @@ class HelpPager(Pager):
 		if cog_desc is not None:
 			desc += '\n\n' + cog_desc
 
-		self.embed.set_author(name=name, icon_url=self.bot.user.display_avatar.url)
-		self.embed.description = desc
+		embed.set_author(name=name, icon_url=self.ctx.bot.user.display_avatar.url)
+		embed.description = desc
 
+		embed.clear_fields()
 		for name, value in commands:
-			self.embed.add_field(name=name, value=value, inline=False)
+			embed.add_field(name=name, value=value, inline=False)
 
 	async def help_embed(self, e):
 		e.set_author(name='How do I use the bot?', icon_url=self.bot.user.display_avatar.url)
@@ -109,12 +114,15 @@ class PaginatedHelpCommand(commands.HelpCommand):
 			if cog is not None:
 				await self.add_cog(cog)
 
-		await self.pager.go()
+		await self.go()
+
+	async def go(self):
+		await self.context.send(embed=await self.pager.init(), view=self.pager)
 
 	async def send_cog_help(self, cog):
 		if await self.add_cog(cog, force=True):
 			return
-		await self.pager.go()
+		await self.go()
 
 	async def send_group_help(self, group):
 		cog_name = group.cog_name
@@ -144,7 +152,7 @@ class PaginatedHelpCommand(commands.HelpCommand):
 			return
 
 		self.pager.add_page(group.cog_name, group.cog.__doc__, commands)
-		await self.pager.go()
+		await self.go()
 
 	async def send_command_help(self, command):
 		cog_name = command.cog_name
@@ -160,7 +168,7 @@ class PaginatedHelpCommand(commands.HelpCommand):
 			return
 
 		self.pager.add_page(cog_name, command.cog.__doc__, [pack])
-		await self.pager.go()
+		await self.go()
 
 	async def stop(self):
 		await self.send_error_message(await self.command_not_found(self.context.kwargs['command']))

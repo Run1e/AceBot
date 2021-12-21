@@ -8,8 +8,8 @@ from collections import OrderedDict
 from datetime import datetime, timedelta, timezone
 
 import disnake
-from aiohttp.client_exceptions import ClientConnectorError
 from aiohttp import ClientTimeout
+from aiohttp.client_exceptions import ClientConnectorError
 from bs4 import BeautifulSoup
 from disnake.ext import commands, tasks
 from fuzzywuzzy import fuzz, process
@@ -19,7 +19,6 @@ from config import CLOUDAHK_PASS, CLOUDAHK_URL, CLOUDAHK_USER
 from ids import *
 from utils.docs_parser import parse_docs
 from utils.html2markdown import HTML2Markdown
-from utils.pager import Pager
 
 log = logging.getLogger(__name__)
 
@@ -36,20 +35,6 @@ DOWNVOTE_EMOJI = '\N{Thumbs Down Sign}'
 INACTIVITY_LIMIT = timedelta(weeks=4)
 
 DISCORD_UPLOAD_LIMIT = 8000000  # 8 MB
-
-
-class DocsPagePager(Pager):
-	async def craft_page(self, e, page, entries):
-		e.title = self.header.get('page')
-		e.url = DOCS_FORMAT.format(self.header.get('link'))
-		e.color = AHK_COLOR
-
-		e.description = '\n'.join(
-			'[`{}`]({})'.format(
-				entry.get('title'),
-				DOCS_FORMAT.format(entry.get('link'))
-			) for entry in entries
-		)
 
 
 class RunnableCodeConverter(commands.Converter):
@@ -399,7 +384,7 @@ class AutoHotkey(AceMixin, commands.Cog):
 
 	@commands.command(aliases=['d', 'doc', 'rtfm'])
 	@commands.bot_has_permissions(embed_links=True)
-	async def docs(self, ctx, *, query = None):
+	async def docs(self, ctx, *, query=None):
 		'''Search the AutoHotkey documentation. Enter multiple queries by separating with commas.'''
 
 		if query is None:
@@ -450,42 +435,6 @@ class AutoHotkey(AceMixin, commands.Cog):
 		)
 
 		await ctx.send(embed=e)
-
-	@commands.command(aliases=['dp'])
-	@commands.bot_has_permissions(embed_links=True)
-	async def docspage(self, ctx, *, query):
-		'''List entries of an AutoHotkey documentation page.'''
-
-		query = query.lower()
-
-		entry = await self.get_docs(query, count=1, entry=True)
-
-		if not entry:
-			raise DOCS_NO_MATCH
-
-		entry = entry[0]
-
-		if entry.get('fragment') is None:
-			header = entry
-		else:
-			header = await self.db.fetchrow(
-				'SELECT * FROM docs_entry WHERE page=$1 AND fragment IS NULL', entry.get('page')
-			)
-
-			if header is None:
-				raise commands.CommandError('Header for this entry not found.')
-
-		records = await self.db.fetch(
-			'SELECT * FROM docs_entry WHERE page=$1 AND fragment IS NOT NULL ORDER BY id', header.get('page')
-		)
-
-		if not records:
-			raise commands.CommandError('Page has no fragments.')
-
-		p = DocsPagePager(ctx, entries=records, per_page=16)
-		p.header = header
-
-		await p.go()
 
 	@commands.command(hidden=True)
 	@commands.is_owner()

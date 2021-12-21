@@ -3,11 +3,11 @@ import asyncio
 import io
 import logging
 import shlex
-from typing import Union
 from collections import defaultdict
 from datetime import datetime, timedelta
 from enum import Enum, IntEnum
 from json import dumps, loads
+from typing import Union
 
 import disnake
 from asyncpg.exceptions import UniqueViolationError
@@ -20,9 +20,8 @@ from utils.context import AceContext, can_prompt, is_mod
 from utils.converters import MaxLengthConverter, MaybeMemberConverter, RangeConverter
 from utils.databasetimer import DatabaseTimer
 from utils.fakeuser import FakeUser
-from utils.pager import Pager
 from utils.string import po
-from utils.time import TimeDeltaConverter, TimeMultConverter, pretty_datetime, pretty_timedelta
+from utils.time import TimeDeltaConverter, TimeMultConverter, pretty_timedelta
 
 log = logging.getLogger(__name__)
 
@@ -218,36 +217,6 @@ class ActionConverter(commands.Converter):
 			)
 
 		return value
-
-
-class TempbanPager(Pager):
-	async def craft_page(self, e: disnake.Embed, page, entries):
-		e.description = f'{len(self.entries)} active tempban(s).'
-
-		now = datetime.utcnow()
-
-		for record in entries:
-			_id = record.get('id')
-
-			userdata = loads(record.get('userdata'))
-			name = userdata['name']
-			discrim = userdata['discriminator']
-
-			user_id = record.get('user_id')
-
-			banner = self.bot.get_user(record.get('mod_id'))
-			when = record.get('created_at')
-			duration = record.get('duration')
-
-			e.add_field(
-				name=f'{_id}: {name}#{discrim} ({user_id})',
-				value='Banned: {0}\nBanner: {1}\nDuration: {2}\nUnban in {3}'.format(
-					pretty_datetime(when),
-					banner or 'UNKNOWN',
-					pretty_timedelta(duration),
-					pretty_timedelta(now - when + duration)
-				)
-			)
 
 
 async def can_mute_pred(ctx):
@@ -482,7 +451,8 @@ class Moderation(AceMixin, commands.Cog):
 	@commands.command()
 	@commands.has_permissions(ban_members=True)
 	@commands.bot_has_permissions(ban_members=True, embed_links=True)
-	async def tempban(self, ctx, member: Union[disnake.Member, BannedMember], amount: TimeMultConverter, unit: TimeDeltaConverter, *, reason: reason_converter = None):
+	async def tempban(self, ctx, member: Union[disnake.Member, BannedMember], amount: TimeMultConverter, unit: TimeDeltaConverter, *,
+		reason: reason_converter = None):
 		'''Temporarily ban a member. Requires Ban Members perms. Same formatting as `tempmute` explained above.'''
 
 		now = datetime.utcnow()

@@ -23,11 +23,20 @@ MAX_REMINDERS = 32
 
 
 class RemindPager(Pager):
-	async def craft_page(self, e, page, entries):
+	async def create_base_embed(self):
+		embed = disnake.Embed(
+			title='All your reminders for this server.'
+		)
+
+		author = self.ctx.author
+		embed.set_author(name=author.name, icon_url=author.display_avatar.url)
+
+		return embed
+
+	async def update_page_embed(self, embed, page, entries):
 		now = datetime.utcnow()
 
-		e.set_author(name=self.author.name, icon_url=self.author.display_avatar.url)
-		e.description = 'All your reminders for this server.'
+		embed.clear_fields()
 
 		for record in entries:
 			_id = record.get('id')
@@ -37,7 +46,7 @@ class RemindPager(Pager):
 			delta = remind_on - now
 
 			time_text = pretty_timedelta(delta)
-			e.add_field(
+			embed.add_field(
 				name=f'{_id}: {time_text}',
 				value=shorten(message, 256) if message is not None else DEFAULT_REMINDER_MESSAGE,
 				inline=False
@@ -192,8 +201,8 @@ class Reminders(AceMixin, commands.Cog):
 		if not len(res):
 			raise commands.CommandError('Couldn\'t find any reminders.')
 
-		p = RemindPager(ctx, res, per_page=3)
-		await p.go()
+		view = RemindPager(ctx, res, per_page=3)
+		await ctx.send(embed=await view.init(), view=view if view.top_page else None)
 
 	@commands.command(hidden=True)
 	async def delreminder(self, ctx, *, reminder_id: SerialConverter()):

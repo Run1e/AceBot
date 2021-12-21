@@ -19,6 +19,7 @@ from utils.string import po
 from utils.time import pretty_seconds
 
 EXTENSIONS = (
+	'cogs.test',
 	'cogs.fun',
 	'cogs.configuration',
 	'cogs.tags',
@@ -225,7 +226,7 @@ def setup_logger():
 		open('logs/log.log', 'w+')
 
 	# set logging levels for various libs
-	logging.getLogger('discord').setLevel(logging.INFO)
+	logging.getLogger('disnake').setLevel(logging.INFO)
 	logging.getLogger('websockets').setLevel(logging.INFO)
 	logging.getLogger('asyncpg').setLevel(logging.INFO)
 	logging.getLogger('asyncio').setLevel(logging.INFO)
@@ -286,7 +287,7 @@ async def setup():
 
 	# init bot
 	log.info('Initializing bot')
-	bot = AceBot(db=db, loop=loop, intents=BOT_INTENTS, allowed_mentions=allowed_mentions)
+	bot = AceBot(db=db, loop=loop, intents=BOT_INTENTS, allowed_mentions=allowed_mentions, test_guilds=TEST_GUILDS)
 
 	# start it
 	log.info('Logging in and starting bot')

@@ -19,7 +19,6 @@ from cogs.mixins import AceMixin
 from config import BOT_ACTIVITY
 from utils.context import AceContext
 from utils.converters import MaxValueConverter
-from utils.lookup import DiscordLookup
 from utils.pager import Pager
 from utils.string import shorten
 from utils.time import pretty_datetime, pretty_timedelta
@@ -27,64 +26,8 @@ from utils.time import pretty_datetime, pretty_timedelta
 log = logging.getLogger(__name__)
 
 
-class DiscordObjectPager(Pager):
-	async def craft_page(self, e, page, entries):
-		entry = entries[0]
-
-		e.description = ''
-
-		for field in dir(entry):
-			if field.startswith('_'):
-				continue
-
-			try:
-				attr = getattr(entry, field)
-			except AttributeError:
-				continue
-
-			if callable(attr):
-				continue
-
-			if isinstance(attr, int):
-				e.add_field(name=field, value='`{}`'.format(str(attr)), inline=False)
-
-			elif isinstance(attr, str):
-				e.add_field(name=field, value=attr, inline=False)
-
-			elif isinstance(attr, datetime):
-				e.add_field(name=field, value=pretty_datetime(attr), inline=False)
-
-			elif isinstance(attr, list) and len(attr) and field not in ('members',):
-				lst = list()
-				for item in attr:
-					if hasattr(item, 'mention'):
-						lst.append(item.mention)
-					elif hasattr(item, 'name'):
-						lst.append(item.name)
-					elif hasattr(item, 'id'):
-						lst.append(item.id)
-
-				if len(lst):
-					e.add_field(name=field, value=shorten(' '.join(lst), 1024), inline=False)
-
-		if hasattr(entry, 'name'):
-			e.title = entry.name
-
-		if hasattr(entry, 'mention'):
-			e.description = entry.mention
-
-		if hasattr(entry, 'display_avatar'):
-			e.set_thumbnail(url=entry.display_avatar.url)
-		elif hasattr(entry, 'icon'):
-			e.set_thumbnail(url=entry.icon.url)
-
-
 class Owner(AceMixin, commands.Cog):
 	'''Commands accessible only to the bot owner.'''
-
-	DISCORD_BASE_TYPES = (
-		disnake.Object, disnake.Emoji, disnake.abc.Messageable, disnake.mixins.Hashable
-	)
 
 	def __init__(self, bot):
 		super().__init__(bot)
@@ -121,20 +64,6 @@ class Owner(AceMixin, commands.Cog):
 		await ctx.send(await self.help_cog.classify(message.content))
 
 	@commands.command()
-	async def t(self, ctx):
-		s = (
-			'Your scripting question looks like it might be about a game, which is not allowed here. '
-			'Please make sure you are familiar with the #rules, specifically rule 5.\n\n'
-			'If your question is not about cheating in or automating a game, please disregard this message.'
-		)
-
-		e = disnake.Embed(
-			description=s
-		)
-
-		await ctx.send(content=ctx.author.mention, embed=e)
-
-	@commands.command()
 	async def eval(self, ctx, *, body: str):
 		'''Evaluates some code.'''
 
@@ -142,7 +71,7 @@ class Owner(AceMixin, commands.Cog):
 		from tabulate import tabulate
 
 		env = {
-			'discord': discord,
+			'disnake.': disnake,
 			'bot': self.bot,
 			'ctx': ctx,
 			'channel': ctx.channel,
@@ -187,34 +116,6 @@ class Owner(AceMixin, commands.Cog):
 						await ctx.send('Log too large...', file=disnake.File(fp, 'results.txt'))
 					else:
 						await ctx.send(f'```py\n{value}\n```')
-
-	@commands.command()
-	@commands.bot_has_permissions(embed_links=True)
-	async def get(self, ctx, *, query: commands.clean_content):
-		'''Run a meta-python query.'''
-
-		try:
-			res = DiscordLookup(ctx, query).run()
-		except Exception as exc:
-			raise commands.CommandError('{}\n\n{}'.format(exc.__class__.__name__, str(exc)))
-
-		if res is None or (isinstance(res, list) and not res):
-			raise commands.CommandError('No results.')
-
-		if not isinstance(res, list):
-			res = [res]
-
-		if isinstance(res[0], self.DISCORD_BASE_TYPES):
-			p = DiscordObjectPager(ctx, entries=res, per_page=1)
-			await p.go()
-		else:
-			res = '\n'.join('`{}`'.format(str(item)) if isinstance(item, int) else str(item) for item in res)
-
-			if len(res) > 2000:
-				fp = io.BytesIO(str(res).encode('utf-8'))
-				await ctx.send('Log too large...', file=disnake.File(fp, 'results.txt'))
-			else:
-				await ctx.send(embed=disnake.Embed(description=res))
 
 	@commands.command()
 	async def sql(self, ctx, *, query: str):

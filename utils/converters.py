@@ -41,7 +41,7 @@ class MaybeMemberConverter(commands.MemberConverter):
 
 		try:
 			return await ctx.guild.fetch_member(member_id)
-		except discord.HTTPException:
+		except disnake.HTTPException:
 			return FakeUser(member_id, ctx.guild)
 
 	async def convert(self, ctx, argument):

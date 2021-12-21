@@ -126,14 +126,19 @@ class TagViewConverter(commands.Converter):
 class TagPager(Pager):
 	member = None
 
-	async def craft_page(self, e, page, entries):
-		e.set_author(
+	async def create_base_embed(self):
+		embed = disnake.Embed()
+
+		embed.set_author(
 			name=self.member.display_name if self.member else self.ctx.guild.name,
 			icon_url=self.member.avatar.url if self.member else self.ctx.guild.icon.url
 		)
 
-		e.description = f'{len(self.entries)} total tags.'
+		embed.description = f'{len(self.entries)} total tags.'
 
+		return embed
+
+	async def update_page_embed(self, embed, page, entries):
 		names, aliases, uses = zip(*entries)
 
 		tags = ''
@@ -143,8 +148,9 @@ class TagPager(Pager):
 			if alias is not None:
 				tags += f' ({alias})'
 
-		e.add_field(name='Name', value=tags[1:])
-		e.add_field(name='Uses', value='\n'.join(str(use) for use in uses))
+		embed.clear_fields()
+		embed.add_field(name='Name', value=tags[1:])
+		embed.add_field(name='Uses', value='\n'.join(str(use) for use in uses))
 
 
 class Tags(AceMixin, commands.Cog):
@@ -290,7 +296,7 @@ class Tags(AceMixin, commands.Cog):
 		p = TagPager(ctx, tag_list)
 		p.member = member
 
-		await p.go()
+		await ctx.send(embed=await p.init(), view=p if p.top_page else None)
 
 	@tag.command()
 	async def make(self, ctx):

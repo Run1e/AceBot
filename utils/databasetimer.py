@@ -61,7 +61,7 @@ class DatabaseTimer:
 				# run it
 				self.bot.dispatch(self.event_name, record)
 
-		except (discord.ConnectionClosed, asyncpg.PostgresConnectionError) as e:
+		except (disnake.ConnectionClosed, asyncpg.PostgresConnectionError) as e:
 			# if anything happened, sleep for 15 seconds then attempt a restart
 			log.warning('DatabaseTimer got exception %s: attempting restart in 15 seconds', str(e))
 

@@ -1,9 +1,6 @@
-import disnake
-import asyncio
-
 from math import ceil
 
-STATIC_PERMS = ('add_reactions', 'manage_messages', 'embed_links')
+import disnake
 
 FIRST_EMOJI = '\N{BLACK LEFT-POINTING DOUBLE TRIANGLE WITH VERTICAL BAR}'
 NEXT_EMOJI = '\N{BLACK RIGHT-POINTING DOUBLE TRIANGLE}'
@@ -13,174 +10,66 @@ STOP_EMOJI = '\N{BLACK SQUARE FOR STOP}'
 HELP_EMOJI = '\N{WHITE QUESTION MARK ORNAMENT}'
 
 
-class Pager:
-	def __init__(self, ctx, entries=None, page=1, per_page=12, owner=None, timeout=120.0, separator=' '):
+class Pager(disnake.ui.View):
+	def __init__(self, ctx, entries=None, per_page=6, timeout=180.0):
+		super().__init__(timeout=timeout)
+
 		self.ctx = ctx
-		self.bot = ctx.bot
-		self.author = owner or ctx.author
-		self.guild = ctx.guild
-		self.channel = ctx.channel
-		self.entries = entries or []
-		self.embed = discord.Embed()
-		self.page = page
-		self.timeout = timeout
-		self.separator = separator
+		self.entries = entries
 		self.per_page = per_page
-		self.on_help = False
 
-		self.static = False
-		self.missing_perms = []
+		self.page = 0
+		self.embed = None
 
-		# overrides to a static view if missing perms!
-		perms = ctx.channel.permissions_for(ctx.guild.me)
+	async def init(self, at_page=0):
+		self.embed = await self.create_base_embed()
+		await self.try_page(at_page)
 
-		for perm in STATIC_PERMS:
-			if not getattr(perms, perm):
-				self.missing_perms.append(perm.replace('_', ' ').title())
-				self.static = True
-
-	async def go(self):
-		if not len(self.entries):
-			return
-
-		await self.get_page(1)
-
-		msg = await self.ctx.send(embed=self.embed)
-
-		if self.static:
-			return
-
-		if self.top_page != 1:
-			emojis = [FIRST_EMOJI, PREV_EMOJI, NEXT_EMOJI, LAST_EMOJI, STOP_EMOJI, HELP_EMOJI]
-			if self.top_page == 2:
-				emojis.remove(FIRST_EMOJI)
-				emojis.remove(LAST_EMOJI)
-
-			for emoji in emojis:
-				try:
-					await msg.add_reaction(emoji)
-				except discord.HTTPException:
-					pass
-
-		def pred(reaction, user):
-			return reaction.message.id == msg.id and user != self.bot.user
-
-		while True:
-			try:
-				reaction, user = await self.bot.wait_for('reaction_add', check=pred, timeout=self.timeout)
-			except asyncio.TimeoutError:
-				break
-			else:
-
-				# just remove if it isn't authors reaction
-				if user != self.author:
-					await msg.remove_reaction(reaction.emoji, user)
-					continue
-
-				# if it is, and it's a stop emoji, just stop
-				if reaction.emoji == STOP_EMOJI:
-					await msg.clear_reactions()
-					return
-
-				# otherwise, delete the reaction before handling case
-				await msg.remove_reaction(reaction.emoji, user)
-
-				if reaction.emoji == NEXT_EMOJI:
-					await self.next()
-				elif reaction.emoji == PREV_EMOJI:
-					await self.prev()
-				elif reaction.emoji == FIRST_EMOJI:
-					await self.first()
-				elif reaction.emoji == LAST_EMOJI:
-					await self.last()
-				elif reaction.emoji == HELP_EMOJI:
-					await self.help()
-				else:
-					continue
-
-				await msg.edit(embed=self.embed)
-
-		try:
-			await msg.clear_reactions()
-		except discord.HTTPException:
-			pass
-
-	@property
-	def top_page(self):
-		if self.static:
-			return 1
-		return ceil(len(self.entries) / self.per_page)
-
-	def clear_embed(self):
-		e = self.embed
-
-		e.title = None
-		e.description = None
-		e.set_author(name='', url='')
-
-		e.clear_fields()
-
-		if self.static:
-			e.set_footer(text='Non-interactive! I\'m missing: ' + ', '.join(self.missing_perms))
-		elif self.on_help:
-			e.set_footer(text='')
-		elif self.top_page > 1:
-			e.set_footer(text=f'Page {self.page}/{self.top_page}')
-		else:
-			e.set_footer(text='')
-
-	async def get_page(self, page):
-		self.clear_embed()
-		await self.craft_page(self.embed, page, self.get_page_entries(page))
-
-	async def craft_page(self, e, page, entries):
-		'''Crafts the actual embed.'''
-
-		e.description = self.separator.join(str(entry) for entry in entries)
+		return self.embed
 
 	def get_page_entries(self, page):
 		'''Converts a page number to a range of entries.'''
-		base = (page - 1) * self.per_page
+		base = page * self.per_page
 		return self.entries[base:base + self.per_page]
 
+	async def create_base_embed(self):
+		raise NotImplementedError()
+
+	async def update_page_embed(self, embed, page, entries):
+		raise NotImplementedError()
+
+	@property
+	def top_page(self):
+		return ceil(len(self.entries) / self.per_page) - 1
+
 	async def try_page(self, page):
-		if self.top_page >= page >= 1:
-			self.page = page
-			await self.get_page(page)
+		if not 0 <= page <= self.top_page:
+			return
 
-	async def next(self):
-		await self.try_page(self.page + 1)
+		self.page = page
+		await self.update_page_embed(self.embed, page, self.get_page_entries(page))
 
-	async def prev(self):
+	@disnake.ui.button(label='Previous page', emoji=PREV_EMOJI, style=disnake.ButtonStyle.primary, row=0)
+	async def prev_page(self, button: disnake.ui.Button, inter: disnake.MessageInteraction):
 		await self.try_page(self.page - 1)
+		await inter.response.edit_message(embed=self.embed)
 
-	async def first(self):
-		self.page = 1
-		await self.get_page(self.page)
+	@disnake.ui.button(label='Next page', emoji=NEXT_EMOJI, style=disnake.ButtonStyle.primary, row=0)
+	async def next_page(self, button: disnake.ui.Button, inter: disnake.MessageInteraction):
+		await self.try_page(self.page + 1)
+		await inter.response.edit_message(embed=self.embed)
 
-	async def last(self):
-		self.page = self.top_page
-		await self.get_page(self.page)
+	@disnake.ui.button(label='First page', emoji=FIRST_EMOJI, style=disnake.ButtonStyle.secondary, row=1)
+	async def first_page(self, button: disnake.ui.Button, inter: disnake.MessageInteraction):
+		await self.try_page(0)
+		await inter.response.edit_message(embed=self.embed)
 
-	async def help(self):
-		if self.on_help:
-			self.on_help = False
-			await self.get_page(self.page)
-		else:
-			self.on_help = True
-			self.clear_embed()
-			await self.help_embed(self.embed)
+	@disnake.ui.button(label='Last page', emoji=LAST_EMOJI, style=disnake.ButtonStyle.secondary, row=1)
+	async def last_page(self, button: disnake.ui.Button, inter: disnake.MessageInteraction):
+		await self.try_page(self.top_page)
+		await inter.response.edit_message(embed=self.embed)
 
-	async def help_embed(self, e):
-		e.title = 'How to navigate this paginator!'
-		e.description = 'Below is a description of what each emoji does.'
-
-		e.add_field(name=PREV_EMOJI, value='Moves back to the previous page.')
-		e.add_field(name=NEXT_EMOJI, value='Moves to the next page.')
-
-		if self.top_page > 2:
-			e.add_field(name=FIRST_EMOJI, value='Moves to the first page.')
-			e.add_field(name=LAST_EMOJI, value='Moves to the last page.')
-
-		e.add_field(name=STOP_EMOJI, value='Quits this pagination session.')
-		e.add_field(name=HELP_EMOJI, value='Toggles this help message.')
+	@disnake.ui.button(label='Stop', emoji=STOP_EMOJI, style=disnake.ButtonStyle.danger, row=1)
+	async def stop_pager(self, button: disnake.ui.Button, inter: disnake.MessageInteraction):
+		await inter.response.edit_message(view=None)
+		self.stop()

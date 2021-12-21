@@ -3,10 +3,10 @@ import asyncio
 
 from disnake.ext import commands
 
-from utils.pager import STATIC_PERMS
 from utils.time import pretty_datetime
 from utils.string import po
 
+STATIC_PERMS = ('add_reactions', 'manage_messages', 'embed_links')
 PROMPT_REQUIRED_PERMS = ('embed_links', 'add_reactions')
 PROMPT_EMOJIS = ('\N{WHITE HEAVY CHECK MARK}', '\N{CROSS MARK}')
 
@@ -82,7 +82,7 @@ class AceContext(commands.Context):
 
 		# if set, see if author has this role
 
-		return bool(discord.utils.get(member.roles, id=gc.mod_role_id))
+		return bool(disnake.utils.get(member.roles, id=gc.mod_role_id))
 
 	async def send_help(self, command=None):
 		'''Convenience method for sending help.'''
@@ -113,7 +113,7 @@ class AceContext(commands.Context):
 		prompt = prompt or 'No description provided.'
 		prompt += '\n\nPress {} to continue, {} to abort.'.format(*PROMPT_EMOJIS)
 
-		e = discord.Embed(description=prompt)
+		e = disnake.Embed(description=prompt)
 
 		e.set_author(name=title or 'Prompt', icon_url=self.bot.user.display_avatar.url)
 
@@ -121,7 +121,7 @@ class AceContext(commands.Context):
 			msg = await self.send(content=None if user_override is None else user_override.mention, embed=e)
 			for emoji in PROMPT_EMOJIS:
 				await msg.add_reaction(emoji)
-		except discord.HTTPException:
+		except disnake.HTTPException:
 			return False
 
 		check_user = user_override or self.author
@@ -132,12 +132,12 @@ class AceContext(commands.Context):
 		try:
 			reaction, user = await self.bot.wait_for('reaction_add', check=check, timeout=60.0)
 			return str(reaction) == PROMPT_EMOJIS[0]
-		except (asyncio.TimeoutError, discord.HTTPException):
+		except (asyncio.TimeoutError, disnake.HTTPException):
 			return False
 		finally:
 			try:
 				await msg.delete()
-			except discord.HTTPException:
+			except disnake.HTTPException:
 				pass
 
 	async def admin_prompt(self, raise_on_abort=True):
