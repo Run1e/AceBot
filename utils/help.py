@@ -28,14 +28,14 @@ class HelpPager(Pager):
 		if cog_desc is not None:
 			desc += '\n\n' + cog_desc
 
-		self.embed.set_author(name=name, icon_url=self.bot.user.avatar_url)
+		self.embed.set_author(name=name, icon_url=self.bot.user.display_avatar.url)
 		self.embed.description = desc
 
 		for name, value in commands:
 			self.embed.add_field(name=name, value=value, inline=False)
 
 	async def help_embed(self, e):
-		e.set_author(name='How do I use the bot?', icon_url=self.bot.user.avatar_url)
+		e.set_author(name='How do I use the bot?', icon_url=self.bot.user.display_avatar.url)
 
 		e.description = (
 			'Invoke a command by sending the prefix followed by a command name.\n\n'

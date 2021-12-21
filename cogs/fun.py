@@ -170,8 +170,8 @@ class Fun(AceMixin, commands.Cog):
 		if guild.premium_subscribers:
 			# actually get the last premium subscriber. this list is always fucked
 			booster = sorted(guild.premium_subscribers, key=lambda m: m.premium_since)[-1]
-			boost_desc += '\nLast boost by {} {} ago'.format(
-				booster.mention, pretty_timedelta(datetime.utcnow() - booster.premium_since)
+			boost_desc += '\nLast boost by {} {}'.format(
+				booster.mention, f"<t:{round(booster.premium_since.timestamp())}:R>"
 			)
 
 		e.add_field(
@@ -179,7 +179,7 @@ class Fun(AceMixin, commands.Cog):
 			value=boost_desc
 		)
 
-		e.set_thumbnail(url=guild.icon_url)
+		e.set_thumbnail(url=guild.icon.url)
 		e.set_footer(text='Created')
 
 		await ctx.send(embed=e)
@@ -393,7 +393,7 @@ class Fun(AceMixin, commands.Cog):
 			description=selected
 		)
 
-		e.set_author(name=choice(choose_prompts) + ':', icon_url=self.bot.user.avatar_url)
+		e.set_author(name=choice(choose_prompts) + ':', icon_url=self.bot.user.display_avatar.url)
 
 		msg = await ctx.send(':thinking:')
 
@@ -433,7 +433,7 @@ class Fun(AceMixin, commands.Cog):
 
 	@tasks.loop(hours=1.0)
 	async def cache_bill_vids(self):
-		'''Requests the bill videos from the website. 
+		'''Requests the bill videos from the website.
 		Caching is done in order to speed up searching'''
 
 		self.bill_cache.clear()

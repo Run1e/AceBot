@@ -129,7 +129,7 @@ class TagPager(Pager):
 	async def craft_page(self, e, page, entries):
 		e.set_author(
 			name=self.member.display_name if self.member else self.ctx.guild.name,
-			icon_url=self.member.avatar_url if self.member else self.ctx.guild.icon_url
+			icon_url=self.member.avatar.url if self.member else self.ctx.guild.icon.url
 		)
 
 		e.description = f'{len(self.entries)} total tags.'
@@ -414,10 +414,10 @@ class Tags(AceMixin, commands.Cog):
 
 		if owner is None:
 			nick = 'Unknown User'
-			avatar = ctx.guild.icon_url
+			avatar = ctx.guild.icon.url
 		else:
 			nick = owner.display_name
-			avatar = owner.avatar_url
+			avatar = owner.display_avatar.url
 
 		e = discord.Embed(
 			description=f"**{record.get('name')}**",

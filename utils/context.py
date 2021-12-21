@@ -70,7 +70,7 @@ class AceContext(commands.Context):
 			return True
 
 		# true if member has administrator perms in this channel
-		if member.permissions_in(self.channel).administrator:
+		if self.channel.permissions_for(member).administrator:
 			return True
 
 		# only last way member can be mod if they're in the moderator role
@@ -115,7 +115,7 @@ class AceContext(commands.Context):
 
 		e = discord.Embed(description=prompt)
 
-		e.set_author(name=title or 'Prompt', icon_url=self.bot.user.avatar_url)
+		e.set_author(name=title or 'Prompt', icon_url=self.bot.user.display_avatar.url)
 
 		try:
 			msg = await self.send(content=None if user_override is None else user_override.mention, embed=e)
@@ -153,4 +153,3 @@ class AceContext(commands.Context):
 			raise commands.CommandError('Administrative action aborted.')
 
 		return result
-
