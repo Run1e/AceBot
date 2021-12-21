@@ -25,7 +25,7 @@ class DiscordLookup:
 		)
 
 		self.funcs = dict(
-			st=discord.utils.snowflake_time,
+			st=disnake.utils.snowflake_time,
 			now=datetime.utcnow,
 			dt=datetime,
 			td=timedelta,
@@ -48,9 +48,9 @@ class DiscordLookup:
 
 	def get_object(self, items, ident):
 		if isinstance(ident, int):
-			res = discord.utils.get(items, id=ident)
+			res = disnake.utils.get(items, id=ident)
 		elif isinstance(ident, str):
-			res = discord.utils.get(items, name=ident) or discord.utils.get(items, display_name=ident)
+			res = disnake.utils.get(items, name=ident) or disnake.utils.get(items, display_name=ident)
 		else:
 			raise TypeError('Can\'t find items with ident of type \'{}\''.format(type(ident)).__name__)
 

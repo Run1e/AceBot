@@ -46,7 +46,7 @@ class CommandErrorLogic:
 
 				await ctx.send(content)
 
-		except discord.HTTPException:
+		except disnake.HTTPException:
 			pass
 
 		# after doing that, save and raise if it's an oops
@@ -57,7 +57,7 @@ class CommandErrorLogic:
 
 	@staticmethod
 	def new_embed(**kwargs):
-		return discord.Embed(color=0x36393E, **kwargs)
+		return disnake.Embed(color=0x36393E, **kwargs)
 
 	def support_text(self, embeddable):
 		support_link = self.bot.support_link

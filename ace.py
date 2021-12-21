@@ -225,7 +225,7 @@ def setup_logger():
 		open('logs/log.log', 'w+')
 
 	# set logging levels for various libs
-	logging.getLogger('discord').setLevel(logging.INFO)
+	logging.getLogger('disnake').setLevel(logging.INFO)
 	logging.getLogger('websockets').setLevel(logging.INFO)
 	logging.getLogger('asyncpg').setLevel(logging.INFO)
 	logging.getLogger('asyncio').setLevel(logging.INFO)
