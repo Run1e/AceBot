@@ -6,6 +6,7 @@ from asyncio import TimeoutError
 from base64 import b64encode
 from collections import OrderedDict
 from datetime import datetime, timedelta, timezone
+from typing import Optional,Union
 
 import disnake
 from aiohttp import ClientTimeout
@@ -260,11 +261,11 @@ class AutoHotkey(AceMixin, commands.Cog):
 			url=None if page is None else DOCS_FORMAT.format(record.get('link'))
 		)
 
-		# e.set_footer(text='autohotkey.com', icon_url='https://www.autohotkey.com/favicon.ico')
+		e.set_footer(text='autohotkey.com', icon_url='https://www.autohotkey.com/favicon.ico')
 
 		syntax = record.get('syntax')
 		if syntax is not None:
-			e.description += '\n```autoit\n{}```'.format(syntax)
+			e.description += '\n```autoit\n{}\n```'.format(syntax)
 
 		return e
 
@@ -384,57 +385,95 @@ class AutoHotkey(AceMixin, commands.Cog):
 
 	@commands.command(aliases=['d', 'doc', 'rtfm'])
 	@commands.bot_has_permissions(embed_links=True)
-	async def docs(self, ctx, *, query=None):
+	async def cmd_docs(self, ctx: commands.Context, *, query:str = None):
 		'''Search the AutoHotkey documentation. Enter multiple queries by separating with commas.'''
-
 		if query is None:
 			await ctx.send(DOCS_FORMAT.format(''))
 			return
 
-		spl = OrderedDict.fromkeys(sq.strip() for sq in query.lower().split(','))
+		spl = dict.fromkeys(sq.strip() for sq in query.lower().split(','))
 
 		if len(spl) > 3:
 			raise commands.CommandError('Maximum three different queries.')
 
-		if len(spl) > 1:
-			for subquery in spl.keys():
-				try:
-					await ctx.invoke(self.docs, query=subquery)
-				except commands.CommandError:
-					pass
+		embeds = []
+		for subquery in spl.keys():
+			result = await self.get_docs(subquery, count=1, entry=True, syntax=True)
+			if not result:
+				if len(spl.keys()) == 1:
+					raise DOCS_NO_MATCH
+				else:
+					continue
+			embeds.append(self.craft_docs_page(result[0]))
 
-			return
+		await ctx.send(embeds=embeds)
 
-		query = spl.popitem()[0]
+	@commands.slash_command(name='docs')
+	async def slash_docs(self, inter):
+		'''Search autohotkey docs'''
+		pass
 
+	@slash_docs.sub_command(name='search')
+	async def slash_docs_search(self, inter: disnake.AppCmdInter, query: str) -> None:
+		'''
+		Search autokey documentation.
+
+		Parameters
+		----------
+		query: Search query for the documentation
+		'''
 		result = await self.get_docs(query, count=1, entry=True, syntax=True)
 
 		if not result:
-			raise DOCS_NO_MATCH
+			await inter.response.send_message("Sorry, couldn't find an entry similar to that", ephemeral=True)
 
-		await ctx.send(embed=self.craft_docs_page(result[0]))
+		await inter.response.send_message(embed=self.craft_docs_page(result[0]))
 
-	@commands.command(aliases=['dl'])
-	@commands.bot_has_permissions(embed_links=True)
-	async def docslist(self, ctx, *, query):
-		'''Find all approximate matches in the AutoHotkey documentation.'''
+	@slash_docs_search.autocomplete('query')
+	async def docs_autocomplete(self, inter: disnake.AppCommandInter, query:str):
+		res= await self.get_docs(query,count=25,entry=True)
+		# this mess is because we want to persist order, remove duplicates,
+		# and keep titles to less than 100 characters
+		return list(dict.fromkeys([r.get('title')[:100] for r in res],None).keys())
 
+	async def get_docslist(self, query:str) -> Optional[disnake.Embed]:
 		results = await self.get_docs(query, count=10, entry=True)
 
 		if not results:
-			raise DOCS_NO_MATCH
+			return None
 
-		entries = list()
+		entries = []
 
 		for res in results:
 			entries.append('[`{}`]({})'.format(res.get('name'), DOCS_FORMAT.format(res.get('link'))))
 
-		e = disnake.Embed(
+		return disnake.Embed(
 			description='\n'.join(entries),
 			color=AHK_COLOR
 		)
 
-		await ctx.send(embed=e)
+
+	@commands.command(aliases=['dl'])
+	@commands.bot_has_permissions(embed_links=True)
+	async def cmd_docslist(self, ctx, *, query:str):
+		'''Find all approximate matches in the AutoHotkey documentation.'''
+
+		embed = await self.get_docslist(query)
+		if embed:
+			await ctx.send(embed=embed)
+		else:
+			raise DOCS_NO_MATCH
+
+
+	@slash_docs.sub_command(name='list')
+	async def slash_docs_list(self,inter:disnake.AppCmdInter, query:str):
+		'''List several results for a query.'''
+		embed = await self.get_docslist(query)
+		if embed:
+			await inter.response.send_message(embed=embed)
+		else:
+			raise DOCS_NO_MATCH
+
 
 	@commands.command(hidden=True)
 	@commands.is_owner()
