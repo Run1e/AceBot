@@ -1,10 +1,14 @@
-import disnake
 import asyncio
+from typing import TYPE_CHECKING
 
+import disnake
 from disnake.ext import commands
 
-from utils.time import pretty_datetime
 from utils.string import po
+from utils.time import pretty_datetime
+
+if TYPE_CHECKING:
+	from ace import AceBot
 
 STATIC_PERMS = ('add_reactions', 'manage_messages', 'embed_links')
 PROMPT_REQUIRED_PERMS = ('embed_links', 'add_reactions')
@@ -36,6 +40,7 @@ def can_prompt():
 class AceContext(commands.Context):
 	def __init__(self, **kwargs):
 		super().__init__(**kwargs)
+		self.bot: 'AceBot'
 
 	@property
 	def db(self):

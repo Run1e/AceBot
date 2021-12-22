@@ -131,8 +131,7 @@ you can get the ID of channels, categories, roles, etc. by right-clicking on the
 
 * Run `pip install -r requirements.txt`.
 * Run `python migrate.py` to setup all necessary databases automatically.
-* Create a folder called `logs`.
 
 ## That's it!
 
-You should be able to start the bot with `python ace.py`!
+You should be able to start the bot with `python main.py`!
