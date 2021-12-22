@@ -2,6 +2,12 @@ from math import ceil
 
 import disnake
 
+FIRST_LABEL = 'First page'
+LAST_LABEL = 'Last page'
+NEXT_LABEL = 'Next page'
+PREV_LABEL = 'Previous page'
+STOP_LABEL = 'Stop'
+
 FIRST_EMOJI = '\N{BLACK LEFT-POINTING DOUBLE TRIANGLE WITH VERTICAL BAR}'
 NEXT_EMOJI = '\N{BLACK RIGHT-POINTING DOUBLE TRIANGLE}'
 PREV_EMOJI = '\N{BLACK LEFT-POINTING DOUBLE TRIANGLE}'
@@ -72,10 +78,10 @@ class Pager(disnake.ui.View):
 
 		is_first = self.page == 0
 		is_last = self.page == self.top_page
-		self.buttons['Previous page'].disabled = is_first
-		self.buttons['Next page'].disabled = is_last
-		self.buttons['First page'].disabled = is_first
-		self.buttons['Last page'].disabled = is_last
+		self.buttons[PREV_LABEL].disabled = is_first
+		self.buttons[NEXT_LABEL].disabled = is_last
+		self.buttons[FIRST_LABEL].disabled = is_first
+		self.buttons[LAST_LABEL].disabled = is_last
 
 		await self.update_page_embed(self.embed, page, self.get_page_entries(page))
 
@@ -89,22 +95,22 @@ class Pager(disnake.ui.View):
 	async def on_timeout(self) -> None:
 		pass  # await self.interaction.edit_original_message(view=None)
 
-	@disnake.ui.button(label='Previous page', emoji=PREV_EMOJI, style=disnake.ButtonStyle.primary, row=0)
+	@disnake.ui.button(label=PREV_LABEL, emoji=PREV_EMOJI, style=disnake.ButtonStyle.primary, row=0)
 	async def prev_page(self, button: disnake.ui.Button, inter: disnake.MessageInteraction):
 		await self.try_page(self.page - 1)
 		await inter.response.edit_message(embed=self.embed, view=self)
 
-	@disnake.ui.button(label='Next page', emoji=NEXT_EMOJI, style=disnake.ButtonStyle.primary, row=0)
+	@disnake.ui.button(label=NEXT_LABEL, emoji=NEXT_EMOJI, style=disnake.ButtonStyle.primary, row=0)
 	async def next_page(self, button: disnake.ui.Button, inter: disnake.MessageInteraction):
 		await self.try_page(self.page + 1)
 		await inter.response.edit_message(embed=self.embed, view=self)
 
-	@disnake.ui.button(label='First page', emoji=FIRST_EMOJI, style=disnake.ButtonStyle.secondary, row=1)
+	@disnake.ui.button(label=FIRST_LABEL, emoji=FIRST_EMOJI, style=disnake.ButtonStyle.secondary, row=1)
 	async def first_page(self, button: disnake.ui.Button, inter: disnake.MessageInteraction):
 		await self.try_page(0)
 		await inter.response.edit_message(embed=self.embed, view=self)
 
-	@disnake.ui.button(label='Last page', emoji=LAST_EMOJI, style=disnake.ButtonStyle.secondary, row=1)
+	@disnake.ui.button(label=LAST_LABEL, emoji=LAST_EMOJI, style=disnake.ButtonStyle.secondary, row=1)
 	async def last_page(self, button: disnake.ui.Button, inter: disnake.MessageInteraction):
 		await self.try_page(self.top_page)
 		await inter.response.edit_message(embed=self.embed, view=self)
