@@ -181,13 +181,6 @@ CREATE TABLE IF NOT EXISTS docs_syntax (
 	syntax		TEXT NOT NULL
 );
 
-CREATE TABLE IF NOT EXISTS docs_param (
-	id			SERIAL UNIQUE,
-	docs_id		INT REFERENCES docs_entry (id) NOT NULL,
-	name		TEXT NOT NULL,
-	value		TEXT NOT NULL
-);
-
 CREATE TABLE IF NOT EXISTS role (
 	id			SERIAL UNIQUE,
 	guild_id	BIGINT UNIQUE NOT NULL,

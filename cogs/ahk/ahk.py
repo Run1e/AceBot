@@ -452,7 +452,7 @@ class AutoHotkey(AceMixin, commands.Cog):
 
 		await on_update('Building tables...')
 
-		await self.db.execute('TRUNCATE docs_name, docs_syntax, docs_param, docs_entry RESTART IDENTITY')
+		await self.db.execute('TRUNCATE docs_name, docs_syntax, docs_entry RESTART IDENTITY')
 
 		async for entry in agg:
 			names = entry.pop('names')
