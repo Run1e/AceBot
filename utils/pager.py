@@ -1,6 +1,10 @@
 from math import ceil
 
 import disnake
+from typing import TYPE_CHECKING, Union
+
+if TYPE_CHECKING:
+	from disnake.ext import commands
 
 FIRST_LABEL = 'First page'
 LAST_LABEL = 'Last page'
@@ -18,7 +22,7 @@ GOTO_EMOJI = '\N{WHITE QUESTION MARK ORNAMENT}'
 
 
 class Pager(disnake.ui.View):
-	def __init__(self, ctx, entries=None, per_page=6, timeout=180.0):
+	def __init__(self, ctx: Union[disnake.AppCommandInteraction, 'commands.Context'], entries=None, per_page=6, timeout=180.0):
 		super().__init__(timeout=timeout)
 
 		self.ctx = ctx
@@ -31,7 +35,11 @@ class Pager(disnake.ui.View):
 		self.__buttons = None
 
 	async def go(self, at_page=0):
-		await self.ctx.send(embed=await self.init(at_page=at_page), view=self if self.top_page else None)
+		if isinstance(self.ctx, disnake.Interaction):
+			meth = self.ctx.followup.send if self.ctx.response.is_done() else self.ctx.response.send_message
+		else:
+			meth = self.ctx.send
+		await meth(embed=await self.init(at_page=at_page), view=self if self.top_page else None)
 
 	async def init(self, at_page=0):
 		self.embed = await self.create_base_embed()
