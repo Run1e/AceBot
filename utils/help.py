@@ -114,15 +114,13 @@ class PaginatedHelpCommand(commands.HelpCommand):
 			if cog is not None:
 				await self.add_cog(cog)
 
-		await self.go()
-
-	async def go(self):
-		await self.context.send(embed=await self.pager.init(), view=self.pager if self.pager.top_page else None)
+		await self.pager.go()
 
 	async def send_cog_help(self, cog):
 		if await self.add_cog(cog, force=True):
 			return
-		await self.go()
+
+		await self.pager.go()
 
 	async def send_group_help(self, group):
 		cog_name = group.cog_name
@@ -152,7 +150,7 @@ class PaginatedHelpCommand(commands.HelpCommand):
 			return
 
 		self.pager.add_page(group.cog_name, group.cog.__doc__, commands)
-		await self.go()
+		await self.pager.go()
 
 	async def send_command_help(self, command):
 		cog_name = command.cog_name
@@ -168,7 +166,7 @@ class PaginatedHelpCommand(commands.HelpCommand):
 			return
 
 		self.pager.add_page(cog_name, command.cog.__doc__, [pack])
-		await self.go()
+		await self.pager.go()
 
 	async def stop(self):
 		await self.send_error_message(await self.command_not_found(self.context.kwargs['command']))

@@ -248,7 +248,7 @@ class Moderation(AceMixin, commands.Cog):
 			e.add_field(name=name.title(), value=value, inline=False)
 
 		if hasattr(subject, 'display_avatar'):
-			e.set_thumbnail(url=subject.display_avatar.url)
+			e.set_thumbnail(url=subject.avatar)
 
 		e.set_footer(text=severity.name)
 

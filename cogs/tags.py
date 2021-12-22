@@ -296,7 +296,7 @@ class Tags(AceMixin, commands.Cog):
 		p = TagPager(ctx, tag_list)
 		p.member = member
 
-		await ctx.send(embed=await p.init(), view=p if p.top_page else None)
+		await p.go()
 
 	@tag.command()
 	async def make(self, ctx):

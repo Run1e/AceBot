@@ -21,6 +21,9 @@ class Pager(disnake.ui.View):
 		self.page = 0
 		self.embed = None
 
+	async def go(self, at_page=0):
+		await self.ctx.send(embed=await self.init(at_page=at_page), view=self if self.top_page else None)
+
 	async def init(self, at_page=0):
 		self.embed = await self.create_base_embed()
 		await self.try_page(at_page)

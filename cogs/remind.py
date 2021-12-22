@@ -201,8 +201,7 @@ class Reminders(AceMixin, commands.Cog):
 		if not len(res):
 			raise commands.CommandError('Couldn\'t find any reminders.')
 
-		view = RemindPager(ctx, res, per_page=3)
-		await ctx.send(embed=await view.init(), view=view if view.top_page else None)
+		await RemindPager(ctx, res, per_page=3).go()
 
 	@commands.command(hidden=True)
 	async def delreminder(self, ctx, *, reminder_id: SerialConverter()):
