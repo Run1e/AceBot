@@ -36,6 +36,7 @@ MOD_PERMS = (
 	'administrator',
 	'kick_members',
 	'ban_members',
+	'moderate_members',
 	'manage_guild',
 	'manage_roles',
 	'manage_channels',
@@ -62,13 +63,13 @@ class NoExitArgumentParser(argparse.ArgumentParser):
 
 
 class SecurityAction(IntEnum):
-	MUTE = 1
+	TIMEOUT = 1
 	KICK = 2
 	BAN = 3
 
 
 class SecurityVerb(Enum):
-	MUTE = 'muted'
+	TIMEOUT = 'timed out'
 	KICK = 'kicked'
 	BAN = 'banned'
 
@@ -163,13 +164,13 @@ class SecurityConfigRecord(ConfigTableRecord):
 class EventTimer(DatabaseTimer):
 	async def get_record(self):
 		return await self.bot.db.fetchrow(
-			'SELECT * FROM mod_timer WHERE duration IS NOT NULL AND created_at + duration < $1 '
+			'SELECT * FROM mod_timer WHERE duration IS NOT NULL AND created_at + duration < $1 AND completed = FALSE '
 			'ORDER BY created_at + duration LIMIT 1',
 			datetime.utcnow() + self.MAX_SLEEP
 		)
 
 	async def cleanup_record(self, record):
-		await self.bot.db.execute('DELETE FROM mod_timer WHERE id=$1', record.get('id'))
+		await self.bot.db.execute('UPDATE mod_timer SET completed=TRUE WHERE id=$1', record.get('id'))
 
 	def when(self, record):
 		return record.get('created_at') + record.get('duration')
@@ -179,6 +180,7 @@ class EventTimer(DatabaseTimer):
 class BannedMember(commands.Converter):
 	async def convert(self, ctx, argument):
 		ban_list = await ctx.guild.bans()
+
 		try:
 			member_id = int(argument, base=10)
 			entity = disnake.utils.find(lambda u: u.user.id == member_id, ban_list)
@@ -231,7 +233,7 @@ class Moderation(AceMixin, commands.Cog):
 
 		desc = 'NAME: ' + str(subject)
 		if getattr(subject, 'nick', None) is not None:
-			desc += '\nAKA: ' + subject.nick
+			desc += '\nNICK: ' + subject.nick
 		desc += '\nMENTION: ' + subject.mention
 		desc += '\nID: ' + str(subject.id)
 
@@ -247,8 +249,7 @@ class Moderation(AceMixin, commands.Cog):
 		for name, value in fields.items():
 			e.add_field(name=name.title(), value=value, inline=False)
 
-		if hasattr(subject, 'display_avatar'):
-			e.set_thumbnail(url=subject.avatar)
+		e.set_thumbnail(url=subject.avatar)
 
 		e.set_footer(text=severity.name)
 
@@ -404,7 +405,7 @@ class Moderation(AceMixin, commands.Cog):
 		old_until = old_now + old_duration
 
 		if duration == old_duration:
-			raise commands.CommandError('Now ban duration is the same as the current duration.')
+			raise commands.CommandError('New ban duration is the same as the current duration.')
 
 		old_duration_pretty = pretty_timedelta(old_duration)
 		old_end_pretty = pretty_timedelta(old_until - now)
@@ -436,6 +437,108 @@ class Moderation(AceMixin, commands.Cog):
 			'log', ctx.guild, member.user, action='TEMPBAN UPDATE', severity=Severity.HIGH, message=ctx.message,
 			responsible=po(ctx.author), duration=duration_pretty, reason=f'Old duration was {old_duration_pretty}'
 		)
+
+	async def do_action(self, message, action, reason, delete_message_days=0):
+		'''Called when an event happens.'''
+
+		member: disnake.Member = message.author
+		guild: disnake.Guild = message.guild
+
+		conf = await self.config.get_entry(member.guild.id)
+		ctx = await self.bot.get_context(message, cls=AceContext)
+
+		# ignore if member is mod
+		if await ctx.is_mod():
+			self.bot.dispatch(
+				'log', guild, member, action='IGNORED {0} (MEMBER IS MOD)'.format(action.name), severity=Severity.LOW, message=message,
+				reason=reason,
+			)
+
+			return
+
+		# otherwise, check against security actions and perform punishment
+		try:
+			if action is SecurityAction.TIMEOUT:
+				await member.timeout(until=datetime.utcnow() + timedelta(days=28), reason=reason)
+			elif action is SecurityAction.KICK:
+				await member.kick(reason=reason)
+			elif action is SecurityAction.BAN:
+				await member.ban(delete_message_days=delete_message_days, reason=reason)
+
+		except Exception as exc:
+			# log error if something happened
+			self.bot.dispatch(
+				'log', guild, member, action='{0} FAILED'.format(action.name), severity=Severity.HIGH, message=message,
+				reason=reason, error=str(exc)
+			)
+			return
+
+		# log successful security event
+		self.bot.dispatch(
+			'log', guild, member, action=action.name, severity=Severity(action.value), message=message,
+			reason=reason
+		)
+
+		try:
+			await message.channel.send('{0} {1}: {2}'.format(
+				po(member), SecurityVerb[action.name].value, reason
+			))
+		except disnake.HTTPException:
+			pass
+
+	@commands.Cog.listener()
+	async def on_message(self, message):
+		if message.guild is None:
+			return
+
+		if message.author.bot:
+			return
+
+		mc = await self.config.get_entry(message.guild.id, construct=False)
+
+		if mc is None:
+			return
+
+		if mc.spam_action is not None:
+			# with a lock, figure out if user is spamming
+			async with SPAM_LOCK:
+				res = mc.spam_cooldown.update_rate_limit(message)
+				if res is not None:
+					mc.spam_cooldown._cache[mc.spam_cooldown._bucket_key(message)].reset()
+
+			# if so, perform the spam action
+			if res is not None:
+				await self.do_action(
+					message, SecurityAction[mc.spam_action], reason='Member is spamming'
+				)
+
+		if mc.mention_action is not None and message.mentions:
+			# same here. however run once for each mention
+			async with MENTION_LOCK:
+				for mention in message.mentions:
+					res = mc.mention_cooldown.update_rate_limit(message)
+					if res is not None:
+						mc.mention_cooldown._cache[mc.mention_cooldown._bucket_key(message)].reset()
+						break
+
+			if res is not None:
+				await self.do_action(
+					message, SecurityAction[mc.mention_action], reason='Member is mention spamming'
+				)
+
+		if message.guild.id == AHK_GUILD_ID and False: # TODO: fix before prod
+			async with CONTENT_LOCK:
+				res = mc.content_cooldown.update_rate_limit(message)
+
+				# since we're using the bucket key (guild_id, author_id, message_content)
+				# we can just as well reset the bucket after a ban
+				if res is not None:
+					mc.content_cooldown._cache[mc.content_cooldown._bucket_key(message)].reset()
+
+			if res is not None:
+				await self.do_action(
+					message, SecurityAction.BAN, reason='Member is spamming (with cleanup)', delete_message_days=1
+				)
 
 	@commands.Cog.listener()
 	async def on_event_complete(self, record):
@@ -477,9 +580,9 @@ class Moderation(AceMixin, commands.Cog):
 
 	@commands.Cog.listener()
 	async def on_member_unban(self, guild, user):
-		# remove tempbans if user is manually unbanned
+		# complete tempbans if user is manually unbanned
 		_id = await self.db.fetchval(
-			'DELETE FROM mod_timer WHERE guild_id=$1 AND user_id=$2 AND event=$3 RETURNING id',
+			'UPDATE mod_timer SET completed=TRUE WHERE guild_id=$1 AND user_id=$2 AND event=$3 AND completed=FALSE RETURNING id',
 			guild.id, user.id, 'BAN'
 		)
 
@@ -713,115 +816,6 @@ class Moderation(AceMixin, commands.Cog):
 
 		await ctx.send(content)
 
-	async def do_action(self, message, action, reason, delete_message_days=0):
-		'''Called when an event happens.'''
-
-		member: disnake.Member = message.author
-		guild: disnake.Guild = message.guild
-
-		conf = await self.config.get_entry(member.guild.id)
-		ctx = await self.bot.get_context(message, cls=AceContext)
-
-		# ignore if member is mod
-		if await ctx.is_mod():
-			self.bot.dispatch(
-				'log', guild, member, action='IGNORED {0} (MEMBER IS MOD)'.format(action.name), severity=Severity.LOW, message=message,
-				reason=reason,
-			)
-
-			return
-
-		# otherwise, check against security actions and perform punishment
-		try:
-			if action is SecurityAction.MUTE:
-				mute_role = conf.mute_role
-
-				if mute_role is None:
-					raise ValueError('No mute role set.')
-
-				await member.timeout(duration=timedelta(days=28), reason=reason)
-
-			elif action is SecurityAction.KICK:
-				await member.kick(reason=reason)
-
-			elif action is SecurityAction.BAN:
-				await member.ban(delete_message_days=delete_message_days, reason=reason)
-
-		except Exception as exc:
-			# log error if something happened
-			self.bot.dispatch(
-				'log', guild, member, action='{0} FAILED'.format(action.name), severity=Severity.HIGH, message=message,
-				reason=reason, error=str(exc)
-			)
-			return
-
-		# log successful security event
-		self.bot.dispatch(
-			'log', guild, member, action=action.name, severity=Severity(action.value), message=message,
-			reason=reason
-		)
-
-		try:
-			await message.channel.send('{0} {1}: {2}'.format(
-				po(member), SecurityVerb[action.name].value, reason
-			))
-		except disnake.HTTPException:
-			pass
-
-	@commands.Cog.listener()
-	async def on_message(self, message):
-		if message.guild is None:
-			return
-
-		if message.author.bot:
-			return
-
-		mc = await self.config.get_entry(message.guild.id, construct=False)
-
-		if mc is None:
-			return
-
-		if mc.spam_action is not None:
-			# with a lock, figure out if user is spamming
-			async with SPAM_LOCK:
-				res = mc.spam_cooldown.update_rate_limit(message)
-				if res is not None:
-					mc.spam_cooldown._cache[mc.spam_cooldown._bucket_key(message)].reset()
-
-			# if so, perform the spam action
-			if res is not None:
-				await self.do_action(
-					message, SecurityAction[mc.spam_action], reason='Member is spamming'
-				)
-
-		if mc.mention_action is not None and message.mentions:
-			# same here. however run once for each mention
-			async with MENTION_LOCK:
-				for mention in message.mentions:
-					res = mc.mention_cooldown.update_rate_limit(message)
-					if res is not None:
-						mc.mention_cooldown._cache[mc.mention_cooldown._bucket_key(message)].reset()
-						break
-
-			if res is not None:
-				await self.do_action(
-					message, SecurityAction[mc.mention_action], reason='Member is mention spamming'
-				)
-
-		if message.guild.id == AHK_GUILD_ID:
-			async with CONTENT_LOCK:
-				res = mc.content_cooldown.update_rate_limit(message)
-
-				# since we're using the bucket key (guild_id, author_id, message_content)
-				# we can just as well reset the bucket after a ban
-				if res is not None:
-					mc.content_cooldown._cache[mc.content_cooldown._bucket_key(message)].reset()
-
-			if res is not None:
-				await self.do_action(
-					message, SecurityAction.BAN, reason='Member is spamming (with cleanup)', delete_message_days=1
-				)
-
 	def _craft_string(self, ctx, type, conf, now=False):
 		'''This particular thing is a fucking mess but I'm over it'''
 
@@ -841,9 +835,7 @@ class Moderation(AceMixin, commands.Cog):
 
 		perms = ctx.perms
 
-		if action == 'MUTE' and conf.mute_role_id is None:
-			data += '\n\nNOTE: You do not have a mute role set up. Use `muterole <role>`!'
-		elif action == 'BAN' and not perms.ban_members:
+		if action == 'BAN' and not perms.ban_members:
 			data += '\n\nNOTE: I do not have Ban Members permissions!'
 		elif action == 'KICK' and not perms.kick_members:
 			data += '\n\nNOTE: I do not have Kick Members permissions!'
@@ -865,7 +857,7 @@ class Moderation(AceMixin, commands.Cog):
 	@spam.command(name='action')
 	@is_mod()
 	async def antispam_action(self, ctx, *, action: ActionConverter = None):
-		'''Set action taken towards spamming members. Valid actions are `MUTE`, `KICK`, and `BAN`. Leave argument blank to disable anti-spam.'''
+		'''Set action taken towards spamming members. Valid actions are `TIMEOUT`, `KICK`, and `BAN`. Leave argument blank to disable anti-spam.'''
 
 		conf = await self.config.get_entry(ctx.guild.id)
 		await conf.update(spam_action=None if action is None else action.name)
@@ -900,7 +892,7 @@ class Moderation(AceMixin, commands.Cog):
 	@mention.command(name='action')
 	@is_mod()
 	async def mention_action(self, ctx, *, action: ActionConverter = None):
-		'''Action taken towards mention-spamming members. Valid actions are `MUTE`, `KICK`, and `BAN`. Leave argument blank to disable anti-mention.'''
+		'''Action taken towards mention-spamming members. Valid actions are `TIMEOUT`, `KICK`, and `BAN`. Leave argument blank to disable anti-mention.'''
 
 		conf = await self.config.get_entry(ctx.guild.id)
 		await conf.update(mention_action=None if action is None else action.name)

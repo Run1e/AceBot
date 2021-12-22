@@ -1,11 +1,15 @@
+-- ALTER TYPE mod_event_type RENAME VALUE 'MUTE' TO 'TIMEOUT';
+-- ALTER TYPE security_action RENAME VALUE 'MUTE' TO 'TIMEOUT';
+-- ALTER TABLE mod_timer ADD COLUMN completed boolean default false;
+
 DO $$
 BEGIN
     IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'mod_event_type') THEN
-		CREATE TYPE mod_event_type AS ENUM ('BAN', 'MUTE');
+		CREATE TYPE mod_event_type AS ENUM ('BAN', 'TIMEOUT');
     END IF;
 
 	IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'security_action') THEN
-		CREATE TYPE security_action AS ENUM ('MUTE', 'KICK', 'BAN');
+		CREATE TYPE security_action AS ENUM ('TIMEOUT', 'KICK', 'BAN');
     END IF;
 END$$;
 
@@ -52,6 +56,8 @@ CREATE TABLE IF NOT EXISTS mod_timer (
 
 	reason		TEXT NULL,
 	userdata	JSON NULL,
+
+	completed BOOLEAN DEFAULT FALSE,
 
 	UNIQUE (guild_id, user_id, event)
 );
