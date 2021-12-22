@@ -134,18 +134,6 @@ class SecurityConfigRecord(ConfigTableRecord):
 		return self._config.bot.get_guild(self.guild_id)
 
 	@property
-	def mute_role(self):
-		if self.mute_role_id is None:
-			return None
-
-		guild = self._config.bot.get_guild(self.guild_id)
-
-		if guild is None:
-			return None
-
-		return guild.get_role(self.mute_role_id)
-
-	@property
 	def log_channel(self):
 		if self.log_channel_id is None:
 			return None
@@ -217,15 +205,6 @@ class ActionConverter(commands.Converter):
 			)
 
 		return value
-
-
-async def can_mute_pred(ctx):
-	# members can mute if they are mod or have the manage_roles perm
-	return await ctx.is_mod() or ctx.channel.permissions_for(ctx.author).manage_roles
-
-
-def can_mute():
-	return commands.check(can_mute_pred)
 
 
 reason_converter = MaxLengthConverter(1024)
@@ -306,7 +285,7 @@ class Moderation(AceMixin, commands.Cog):
 	@commands.has_permissions(ban_members=True)
 	@commands.bot_has_permissions(ban_members=True)
 	async def unban(self, ctx, member: BannedMember, *, reason: reason_converter = None):
-		'''Unban a member. Either provide an ID or the users name and discriminator like `runie#0001`.'''
+		'''Unban a member. Requires Ban Members perms.'''
 
 		if member.reason is None:
 			prompt = 'No reason provided with the previous ban.'
@@ -326,134 +305,11 @@ class Moderation(AceMixin, commands.Cog):
 		await ctx.send('{0} unbanned.'.format(str(member.user)))
 
 	@commands.command()
-	@can_mute()
-	@commands.bot_has_permissions(manage_roles=True)
-	async def mute(self, ctx, member: disnake.Member, *, reason: reason_converter = None):
-		'''Mute a member. Requires Manage Roles perms.'''
-
-		# TODO: should also handle people with manage roles perms
-		if await ctx.is_mod(member):
-			raise commands.CommandError('Can\'t mute this member.')
-
-		conf = await self.config.get_entry(ctx.guild.id)
-		mute_role = conf.mute_role
-
-		if mute_role is None:
-			raise commands.CommandError('Mute role not set or not found.')
-
-		if mute_role in member.roles:
-			raise commands.CommandError('Member already muted.')
-
-		try:
-			await member.add_roles(mute_role, reason=reason)
-		except disnake.HTTPException:
-			raise commands.CommandError('Mute failed.')
-
-		try:
-			await ctx.send('{0} muted.'.format(str(member)))
-		except disnake.HTTPException:
-			pass
-
-		self.bot.dispatch(
-			'log', ctx.guild, member, action='MUTE', severity=Severity.LOW, message=ctx.message,
-			responsible=po(ctx.author), reason=reason
-		)
-
-	@commands.command()
-	@can_mute()
-	@commands.bot_has_permissions(manage_roles=True)
-	async def unmute(self, ctx, *, member: disnake.Member):
-		'''Unmute a member. Requires Manage Roles perms.'''
-
-		if await ctx.is_mod(member):
-			raise commands.CommandError('Can\'t unmute this member.')
-
-		conf = await self.config.get_entry(ctx.guild.id)
-		mute_role = conf.mute_role
-
-		if mute_role is None:
-			raise commands.CommandError('Mute role not set or not found.')
-
-		if mute_role not in member.roles:
-			raise commands.CommandError('Member not previously muted.')
-
-		pretty_author = po(ctx.author)
-
-		try:
-			await member.remove_roles(mute_role, reason='Unmuted by {0}'.format(pretty_author))
-		except disnake.HTTPException:
-			raise commands.CommandError('Failed removing mute role.')
-
-		try:
-			await ctx.send('{0} unmuted.'.format(str(member)))
-		except disnake.HTTPException:
-			pass
-
-		self.bot.dispatch(
-			'log', ctx.guild, member, action='UNMUTE', severity=Severity.RESOLVED, message=ctx.message,
-			responsible=pretty_author
-		)
-
-	@commands.command()
-	@can_mute()
-	@commands.bot_has_permissions(manage_roles=True, embed_links=True)
-	async def tempmute(self, ctx, member: disnake.Member, amount: TimeMultConverter, unit: TimeDeltaConverter, *, reason: reason_converter = None):
-		'''Temporarily mute a member. Requires Manage Role perms. Example: `tempmute @member 1 day Reason goes here.`'''
-
-		now = datetime.utcnow()
-		duration = amount * unit
-		until = now + duration
-
-		if await ctx.is_mod(member):
-			raise commands.CommandError('Can\'t mute this member.')
-
-		if duration > MAX_DELTA:
-			raise commands.CommandError('Can\'t tempmute for longer than {0}. Use `mute` instead.'.format(
-				pretty_timedelta(MAX_DELTA))
-			)
-
-		conf = await self.config.get_entry(ctx.guild.id)
-		mute_role = conf.mute_role
-
-		if mute_role is None:
-			raise commands.CommandError('Mute role not set or not found.')
-
-		async with self.db.acquire() as con:
-			async with con.transaction():
-				try:
-					await con.execute(
-						'INSERT INTO mod_timer (guild_id, user_id, mod_id, event, created_at, duration, reason, userdata) '
-						'VALUES ($1, $2, $3, $4, $5, $6, $7, $8)',
-						ctx.guild.id, member.id, ctx.author.id, 'MUTE', now, duration, reason, self._craft_user_data(member)
-					)
-				except UniqueViolationError:
-					raise commands.CommandError('Member is already muted.')
-
-				try:
-					await member.add_roles(mute_role)
-				except disnake.HTTPException:
-					raise commands.CommandError('Failed adding mute role.')
-
-		self.event_timer.maybe_restart(until)
-
-		pretty_duration = pretty_timedelta(duration)
-
-		try:
-			await ctx.send('{0} tempmuted for {1}.'.format(str(member), pretty_duration))
-		except disnake.HTTPException:
-			pass
-
-		self.bot.dispatch(
-			'log', ctx.guild, member, action='TEMPMUTE', severity=Severity.LOW, message=ctx.message,
-			responsible=po(ctx.author), duration=pretty_duration, reason=reason
-		)
-
-	@commands.command()
 	@commands.has_permissions(ban_members=True)
 	@commands.bot_has_permissions(ban_members=True, embed_links=True)
 	async def tempban(self, ctx, member: Union[disnake.Member, BannedMember], amount: TimeMultConverter, unit: TimeDeltaConverter, *,
 		reason: reason_converter = None):
-		'''Temporarily ban a member. Requires Ban Members perms. Same formatting as `tempmute` explained above.'''
+		'''Temporarily ban a member. Requires Ban Members perms.'''
 
 		now = datetime.utcnow()
 		duration = amount * unit
@@ -466,7 +322,7 @@ class Moderation(AceMixin, commands.Cog):
 				raise commands.CommandError('Can\'t tempban this member.')
 		else:
 			user: disnake.User = member.user
-			member = FakeUser(user.id, ctx.guild, name=user.name, avatar_url=user.avatar_url, discriminator=user.discriminator)
+			member = FakeUser(user.id, ctx.guild, name=user.name, avatar_url=str(user.avatar), discriminator=user.discriminator)
 
 		is_tempbanned = await self.bot.db.fetchval(
 			'SELECT id FROM mod_timer WHERE guild_id=$1 AND user_id=$2 AND event=$3',
@@ -589,44 +445,8 @@ class Moderation(AceMixin, commands.Cog):
 
 		event = record.get('event')
 
-		if event == 'MUTE':
-			await self.mute_complete(record)
-		elif event == 'BAN':
+		if event == 'BAN':
 			await self.ban_complete(record)
-
-	async def mute_complete(self, record):
-		conf = await self.config.get_entry(record.get('guild_id'))
-		mute_role = conf.mute_role
-
-		if mute_role is None:
-			return
-
-		guild_id = record.get('guild_id')
-		user_id = record.get('user_id')
-		mod_id = record.get('mod_id')
-		duration = record.get('duration')
-		reason = record.get('reason')
-
-		guild = self.bot.get_guild(guild_id)
-		if guild is None:
-			return
-
-		member = guild.get_member(user_id)
-		if member is None:
-			return
-
-		mod = guild.get_member(mod_id)
-		pretty_mod = '(ID: {0})'.format(str(mod_id)) if mod is None else po(mod)
-
-		try:
-			await member.remove_roles(mute_role, reason='Completed tempmute issued by {0}'.format(pretty_mod))
-		except disnake.HTTPException:
-			return
-
-		self.bot.dispatch(
-			'log', guild, member, action='TEMPMUTE COMPLETED', severity=Severity.RESOLVED,
-			responsible=pretty_mod, duration=pretty_timedelta(duration), reason=reason
-		)
 
 	async def ban_complete(self, record):
 		guild_id = record.get('guild_id')
@@ -655,25 +475,6 @@ class Moderation(AceMixin, commands.Cog):
 			responsible=pretty_mod, duration=pretty_timedelta(duration), reason=reason
 		)
 
-	@commands.command(enabled=False)
-	@commands.has_permissions(ban_members=True)
-	@commands.bot_has_permissions(ban_members=True, embed_links=True)
-	async def tempbans(self, ctx):
-		'''See all current tempbans.'''
-
-		bans = await self.db.fetch('SELECT * FROM mod_timer WHERE guild_id=$1 AND event=$2', ctx.guild.id, 'BAN')
-
-		p = TempbanPager(ctx, bans[::-1], per_page=6)
-		await p.go()
-
-	@commands.command(enabled=False)
-	@commands.has_permissions(ban_members=True)
-	@commands.bot_has_permissions(ban_members=True, embed_links=True)
-	async def abortban(self, ctx, *, member: BannedMember):
-		'''Abort a tempban'''
-
-	# todo
-
 	@commands.Cog.listener()
 	async def on_member_unban(self, guild, user):
 		# remove tempbans if user is manually unbanned
@@ -690,74 +491,6 @@ class Moderation(AceMixin, commands.Cog):
 				'log', guild, user, action='TEMPBAN CANCELLED', severity=Severity.RESOLVED,
 				reason='Tempbanned member manually unbanned.'
 			)
-
-	@commands.Cog.listener()
-	async def on_member_update(self, before: disnake.Member, after: disnake.Member):
-		'''Syncs a manual mute with the database'''
-
-		if before.roles == after.roles:
-			return
-
-		conf = await self.config.get_entry(before.guild.id)
-		mute_role_id = conf.mute_role_id
-
-		if mute_role_id is None:
-			return
-
-		# neat
-		before_has = before._roles.has(mute_role_id)
-		after_has = after._roles.has(mute_role_id)
-
-		if before_has == after_has:
-			return
-
-		if before_has:
-			# mute role removed
-			_id = await self.db.fetchval(
-				'DELETE FROM mod_timer WHERE guild_id=$1 AND user_id=$2 AND event=$3 RETURNING id',
-				after.guild.id, after.id, 'MUTE'
-			)
-
-			self.event_timer.restart_if(lambda r: r.get('id') == _id)
-
-		elif after_has:  # not strictly necessary but more explicit
-			# mute role added
-			try:
-				await self.db.execute(
-					'INSERT INTO mod_timer (guild_id, user_id, event, created_at, userdata) '
-					'VALUES ($1, $2, $3, $4, $5)',
-					after.guild.id, after.id, 'MUTE', datetime.utcnow(), self._craft_user_data(after)
-				)
-			except UniqueViolationError:
-				pass
-
-	@commands.Cog.listener()
-	async def on_member_join(self, member):
-		'''Check members at join for mute evasion'''
-
-		conf = await self.config.get_entry(member.guild.id)
-		mute_role_id = conf.mute_role_id
-
-		if mute_role_id is None:
-			return
-
-		# check if member was previously muted
-		_id = await self.db.fetchval(
-			'SELECT id FROM mod_timer WHERE guild_id=$1 AND user_id=$2 AND event=$3',
-			member.guild.id, member.id, 'MUTE'
-		)
-
-		if _id is None:
-			return
-
-		mute_role = conf.mute_role
-		if mute_role is None:
-			return
-
-		reason = 'Re-muting newly joined member who was previously muted'
-
-		await member.add_roles(mute_role, reason=reason)
-		self.bot.dispatch('log', member.guild, member, action='MUTE', severity=Severity.LOW, reason=reason)
 
 	@commands.command()
 	@commands.has_permissions(manage_messages=True)
@@ -929,20 +662,6 @@ class Moderation(AceMixin, commands.Cog):
 		await ctx.send('{0} messages deleted.'.format(deleted_count), delete_after=10)
 
 	@commands.command()
-	@commands.has_permissions(administrator=True)
-	async def muterole(self, ctx, *, role: disnake.Role = None):
-		'''Set the mute role. Only modifiable by server administrators. Leave argument empty to clear.'''
-
-		conf = await self.config.get_entry(ctx.guild.id)
-
-		if role is None:
-			await conf.update(mute_role_id=None)
-			await ctx.send('Mute role cleared.')
-		else:
-			await conf.update(mute_role_id=role.id)
-			await ctx.send('Mute role has been set to {0}'.format(po(role)))
-
-	@commands.command()
 	@is_mod()
 	async def logchannel(self, ctx, *, channel: disnake.TextChannel = None):
 		'''Set a channel for the bot to log moderation-related messages.'''
@@ -997,8 +716,8 @@ class Moderation(AceMixin, commands.Cog):
 	async def do_action(self, message, action, reason, delete_message_days=0):
 		'''Called when an event happens.'''
 
-		member = message.author
-		guild = message.guild
+		member: disnake.Member = message.author
+		guild: disnake.Guild = message.guild
 
 		conf = await self.config.get_entry(member.guild.id)
 		ctx = await self.bot.get_context(message, cls=AceContext)
@@ -1020,7 +739,7 @@ class Moderation(AceMixin, commands.Cog):
 				if mute_role is None:
 					raise ValueError('No mute role set.')
 
-				await member.add_roles(mute_role, reason=reason)
+				await member.timeout(duration=timedelta(days=28), reason=reason)
 
 			elif action is SecurityAction.KICK:
 				await member.kick(reason=reason)

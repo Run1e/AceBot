@@ -35,9 +35,6 @@ QUACK_URL = 'https://random-d.uk/api/v1/random'
 
 FLOOF_URL = 'https://randomfox.ca/floof/'
 
-COMPLIMENT_URL = 'https://complimentr.com/api'
-COMPLIMENT_EMOJIS = ('heart', 'kissing_heart', 'heart_eyes', 'two_hearts', 'sparkling_heart', 'gift_heart')
-
 NUMBER_URL = 'http://numbersapi.com/{number}?notfound=floor'
 
 BILL_WURTZ_URL = 'https://billwurtz.com/'

@@ -36,15 +36,8 @@ class FakeUser(Object):
 		return self._data.get('discriminator', '????')
 
 	@property
-	def avatar_url(self):
-		return self._data.get('avatar_url', 'https://cdn.discordapp.com/embed/avatars/0.png')
-
-	@property
 	def avatar(self):
-
-		@property
-		def url(self):
-			return self._data.get('avatar.url', 'https://cdn.discordapp.com/embed/avatars/0.png')
+		return self._data.get('avatar_url', 'https://cdn.discordapp.com/embed/avatars/0.png')
 
 	def __str__(self):
 		name = self.name
