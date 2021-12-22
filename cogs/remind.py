@@ -139,10 +139,10 @@ class Reminders(AceMixin, commands.Cog):
 		desc = message or DEFAULT_REMINDER_MESSAGE
 
 		if message_id is not None:
-			jump_url = 'https://disnake.com/channels/{0}/{1}/{2}'.format(guild_id, channel_id, message_id)
+			jump_url = 'https://discord.com/channels/{0}/{1}/{2}'.format(guild_id, channel_id, message_id)
 			desc += f'\n\n[Click for context!]({jump_url})'
 
-		e = disnake.Embed(title='Reminder', description=desc, timestamp=made_on)
+		e = disnake.Embed(title='Reminder!', description=desc, timestamp=made_on)
 
 		e.set_footer(text=f'#{channel.name}')
 

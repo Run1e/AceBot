@@ -177,7 +177,11 @@ class Meta(AceMixin, commands.Cog):
 			await self._about_command(ctx, cmd)
 
 	async def _about_bot(self, ctx):
-		e = disnake.Embed(title='Official bot invite link here!', description=self.get_last_commits(), url=self.bot.invite_link)
+		e = disnake.Embed(
+			title='Click here to add the bot to your own server!',
+			description=f'{self.get_last_commits()}\n\n[Support server here!]({self.bot.support_link})',
+			url=self.bot.invite_link
+		)
 
 		owner = self.bot.get_user(self.bot.owner_id)
 		e.set_author(name=str(owner), icon_url=owner.display_avatar.url)

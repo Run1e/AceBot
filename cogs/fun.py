@@ -91,10 +91,10 @@ class Fun(AceMixin, commands.Cog):
 			value=guild.owner.mention
 		)
 
-		e.add_field(
-			name='Region',
-			value=str(guild.region)
-		)
+		# e.add_field(
+		# 	name='Region',
+		# 	value=str(guild.region)
+		# )
 
 		# CHANNELS
 
@@ -409,7 +409,7 @@ class Fun(AceMixin, commands.Cog):
 			description=selected
 		)
 
-		e.set_author(name=choice(choose_prompts) + ':', icon_url=self.bot.user.display_avatar.url)
+		e.set_author(name=choice(choose_prompts), icon_url=self.bot.user.display_avatar.url)
 
 		msg = await ctx.send(':thinking:')
 

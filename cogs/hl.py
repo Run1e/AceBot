@@ -118,7 +118,7 @@ class Highlighter(AceMixin, commands.Cog):
 
 			e.add_field(
 				name='Server setting',
-				value=f'`{DEFAULT_LANG if server_lang is None else server_lang}`'
+				value=f'`{DEFAULT_LANG + " (default)" if server_lang is None else server_lang}`'
 			)
 
 			e.add_field(
