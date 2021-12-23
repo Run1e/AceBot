@@ -69,7 +69,7 @@ class AceBot(commands.Bot):
 		self.ready = asyncio.Event()
 		self.startup_time = datetime.utcnow()
 
-		self.log = logging.getLogger('acebot') 
+		self.log = logging.getLogger('acebot')
 
 		aiohttp_log = logging.getLogger('aiotrace')
 
@@ -103,7 +103,6 @@ class AceBot(commands.Bot):
 
 	async def on_ready(self):
 		if not self.ready.is_set():
-			self.load_extensions()
 			await self.change_presence(activity=BOT_ACTIVITY, status=disnake.Status.online)
 
 			self.ready.set()
@@ -116,11 +115,16 @@ class AceBot(commands.Bot):
 
 		# don't process commands before bot is ready
 		if not self.ready.is_set():
-			await self.ready.wait()
+			# rather than wait for the bot to be ready, we return to avoid users
+			# who send their commands multiple times from being processed.
+			return
 
 		await self.process_commands(message)
 
 	async def process_commands(self, message: disnake.Message):
+		if message.author.bot:
+			return
+
 		ctx: AceContext = await self.get_context(message, cls=AceContext)
 
 		# if messages starts with a bot mention...
@@ -159,11 +163,13 @@ class AceBot(commands.Bot):
 
 				if mtime > self.modified_times.get(name, 0):
 					if name in self.extensions.keys():
-						self.unload_extension(name)
+						meth = self.reload_extension
+					else:
+						meth = self.load_extension
 
 					self.log.debug('Loading %s', name)
 
-					self.load_extension(name)
+					meth(name)
 					self.modified_times[name] = mtime
 
 					reloaded.append(name)
@@ -181,6 +187,8 @@ class AceBot(commands.Bot):
 	async def login(self, token: str) -> None:
 		self.log.info('Creating postgres pool')
 		self.db = await asyncpg.create_pool(DB_BIND)
+		self.log.info('Loading extensions')
+		self.load_extensions()
 		self.log.info('Logging in to discord')
 		return await super().login(token)
 

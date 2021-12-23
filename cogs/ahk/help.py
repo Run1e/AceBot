@@ -124,6 +124,14 @@ class AutoHotkeyHelpSystem(AceMixin, commands.Cog):
 			if pivot < on_age:
 				await self.close_channel(channel)
 
+	@channel_reclaimer.before_loop
+	async def _wait_until_ready(self):
+		await self.bot.wait_until_ready()
+
+	def cog_unload(self) -> None:
+		self.channel_reclaimer.cancel()
+		return super().cog_unload()
+
 	@commands.command(hidden=True)
 	@is_mod()
 	async def open(self, ctx, channel: disnake.TextChannel):

@@ -84,11 +84,14 @@ class Starboard(AceMixin, commands.Cog):
 		'''
 
 		self.purger.start()
+	
+	def cog_unload(self) -> None:
+		self.purger.cancel()
 
 	@tasks.loop(minutes=20)
 	async def purger(self):
 		'''Purges old and underperforming stars depending on guild starboard settings.'''
-
+		await self.bot.wait_until_ready()
 		boards = await self.db.fetch(
 			'SELECT guild_id, channel_id, threshold FROM starboard WHERE locked IS FALSE AND threshold IS NOT NULL'
 		)
