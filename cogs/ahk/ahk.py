@@ -333,6 +333,7 @@ class AutoHotkey(AceMixin, commands.Cog):
 	@commands.bot_has_permissions(embed_links=True)
 	async def cmd_docs(self, ctx: commands.Context, *, query: str = None):
 		'''Search the AutoHotkey documentation. Enter multiple queries by separating with commas.'''
+
 		if query is None:
 			await ctx.send(DOCS_FORMAT.format(''))
 			return
@@ -344,13 +345,16 @@ class AutoHotkey(AceMixin, commands.Cog):
 
 		embeds = []
 		for subquery in spl.keys():
-			result = await self.get_docs(subquery, count=1, entry=True, syntax=True)
+			name = self.search_docs(subquery, k=1)[0]
+			result = await self.get_doc(self._docs_id[name], entry=True, syntax=True)
+
 			if not result:
 				if len(spl.keys()) == 1:
 					raise DOCS_NO_MATCH
 				else:
 					continue
-			embeds.append(self.craft_docs_page(result[0]))
+
+			embeds.append(self.craft_docs_page(result, force_name=name))
 
 		await ctx.send(embeds=embeds)
 
