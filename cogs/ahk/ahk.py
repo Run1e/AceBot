@@ -60,8 +60,6 @@ class AutoHotkey(AceMixin, commands.Cog):
 	def __init__(self, bot):
 		super().__init__(bot)
 
-		self._docs_cache = {}
-
 		self.h2m = HTML2Markdown(
 			escaper=disnake.utils.escape_markdown,
 			big_box=True, lang='autoit',
@@ -472,6 +470,7 @@ class AutoHotkey(AceMixin, commands.Cog):
 			if syntax is not None:
 				await self.db.execute('INSERT INTO docs_syntax (docs_id, syntax) VALUES ($1, $2)', docs_id, syntax)
 
+		await self._build_docs_cache()
 		await on_update('Done!')
 
 	@commands.command()
