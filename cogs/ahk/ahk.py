@@ -1,12 +1,12 @@
+import asyncio
 import html
 import io
 import logging
 import re
 from asyncio import TimeoutError
 from base64 import b64encode
-from collections import OrderedDict
 from datetime import datetime, timedelta, timezone
-from typing import Optional,Union
+from typing import Optional
 
 import disnake
 from aiohttp import ClientTimeout
@@ -57,6 +57,8 @@ class AutoHotkey(AceMixin, commands.Cog):
 	def __init__(self, bot):
 		super().__init__(bot)
 
+		self._docs_cache = list()
+
 		self.h2m = HTML2Markdown(
 			escaper=disnake.utils.escape_markdown,
 			big_box=True, lang='autoit',
@@ -73,12 +75,18 @@ class AutoHotkey(AceMixin, commands.Cog):
 
 		self.rss.start()
 
+		asyncio.create_task(self._build_docs_cache())
+
 	def cog_unload(self):
 		self.rss.cancel()
 
 	def parse_date(self, date_str):
 		date_str = date_str.strip()
 		return datetime.strptime(date_str[:-3] + date_str[-2:], "%Y-%m-%dT%H:%M:%S%z")
+
+	async def _build_docs_cache(self):
+		records = await self.db.fetch('SELECT name FROM docs_name')
+		self._docs_cache = [record.get('name') for record in records]
 
 	@tasks.loop(minutes=14)
 	async def rss(self):
@@ -385,7 +393,7 @@ class AutoHotkey(AceMixin, commands.Cog):
 
 	@commands.command(aliases=['d', 'doc', 'rtfm'])
 	@commands.bot_has_permissions(embed_links=True)
-	async def cmd_docs(self, ctx: commands.Context, *, query:str = None):
+	async def cmd_docs(self, ctx: commands.Context, *, query: str = None):
 		'''Search the AutoHotkey documentation. Enter multiple queries by separating with commas.'''
 		if query is None:
 			await ctx.send(DOCS_FORMAT.format(''))
@@ -430,13 +438,13 @@ class AutoHotkey(AceMixin, commands.Cog):
 		await inter.response.send_message(embed=self.craft_docs_page(result[0]))
 
 	@slash_docs_search.autocomplete('query')
-	async def docs_autocomplete(self, inter: disnake.AppCommandInter, query:str):
-		res= await self.get_docs(query,count=25,entry=True)
+	async def docs_autocomplete(self, inter: disnake.AppCommandInter, query: str):
+		res = await self.get_docs(query, count=25, entry=True)
 		# this mess is because we want to persist order, remove duplicates,
 		# and keep titles to less than 100 characters
-		return list(dict.fromkeys([r.get('title')[:100] for r in res],None).keys())
+		return list(dict.fromkeys([r.get('title')[:100] for r in res], None).keys())
 
-	async def get_docslist(self, query:str) -> Optional[disnake.Embed]:
+	async def get_docslist(self, query: str) -> Optional[disnake.Embed]:
 		results = await self.get_docs(query, count=10, entry=True)
 
 		if not results:
@@ -452,10 +460,9 @@ class AutoHotkey(AceMixin, commands.Cog):
 			color=AHK_COLOR
 		)
 
-
 	@commands.command(aliases=['dl'])
 	@commands.bot_has_permissions(embed_links=True)
-	async def cmd_docslist(self, ctx, *, query:str):
+	async def cmd_docslist(self, ctx, *, query: str):
 		'''Find all approximate matches in the AutoHotkey documentation.'''
 
 		embed = await self.get_docslist(query)
@@ -464,16 +471,14 @@ class AutoHotkey(AceMixin, commands.Cog):
 		else:
 			raise DOCS_NO_MATCH
 
-
 	@slash_docs.sub_command(name='list')
-	async def slash_docs_list(self,inter:disnake.AppCmdInter, query:str):
+	async def slash_docs_list(self, inter: disnake.AppCmdInter, query: str):
 		'''List several results for a query.'''
 		embed = await self.get_docslist(query)
 		if embed:
 			await inter.response.send_message(embed=embed)
 		else:
 			raise DOCS_NO_MATCH
-
 
 	@commands.command(hidden=True)
 	@commands.is_owner()
