@@ -1,11 +1,12 @@
+import asyncio
 import html
 import io
 import logging
 import re
 from asyncio import TimeoutError
 from base64 import b64encode
-from collections import OrderedDict
 from datetime import datetime, timedelta, timezone
+from random import choices
 
 import disnake
 from aiohttp import ClientTimeout
@@ -19,6 +20,7 @@ from config import CLOUDAHK_PASS, CLOUDAHK_URL, CLOUDAHK_USER
 from ids import *
 from utils.docs_parser import parse_docs
 from utils.html2markdown import HTML2Markdown
+from utils.string import shorten
 
 log = logging.getLogger(__name__)
 
@@ -35,6 +37,8 @@ DOWNVOTE_EMOJI = '\N{Thumbs Down Sign}'
 INACTIVITY_LIMIT = timedelta(weeks=4)
 
 DISCORD_UPLOAD_LIMIT = 8000000  # 8 MB
+
+SEARCH_COUNT = 8
 
 
 class RunnableCodeConverter(commands.Converter):
@@ -56,6 +60,8 @@ class AutoHotkey(AceMixin, commands.Cog):
 	def __init__(self, bot):
 		super().__init__(bot)
 
+		self._docs_cache = {}
+
 		self.h2m = HTML2Markdown(
 			escaper=disnake.utils.escape_markdown,
 			big_box=True, lang='autoit',
@@ -71,6 +77,8 @@ class AutoHotkey(AceMixin, commands.Cog):
 		self.rss_time = datetime.now(tz=timezone(timedelta(hours=1))) - timedelta(minutes=1)
 
 		self.rss.start()
+
+		asyncio.create_task(self._build_docs_cache())
 
 	def cog_unload(self):
 		self.rss.cancel()
@@ -250,65 +258,6 @@ class AutoHotkey(AceMixin, commands.Cog):
 
 					return
 
-	def craft_docs_page(self, record):
-		page = record.get('page')
-
-		e = disnake.Embed(
-			title=record.get('name'),
-			description=record.get('content') or 'No description for this page.',
-			color=AHK_COLOR,
-			url=None if page is None else DOCS_FORMAT.format(record.get('link'))
-		)
-
-		# e.set_footer(text='autohotkey.com', icon_url='https://www.autohotkey.com/favicon.ico')
-
-		syntax = record.get('syntax')
-		if syntax is not None:
-			e.description += '\n```autoit\n{}```'.format(syntax)
-
-		return e
-
-	async def get_docs(self, query, count=1, entry=False, syntax=False):
-		query = query.lower()
-
-		results = list()
-		already_added = set()
-
-		sql = 'SELECT * FROM docs_name '
-
-		if entry:
-			sql += 'INNER JOIN docs_entry ON docs_name.docs_id = docs_entry.id '
-
-		if syntax:
-			sql += 'LEFT OUTER JOIN docs_syntax ON docs_name.docs_id = docs_syntax.docs_id '
-
-		sql += 'ORDER BY word_similarity(name, $1) DESC, LOWER(name)=$1 DESC LIMIT $2'
-
-		# get 8 closes matches according to trigram matching
-		matches = await self.db.fetch(sql, query, max(count, 8))
-
-		if not matches:
-			return results
-
-		# further fuzzy search it using fuzzywuzzy ratio matching
-		fuzzed = process.extract(
-			query=query,
-			choices=[tup.get('name') for tup in matches],
-			scorer=fuzz.ratio,
-			limit=count
-		)
-
-		if not fuzzed:
-			return results
-
-		for res in fuzzed:
-			for match in matches:
-				if res[0] == match.get('name') and match.get('id') not in already_added:
-					results.append(match)
-					already_added.add(match.get('id'))
-
-		return results
-
 	async def cloudahk_call(self, ctx, code, lang='ahk'):
 		'''Call to CloudAHK to run "code" written in "lang". Replies to invoking user with stdout/runtime of code. '''
 
@@ -384,57 +333,99 @@ class AutoHotkey(AceMixin, commands.Cog):
 
 	@commands.command(aliases=['d', 'doc', 'rtfm'])
 	@commands.bot_has_permissions(embed_links=True)
-	async def docs(self, ctx, *, query=None):
+	async def cmd_docs(self, ctx: commands.Context, *, query: str = None):
 		'''Search the AutoHotkey documentation. Enter multiple queries by separating with commas.'''
-
 		if query is None:
 			await ctx.send(DOCS_FORMAT.format(''))
 			return
 
-		spl = OrderedDict.fromkeys(sq.strip() for sq in query.lower().split(','))
+		spl = dict.fromkeys(sq.strip() for sq in query.lower().split(','))
 
 		if len(spl) > 3:
 			raise commands.CommandError('Maximum three different queries.')
 
-		if len(spl) > 1:
-			for subquery in spl.keys():
-				try:
-					await ctx.invoke(self.docs, query=subquery)
-				except commands.CommandError:
-					pass
+		embeds = []
+		for subquery in spl.keys():
+			result = await self.get_docs(subquery, count=1, entry=True, syntax=True)
+			if not result:
+				if len(spl.keys()) == 1:
+					raise DOCS_NO_MATCH
+				else:
+					continue
+			embeds.append(self.craft_docs_page(result[0]))
 
-			return
+		await ctx.send(embeds=embeds)
 
-		query = spl.popitem()[0]
+	@commands.slash_command(name='docs')
+	async def slash_docs(self, inter, query: str):
+		'''Search AutoHotkey documentation.'''
 
-		result = await self.get_docs(query, count=1, entry=True, syntax=True)
+		_id = self._docs_id.get(query, None)
 
-		if not result:
-			raise DOCS_NO_MATCH
+		# if this query wasn't picked from the autocomplete, do a search on the freetext query submitted
+		if _id is None:
+			query = self.search_docs(query, k=1)[0]
 
-		await ctx.send(embed=self.craft_docs_page(result[0]))
+		record = await self.get_doc(self._docs_id[query], entry=True, syntax=True)
 
-	@commands.command(aliases=['dl'])
-	@commands.bot_has_permissions(embed_links=True)
-	async def docslist(self, ctx, *, query):
-		'''Find all approximate matches in the AutoHotkey documentation.'''
+		await inter.response.send_message(embed=self.craft_docs_page(record, force_name=query))
 
-		results = await self.get_docs(query, count=10, entry=True)
+	@slash_docs.autocomplete('query')
+	async def docs_autocomplete(self, inter: disnake.AppCommandInter, query: str):
+		return self.search_docs(query, k=SEARCH_COUNT, make_default=True)
 
-		if not results:
-			raise DOCS_NO_MATCH
+	def search_docs(self, query, k=8, make_default=False):
+		query = query.strip()
 
-		entries = list()
+		if not query:
+			return choices(self._docs_names, k=k) if make_default else None
 
-		for res in results:
-			entries.append('[`{}`]({})'.format(res.get('name'), DOCS_FORMAT.format(res.get('link'))))
-
-		e = disnake.Embed(
-			description='\n'.join(entries),
-			color=AHK_COLOR
+		# further fuzzy search it using fuzzywuzzy ratio matching
+		fuzzed = process.extract(
+			query=query,
+			choices=self._docs_names,
+			scorer=fuzz.ratio,
+			limit=k,
 		)
 
-		await ctx.send(embed=e)
+		return list(name for name, score in fuzzed)
+
+	async def _build_docs_cache(self):
+		records = await self.db.fetch('SELECT docs_entry.id, name, content FROM docs_name INNER JOIN docs_entry ON docs_name.docs_id = docs_entry.id')
+
+		self._docs_names = list(record.get('name') for record in records)
+		self._docs_id = {record.get('name'): record.get('id') for record in records}
+
+	async def get_doc(self, id, entry=False, syntax=False):
+		sql = 'SELECT * FROM docs_name '
+
+		if entry:
+			sql += 'INNER JOIN docs_entry ON docs_name.docs_id = docs_entry.id '
+
+		if syntax:
+			sql += 'LEFT OUTER JOIN docs_syntax ON docs_name.docs_id = docs_syntax.docs_id '
+
+		sql += 'WHERE docs_entry.id = $1'
+
+		return await self.db.fetchrow(sql, id)
+
+	def craft_docs_page(self, record, force_name=None):
+		page = record.get('page')
+
+		e = disnake.Embed(
+			title=record.get('name') if force_name is None else force_name,
+			description=record.get('content') or 'No description for this page.',
+			color=AHK_COLOR,
+			url=None if page is None else DOCS_FORMAT.format(record.get('link'))
+		)
+
+		e.set_footer(text='autohotkey.com', icon_url='https://www.autohotkey.com/favicon.ico')
+
+		syntax = record.get('syntax')
+		if syntax is not None:
+			e.description += '\n```autoit\n{}\n```'.format(syntax)
+
+		return e
 
 	@commands.command(hidden=True)
 	@commands.is_owner()
@@ -559,7 +550,6 @@ class AutoHotkey(AceMixin, commands.Cog):
 		'''Compile and run Relax code through CloudAHK. Example: `rlx define i32 Main() {return 20}`'''
 
 		await self.cloudahk_call(ctx, code, 'rlx')
-
 
 def setup(bot):
 	bot.add_cog(AutoHotkey(bot))

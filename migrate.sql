@@ -1,6 +1,7 @@
 -- ALTER TYPE mod_event_type RENAME VALUE 'MUTE' TO 'TIMEOUT';
 -- ALTER TYPE security_action RENAME VALUE 'MUTE' TO 'TIMEOUT';
 -- ALTER TABLE mod_timer ADD COLUMN completed boolean default false;
+-- DROP TABLE docs_param;
 
 DO $$
 BEGIN
