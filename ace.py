@@ -42,7 +42,6 @@ EXTENSIONS = (
 class AceBot(commands.Bot):
 	support_link = 'https://discord.gg/X7abzRe'
 
-	ready: asyncio.Event
 	aiohttp: aiohttp.ClientSession
 	db: asyncpg.pool
 	config: ConfigTable
