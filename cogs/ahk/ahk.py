@@ -329,7 +329,7 @@ class AutoHotkey(AceMixin, commands.Cog):
 
 		await self.cloudahk_call(ctx, code)
 
-	@commands.command(aliases=['d', 'doc', 'rtfm'])
+	@commands.command(name='docs', aliases=['d', 'doc', 'rtfm'])
 	@commands.bot_has_permissions(embed_links=True)
 	async def cmd_docs(self, ctx: commands.Context, *, query: str = None):
 		'''Search the AutoHotkey documentation. Enter multiple queries by separating with commas.'''

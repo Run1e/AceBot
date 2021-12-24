@@ -18,10 +18,17 @@ class InternalLogger(commands.Cog, AceMixin):
 		self.bot.log.info('%s in %s: %s', po(ctx.author), po(ctx.guild), spl[0] + (' ...' if len(spl) > 1 else ''))
 
 	@commands.Cog.listener()
-	async def on_command_completion(self, ctx: Union[AceContext, disnake.Interaction]):
+	async def on_command_completion(self, ctx: AceContext):
 		await self.bot.db.execute(
-			'INSERT INTO log (guild_id, channel_id, user_id, timestamp, command) VALUES ($1, $2, $3, $4, $5)',
-			ctx.guild.id, ctx.channel.id, ctx.author.id, datetime.utcnow(), ctx.command.qualified_name
+			'INSERT INTO log (guild_id, channel_id, user_id, timestamp, command, type) VALUES ($1, $2, $3, $4, $5, $6)',
+			ctx.guild.id, ctx.channel.id, ctx.author.id, datetime.utcnow(), ctx.command.qualified_name, 'TEXT'
+		)
+
+	@commands.Cog.listener()
+	async def on_slash_command_completion(self, inter: disnake.ApplicationCommandInteraction):
+		await self.bot.db.execute(
+			'INSERT INTO log (guild_id, channel_id, user_id, timestamp, command, type) VALUES ($1, $2, $3, $4, $5, $6)',
+			inter.guild.id, inter.channel.id, inter.author.id, datetime.utcnow(), inter.application_command.qualified_name, 'APPLICATION'
 		)
 
 

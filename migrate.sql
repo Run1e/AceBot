@@ -2,6 +2,7 @@
 -- ALTER TYPE security_action RENAME VALUE 'MUTE' TO 'TIMEOUT';
 -- ALTER TABLE mod_timer ADD COLUMN completed boolean default false;
 -- DROP TABLE docs_param;
+-- alter table log add column type command_type not null default 'TEXT';
 
 DO $$
 BEGIN
@@ -11,6 +12,10 @@ BEGIN
 
 	IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'security_action') THEN
 		CREATE TYPE security_action AS ENUM ('TIMEOUT', 'KICK', 'BAN');
+    END IF;
+
+   	IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'command_type') THEN
+		CREATE TYPE command_type AS ENUM ('TEXT', 'APPLICATION');
     END IF;
 END$$;
 
@@ -138,7 +143,8 @@ CREATE TABLE IF NOT EXISTS log (
 	channel_id	BIGINT NOT NULL,
 	user_id		BIGINT NOT NULL,
 	timestamp	TIMESTAMP NOT NULL,
-	command		TEXT NOT NULL
+	command		TEXT NOT NULL,
+	type		command_type NOT NULL DEFAULT 'TEXT',
 );
 
 CREATE TABLE IF NOT EXISTS remind (
