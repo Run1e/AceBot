@@ -543,7 +543,6 @@ class Moderation(AceMixin, commands.Cog):
 	@commands.Cog.listener()
 	async def on_event_complete(self, record):
 		# relatively crucial that the bot is ready before we launch any events like tempban completions
-		await self.bot.ready.wait()
 		await self.bot.wait_until_ready()
 
 		event = record.get('event')

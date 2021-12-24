@@ -65,7 +65,6 @@ class AceBot(commands.Bot):
 
 		self.config = ConfigTable(self, table='config', primary='guild_id', record_class=GuildConfigRecord)
 
-		self.ready = asyncio.Event()
 		self.startup_time = datetime.utcnow()
 
 		self.log = logging.getLogger('acebot')
@@ -101,11 +100,8 @@ class AceBot(commands.Bot):
 		await self.change_presence(activity=BOT_ACTIVITY)
 
 	async def on_ready(self):
-		if not self.ready.is_set():
-			await self.change_presence(activity=BOT_ACTIVITY, status=disnake.Status.online)
-
-			self.ready.set()
-			self.log.info('Ready! %s', po(self.user))
+		await self.change_presence(activity=BOT_ACTIVITY, status=disnake.Status.online)
+		self.log.info('Ready! %s', po(self.user))
 
 	async def on_message(self, message):
 		# ignore DMs and bot accounts
@@ -113,7 +109,7 @@ class AceBot(commands.Bot):
 			return
 
 		# don't process commands before bot is ready
-		if not self.ready.is_set():
+		if not self.is_ready():
 			# rather than wait for the bot to be ready, we return to avoid users
 			# who send their commands multiple times from being processed.
 			return
