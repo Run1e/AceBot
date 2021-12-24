@@ -22,7 +22,7 @@ GOTO_EMOJI = '\N{WHITE QUESTION MARK ORNAMENT}'
 
 
 class Pager(disnake.ui.View):
-	def __init__(self, ctx: Union[disnake.AppCommandInteraction, 'commands.Context'], entries=None, per_page=6, timeout=180.0):
+	def __init__(self, ctx: Union[disnake.AppCommandInteraction, 'commands.Context'], entries=None, per_page=6, timeout=60.0 * 15):
 		super().__init__(timeout=timeout)
 
 		self.ctx = ctx
