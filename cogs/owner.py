@@ -49,11 +49,8 @@ class Owner(AceMixin, commands.Cog):
 		return content.strip('` \n')
 
 	@commands.Cog.listener()
-	async def on_socket_response(self, msg):
-		t = msg['t']
-
-		if t is not None:
-			self.event_counter[t] += 1
+	async def on_socket_event_type(self, event_type):
+		self.event_counter[event_type] += 1
 
 	@commands.command(hidden=True)
 	async def c(self, ctx, *, text):
