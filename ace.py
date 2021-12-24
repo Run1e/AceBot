@@ -68,7 +68,7 @@ class AceBot(commands.Bot):
 
 		self.log = logging.getLogger('acebot')
 
-		aiohttp_log = logging.getLogger('aiotrace')
+		aiohttp_log = logging.getLogger('http')
 
 		async def on_request_end(session, ctx, end):
 			resp = end.response
@@ -172,8 +172,10 @@ class AceBot(commands.Bot):
 
 	@property
 	def invite_link(self):
-		return 'https://discordapp.com/oauth2/authorize?&client_id={0}&scope=bot&permissions={1}'.format(
-			self.user.id, 268823632
+		return disnake.utils.oauth_url(
+			self.user.id,
+			permissions=disnake.Permissions(1374658358486),
+			scopes=['bot', 'applications.commands'],
 		)
 
 	async def login(self, token: str) -> None:

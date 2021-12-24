@@ -29,6 +29,9 @@ class DatabaseTimer:
 		self.task = self.start_task()
 
 	async def dispatch(self):
+		# don't run timer before bot is ready
+		await self.bot.wait_until_ready()
+
 		try:
 			while True:
 				# fetch next record
