@@ -1,7 +1,8 @@
 import disnake
+from disnake.ext import commands
+
 from ace import AceBot
 from cogs.mixins import AceMixin
-from disnake.ext import commands
 from utils.commanderrorlogic import CommandErrorLogic
 from utils.context import AceContext
 from utils.time import pretty_seconds
@@ -16,6 +17,7 @@ class ErrorHandler(commands.Cog, AceMixin):
 				if isinstance(exc.original, disnake.HTTPException):
 					self.bot.log.debug('Command failed with %s', str(exc.original))
 					return
+				
 				handler.oops()
 
 			elif isinstance(exc, commands.ConversionError):

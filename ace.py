@@ -5,7 +5,6 @@ from datetime import datetime
 
 import aiohttp
 import asyncpg
-import disnake
 from disnake.ext import commands
 
 from config import *
@@ -176,8 +175,6 @@ class AceBot(commands.Bot):
 
 		return reloaded
 
-
-
 	@property
 	def invite_link(self):
 		return 'https://discordapp.com/oauth2/authorize?&client_id={0}&scope=bot&permissions={1}'.format(
@@ -192,7 +189,9 @@ class AceBot(commands.Bot):
 		self.log.info('Logging in to discord')
 		return await super().login(token)
 
+
 if __name__ == '__main__':
 	import sys
+
 	print('The entry point has moved, use main.py to run the bot now.')
 	sys.exit(1)

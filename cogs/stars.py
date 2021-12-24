@@ -84,7 +84,7 @@ class Starboard(AceMixin, commands.Cog):
 		'''
 
 		self.purger.start()
-	
+
 	def cog_unload(self) -> None:
 		self.purger.cancel()
 
