@@ -265,7 +265,7 @@ class Moderation(AceMixin, commands.Cog):
 			name=member.name,
 			nick=member.nick,
 			discriminator=member.discriminator,
-			avatar_url=str(member.display_avatar.url),
+			avatar_url=member.display_avatar.url,
 		)
 
 		return dumps(data)
