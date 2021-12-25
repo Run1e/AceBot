@@ -13,7 +13,7 @@ from aiohttp import ClientTimeout
 from aiohttp.client_exceptions import ClientConnectorError
 from bs4 import BeautifulSoup
 from disnake.ext import commands, tasks
-from fuzzywuzzy import fuzz, process, utils
+from rapidfuzz import fuzz, process, utils
 
 from cogs.mixins import AceMixin
 from config import CLOUDAHK_PASS, CLOUDAHK_URL, CLOUDAHK_USER
@@ -381,18 +381,18 @@ class AutoHotkey(AceMixin, commands.Cog):
 		if not query:
 			return choices(self._docs_names, k=k) if make_default else None
 
-		# further fuzzy search it using fuzzywuzzy ratio matching
+		# further fuzzy search it using rapidfuzz ratio matching
 		fuzzed = process.extract(
 			query=query,
 			choices=self._docs_names,
 			scorer=fuzz.ratio,
-			processor=utils.asciionly,
+			processor=None,
 			limit=k,
 		)
 
 		tweak = list()
 
-		for idx, (name, score) in enumerate(fuzzed):
+		for idx, (name, score, junk) in enumerate(fuzzed):
 			lower = name.lower()
 
 			if lower == query:

@@ -1,6 +1,6 @@
 disnake==2.3.0
 asyncpg==0.25.0
-fuzzywuzzy==0.18.0
+rapidfuzz==1.9.1
 parsedatetime==2.6
 python-Levenshtein==0.12.2
 lxml==4.7.1

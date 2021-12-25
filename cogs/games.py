@@ -9,7 +9,7 @@ from urllib.parse import unquote
 
 import disnake
 from disnake.ext import commands
-from fuzzywuzzy import fuzz, process
+from rapidfuzz import fuzz, process
 
 from cogs.mixins import AceMixin
 from utils.configtable import ConfigTable
@@ -97,14 +97,11 @@ NATO = {x[0]: x[1] for x in zip(LETTERS, PHONETICS)}
 
 class CategoryConverter(commands.Converter):
 	async def convert(self, ctx, argument):
-		fuzzed = process.extract(
+		res, score, junk = process.extractOne(
 			query=argument,
 			choices=ctx.cog.trivia_categories.keys(),
-			scorer=fuzz.ratio,
-			limit=1,
+			scorer=fuzz.ratio
 		)
-
-		res, score = fuzzed[0]
 
 		if score < 76:
 			# will never be shown so no need to prettify it

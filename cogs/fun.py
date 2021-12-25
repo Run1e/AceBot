@@ -11,7 +11,7 @@ import bs4
 import disnake
 from bs4 import BeautifulSoup
 from disnake.ext import commands, tasks
-from fuzzywuzzy import process
+from rapidfuzz import process
 
 from cogs.mixins import AceMixin
 from config import APIXU_KEY, THECATAPI_KEY, WOLFRAM_KEY
@@ -506,12 +506,12 @@ class Fun(AceMixin, commands.Cog):
 				picked = self.bill_latest
 
 			else:
-				picked, score = process.extractOne(query, self.bill_cache.keys())
+				picked, score, junk = process.extractOne(query, self.bill_cache.keys())
 
-				if score < 89:
+				if score < 50:
 					raise commands.CommandError(
 						"Couldn't match that search with certainty.\n"
-						f"Closest match: '{query[0].strip()}'"
+						f"Closest match: '{picked.strip()}'"
 					)
 
 		href, bill_date = self.bill_cache[picked]
