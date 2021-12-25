@@ -127,7 +127,7 @@ class Owner(AceMixin, commands.Cog):
 			await ctx.send('No rows returned.')
 			return
 
-		table = tabulate(result, result[0].keys())
+		table = tabulate(result, {header: header for header in result[0].keys()})
 
 		if len(table) > 1994:
 			fp = io.BytesIO(table.encode('utf-8'))
@@ -144,14 +144,6 @@ class Owner(AceMixin, commands.Cog):
 		headers = ('Event', 'Count')
 
 		await ctx.send('```{0}```'.format(tabulate(data, headers)))
-
-	@commands.command()
-	async def level(self, ctx, *, level):
-		'''Change the logging level for debugging purposes.'''
-
-		lvl = getattr(logging, level.upper())
-		logging.getLogger().setLevel(lvl)
-		await ctx.send('Logging level is {0}'.format(lvl))
 
 	@commands.command()
 	async def ping(self, ctx):

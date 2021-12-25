@@ -90,13 +90,9 @@ class Highlighter(AceMixin, commands.Cog):
 
 		try:
 			message = await channel.fetch_message(payload.message_id)
-		except disnake.HTTPException:
-			return
-
-		try:
 			await message.delete()
 		except disnake.HTTPException:
-			pass
+			return
 
 	@commands.command()
 	@commands.bot_has_permissions(embed_links=True)

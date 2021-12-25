@@ -118,7 +118,7 @@ class Meta(AceMixin, commands.Cog):
 		)
 
 		e = disnake.Embed()
-		e.set_author(name=ctx.guild.name, icon_url=ctx.guild.icon.url)
+		e.set_author(name=ctx.guild.name, icon_url=ctx.guild.icon or disnake.Embed.Empty)
 		e.add_field(name='Top Commands', value=self._stats_craft_list(commands_alltime))
 		e.add_field(name='Top Commands Today', value=self._stats_craft_list(commands_today))
 

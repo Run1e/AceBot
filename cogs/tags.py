@@ -131,7 +131,7 @@ class TagPager(Pager):
 
 		embed.set_author(
 			name=self.member.display_name if self.member else self.ctx.guild.name,
-			icon_url=self.member.avatar.url if self.member else self.ctx.guild.icon.url
+			icon_url=self.member.display_avatar if self.member else (self.ctx.guild.icon or disnake.Embed.Empty)
 		)
 
 		embed.description = f'{len(self.entries)} total tags.'
@@ -420,7 +420,7 @@ class Tags(AceMixin, commands.Cog):
 
 		if owner is None:
 			nick = 'Unknown User'
-			avatar = ctx.guild.icon.url
+			avatar = ctx.guild.icon or disnake.Embed.Empty
 		else:
 			nick = owner.display_name
 			avatar = owner.display_avatar.url

@@ -69,7 +69,7 @@ class SecurityAction(IntEnum):
 
 
 class SecurityVerb(Enum):
-	TIMEOUT = 'timed out'
+	TIMEOUT = 'timed out (for 28 days)'
 	KICK = 'kicked'
 	BAN = 'banned'
 
@@ -446,7 +446,6 @@ class Moderation(AceMixin, commands.Cog):
 		member: disnake.Member = message.author
 		guild: disnake.Guild = message.guild
 
-		conf = await self.config.get_entry(member.guild.id)
 		ctx = await self.bot.get_context(message, cls=AceContext)
 
 		# ignore if member is mod
@@ -511,7 +510,7 @@ class Moderation(AceMixin, commands.Cog):
 			# if so, perform the spam action
 			if res is not None:
 				await self.do_action(
-					message, SecurityAction[mc.spam_action], reason='Member is spamming'
+					message, SecurityAction[mc.spam_action], reason='Member is spamming messages'
 				)
 
 		if mc.mention_action is not None and message.mentions:
@@ -525,7 +524,7 @@ class Moderation(AceMixin, commands.Cog):
 
 			if res is not None:
 				await self.do_action(
-					message, SecurityAction[mc.mention_action], reason='Member is mention spamming'
+					message, SecurityAction[mc.mention_action], reason='Member is spamming mentions'
 				)
 
 		if message.guild.id == AHK_GUILD_ID and False: # TODO: fix before prod
@@ -870,12 +869,14 @@ class Moderation(AceMixin, commands.Cog):
 			' now ' if now else ' ', 'mentions' if type == 'mention' else 'messages'
 		)
 
-		perms = ctx.perms
+		perms: disnake.Permissions = ctx.perms
 
-		if action == 'BAN' and not perms.ban_members:
-			data += '\n\nNOTE: I do not have Ban Members permissions!'
+		if action == 'TIMEOUT' and not perms.moderate_members:
+			data += '\n\nNOTE: I do not have Time out members permissions!'
+		elif action == 'BAN' and not perms.ban_members:
+			data += '\n\nNOTE: I do not have Ban members permissions!'
 		elif action == 'KICK' and not perms.kick_members:
-			data += '\n\nNOTE: I do not have Kick Members permissions!'
+			data += '\n\nNOTE: I do not have Kick members permissions!'
 		elif action is None:
 			data += '\n\nNOTE: Anti-{0} is disabled, enable by doing `{0} action <action>`'.format(type)
 		else:

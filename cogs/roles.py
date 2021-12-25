@@ -94,7 +94,7 @@ NEW_SEL_PREDS = (
 )
 
 EDIT_FOOTER = 'Send a message with your answer! Send \'exit\' to cancel.'
-RETRY_MSG = 'Please try again!'
+RETRY_MSG = 'Please try again, or send \'exit\' to cancel.'
 
 
 class MaybeDirty:
@@ -782,7 +782,7 @@ class Roles(AceMixin, commands.Cog):
 
 			e.set_author(
 				name=selector.get('title') or 'Role Selector',
-				icon_url=icon if icon else ctx.guild.icon.url
+				icon_url=icon if icon else (ctx.guild.icon or disnake.Embed.Empty)
 			)
 
 			for role in roles:

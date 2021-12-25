@@ -299,7 +299,7 @@ class Starboard(AceMixin, commands.Cog):
 		stars = star_ret + 1
 
 		e = disnake.Embed()
-		e.set_author(name=author.display_name, icon_url=author.avatar.url)
+		e.set_author(name=author.display_name, icon_url=author.display_avatar.url)
 
 		e.add_field(name='Stars', value=self.star_emoji(stars) + ' ' + str(stars))
 		e.add_field(name='Starred in', value='<#{}>'.format(row.get('channel_id')))
@@ -473,7 +473,8 @@ class Starboard(AceMixin, commands.Cog):
 				embed=self.get_embed(message, starrer_count)
 			)
 			await star_message.add_reaction(STAR_EMOJI)
-		except disnake.HTTPException:
+		except disnake.HTTPException as e:
+			raise e
 			raise commands.CommandError(
 				'Failed posting to starboard.\nMake sure the bot has permissions to post there.'
 			)
@@ -620,7 +621,7 @@ class Starboard(AceMixin, commands.Cog):
 		# stop if attempted star is too old
 		# if star_message was not found (star is new) then use the original messages timestamp
 		# if a star_message *was* found, use that instead as it's the new basis of "star message age"
-		if datetime.utcnow() - STAR_CUTOFF > (star_message or message).created_at:
+		if disnake.utils.utcnow() - STAR_CUTOFF > (star_message or message).created_at:
 			raise commands.CommandError('Stars can\'t be added or removed from messages older than a week.')
 
 		# trigger event
@@ -843,7 +844,7 @@ class Starboard(AceMixin, commands.Cog):
 
 		embed.set_author(
 			name=message.author.display_name,
-			icon_url=message.author.avatar.url_as(format='png'),
+			icon_url=message.author.display_avatar.url,
 		)
 
 		embed.set_footer(text='#' + message.channel.name)

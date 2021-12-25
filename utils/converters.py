@@ -65,7 +65,7 @@ class EmojiConverter(commands.Converter):
 	async def convert(self, ctx, argument):
 		guild_emojis = list(str(e) for e in ctx.guild.emojis)
 
-		if argument not in emoji.UNICODE_EMOJI:
+		if argument not in emoji.UNICODE_EMOJI['en']:
 			if argument not in guild_emojis:
 				raise commands.BadArgument('Unknown emoji.')
 

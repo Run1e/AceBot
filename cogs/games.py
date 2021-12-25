@@ -186,8 +186,6 @@ class Games(AceMixin, commands.Cog):
 	async def trivia(self, ctx, category: Optional[CategoryConverter] = None, *, difficulty: DifficultyConverter = None):
 		'''Trivia time! Optionally specify a difficulty or category and difficulty as arguments. Valid difficulties are `easy`, `medium` and `hard`. Valid categories can be listed with `trivia categories`.'''
 
-		#raise commands.CommandError('The trivia API is down currently. Sorry about that!')
-
 		diff = difficulty
 
 		if diff is None:
@@ -344,8 +342,6 @@ class Games(AceMixin, commands.Cog):
 	async def categories(self, ctx):
 		'''Get a list of valid categories for the trivia command.'''
 
-		#raise commands.CommandError('The trivia API is down currently. Sorry about that!')
-
 		e = disnake.Embed(description='\n'.join(self.trivia_categories.keys()))
 		e.set_footer(text='Specifying a category halves your winnings.')
 
@@ -355,8 +351,6 @@ class Games(AceMixin, commands.Cog):
 	@commands.bot_has_permissions(embed_links=True)
 	async def stats(self, ctx, *, member: disnake.Member = None):
 		'''Get your own or another members' trivia stats.'''
-
-		#raise commands.CommandError('The trivia API is down currently. Sorry about that!')
 
 		member = member or ctx.author
 
