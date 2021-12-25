@@ -21,7 +21,7 @@ class InternalLogger(commands.Cog, AceMixin):
 	async def on_command_completion(self, ctx: AceContext):
 		await self.bot.db.execute(
 			'INSERT INTO log (guild_id, channel_id, user_id, timestamp, command, type) VALUES ($1, $2, $3, $4, $5, $6)',
-			ctx.guild.id, ctx.channel.id, ctx.author.id, datetime.utcnow(), ctx.command.qualified_name, 'TEXT'
+			ctx.guild.id, ctx.channel.id, ctx.author.id, datetime.utcnow(), ctx.command.qualified_name, 'PREFIX'
 		)
 
 	@commands.Cog.listener()

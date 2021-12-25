@@ -2,7 +2,8 @@
 -- ALTER TYPE security_action RENAME VALUE 'MUTE' TO 'TIMEOUT';
 -- ALTER TABLE mod_timer ADD COLUMN completed boolean default false;
 -- DROP TABLE docs_param;
--- alter table log add column type command_type not null default 'TEXT';
+-- alter table log add column type command_type not null default 'PREFIX';
+-- should also alter the above one to not have a default value anymore after rows have been set
 -- alter table mod_timer drop constraint mod_timer_guild_id_user_id_event_key;
 
 DO $$
@@ -16,7 +17,7 @@ BEGIN
     END IF;
 
    	IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'command_type') THEN
-		CREATE TYPE command_type AS ENUM ('TEXT', 'APPLICATION');
+		CREATE TYPE command_type AS ENUM ('PREFIX', 'APPLICATION');
     END IF;
 END$$;
 
@@ -143,7 +144,7 @@ CREATE TABLE IF NOT EXISTS log (
 	user_id		BIGINT NOT NULL,
 	timestamp	TIMESTAMP NOT NULL,
 	command		TEXT NOT NULL,
-	type		command_type NOT NULL DEFAULT 'TEXT'
+	type		command_type NOT NULL
 );
 
 CREATE TABLE IF NOT EXISTS remind (
