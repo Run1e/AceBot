@@ -373,7 +373,10 @@ class AutoHotkey(AceMixin, commands.Cog):
 
 	@slash_docs.autocomplete('query')
 	async def docs_autocomplete(self, inter: disnake.AppCommandInter, query: str):
-		return self.search_docs(query, k=SEARCH_COUNT, make_default=True)
+		res = self.search_docs(query, k=SEARCH_COUNT, make_default=True) or []
+		if query:
+			res.insert(0, query)
+		return res
 
 	def search_docs(self, query, k=8, make_default=False):
 		query = query.strip().lower()
