@@ -13,14 +13,13 @@ from aiohttp import ClientTimeout
 from aiohttp.client_exceptions import ClientConnectorError
 from bs4 import BeautifulSoup
 from disnake.ext import commands, tasks
-from fuzzywuzzy import fuzz, process
+from fuzzywuzzy import fuzz, process, utils
 
 from cogs.mixins import AceMixin
 from config import CLOUDAHK_PASS, CLOUDAHK_URL, CLOUDAHK_USER
 from ids import *
 from utils.docs_parser import parse_docs
 from utils.html2markdown import HTML2Markdown
-from utils.string import shorten
 
 log = logging.getLogger(__name__)
 
@@ -377,7 +376,7 @@ class AutoHotkey(AceMixin, commands.Cog):
 		return self.search_docs(query, k=SEARCH_COUNT, make_default=True)
 
 	def search_docs(self, query, k=8, make_default=False):
-		query = query.strip()
+		query = query.strip().lower()
 
 		if not query:
 			return choices(self._docs_names, k=k) if make_default else None
@@ -387,10 +386,26 @@ class AutoHotkey(AceMixin, commands.Cog):
 			query=query,
 			choices=self._docs_names,
 			scorer=fuzz.ratio,
+			processor=utils.asciionly,
 			limit=k,
 		)
 
-		return list(name for name, score in fuzzed)
+		tweak = list()
+
+		for idx, (name, score) in enumerate(fuzzed):
+			lower = name.lower()
+
+			if lower == query:
+				score += 50
+
+			if query in lower:
+				score += 20
+
+			tweak.append((name, score))
+
+		tweak = list(sorted(tweak, key=lambda v: v[1], reverse=True))
+
+		return list(name for name, score in tweak)
 
 	async def _build_docs_cache(self):
 		records = await self.db.fetch('SELECT docs_entry.id, name, content FROM docs_name INNER JOIN docs_entry ON docs_name.docs_id = docs_entry.id')
@@ -418,7 +433,7 @@ class AutoHotkey(AceMixin, commands.Cog):
 			title=record.get('name') if force_name is None else force_name,
 			description=record.get('content') or 'No description for this page.',
 			color=AHK_COLOR,
-			url=None if page is None else DOCS_FORMAT.format(record.get('link'))
+			url=disnake.Embed.Empty if page is None else DOCS_FORMAT.format(record.get('link'))
 		)
 
 		e.set_footer(text='autohotkey.com', icon_url='https://www.autohotkey.com/favicon.ico')
@@ -553,6 +568,7 @@ class AutoHotkey(AceMixin, commands.Cog):
 		'''Compile and run Relax code through CloudAHK. Example: `rlx define i32 Main() {return 20}`'''
 
 		await self.cloudahk_call(ctx, code, 'rlx')
+
 
 def setup(bot):
 	bot.add_cog(AutoHotkey(bot))
