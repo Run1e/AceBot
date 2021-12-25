@@ -527,7 +527,7 @@ class Moderation(AceMixin, commands.Cog):
 					message, SecurityAction[mc.mention_action], reason='Member is spamming mentions'
 				)
 
-		if message.guild.id == AHK_GUILD_ID and False: # TODO: fix before prod
+		if message.guild.id == AHK_GUILD_ID:
 			async with CONTENT_LOCK:
 				res = mc.content_cooldown.update_rate_limit(message)
 
@@ -964,6 +964,7 @@ class Moderation(AceMixin, commands.Cog):
 			'administrator',
 			'ban_members',
 			'kick_members',
+			'moderate_members',
 			'manage_guild',
 			'manage_channels',
 			'manage_emojis',

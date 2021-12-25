@@ -15,7 +15,6 @@ from utils.help import PaginatedHelpCommand
 from utils.string import po
 
 EXTENSIONS = (
-	'cogs.test',
 	'cogs.backend.error_handler',
 	'cogs.backend.logger',
 	'cogs.fun',

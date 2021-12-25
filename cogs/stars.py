@@ -473,8 +473,7 @@ class Starboard(AceMixin, commands.Cog):
 				embed=self.get_embed(message, starrer_count)
 			)
 			await star_message.add_reaction(STAR_EMOJI)
-		except disnake.HTTPException as e:
-			raise e
+		except disnake.HTTPException:
 			raise commands.CommandError(
 				'Failed posting to starboard.\nMake sure the bot has permissions to post there.'
 			)
