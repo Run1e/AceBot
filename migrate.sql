@@ -64,7 +64,7 @@ CREATE TABLE IF NOT EXISTS mod_timer (
 	reason		TEXT NULL,
 	userdata	JSON NULL,
 
-	completed BOOLEAN DEFAULT FALSE,
+	completed BOOLEAN DEFAULT FALSE
 );
 
 -- highlighter languages
@@ -143,7 +143,7 @@ CREATE TABLE IF NOT EXISTS log (
 	user_id		BIGINT NOT NULL,
 	timestamp	TIMESTAMP NOT NULL,
 	command		TEXT NOT NULL,
-	type		command_type NOT NULL DEFAULT 'TEXT',
+	type		command_type NOT NULL DEFAULT 'TEXT'
 );
 
 CREATE TABLE IF NOT EXISTS remind (
