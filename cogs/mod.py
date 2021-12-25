@@ -557,10 +557,8 @@ class Moderation(AceMixin, commands.Cog):
 
 	async def ban_complete(self, record):
 		guild_id = record.get('guild_id')
-		user_id = record.get('user_id')
 		mod_id = record.get('mod_id')
 		duration = record.get('duration')
-		userdata = loads(record.get('userdata'))
 		reason = record.get('reason')
 
 		guild = self.bot.get_guild(guild_id)

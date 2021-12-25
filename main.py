@@ -71,9 +71,9 @@ def setup():
 	disnake.Embed = Embed
 
 	def patched_execute(old):
-		async def new(self, query, args, limit, timeout, return_status=False):
+		async def new(self, query, args, limit, timeout, return_status=False, ignore_custom_codec=False, record_class=None):
 			log.debug(query)
-			return await old(self, query, args, limit, timeout, return_status)
+			return await old(self, query, args, limit, timeout, return_status=return_status, ignore_custom_codec=ignore_custom_codec, record_class=record_class)
 
 		return new
 

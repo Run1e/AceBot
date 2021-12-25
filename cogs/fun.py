@@ -446,7 +446,7 @@ class Fun(AceMixin, commands.Cog):
 		async with self.bot.aiohttp.get(BILL_WURTZ_URL + file + '.html') as resp:
 			if resp.status != 200:
 				raise commands.CommandError('Request failed.')
-			content = await resp.text()
+			content = await resp.text(encoding='utf-8')
 
 		soup = BeautifulSoup(content, 'lxml')
 
