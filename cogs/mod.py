@@ -223,6 +223,8 @@ class Moderation(AceMixin, commands.Cog):
 		self.config = ConfigTable(bot, 'mod_config', 'guild_id', record_class=SecurityConfigRecord)
 		self.event_timer = EventTimer(bot, 'event_complete')
 
+		asyncio.create_task(self.check_tempbans())
+
 	@commands.Cog.listener()
 	async def on_log(self, guild, subject, action=None, severity=Severity.LOW, message=None, **fields):
 		conf = await self.config.get_entry(guild.id)
@@ -326,7 +328,7 @@ class Moderation(AceMixin, commands.Cog):
 			member = FakeUser(user.id, ctx.guild, name=user.name, avatar_url=str(user.avatar), discriminator=user.discriminator)
 
 		is_tempbanned = await self.bot.db.fetchval(
-			'SELECT id FROM mod_timer WHERE guild_id=$1 AND user_id=$2 AND event=$3',
+			'SELECT id FROM mod_timer WHERE guild_id=$1 AND user_id=$2 AND event=$3 AND completed=FALSE',
 			ctx.guild.id, member.id, 'BAN'
 		)
 
@@ -391,7 +393,7 @@ class Moderation(AceMixin, commands.Cog):
 			raise commands.CommandError('Can\'t tempban for longer than {0}. Please `ban` instead.'.format(pretty_timedelta(MAX_DELTA)))
 
 		record = await self.bot.db.fetchrow(
-			'SELECT * FROM mod_timer WHERE guild_id=$1 AND user_id=$2 AND event=$3',
+			'SELECT * FROM mod_timer WHERE guild_id=$1 AND user_id=$2 AND event=$3 AND completed=FALSE',
 			ctx.guild.id, member.user.id, 'BAN'
 		)
 
@@ -550,6 +552,9 @@ class Moderation(AceMixin, commands.Cog):
 		if event == 'BAN':
 			await self.ban_complete(record)
 
+	def fakeuser_from_record(self, record, guild):
+		return FakeUser(record.get('user_id'), guild, **loads(record.get('userdata')))
+
 	async def ban_complete(self, record):
 		guild_id = record.get('guild_id')
 		user_id = record.get('user_id')
@@ -565,7 +570,7 @@ class Moderation(AceMixin, commands.Cog):
 		mod = guild.get_member(mod_id)
 		pretty_mod = '(ID: {0})'.format(str(mod_id)) if mod is None else po(mod)
 
-		member = FakeUser(user_id, guild, **userdata)
+		member = self.fakeuser_from_record(record, guild)
 
 		try:
 			await guild.unban(member, reason='Completed tempban issued by {0}'.format(pretty_mod))
@@ -576,6 +581,41 @@ class Moderation(AceMixin, commands.Cog):
 			'log', guild, member, action='TEMPBAN COMPLETED', severity=Severity.RESOLVED,
 			responsible=pretty_mod, duration=pretty_timedelta(duration), reason=reason
 		)
+
+	async def check_tempbans(self):
+		'''Check for newly unbanned members on guild startup, and end tempbans if so'''
+
+		await self.bot.wait_until_ready()
+
+		tempbans = await self.db.fetch("SELECT * FROM mod_timer WHERE event='BAN' AND completed=FALSE")
+		guild_bans = dict()
+
+		for guild_id in set(tempban.get('guild_id') for tempban in tempbans):
+			guild = self.bot.get_guild(guild_id)
+			if guild is None:
+				continue
+
+			try:
+				bans = await guild.bans()
+			except disnake.HTTPException:
+				continue
+
+			guild_bans[guild_id] = (guild, [ban.user.id for ban in bans])
+
+		for tempban in tempbans:
+			guild_id = tempban.get('guild_id')
+
+			info = guild_bans.get(guild_id, None)
+			if info is None:
+				continue  # not in guild (or could not fetch banlist), in which case just ignore and let the unban event fail whenever
+
+			guild, banned_ids = info
+
+			user_id = tempban.get('user_id')
+
+			# if this user is not banned anymore, run the on_member_unban event to clear the tempban
+			if user_id not in banned_ids:
+				await self.on_member_unban(guild, self.fakeuser_from_record(tempban, guild))
 
 	@commands.Cog.listener()
 	async def on_member_unban(self, guild, user):

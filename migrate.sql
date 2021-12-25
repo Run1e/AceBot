@@ -3,6 +3,7 @@
 -- ALTER TABLE mod_timer ADD COLUMN completed boolean default false;
 -- DROP TABLE docs_param;
 -- alter table log add column type command_type not null default 'TEXT';
+-- alter table mod_timer drop constraint mod_timer_guild_id_user_id_event_key;
 
 DO $$
 BEGIN
@@ -64,8 +65,6 @@ CREATE TABLE IF NOT EXISTS mod_timer (
 	userdata	JSON NULL,
 
 	completed BOOLEAN DEFAULT FALSE,
-
-	UNIQUE (guild_id, user_id, event)
 );
 
 -- highlighter languages
