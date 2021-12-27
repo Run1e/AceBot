@@ -18,7 +18,6 @@ PREV_EMOJI = '\N{BLACK LEFT-POINTING DOUBLE TRIANGLE}'
 LAST_EMOJI = '\N{BLACK RIGHT-POINTING DOUBLE TRIANGLE WITH VERTICAL BAR}'
 STOP_EMOJI = '\N{BLACK SQUARE FOR STOP}'
 HELP_EMOJI = '\N{WHITE QUESTION MARK ORNAMENT}'
-GOTO_EMOJI = '\N{WHITE QUESTION MARK ORNAMENT}'
 
 
 class Pager(disnake.ui.View):
@@ -111,11 +110,6 @@ class Pager(disnake.ui.View):
 
 	@disnake.ui.button(label=NEXT_LABEL, emoji=NEXT_EMOJI, style=disnake.ButtonStyle.primary, row=0)
 	async def next_page(self, button: disnake.ui.Button, inter: disnake.MessageInteraction):
-		await self.try_page(self.page + 1)
-		await inter.response.edit_message(embed=self.embed, view=self)
-
-	@disnake.ui.button(emoji=GOTO_EMOJI, style=disnake.ButtonStyle.primary, row=0)
-	async def goto_page(self, button: disnake.ui.Button, inter: disnake.MessageInteraction):
 		await self.try_page(self.page + 1)
 		await inter.response.edit_message(embed=self.embed, view=self)
 
