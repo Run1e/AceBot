@@ -1,6 +1,6 @@
 -- ALTER TYPE mod_event_type RENAME VALUE 'MUTE' TO 'TIMEOUT';
 -- ALTER TYPE security_action RENAME VALUE 'MUTE' TO 'TIMEOUT';
--- ALTER TABLE mod_timer ADD COLUMN completed boolean default false;
+-- ALTER TABLE mod_timer ADD COLUMN completed BOOLEAN NOT NULL DEFAULT FALSE;
 -- DROP TABLE docs_param;
 -- alter table log add column type command_type not null default 'PREFIX';
 -- should also alter the above one to not have a default value anymore after rows have been set
@@ -66,7 +66,7 @@ CREATE TABLE IF NOT EXISTS mod_timer (
 	reason		TEXT NULL,
 	userdata	JSON NULL,
 
-	completed BOOLEAN DEFAULT FALSE
+	completed	BOOLEAN NOT NULL
 );
 
 -- highlighter languages

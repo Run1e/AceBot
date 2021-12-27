@@ -21,9 +21,8 @@ log = logging.getLogger(__name__)
 
 OPEN_CHANNEL_COUNT = 2
 MINIMUM_CLAIM_INTERVAL = timedelta(minutes=3)
-FREE_AFTER = timedelta(minutes=1)
-MINIMUM_LEASE = timedelta(minutes=2)
-CHECK_FREE_EVERY = dict(seconds=10)
+FREE_AFTER = timedelta(minutes=30)
+CHECK_FREE_EVERY = dict(seconds=80)
 NEW_EMOJI = '\N{Heavy Exclamation Mark Symbol}'
 
 OPEN_MESSAGE = (
@@ -133,11 +132,11 @@ class Controller:
 		return self._states.get(channel.id, None)
 
 	def set_state(self, channel, state):
-		log.info('%s is now %s', channel, state)
+		log.debug('%s is now %s', channel, state)
 		self._states[channel.id] = state
 
 	def clear_state(self, channel):
-		log.info('%s now has no state', channel)
+		log.debug('%s now has no state', channel)
 		self._states.pop(channel.id, None)
 
 	async def has_channel(self, user_id):
