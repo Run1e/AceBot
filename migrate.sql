@@ -5,6 +5,7 @@
 -- alter table log add column type command_type not null default 'PREFIX';
 -- should also alter the above one to not have a default value anymore after rows have been set
 -- alter table mod_timer drop constraint mod_timer_guild_id_user_id_event_key;
+-- also make sure help_claim has correct owner
 
 DO $$
 BEGIN
@@ -233,4 +234,11 @@ CREATE TABLE IF NOT EXISTS trivia_stats (
 	timestamp		TIMESTAMP NOT NULL,
 	question_hash	BIGINT NOT NULL,
 	result			BOOL NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS help_claim (
+	guild_id		BIGINT NOT NULL,
+	channel_id		BIGINT NOT NULL,
+	user_id			BIGINT NOT NULL,
+	UNIQUE			(guild_id, channel_id)
 );

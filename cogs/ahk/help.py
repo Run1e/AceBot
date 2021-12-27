@@ -1,29 +1,29 @@
+import asyncio
 import logging
+from asyncio import create_task, gather, sleep
+from datetime import timedelta
+from enum import Enum
 
-log = logging.getLogger(__name__)
-from asyncio import Lock, sleep
-from datetime import datetime, timedelta
-from json import JSONDecodeError, dumps, loads
-
+import aiohttp
 import disnake
 from disnake.ext import commands, tasks
 
 from cogs.mixins import AceMixin
+from cogs.mod import Severity
+from config import GAME_PRED_URL, HELP_CONTROLLERS
 from ids import (
-	ACTIVE_CATEGORY_ID, ACTIVE_INFO_CHAN_ID, AHK_GUILD_ID, CLOSED_CATEGORY_ID,
-	GET_HELP_CHAN_ID, IGNORE_ACTIVE_CHAN_IDS, OPEN_CATEGORY_ID, RULES_CHAN_ID
+	GET_HELP_CHAN_ID, RULES_CHAN_ID
 )
-from utils.context import is_mod
 from utils.string import po
 from utils.time import pretty_timedelta
-from config import GAME_PRED_URL
-from cogs.mod import Severity
 
-OPEN_CHANNEL_COUNT = 3
+log = logging.getLogger(__name__)
+
+OPEN_CHANNEL_COUNT = 2
 MINIMUM_CLAIM_INTERVAL = timedelta(minutes=5)
-FREE_AFTER = timedelta(minutes=30)
+FREE_AFTER = timedelta(minutes=1)
 MINIMUM_LEASE = timedelta(minutes=2)
-CHECK_FREE_EVERY = dict(seconds=80)
+CHECK_FREE_EVERY = dict(seconds=10)
 NEW_EMOJI = '\N{Heavy Exclamation Mark Symbol}'
 
 OPEN_MESSAGE = (
@@ -39,82 +39,151 @@ CLOSED_MESSAGE = (
 )
 
 
-class AutoHotkeyHelpSystem(AceMixin, commands.Cog):
-	def __init__(self, bot):
-		super().__init__(bot)
+class ChannelState(Enum):
+	OPENING = 1
+	ACTIVATING = 2
+	CLOSING = 3
 
-		self.claimed_channel = self._load_claims()
-		self.claimed_at = dict()
 
-		self.channel_claim_lock = Lock()
+class StateClearer:
+	def __init__(self, clear_fn, channel):
+		self.clear_fn = clear_fn
+		self.channel = channel
 
-		self.channel_reclaimer.start()
-		self.claimed_messages = dict()
+	def __enter__(self):
+		pass
 
-	async def classify(self, text):
-		async with self.bot.aiohttp.post(GAME_PRED_URL, data=dict(q=text)) as resp:
-			if resp.status != 200:
-				return 0.0
+	def __exit__(self, exc_type, exc_val, exc_tb):
+		self.clear_fn(self.channel)
 
-			json = await resp.json()
-			return json['p']
+
+class Controller:
+	def __init__(self, bot, guild_id, open_category_id, active_category_id, closed_category_id, ignore_channel_ids):
+		self.bot = bot
+
+		self.lock = asyncio.Lock()
+
+		self.guild_id = guild_id
+
+		self._messages = {}
+		self._states = dict()  # channel_id: ChannelState
+		self._claimed_at = dict()  # user_id: datetime
+
+		self.ignored = ignore_channel_ids
+		self._open_category_id = open_category_id
+		self._active_category_id = active_category_id
+		self._closed_category_id = closed_category_id
+
+	@property
+	def guild(self):
+		return self.bot.get_guild(self.guild_id)
 
 	@property
 	def open_category(self):
-		return self.bot.get_channel(OPEN_CATEGORY_ID)
+		return self.bot.get_channel(self._open_category_id)
 
 	@property
 	def active_category(self):
-		return self.bot.get_channel(ACTIVE_CATEGORY_ID)
+		return self.bot.get_channel(self._active_category_id)
 
 	@property
 	def closed_category(self):
-		return self.bot.get_channel(CLOSED_CATEGORY_ID)
+		return self.bot.get_channel(self._closed_category_id)
 
-	@property
-	def active_info_channel(self):
-		return self.bot.get_channel(ACTIVE_INFO_CHAN_ID)
+	def _get_channels(self, category: disnake.CategoryChannel, state: ChannelState):
+		"""
+		Get a list of the channels in the category, but:
+		1. without ignored channels (set in config.py)
+		2. without channels that are currently being moved out of the category (by having a state in ._state)
+		3. if forecast=True in the calling function, state will be None, and channels that are-
+			about to be moved in are also not included. if =True, they are
+		"""
 
-	async def cog_check(self, ctx):
-		return ctx.guild.id == AHK_GUILD_ID
+		cached = []
+		ignored = set(self.ignored)
 
-	def _load_claims(self):
-		try:
-			with open('data/claims.json', 'r') as f:
-				d = loads(f.read())
-				if not isinstance(d, dict):
-					return dict()
-				return {int(k): int(v) for k, v in d.items()}
-		except (FileNotFoundError, JSONDecodeError):
-			return dict()
+		for channel_id, channel_state in self._states.items():
+			if channel_state is state:
+				cached.append(self.bot.get_channel(channel_id))
+			else:
+				ignored.add(channel_id)
 
-	def _store_claims(self):
-		with open('data/claims.json', 'w') as f:
-			f.write(dumps(self.claimed_channel))
+		for channel in category.text_channels:
+			if channel.id not in ignored:
+				cached.append(channel)
+
+		return list(sorted(set(cached), key=lambda c: c.position))
+
+	def open_channels(self, forecast=True):
+		return self._get_channels(self.open_category, ChannelState.OPENING if forecast else None)
+
+	def active_channels(self, forecast=True):
+		return self._get_channels(self.active_category, ChannelState.ACTIVATING if forecast else None)
+
+	def closed_channels(self, forecast=True):
+		return self._get_channels(self.closed_category, ChannelState.CLOSING if forecast else None)
+
+	def get_bottom_pos(self):
+		return max(channel.position for channel in self.guild.text_channels) + 1
+
+	def get_state(self, channel):
+		return self._states.get(channel.id, None)
+
+	def set_state(self, channel, state):
+		log.info('%s is now %s', channel, state)
+		self._states[channel.id] = state
+
+	def clear_state(self, channel):
+		log.info('%s now has no state', channel)
+		self._states.pop(channel.id, None)
+
+	async def has_channel(self, user_id):
+		channel_id = await self.bot.db.fetchval(
+			'SELECT channel_id FROM help_claim WHERE guild_id=$1 AND user_id=$2',
+			self.guild.id, user_id
+		)
+
+		if channel_id and any(channel.id == channel_id for channel in self.active_channels()):
+			return channel_id
+
+		return None
+
+	async def get_claimant(self, channel_id):
+		return await self.bot.db.fetchval(
+			'SELECT user_id FROM help_claim WHERE guild_id=$1 AND channel_id=$2',
+			self.guild.id, channel_id
+		)
+
+	async def set_claimant(self, channel_id, user_id):
+		async with self.bot.db.acquire() as connection:
+			async with connection.transaction():
+				await connection.execute(
+					'DELETE FROM help_claim WHERE guild_id=$1 AND user_id=$2',
+					self.guild.id, user_id
+				)
+
+				await connection.execute(
+					'INSERT INTO help_claim VALUES ($1, $2, $3) ON CONFLICT (guild_id, channel_id) DO UPDATE SET user_id=$3',
+					self.guild.id, channel_id, user_id
+				)
+
+	async def clear_claimant(self, channel_id):
+		await self.bot.db.execute(
+			'DELETE FROM help_claim WHERE guild_id=$1 AND channel_id=$2',
+			self.guild.id, channel_id
+		)
 
 	@tasks.loop(**CHECK_FREE_EVERY)
-	async def channel_reclaimer(self):
-		on_age = datetime.utcnow() - FREE_AFTER
+	async def reclaimer(self):
+		on_age = disnake.utils.utcnow() - FREE_AFTER
 
-		try:
-			active_category = await self.bot.fetch_channel(ACTIVE_CATEGORY_ID)
-		except disnake.HTTPException:
-			return
-
-		for channel in active_category.text_channels:
-			if channel.id in IGNORE_ACTIVE_CHAN_IDS:
-				continue
-
+		for channel in self.active_channels(forecast=False):
 			last_message = await self.get_last_message(channel)
 
 			# if get_last_message failed there's likely literally no messages in the channel
 			last_message_at = None if last_message is None else last_message.created_at
 
-			claimed_at = None
-			for author_id, channel_id in self.claimed_channel.items():
-				if channel_id == channel.id:
-					claimed_at = self.claimed_at.get(author_id, None)
-					break
+			claimed_at = self._claimed_at.get(channel.id, None)
 
 			if last_message_at is None and claimed_at is None:
 				continue
@@ -122,241 +191,76 @@ class AutoHotkeyHelpSystem(AceMixin, commands.Cog):
 			pivot = max(dt for dt in (last_message_at, claimed_at) if dt is not None)
 
 			if pivot < on_age:
+				self.set_state(channel, ChannelState.CLOSING)
 				await self.close_channel(channel)
 
-	@channel_reclaimer.before_loop
-	async def _wait_until_ready(self):
-		await self.bot.wait_until_ready()
+	async def process_message(self, message):
+		channel: disnake.TextChannel = message.channel
 
-	def cog_unload(self) -> None:
-		self.channel_reclaimer.cancel()
-		return super().cog_unload()
-
-	@commands.command(hidden=True)
-	@is_mod()
-	async def open(self, ctx, channel: disnake.TextChannel):
-		'''Open a help channel.'''
-
-		if channel.category != self.closed_category:
-			raise commands.CommandError('Channel is not in the closed category.')
-
-		await self.open_channel(channel)
-		await ctx.send(f'{channel.mention} opened.')
-
-	@commands.command(hidden=True)
-	async def close(self, ctx):
-		'''Releases a help channel, and moves it back into the pool of closed help channels.'''
-
-		if ctx.channel.category != self.active_category:
+		# has to be in a category
+		category: disnake.CategoryChannel = channel.category
+		if category is None:
 			return
 
-		is_mod = await ctx.is_mod()
-		claimed_channel_id = self.claimed_channel.get(ctx.author.id, None)
-		claimed_at = self.claimed_at.get(ctx.author.id, None)
+		# ignore messages in ignored channels
+		if channel.id in self.ignored:
+			return
 
-		if is_mod or claimed_channel_id == ctx.channel.id:
-			if is_mod:
-				log.info('%s force-closing closing %s', po(ctx.author), po(ctx.channel))
-			elif claimed_at is not None and claimed_at > datetime.utcnow() - MINIMUM_LEASE:
-				raise commands.CommandError(f'Please wait at least {pretty_timedelta(MINIMUM_LEASE)} after claiming before closing a help channel.')
-
-			await self.close_channel(ctx.channel)
-		else:
-			raise commands.CommandError('You can\'t do that.')
-
-	async def open_channel(self, channel: disnake.TextChannel):
-		'''Move a channel from dormant to open.'''
-
-		try:
-			current_last = self.open_category.text_channels[-1]
-			to_pos = current_last.position + 1
-		except IndexError:
-			to_pos = max(c.position for c in channel.guild.channels) + 1
-
-		await channel._move(
-			position=to_pos,
-			parent_id=self.open_category.id,
-			lock_permissions=True,
-			reason=None
-		)
-
-		await self.post_message(channel, OPEN_MESSAGE, color=disnake.Color.green())
-
-	def should_open(self):
-		return len(self.open_category.text_channels) < OPEN_CHANNEL_COUNT
-
-	async def close_channel(self, channel: disnake.TextChannel):
-		'''Release a claimed channel from a member, making it closed.'''
-
-		log.info(f'Closing #{channel}')
-
-		owner_id = None
-
-		for channel_owner_id, channel_id in self.claimed_channel.items():
-			if channel_id == channel.id:
-				owner_id = channel_owner_id
-				break
-
-		self.claimed_channel.pop(owner_id, None)
-		self.claimed_messages.pop(channel.id, None)
-
-		self._store_claims()
-
-		log.info('Reclaiming %s from user id %s', po(channel), owner_id or 'UNKNOWN (not found in claims cache)')
-
-		if self.should_open():
-			log.info('Moving channel to open category since it needs channels')
-			await self.open_channel(channel)
-		else:
-			log.info('Moving channel to closed category')
-
-			try:
-				current_first = self.closed_category.text_channels[0]
-				to_pos = max(current_first.position - 1, 0)
-			except IndexError:
-				to_pos = max(c.position for c in channel.guild.channels) + 1
-
-			opt = dict(
-				position=to_pos,
-				category=self.closed_category,
-				sync_permissions=True,
-				topic=f'<#{GET_HELP_CHAN_ID}>'
-			)
-
-			if self.has_postfix(channel):
-				opt['name'] = self._stripped_name(channel)
-
-			# send this before moving channel in case of rate limit shi
-			try:
-				await channel.send(embed=disnake.Embed(description=CLOSED_MESSAGE, color=disnake.Color.red()))
-			except disnake.HTTPException:
-				pass
-
-			await channel.edit(**opt)
-
-	async def on_open_message(self, message):
-		# so this needs a lock since people can spam messages in open channels
-		# and cause a whole bigass ripple of claims happening for
-		# the same channel, which calls .edit() on it a billion times
-		# and also opens up a billion other channels
-
-		# runie if you see this in the future don't remove the lock
-		# just make more help channels
-
-		async with self.channel_claim_lock:
-			message: disnake.Message = message
-			author: disnake.Member = message.author
-			channel: disnake.TextChannel = message.channel
-
-			log.info(f'New message in open category: {message.author} - #{message.channel}')
-
-			if self.is_claimed(channel.id):
-				log.info('Channel is already claimed (in the claimed category?)')
+		async with self.lock:
+			# ignore channels currently being processed elsewhere (by having a state)
+			channel_state = self.get_state(channel)
+			if channel_state is not None:
+				log.info('Ignoring channel %s because of its state: %s', channel.name, channel_state)
 				return
 
-			# check whether author already has a claimed channel
-			claimed_id = self.claimed_channel.get(author.id, None)
-			if claimed_id is not None:
-				log.info(f'User has already claimed #{message.guild.get_channel(claimed_id)}')
-				await self.post_error(message, f'You have already claimed <#{claimed_id}>, please ask your question there.')
-				return
+			if category == self.open_category:
+				await self.on_open_message(message)
+			elif category == self.active_category:
+				await self.on_active_message(message)
 
-			now = datetime.utcnow()
+	async def on_open_message(self, message: disnake.Message):
+		claimed_id = await self.has_channel(message.author.id)
+		if claimed_id is not None:
+			log.info(f'User has already claimed #{message.guild.get_channel(claimed_id)}')
+			await self.post_error(message, f'You have already claimed <#{claimed_id}>, please ask your question there.')
+			return
 
-			# check whether author has claimed another channel within the last MINIMUM_CLAIM_INTERVAL time
-			last_claim_at = self.claimed_at.get(author.id, None)
-			if last_claim_at is not None and last_claim_at > now - MINIMUM_CLAIM_INTERVAL:  # and False:
-				log.info(f'User previously claimed a channel {pretty_timedelta(now - last_claim_at)} ago')
-				await self.post_error(message, f'Please wait at least {pretty_timedelta(MINIMUM_CLAIM_INTERVAL)} between each help channel claim.')
-				return
+		now = disnake.utils.utcnow()
+		author: disnake.Member = message.author
 
-			log.info('%s claiming %s', po(author), po(channel))
+		# check whether author has claimed another channel within the last MINIMUM_CLAIM_INTERVAL time
+		last_claim_at = self._claimed_at.get(author.id, None)
+		if last_claim_at is not None and last_claim_at > now - MINIMUM_CLAIM_INTERVAL:  # and False:
+			log.info(f'User previously claimed a channel {pretty_timedelta(now - last_claim_at)} ago')
+			await self.post_error(message, f'Please wait at least {pretty_timedelta(MINIMUM_CLAIM_INTERVAL)} between each help channel claim.')
+			return
 
-			# move channel
-			try:
-				opt = dict(
-					position=self.active_info_channel.position + 1,
-					category=self.active_category,
-					sync_permissions=True,
-					topic=message.jump_url
-				)
+		channel: disnake.TextChannel = message.channel
 
-				if not self.has_postfix(channel):
-					opt['name'] = channel.name + '-' + NEW_EMOJI
+		log.info('%s claiming %s', po(author), po(channel))
 
-				# set some metadata
-				self.claimed_channel[author.id] = channel.id
-				self.claimed_at[author.id] = now
+		# activate the channel
+		self.set_state(channel, ChannelState.ACTIVATING)
+		await self.set_claimant(channel.id, message.author.id)
+		create_task(self.activate_channel(message))
 
-				msgs = [message]
-				self.claimed_messages[channel.id] = msgs
+		# maybe open new channel
 
-				await channel.edit(**opt)
+		if len(self.open_channels(forecast=True)) >= OPEN_CHANNEL_COUNT:
+			log.info('No need to open another channel')
+			return
 
-				await self.maybe_yell(msgs)
+		closed_channels = self.closed_channels(forecast=False)
+		if not closed_channels:
+			log.info('No closed channels available to move to open category!')
+			return
 
-			except disnake.HTTPException as exc:
-				log.warning('Failed moving %s to claimed category: %s', po(channel), str(exc))
-				self.claimed_channel.pop(author.id, None)
-				self.claimed_at.pop(author.id, None)
-				self.claimed_messages.pop(channel.id, None)
-				return
+		to_open = closed_channels[0]
 
-			self._store_claims()
+		self.set_state(to_open, ChannelState.OPENING)
+		create_task(self.open_channel(to_open))
 
-		# check whether we need to move any open channels
-		# this does not need to be in the lock since it's independent
-		# all the other logic
-
-		try:
-			channel = self.closed_category.text_channels[-1]
-		except IndexError:
-			log.warning('No more openable channels in closed pool!')
-		else:
-			log.info(f'Opening new channel after claim: {channel}')
-			await self.open_channel(channel)
-
-	def _make_yell_embed(self, score):
-		s = (
-			'Your scripting question looks like it might be about a game, which is not allowed here. '
-			f'Please make sure you are familiar with the <#{RULES_CHAN_ID}>, specifically rule 5.\n\n'
-			'If your question does not break the rules, you can safely ignore this message. '
-			'If you continue and your question is later found to break the rules, you might risk a ban.'
-		)
-
-		e = disnake.Embed(
-			title='Hi there!',
-			description=s,
-			color=disnake.Color.orange()
-		)
-
-		e.set_footer(text='This message was sent by an automated system.')
-
-		return e
-
-	async def maybe_yell(self, msgs):
-		channel = msgs[0].channel
-		author = msgs[0].author
-		content = ' '.join(m.content for m in msgs)
-
-		pivot = 0.5
-		c = await self.classify(content)
-
-		if c >= pivot:
-			# wait a bit so it's not so confusing when the channel is grabbed
-			await sleep(2.0)
-
-			await channel.send(
-				content=author.mention,
-				embed=self._make_yell_embed(c)
-			)
-
-			self.bot.dispatch(
-				'log', channel.guild, author, action='GAME SCRIPT PREDICTION',
-				severity=Severity.LOW, message=msgs[0], reason=f'Model class prediction {c:.2f} with pivot {pivot:.2f}'
-			)
-
-			self.claimed_messages.pop(channel.id, None)
+	# print('open message', self.open_channels)
 
 	async def on_active_message(self, message):
 		if message.content.startswith('.close'):
@@ -364,10 +268,10 @@ class AutoHotkeyHelpSystem(AceMixin, commands.Cog):
 
 		channel = message.channel
 
-		author_channel_id = self.claimed_channel.get(message.author.id, None)
+		claimant_id = await self.get_claimant(channel.id)
 
-		if author_channel_id is not None and author_channel_id == message.channel.id:
-			msgs = self.claimed_messages.get(author_channel_id, None)
+		if claimant_id is not None and claimant_id == message.author.id:
+			msgs = self._messages.get(channel.id, None)
 
 			# nothing there, skip for now
 			if msgs is None:
@@ -375,34 +279,88 @@ class AutoHotkeyHelpSystem(AceMixin, commands.Cog):
 
 			msgs.append(message)
 
-			await self.maybe_yell(msgs)
+			create_task(self.maybe_yell(msgs))
 		else:
 			# clear claimed_messages if someone else is talking now
-			self.claimed_messages.pop(channel.id, None)
+			self._messages.pop(channel.id, None)
 
 			# remove postfix if it's there
 			if self.has_postfix(channel):
-				await self.strip_postfix(channel)
+				await channel._state.http.edit_channel(channel.id, name=self.without_postfix(channel))
 
-	@commands.Cog.listener()
-	async def on_message(self, message):
-		guild = message.guild
+	async def move(self, channel: disnake.TextChannel, parent_id, reason=None):
+		with StateClearer(self.clear_state, channel):
+			try:
+				await channel._move(
+					self.get_bottom_pos(),
+					parent_id=parent_id,
+					lock_permissions=True,
+					reason=reason
+				)
+			except (disnake.HTTPException, asyncio.CancelledError):
+				return False
 
-		if guild is None or guild.id != AHK_GUILD_ID:
+		return True
+
+	async def open_channel(self, channel: disnake.TextChannel):
+		result = await self.move(
+			channel,
+			parent_id=self.open_category.id,
+		)
+
+		if not result:
 			return
 
-		if message.author.bot:
+		await self.post_message(channel, OPEN_MESSAGE, color=disnake.Color.green())
+
+	async def activate_channel(self, message: disnake.Message):
+		channel: disnake.Channel = message.channel
+
+		result = await self.move(channel, parent_id=self.active_category.id)
+
+		if not result:
+			await self.clear_claimant(channel.id)
 			return
 
-		category: disnake.CategoryChannel = message.channel.category
+		# set some metadata
+		self._claimed_at[channel.id] = disnake.utils.utcnow()
 
-		if category is None:
+		data = dict(topic=message.jump_url)
+
+		if not self.has_postfix(channel):
+			data['name'] = self.with_postfix(channel)
+
+		msgs = [message]
+		self._messages[channel.id] = msgs
+
+		await asyncio.gather(
+			self.maybe_yell(msgs),
+			channel._state.http.edit_channel(channel.id, **data),
+			return_exceptions=True
+		)
+
+	async def close_channel(self, channel: disnake.TextChannel):
+		result = await self.move(
+			channel,
+			parent_id=self.closed_category.id,
+		)
+
+		if not result:
 			return
 
-		if category == self.open_category:
-			await self.on_open_message(message)
-		elif category == self.active_category:
-			await self.on_active_message(message)
+		await self.clear_claimant(channel.id)
+		self._messages.pop(channel.id, None)
+
+		data = dict(topic=f'<#{GET_HELP_CHAN_ID}>')
+
+		if self.has_postfix(channel):
+			data['name'] = self.without_postfix(channel)
+
+		await gather(
+			channel._state.http.edit_channel(channel.id, **data),
+			self.post_message(channel, CLOSED_MESSAGE, color=disnake.Color.red()),
+			return_exceptions=True
+		)
 
 	async def post_message(self, channel: disnake.TextChannel, content: str, color=None):
 		last_message = await self.get_last_message(channel)
@@ -413,7 +371,8 @@ class AutoHotkeyHelpSystem(AceMixin, commands.Cog):
 
 		e = disnake.Embed(**opt)
 
-		do_edit = last_message is not None and last_message.author == channel.guild.me and len(last_message.embeds)
+		is_my_embed = last_message is not None and last_message.author == channel.guild.me and len(last_message.embeds)
+		do_edit = is_my_embed and last_message.embeds[0].description in (OPEN_MESSAGE, CLOSED_MESSAGE)
 
 		if do_edit:
 			await last_message.edit(content=None, embed=e)
@@ -451,49 +410,147 @@ class AutoHotkeyHelpSystem(AceMixin, commands.Cog):
 	def has_postfix(self, channel: disnake.TextChannel):
 		return channel.name.endswith(f'-{NEW_EMOJI}')
 
-	def _stripped_name(self, channel: disnake.TextChannel):
+	def with_postfix(self, channel: disnake.TextChannel):
+		return f'{channel.name}-{NEW_EMOJI}'
+
+	def without_postfix(self, channel: disnake.TextChannel):
 		return channel.name[:-2]
 
-	async def strip_postfix(self, channel: disnake.TextChannel):
-		new_name = self._stripped_name(channel)
+	async def classify(self, text):
 		try:
-			await channel.edit(name=new_name)
-		except disnake.HTTPException as exc:
-			log.warning(f'Failed changing name of {channel} to {new_name}: {exc}')
-			pass
+			async with self.bot.aiohttp.post(GAME_PRED_URL, data=dict(q=text)) as resp:
+				if resp.status != 200:
+					return 0.0
 
-	def is_claimed(self, channel_id):
-		return channel_id in self.claimed_channel.values()
+				json = await resp.json()
+				return json['p']
+		except aiohttp.ClientError:
+			return 0.0
+
+	def _make_yell_embed(self, score):
+		s = (
+			'Your scripting question looks like it might be about a game, which is not allowed here. '
+			f'Please make sure you are familiar with the <#{RULES_CHAN_ID}>, specifically rule 5.\n\n'
+			'If your question does not break the rules, you can safely ignore this message. '
+			'If you continue and your question is later found to break the rules, you might risk a ban.'
+		)
+
+		e = disnake.Embed(
+			title='Hi there!',
+			description=s,
+			color=disnake.Color.orange()
+		)
+
+		e.set_footer(text=f'This message was sent by an automated system (confidence: {int(score * 100)}%)')
+
+		return e
+
+	async def maybe_yell(self, msgs):
+		channel = msgs[0].channel
+		author = msgs[0].author
+		content = ' '.join(m.content for m in msgs)
+
+		pivot = 0.65
+		c = await self.classify(content)
+
+		if c >= pivot:
+			# wait a bit so it's not so confusing when the channel is grabbed
+			await sleep(2.0)
+
+			await channel.send(
+				content=author.mention,
+				embed=self._make_yell_embed(c)
+			)
+
+			self.bot.dispatch(
+				'log', channel.guild, author, action='GAME SCRIPT PREDICTION',
+				severity=Severity.LOW, message=msgs[0], reason=f'Model class prediction {c:.2f} with pivot {pivot:.2f}'
+			)
+
+			self._messages.pop(channel.id, None)
+
+
+class HelpSystem(AceMixin, commands.Cog):
+	def __init__(self, bot):
+		super().__init__(bot)
+
+		self.controllers = {
+			guild_id: Controller(bot, guild_id, **config_dict)
+			for guild_id, config_dict in HELP_CONTROLLERS.items()
+		}
+
+		create_task(self.start_reclaimers())
+
+	@commands.Cog.listener()
+	async def on_message(self, message):
+		await self.bot.wait_until_ready()
+
+		if message.guild is None:
+			return
+
+		if message.author.bot:
+			return
+
+		controller = self.controllers.get(message.guild.id, None)
+
+		if controller:
+			await controller.process_message(message)
 
 	@commands.command(hidden=True)
 	async def ask(self, ctx):
 		'''Responds with the currently open for claiming channels.'''
 
-		async with self.channel_claim_lock:
-			open_category = self.open_category
-			if open_category is None:
-				raise commands.CommandError('Open category not found.')
+		controller: Controller = self.controllers.get(ctx.message.guild.id, None)
+		if not controller:
+			return
 
-			channels = [channel for channel in open_category.text_channels if channel.id != GET_HELP_CHAN_ID]
-			if not channels:
-				raise commands.CommandError('No help channels are currently open for claiming. Please wait for a channel to become available.')
+		channels = controller.open_channels(forecast=False)
 
-			mentions = [c.mention for c in channels]
-			mention_count = len(mentions)
+		if not channels:
+			raise commands.CommandError('No help channels are currently open for claiming. Please wait for a channel to become available.')
 
-			if mention_count < 3:
-				ment = ' and '.join(mentions)
-			else:
-				mentions[-1] = 'and ' + mentions[-1]
-				ment = ', '.join(mentions)
+		mentions = [c.mention for c in channels]
+		mention_count = len(mentions)
 
-			text = (
-				'If you\'re looking for scripting help you should ask in an open help channel.\n\n'
-				'The currently available help channels are {1}.'
-			).format(open_category, ment)
+		if mention_count < 3:
+			ment = ' and '.join(mentions)
+		else:
+			mentions[-1] = 'and ' + mentions[-1]
+			ment = ', '.join(mentions)
 
-			await ctx.send(text)
+		text = (
+			'If you\'re looking for scripting help you should ask in an open help channel.\n\n'
+			'The currently available help channels are {0}.'
+		).format(ment)
+
+		await ctx.send(text)
+
+	@commands.command()
+	async def close(self, ctx):
+		controller: Controller = self.controllers.get(ctx.message.guild.id, None)
+		if not controller:
+			return
+
+		# check that this is a channel in an active category that can actually be closed
+		if ctx.channel.category != controller.active_category:
+			return
+
+		is_mod = await ctx.is_mod()
+		channel_claimant_id = await controller.get_claimant(ctx.channel.id)
+
+		if not is_mod and channel_claimant_id != ctx.author.id:
+			raise commands.CommandError('You can\'t do that.')
+
+		log.info('%s is closing %s', po(ctx.author), po(ctx.channel))
+
+		await controller.close_channel(ctx.channel)
+
+	async def start_reclaimers(self):
+		await self.bot.wait_until_ready()
+
+		for controller in self.controllers.values():
+			controller.reclaimer.start()
 
 
 def setup(bot):
-	bot.add_cog(AutoHotkeyHelpSystem(bot))
+	bot.add_cog(HelpSystem(bot))
