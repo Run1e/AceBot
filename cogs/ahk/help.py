@@ -20,7 +20,7 @@ from utils.time import pretty_timedelta
 log = logging.getLogger(__name__)
 
 OPEN_CHANNEL_COUNT = 2
-MINIMUM_CLAIM_INTERVAL = timedelta(minutes=5)
+MINIMUM_CLAIM_INTERVAL = timedelta(minutes=3)
 FREE_AFTER = timedelta(minutes=1)
 MINIMUM_LEASE = timedelta(minutes=2)
 CHECK_FREE_EVERY = dict(seconds=10)
@@ -124,7 +124,10 @@ class Controller:
 		return self._get_channels(self.closed_category, ChannelState.CLOSING if forecast else None)
 
 	def get_bottom_pos(self):
-		return max(channel.position for channel in self.guild.text_channels) + 1
+		# doing +10 ensures we get the bottom pos even if
+		# another move comes right after which uses outdated channel positions
+		# because the channel update events haven't been received yet
+		return max(channel.position for channel in self.guild.text_channels) + 10
 
 	def get_state(self, channel):
 		return self._states.get(channel.id, None)
@@ -232,7 +235,7 @@ class Controller:
 		last_claim_at = self._claimed_at.get(author.id, None)
 		if last_claim_at is not None and last_claim_at > now - MINIMUM_CLAIM_INTERVAL:  # and False:
 			log.info(f'User previously claimed a channel {pretty_timedelta(now - last_claim_at)} ago')
-			await self.post_error(message, f'Please wait at least {pretty_timedelta(MINIMUM_CLAIM_INTERVAL)} between each help channel claim.')
+			await self.post_error(message, f'Please wait a bit before claiming another channel.')
 			return
 
 		channel: disnake.TextChannel = message.channel
@@ -323,7 +326,7 @@ class Controller:
 			return
 
 		# set some metadata
-		self._claimed_at[channel.id] = disnake.utils.utcnow()
+		self._claimed_at[message.author.id] = disnake.utils.utcnow()
 
 		data = dict(topic=message.jump_url)
 
@@ -525,7 +528,7 @@ class HelpSystem(AceMixin, commands.Cog):
 
 		await ctx.send(text)
 
-	@commands.command()
+	@commands.command(hidden=True)
 	async def close(self, ctx):
 		controller: Controller = self.controllers.get(ctx.message.guild.id, None)
 		if not controller:
