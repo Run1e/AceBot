@@ -251,7 +251,7 @@ class Moderation(AceMixin, commands.Cog):
 		for name, value in fields.items():
 			e.add_field(name=name.title(), value=value, inline=False)
 
-		e.set_thumbnail(url=subject.avatar)
+		e.set_thumbnail(url=subject.display_avatar.url)
 
 		e.set_footer(text=severity.name)
 
@@ -325,7 +325,7 @@ class Moderation(AceMixin, commands.Cog):
 				raise commands.CommandError('Can\'t tempban this member.')
 		else:
 			user: disnake.User = member.user
-			member = FakeUser(user.id, ctx.guild, name=user.name, avatar_url=str(user.avatar), discriminator=user.discriminator)
+			member = FakeUser(user.id, ctx.guild, name=user.name, avatar_url=str(user.display_avatar), discriminator=user.discriminator)
 
 		is_tempbanned = await self.bot.db.fetchval(
 			'SELECT id FROM mod_timer WHERE guild_id=$1 AND user_id=$2 AND event=$3 AND completed=FALSE',
@@ -437,7 +437,7 @@ class Moderation(AceMixin, commands.Cog):
 
 		self.bot.dispatch(
 			'log', ctx.guild, member.user, action='TEMPBAN UPDATE', severity=Severity.HIGH, message=ctx.message,
-			responsible=po(ctx.author), duration=duration_pretty, reason=f'Old duration was {old_duration_pretty}'
+			responsible=po(ctx.author), duration=duration_pretty, reason=f'Previous duration was {old_duration_pretty}'
 		)
 
 	async def do_action(self, message, action, reason, delete_message_days=0):

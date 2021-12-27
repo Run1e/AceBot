@@ -1,6 +1,14 @@
 from disnake import Object
 
 
+class FakeAsset:
+	def __init__(self, url):
+		self.url = url
+
+	def __str__(self):
+		return self.url
+
+
 class FakeUser(Object):
 	def __init__(self, id, guild=None, **data):
 		super().__init__(id)
@@ -37,7 +45,11 @@ class FakeUser(Object):
 
 	@property
 	def avatar(self):
-		return self._data.get('avatar_url', 'https://cdn.discordapp.com/embed/avatars/0.png')
+		return FakeAsset(url=self._data.get('avatar_url', 'https://cdn.discordapp.com/embed/avatars/0.png'))
+
+	@property
+	def display_avatar(self):
+		return self.avatar
 
 	def __str__(self):
 		name = self.name
