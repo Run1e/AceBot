@@ -56,7 +56,7 @@ MOD_PERMS = (
 	'deafen_members',
 	'mute_members',
 	'priority_speaker',
-	'attach_files',
+	#'attach_files',  # "useful" to know but causes a lot of noise
 )
 
 DEFAULT_REASON = 'No reason provided.'
