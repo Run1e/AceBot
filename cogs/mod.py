@@ -34,22 +34,29 @@ CONTENT_LOCK = asyncio.Lock()
 
 MOD_PERMS = (
 	'administrator',
-	'kick_members',
 	'ban_members',
+	'kick_members',
 	'moderate_members',
 	'manage_guild',
-	'manage_roles',
 	'manage_channels',
+	'manage_threads',
 	'manage_messages',
-	'manage_nicknames',
-	'manage_webhooks',
 	'manage_emojis',
+	'manage_nicknames',
+	'manage_permissions',
+	'manage_roles',
+	'manage_webhooks',
+	'manage_events',
 	'mention_everyone',
-	'mute_members',
-	'move_members',
+	'create_private_threads',
 	'view_audit_log',
+	'view_guild_insights',
+	'send_tts_messages',
+	'move_members',
 	'deafen_members',
-	'priority_speaker'
+	'mute_members',
+	'priority_speaker',
+	'attach_files',
 )
 
 DEFAULT_REASON = 'No reason provided.'
@@ -960,28 +967,6 @@ class Moderation(AceMixin, commands.Cog):
 	async def permcheck(self, ctx):
 		'''Checks for potentially dangerous permissions.'''
 
-		dangerous_permissions = (
-			'administrator',
-			'ban_members',
-			'kick_members',
-			'moderate_members',
-			'manage_guild',
-			'manage_channels',
-			'manage_emojis',
-			'manage_nicknames',
-			'manage_permissions',
-			'manage_roles',
-			'manage_webhooks',
-			'mention_everyone',
-			'view_audit_log',
-			'view_guild_insights',
-			'send_tts_messages',
-			'move_members',
-			'deafen_members',
-			'mute_members',
-			'priority_speaker',
-		)
-
 		guild: disnake.Guild = ctx.guild
 		roles = guild.roles
 		categories = guild.categories
@@ -998,7 +983,7 @@ class Moderation(AceMixin, commands.Cog):
 			r: disnake.Role
 
 			# find dangerous perms
-			for dangerous_permission in dangerous_permissions:
+			for dangerous_permission in MOD_PERMS:
 				if getattr(r.permissions, dangerous_permission):
 					rp[r].append('- ' + dangerous_permission)
 					if dangerous_permission == 'administrator':
@@ -1032,7 +1017,7 @@ class Moderation(AceMixin, commands.Cog):
 				if role is not guild.default_role and permissions.is_empty():
 					catp[(cat, role)].append('+ Value of zero (does nothing)')
 				else:
-					for dangerous_permission in dangerous_permissions:
+					for dangerous_permission in MOD_PERMS:
 						if getattr(permissions, dangerous_permission):
 							catp[(cat, role)].append('- ' + dangerous_permission)
 							if dangerous_permission == 'administrator':
@@ -1057,7 +1042,7 @@ class Moderation(AceMixin, commands.Cog):
 			for role, permissions in c.overwrites.items():
 				if role is not guild.default_role and permissions.is_empty():
 					cp[(c, role)].append('+ Value of zero (does nothing)')
-				for dangerous_permission in dangerous_permissions:
+				for dangerous_permission in MOD_PERMS:
 					if getattr(permissions, dangerous_permission):
 						cp[(c, role)].append('- ' + dangerous_permission)
 						if dangerous_permission == 'administrator':
