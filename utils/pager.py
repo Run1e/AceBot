@@ -38,7 +38,13 @@ class Pager(disnake.ui.View):
 			meth = self.ctx.followup.send if self.ctx.response.is_done() else self.ctx.response.send_message
 		else:
 			meth = self.ctx.send
-		await meth(embed=await self.init(at_page=at_page), view=self if self.top_page else None)
+
+		kwargs = dict(embed=await self.init(at_page=at_page))
+
+		if self.top_page:
+			kwargs['view'] = self
+
+		await meth(**kwargs)
 
 	async def init(self, at_page=0):
 		self.embed = await self.create_base_embed()
