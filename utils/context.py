@@ -11,7 +11,7 @@ if TYPE_CHECKING:
 	from ace import AceBot
 
 STATIC_PERMS = ('add_reactions', 'manage_messages', 'embed_links')
-PROMPT_REQUIRED_PERMS = ('embed_links', 'add_reactions')
+PROMPT_REQUIRED_PERMS = ('embed_links',)
 PROMPT_EMOJIS = ('\N{WHITE HEAVY CHECK MARK}', '\N{CROSS MARK}')
 
 
@@ -35,6 +35,46 @@ async def can_prompt_pred(ctx):
 
 def can_prompt():
 	return commands.check(can_prompt_pred)
+
+
+class PromptView(disnake.ui.View):
+	def __init__(self, check_user, *args, **kwargs):
+		super().__init__(*args, **kwargs)
+
+		self.check_user = check_user
+		self.message = None
+
+		self.result = False
+		self.event = asyncio.Event()
+
+	async def finish(self, message: disnake.Message):
+		self.event.set()
+
+		if message is not None:
+			try:
+				await message.delete()
+			except disnake.HTTPException:
+				pass
+
+	async def wait(self):
+		await self.event.wait()
+		return self.result
+
+	async def on_timeout(self) -> None:
+		await self.finish(self.message)
+
+	async def interaction_check(self, interaction: disnake.MessageInteraction):
+		return interaction.author == self.check_user
+
+	@disnake.ui.button(label='Continue', emoji='\N{White Heavy Check Mark}', style=disnake.ButtonStyle.primary)
+	async def yes(self, button: disnake.ui.Button, inter: disnake.MessageInteraction):
+		self.result = True
+		await self.finish(inter.message)
+
+	@disnake.ui.button(label='Abort', emoji='\N{CROSS MARK}', style=disnake.ButtonStyle.secondary)
+	async def no(self, button: disnake.ui.Button, inter: disnake.MessageInteraction):
+		self.result = False
+		await self.finish(inter.message)
 
 
 class AceContext(commands.Context):
@@ -115,35 +155,24 @@ class AceContext(commands.Context):
 		if not all(getattr(perms, perm) for perm in PROMPT_REQUIRED_PERMS):
 			return False
 
-		prompt = prompt or 'No description provided.'
-		prompt += '\n\nPress {} to continue, {} to abort.'.format(*PROMPT_EMOJIS)
-
-		e = disnake.Embed(description=prompt)
+		e = disnake.Embed(description=prompt or 'No description provided.')
 
 		e.set_author(name=title or 'Prompt', icon_url=self.bot.user.display_avatar.url)
 
+		view = PromptView(check_user=user_override or self.author, timeout=60.0)
+
 		try:
-			msg = await self.send(content=None if user_override is None else user_override.mention, embed=e)
-			for emoji in PROMPT_EMOJIS:
-				await msg.add_reaction(emoji)
+			message = await self.send(
+				content=None if user_override is None else user_override.mention,
+				embed=e,
+				view=view
+			)
+
+			view.message = message
 		except disnake.HTTPException:
 			return False
 
-		check_user = user_override or self.author
-
-		def check(reaction, user):
-			return reaction.message.id == msg.id and user == check_user and str(reaction) in PROMPT_EMOJIS
-
-		try:
-			reaction, user = await self.bot.wait_for('reaction_add', check=check, timeout=60.0)
-			return str(reaction) == PROMPT_EMOJIS[0]
-		except (asyncio.TimeoutError, disnake.HTTPException):
-			return False
-		finally:
-			try:
-				await msg.delete()
-			except disnake.HTTPException:
-				pass
+		return await view.wait()
 
 	async def admin_prompt(self, raise_on_abort=True):
 		result = await self.prompt(

@@ -53,6 +53,16 @@ class Owner(AceMixin, commands.Cog):
 		self.event_counter[event_type] += 1
 
 	@commands.command(hidden=True)
+	async def prompt(self, ctx: AceContext, user: disnake.Member = None):
+		result = await ctx.prompt(user_override=user)
+		await ctx.send(result)
+
+	@commands.command(hidden=True)
+	async def adminprompt(self, ctx: AceContext):
+		result = await ctx.admin_prompt()
+		await ctx.send(result)
+
+	@commands.command(hidden=True)
 	async def c(self, ctx, *, text):
 		await ctx.send(await self.help_cog.classify(text))
 
