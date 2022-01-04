@@ -196,13 +196,17 @@ class Tags(AceMixin, commands.Cog):
 			self._being_made.pop(ctx.guild.id)
 
 	async def craft_tag_contents(self, ctx, content):
-		content = await commands.clean_content().convert(ctx, content)
+		if content is None:
+			content = ''
+		else:
+			content = await commands.clean_content().convert(ctx, content)
+
+		content = content.strip()
 
 		if ctx.message.attachments:
-			content = content or ''
 			content += ('\n' if len(content) else '') + ctx.message.attachments[0].url
 
-		if content is None:
+		if not content:
 			raise commands.UserInputError('content is a required argument that is missing.')
 
 		return content
