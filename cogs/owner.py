@@ -149,11 +149,17 @@ class Owner(AceMixin, commands.Cog):
 	async def gateway(self, ctx, *, n=None):
 		'''Print gateway event counters.'''
 
-		data = self.event_counter.most_common(n)
-		data = [(name, format(count, ',d')) for name, count in data]
-		headers = ('Event', 'Count')
+		table = tabulate(
+			tabular_data=[(name, format(count, ',d')) for name, count in self.event_counter.most_common(n)],
+			headers=('Event', 'Count')
+		)
 
-		await ctx.send('```{0}```'.format(tabulate(data, headers)))
+		paginator = commands.Paginator()
+		for line in table.split('\n'):
+			paginator.add_line(line)
+
+		for page in paginator.pages:
+			await ctx.send(page)
 
 	@commands.command()
 	async def ping(self, ctx):
