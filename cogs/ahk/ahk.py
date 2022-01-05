@@ -70,7 +70,7 @@ class AutoHotkey(AceMixin, commands.Cog):
 			big_box=False, max_len=512
 		)
 
-		self.forum_thread_channel = self.bot.get_channel(FORUM_THRD_CHAN_ID)
+		self.forum_thread_channel = None
 		self.rss_time = datetime.now(tz=timezone(timedelta(hours=1))) - timedelta(minutes=1)
 
 		self.rss.start()
@@ -86,6 +86,16 @@ class AutoHotkey(AceMixin, commands.Cog):
 
 	@tasks.loop(minutes=14)
 	async def rss(self):
+		await self.bot.wait_until_ready()
+
+		if self.forum_thread_channel is None:
+			self.forum_thread_channel = self.bot.get_channel(FORUM_THRD_CHAN_ID)
+
+			# if not forum thread channel found we can just gracefully stop this task from running
+			if self.forum_thread_channel is None:
+				self.rss.stop()
+				return
+
 		async with self.bot.aiohttp.request('get', RSS_URL) as resp:
 			if resp.status != 200:
 				return
