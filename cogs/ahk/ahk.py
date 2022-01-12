@@ -397,7 +397,7 @@ class AutoHotkey(AceMixin, commands.Cog):
 			choices=self._docs_names,
 			scorer=fuzz.ratio,
 			processor=None,
-			limit=k,
+			limit=max(k, 8),
 		)
 
 		tweak = list()
@@ -415,7 +415,7 @@ class AutoHotkey(AceMixin, commands.Cog):
 
 		tweak = list(sorted(tweak, key=lambda v: v[1], reverse=True))
 
-		return list(name for name, score in tweak)
+		return list(name for name, score in tweak)[:k]
 
 	async def _build_docs_cache(self):
 		records = await self.db.fetch('SELECT docs_entry.id, name, content FROM docs_name INNER JOIN docs_entry ON docs_name.docs_id = docs_entry.id')
