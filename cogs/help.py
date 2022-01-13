@@ -53,7 +53,7 @@ class Controller:
 		closed_category_id,
 		ignore_channel_ids,
 		open_message,
-		closed_message,
+		close_message,
 		free_after,
 		yell,
 		pivot=None,
@@ -73,7 +73,7 @@ class Controller:
 		self._active_category_id = active_category_id
 		self._closed_category_id = closed_category_id
 		self._open_message = open_message
-		self._closed_message = closed_message
+		self._close_message = close_message
 		self._free_after = free_after
 		self._yell = yell
 		self._pivot = pivot
@@ -374,7 +374,7 @@ class Controller:
 
 		await gather(
 			channel._state.http.edit_channel(channel.id, **data),
-			self.post_message(channel, self._closed_message, color=disnake.Color.red()),
+			self.post_message(channel, self._close_message, color=disnake.Color.red()),
 			return_exceptions=True
 		)
 
@@ -388,7 +388,7 @@ class Controller:
 		e = disnake.Embed(**opt)
 
 		is_my_embed = last_message is not None and last_message.author == channel.guild.me and len(last_message.embeds)
-		do_edit = is_my_embed and last_message.embeds[0].description in (self._open_message, self._closed_message)
+		do_edit = is_my_embed and last_message.embeds[0].description in (self._open_message, self._close_message)
 
 		if do_edit:
 			await last_message.edit(content=None, embed=e)
