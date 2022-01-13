@@ -30,6 +30,7 @@ class Pager(disnake.ui.View):
 
 		self.page = 0
 		self.embed = None
+		self.message = None
 
 		self.__buttons = None
 
@@ -44,7 +45,7 @@ class Pager(disnake.ui.View):
 		if self.top_page:
 			kwargs['view'] = self
 
-		await meth(**kwargs)
+		self.message = await meth(**kwargs)
 
 	async def init(self, at_page=0):
 		self.embed = await self.create_base_embed()
@@ -107,7 +108,10 @@ class Pager(disnake.ui.View):
 		return interaction.author == self.author
 
 	async def on_timeout(self) -> None:
-		pass  # await self.interaction.edit_original_message(view=None)
+		try:
+			await self.message.edit(view=None)
+		except disnake.HTTPException:
+			pass
 
 	@disnake.ui.button(label=PREV_LABEL, emoji=PREV_EMOJI, style=disnake.ButtonStyle.primary, row=0)
 	async def prev_page(self, button: disnake.ui.Button, inter: disnake.MessageInteraction):
