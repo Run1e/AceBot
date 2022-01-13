@@ -21,21 +21,8 @@ log = logging.getLogger(__name__)
 
 OPEN_CHANNEL_COUNT = 2
 MINIMUM_CLAIM_INTERVAL = timedelta(minutes=3)
-FREE_AFTER = timedelta(minutes=30)
 CHECK_FREE_EVERY = dict(seconds=80)
 NEW_EMOJI = '\N{Heavy Exclamation Mark Symbol}'
-
-OPEN_MESSAGE = (
-	'This help channel is now **open**, and you can claim it by simply asking a question in it.\n\n'
-	'After sending your question, the channel is moved to the\n`⏳ Help: Occupied` category, where someone will hopefully help you with your question. '
-	'The channel is closed after 30 minutes of inactivity.'
-)
-
-CLOSED_MESSAGE = (
-	'This channel is currently **closed**. '
-	'It is not possible to send messages in it until it enters rotation again and is available under the `✅ Help: Ask Here` category.\n\n'
-	'If your question didn\'t get answered, you can claim a new channel.'
-)
 
 
 class ChannelState(Enum):
@@ -57,7 +44,20 @@ class StateClearer:
 
 
 class Controller:
-	def __init__(self, bot, guild_id, open_category_id, active_category_id, closed_category_id, ignore_channel_ids):
+	def __init__(
+		self,
+		bot,
+		guild_id,
+		open_category_id,
+		active_category_id,
+		closed_category_id,
+		ignore_channel_ids,
+		open_message,
+		closed_message,
+		free_after,
+		yell,
+		pivot=None,
+	):
 		self.bot = bot
 
 		self.lock = asyncio.Lock()
@@ -68,10 +68,15 @@ class Controller:
 		self._states = dict()  # channel_id: ChannelState
 		self._claimed_at = dict()  # user_id: datetime
 
-		self.ignored = ignore_channel_ids
+		self._ignored = ignore_channel_ids
 		self._open_category_id = open_category_id
 		self._active_category_id = active_category_id
 		self._closed_category_id = closed_category_id
+		self._open_message = open_message
+		self._closed_message = closed_message
+		self._free_after = free_after
+		self._yell = yell
+		self._pivot = pivot
 
 	@property
 	def guild(self):
@@ -99,7 +104,7 @@ class Controller:
 		"""
 
 		cached = []
-		ignored = set(self.ignored)
+		ignored = set(self._ignored)
 
 		for channel_id, channel_state in self._states.items():
 			if channel_state is state:
@@ -177,7 +182,7 @@ class Controller:
 
 	@tasks.loop(**CHECK_FREE_EVERY)
 	async def reclaimer(self):
-		on_age = disnake.utils.utcnow() - FREE_AFTER
+		on_age = disnake.utils.utcnow() - self._free_after
 
 		for channel in self.active_channels(forecast=False):
 			last_message = await self.get_last_message(channel)
@@ -205,9 +210,16 @@ class Controller:
 			return
 
 		# ignore messages in ignored channels
-		if channel.id in self.ignored:
+		if channel.id in self._ignored:
 			return
 
+		# this lock is very intentionally placed
+		# it will cause the instance to process one message at a time,
+		# and when a decision about what to do has been made,
+		# a new task is started (which performs the decision) and the lock is opened
+		# the lock will *not* stay locked while waiting for the channel edit/move coro to end.
+		# the logic behind how to handle "channels that are being moved"
+		# are handled by the channel states and the logic in _get_channels
 		async with self.lock:
 			# ignore channels currently being processed elsewhere (by having a state)
 			channel_state = self.get_state(channel)
@@ -233,7 +245,11 @@ class Controller:
 		# check whether author has claimed another channel within the last MINIMUM_CLAIM_INTERVAL time
 		last_claim_at = self._claimed_at.get(author.id, None)
 		if last_claim_at is not None and last_claim_at > now - MINIMUM_CLAIM_INTERVAL:  # and False:
-			log.info(f'User previously claimed a channel {pretty_timedelta(now - last_claim_at)} ago')
+			log.info(
+				f'{author} previously claimed a channel {pretty_timedelta(now - last_claim_at)} ago, '
+				f'should wait {pretty_timedelta(MINIMUM_CLAIM_INTERVAL - (now - last_claim_at))}'
+			)
+
 			await self.post_error(message, f'Please wait a bit before claiming another channel.')
 			return
 
@@ -262,8 +278,6 @@ class Controller:
 		self.set_state(to_open, ChannelState.OPENING)
 		create_task(self.open_channel(to_open))
 
-	# print('open message', self.open_channels)
-
 	async def on_active_message(self, message):
 		if message.content.startswith('.close'):
 			return
@@ -273,6 +287,9 @@ class Controller:
 		claimant_id = await self.get_claimant(channel.id)
 
 		if claimant_id is not None and claimant_id == message.author.id:
+			if not self._yell:
+				return
+
 			msgs = self._messages.get(channel.id, None)
 
 			# nothing there, skip for now
@@ -288,7 +305,7 @@ class Controller:
 
 			# remove postfix if it's there
 			if self.has_postfix(channel):
-				await channel._state.http.edit_channel(channel.id, name=self.without_postfix(channel))
+				create_task(channel._state.http.edit_channel(channel.id, name=self.without_postfix(channel)))
 
 	async def move(self, channel: disnake.TextChannel, parent_id, reason=None):
 		with StateClearer(self.clear_state, channel):
@@ -305,15 +322,12 @@ class Controller:
 		return True
 
 	async def open_channel(self, channel: disnake.TextChannel):
-		result = await self.move(
-			channel,
-			parent_id=self.open_category.id,
-		)
+		result = await self.move(channel, parent_id=self.open_category.id)
 
 		if not result:
 			return
 
-		await self.post_message(channel, OPEN_MESSAGE, color=disnake.Color.green())
+		await self.post_message(channel, self._open_message, color=disnake.Color.green())
 
 	async def activate_channel(self, message: disnake.Message):
 		channel: disnake.Channel = message.channel
@@ -332,14 +346,14 @@ class Controller:
 		if not self.has_postfix(channel):
 			data['name'] = self.with_postfix(channel)
 
-		msgs = [message]
-		self._messages[channel.id] = msgs
+		coros = [channel._state.http.edit_channel(channel.id, **data)]
 
-		await asyncio.gather(
-			self.maybe_yell(msgs),
-			channel._state.http.edit_channel(channel.id, **data),
-			return_exceptions=True
-		)
+		if self._yell:
+			msgs = [message]
+			self._messages[channel.id] = msgs
+			coros.append(self.maybe_yell(msgs))
+
+		await asyncio.gather(*coros, return_exceptions=True)
 
 	async def close_channel(self, channel: disnake.TextChannel):
 		result = await self.move(
@@ -360,7 +374,7 @@ class Controller:
 
 		await gather(
 			channel._state.http.edit_channel(channel.id, **data),
-			self.post_message(channel, CLOSED_MESSAGE, color=disnake.Color.red()),
+			self.post_message(channel, self._closed_message, color=disnake.Color.red()),
 			return_exceptions=True
 		)
 
@@ -374,7 +388,7 @@ class Controller:
 		e = disnake.Embed(**opt)
 
 		is_my_embed = last_message is not None and last_message.author == channel.guild.me and len(last_message.embeds)
-		do_edit = is_my_embed and last_message.embeds[0].description in (OPEN_MESSAGE, CLOSED_MESSAGE)
+		do_edit = is_my_embed and last_message.embeds[0].description in (self._open_message, self._closed_message)
 
 		if do_edit:
 			await last_message.edit(content=None, embed=e)
@@ -452,7 +466,7 @@ class Controller:
 		author = msgs[0].author
 		content = ' '.join(m.content for m in msgs)
 
-		pivot = 0.65
+		pivot = self._pivot
 		c = await self.classify(content)
 
 		if c >= pivot:
