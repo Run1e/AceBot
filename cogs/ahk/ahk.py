@@ -515,7 +515,7 @@ class AutoHotkey(AceMixin, commands.Cog):
 			'$top': 1,
 		}
 
-		async with ctx.http.get(url, params=params) as resp:
+		async with self.bot.aiohttp.get(url, params=params, timeout=2) as resp:
 			if resp.status != 200:
 				raise commands.CommandError('Query failed.')
 
@@ -541,6 +541,22 @@ class AutoHotkey(AceMixin, commands.Cog):
 		e.set_footer(text='docs.microsoft.com', icon_url='https://i.imgur.com/UvkNAEh.png')
 
 		await ctx.send(embed=e)
+
+	@commands.slash_command(name='msdn')
+	async def slash_msdn(self, inter: disnake.CommandInteraction, query: str):
+		'''
+		Search the Microsoft documentation.
+		
+		Parameters
+		----------
+		query: query
+		'''
+		await self.msdn(inter, query=query)
+
+	@slash_msdn.error
+	async def slash_msdn_error(self, inter: disnake.CommandInteraction, exc):
+		if isinstance(exc, commands.CommandError):
+			await inter.send(embed=disnake.Embed(description=str(exc)), ephemeral=True)
 
 	@commands.command()
 	async def version(self, ctx):
