@@ -13,15 +13,18 @@ from aiohttp import ClientTimeout
 from aiohttp.client_exceptions import ClientConnectorError
 from bs4 import BeautifulSoup
 from disnake.ext import commands, tasks
-from rapidfuzz import fuzz, process, utils
+from rapidfuzz import fuzz, process
 
 from cogs.mixins import AceMixin
 from config import CLOUDAHK_PASS, CLOUDAHK_URL, CLOUDAHK_USER
 from ids import *
 from utils.docs_parser import parse_docs
 from utils.html2markdown import HTML2Markdown
+from utils.string import shorten
 
 log = logging.getLogger(__name__)
+
+NO_RESULTS_STRING = 'No results'
 
 AHK_COLOR = 0x95CD95
 RSS_URL = 'https://www.autohotkey.com/boards/feed'
@@ -58,6 +61,8 @@ class AutoHotkey(AceMixin, commands.Cog):
 
 	def __init__(self, bot):
 		super().__init__(bot)
+
+		self._msdn_cache = dict()
 
 		self.h2m = HTML2Markdown(
 			escaper=disnake.utils.escape_markdown,
@@ -502,30 +507,25 @@ class AutoHotkey(AceMixin, commands.Cog):
 		await self._build_docs_cache()
 		await on_update('Done!')
 
-	@commands.command()
-	async def msdn(self, ctx, *, query):
-		'''Search the Microsoft documentation.'''
-
+	async def _msdn_lookup(self, query, top=1):
 		url = 'https://docs.microsoft.com/api/search'
 
 		params = {
 			'filter': "category eq 'Documentation'",
 			'locale': 'en-us',
 			'search': query,
-			'$top': 1,
+			'$top': top,
 		}
 
-		async with ctx.http.get(url, params=params) as resp:
+		async with self.bot.aiohttp.get(url, params=params, timeout=2) as resp:
 			if resp.status != 200:
 				raise commands.CommandError('Query failed.')
 
 			json = await resp.json()
 
-		if 'results' not in json or not json['results']:
-			raise commands.CommandError('No results.')
+		return json
 
-		result = json['results'][0]
-
+	def _make_msdn_embed(self, result):
 		if result['description'] is None:
 			description = 'No description for this page.'
 		else:
@@ -540,7 +540,59 @@ class AutoHotkey(AceMixin, commands.Cog):
 
 		e.set_footer(text='docs.microsoft.com', icon_url='https://i.imgur.com/UvkNAEh.png')
 
+		return e
+
+	@commands.command()
+	async def msdn(self, ctx, *, query):
+		'''Search Microsofts documentation.'''
+
+		result = self._msdn_cache.get(query, None)
+		if result is None:
+			json = await self._msdn_lookup(query, top=1)
+
+			if 'results' not in json or not json['results']:
+				raise commands.CommandError('No results.')
+
+			result = json['results'][0]
+
+		e = self._make_msdn_embed(result)
+
 		await ctx.send(embed=e)
+
+	@commands.slash_command(name='msdn')
+	async def slash_msdn(self, inter: disnake.ApplicationCommandInteraction, query: str):
+		'''Search Microsofts documentation.'''
+
+		if query == NO_RESULTS_STRING:
+			await inter.response.send_message('Search aborted!', ephemeral=True)
+			return
+
+		await self.msdn(inter, query=query)
+
+	@slash_msdn.autocomplete(option_name='query')
+	async def slash_msdn_autocomplete(self, inter: disnake.ApplicationCommandInteraction, query: str):
+		if not query:
+			return [NO_RESULTS_STRING]
+
+		json = await self._msdn_lookup(query, top=9)
+
+		ret = []
+
+		results = json['results']
+		for result in results:
+			title = shorten(result['title'], 100)
+			ret.append(title)
+			self._msdn_cache[title] = result
+
+		if not ret:
+			ret.append(NO_RESULTS_STRING)
+
+		return ret
+
+	@slash_msdn.error
+	async def slash_msdn_error(self, inter: disnake.CommandInteraction, exc):
+		if isinstance(exc, commands.CommandError):
+			await inter.send(embed=disnake.Embed(description=str(exc)), ephemeral=True)
 
 	@commands.command()
 	async def version(self, ctx):
