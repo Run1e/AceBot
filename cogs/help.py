@@ -1,6 +1,7 @@
 import asyncio
 import logging
 from asyncio import create_task, gather, sleep
+from collections import defaultdict
 from datetime import timedelta
 from enum import Enum
 
@@ -23,6 +24,7 @@ OPEN_CHANNEL_COUNT = 2
 MINIMUM_CLAIM_INTERVAL = timedelta(minutes=3)
 CHECK_FREE_EVERY = dict(seconds=80)
 NEW_EMOJI = '\N{Heavy Exclamation Mark Symbol}'
+DEFAULT_PIVOT_VALUE = 0.0
 
 
 class ChannelState(Enum):
@@ -67,6 +69,7 @@ class Controller:
 		self._messages = {}
 		self._states = dict()  # channel_id: ChannelState
 		self._claimed_at = dict()  # user_id: datetime
+		self._yell_locks = defaultdict(asyncio.Lock)
 
 		self._ignored = ignore_channel_ids
 		self._open_category_id = open_category_id
@@ -298,7 +301,7 @@ class Controller:
 
 			msgs.append(message)
 
-			create_task(self.maybe_yell(msgs))
+			create_task(self.maybe_yell(channel))
 		else:
 			# clear claimed_messages if someone else is talking now
 			self._messages.pop(channel.id, None)
@@ -351,7 +354,7 @@ class Controller:
 		if self._yell:
 			msgs = [message]
 			self._messages[channel.id] = msgs
-			coros.append(self.maybe_yell(msgs))
+			coros.append(self.maybe_yell(channel))
 
 		await asyncio.gather(*coros, return_exceptions=True)
 
@@ -436,12 +439,12 @@ class Controller:
 		try:
 			async with self.bot.aiohttp.post(GAME_PRED_URL, data=dict(q=text)) as resp:
 				if resp.status != 200:
-					return 0.0
+					return DEFAULT_PIVOT_VALUE
 
 				json = await resp.json()
 				return json['p']
 		except aiohttp.ClientError:
-			return 0.0
+			return DEFAULT_PIVOT_VALUE
 
 	def _make_yell_embed(self, score):
 		s = (
@@ -461,29 +464,33 @@ class Controller:
 
 		return e
 
-	async def maybe_yell(self, msgs):
-		channel = msgs[0].channel
-		author = msgs[0].author
-		content = ' '.join(m.content for m in msgs)
+	async def maybe_yell(self, channel):
+		async with self._yell_locks[channel]:
+			messages = self._messages.get(channel.id, None)
+			if not messages:
+				return
 
-		pivot = self._pivot
-		c = await self.classify(content)
+			author = messages[0].author
+			content = ' '.join(m.content for m in messages)
 
-		if c >= pivot:
-			# wait a bit so it's not so confusing when the channel is grabbed
-			await sleep(2.0)
+			pivot = self._pivot
+			c = await self.classify(content)
 
-			await channel.send(
-				content=author.mention,
-				embed=self._make_yell_embed(c)
-			)
+			if c >= pivot:
+				# wait a bit so it's not so confusing when the channel is grabbed
+				await sleep(2.0)
 
-			self.bot.dispatch(
-				'log', channel.guild, author, action='GAME SCRIPT PREDICTION',
-				severity=Severity.LOW, message=msgs[0], reason=f'Model class prediction {c:.2f} with pivot {pivot:.2f}'
-			)
+				await channel.send(
+					content=author.mention,
+					embed=self._make_yell_embed(c)
+				)
 
-			self._messages.pop(channel.id, None)
+				self.bot.dispatch(
+					'log', channel.guild, author, action='GAME SCRIPT PREDICTION',
+					severity=Severity.LOW, message=messages[0], reason=f'Model class prediction {c:.2f} with pivot {pivot:.2f}'
+				)
+
+				self._messages.pop(channel.id, None)
 
 
 class HelpSystem(AceMixin, commands.Cog):
