@@ -314,7 +314,7 @@ class AutoHotkey(AceMixin, commands.Cog):
 				# upload as plaintext
 				stdout = stdout.replace('``', '`\u200b`')
 
-				resp = '```autoit\n{0}\n```{1}'.format(
+				resp = '```ansi\n{0}\n```{1}'.format(
 					stdout if stdout else 'No output.',
 					display_time
 				)
