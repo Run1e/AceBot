@@ -12,9 +12,7 @@ from disnake.ext import commands, tasks
 from cogs.mixins import AceMixin
 from cogs.mod import Severity
 from config import GAME_PRED_URL, HELP_CONTROLLERS
-from ids import (
-	GET_HELP_CHAN_ID, RULES_CHAN_ID
-)
+from ids import RULES_CHAN_ID
 from utils.string import po
 from utils.time import pretty_timedelta
 
@@ -57,6 +55,7 @@ class Controller:
 		open_message,
 		close_message,
 		free_after,
+		default_topic,
 		yell,
 		pivot=None,
 	):
@@ -78,6 +77,7 @@ class Controller:
 		self._open_message = open_message
 		self._close_message = close_message
 		self._free_after = free_after
+		self._default_topic = default_topic
 		self._yell = yell
 		self._pivot = pivot
 
@@ -370,7 +370,7 @@ class Controller:
 		await self.clear_claimant(channel.id)
 		self._messages.pop(channel.id, None)
 
-		data = dict(topic=f'<#{GET_HELP_CHAN_ID}>')
+		data = dict(topic=self._default_topic)
 
 		if self.has_postfix(channel):
 			data['name'] = self.without_postfix(channel)
