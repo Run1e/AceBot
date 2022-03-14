@@ -7,10 +7,7 @@ A fun, general purpose Discord bot!
 
 [Click here to add it to your server!](https://discordapp.com/oauth2/authorize?&client_id=367977994486022146&scope=bot&permissions=268823632)
 
-The bot was initially made for the
-[AutoHotkey server](https://discord.gg/tPGdSr2).
-
-Support server invite [here.](https://discord.gg/X7abzRe)
+Support server invite [here.](https://discord.gg/3MsSbRxbKV)
 
 ## Table of Contents
 

@@ -39,7 +39,7 @@ EXTENSIONS = (
 
 
 class AceBot(commands.Bot):
-	support_link = 'https://discord.gg/X7abzRe'
+	support_link = 'https://discord.gg/3MsSbRxbKV'
 
 	aiohttp: aiohttp.ClientSession
 	db: asyncpg.pool
