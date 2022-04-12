@@ -62,14 +62,6 @@ class Owner(AceMixin, commands.Cog):
 		result = await ctx.admin_prompt()
 		await ctx.send(result)
 
-	@commands.command(hidden=True)
-	async def c(self, ctx, *, text):
-		await ctx.send(await self.help_cog.classify(text))
-
-	@commands.command(hidden=True)
-	async def cm(self, ctx, *, message: disnake.Message):
-		await ctx.send(await self.help_cog.classify(message.content))
-
 	@commands.command()
 	async def eval(self, ctx, *, body: str):
 		'''Evaluates some code.'''

@@ -568,6 +568,34 @@ class HelpSystem(AceMixin, commands.Cog):
 
 		await controller.close_channel(ctx.channel)
 
+	def _get_yelling_controller(self, guild_id):
+		controller: Controller = self.controllers.get(guild_id, None)
+		if not controller:
+			return None
+
+		if not controller._yell:
+			raise commands.CommandError('Yelling is not enabled for this controller.')
+
+		return controller
+
+	@commands.command(hidden=True)
+	@commands.is_owner()
+	async def c(self, ctx, *, text: str):
+		controller: Controller = self._get_yelling_controller(ctx.guild.id)
+		if controller is None:
+			return
+
+		await ctx.send(await controller.classify(text))
+
+	@commands.command(hidden=True)
+	@commands.is_owner()
+	async def cm(self, ctx, *, message: disnake.Message):
+		controller: Controller = self._get_yelling_controller(ctx.guild.id)
+		if controller is None:
+			return
+
+		await ctx.send(await controller.classify(message.content))
+
 	async def start_reclaimers(self):
 		await self.bot.wait_until_ready()
 
