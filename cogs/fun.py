@@ -125,7 +125,7 @@ class Fun(AceMixin, commands.Cog):
 		if guild.features:
 			e.add_field(
 				name='Features',
-				value='\n'.join('• ' + feature.replace('_', ' ').title() for feature in guild.features)
+				value='\n'.join('• ' + feature.replace('_', ' ').title() for feature in sorted(guild.features))
 			)
 
 		# MEMBERS
