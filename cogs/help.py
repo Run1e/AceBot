@@ -541,10 +541,13 @@ class HelpSystem(AceMixin, commands.Cog):
 			mentions[-1] = 'and ' + mentions[-1]
 			ment = ', '.join(mentions)
 
-		text = (
-			'If you\'re looking for scripting help you should ask in an open help channel.\n\n'
-			'The currently available help channels are {0}.'
-		).format(ment)
+		active_channels = controller.active_channels(forecast=True)
+		if ctx.channel in active_channels:
+			text = 'This channel in use by someone else, so you should ask your question in an open help channel.'
+		else:
+			text = 'If you\'re looking for scripting help you should ask in an open help channel.'
+
+		text += f'\n\nThe currently open channels available for claiming are {ment}'
 
 		await ctx.send(text)
 
