@@ -543,7 +543,7 @@ class HelpSystem(AceMixin, commands.Cog):
 
 		active_channels = controller.active_channels(forecast=True)
 		if ctx.channel in active_channels:
-			text = 'This channel in use by someone else, so you should ask your question in an open help channel.'
+			text = 'This channel is in use by someone else, so you should ask your question in an open help channel.'
 		else:
 			text = 'If you\'re looking for scripting help you should ask in an open help channel.'
 
