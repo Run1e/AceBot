@@ -186,7 +186,7 @@ class EventTimer(DatabaseTimer):
 # ripped from RoboDanny
 class BannedMember(commands.Converter):
 	async def convert(self, ctx, argument):
-		ban_list = await ctx.guild.bans()
+		ban_list = await ctx.guild.bans(limit = None).flatten()
 
 		try:
 			member_id = int(argument, base=10)
@@ -372,7 +372,7 @@ class Moderation(AceMixin, commands.Cog):
 					raise commands.CommandError('Member is already tempbanned.')
 
 				try:
-					await ctx.guild.ban(member, delete_message_days=0, reason=reason)
+					await ctx.guild.ban(member, clean_history_duration=0, reason=reason)
 				except disnake.HTTPException:
 					raise commands.CommandError('Failed tempbanning member.')
 
