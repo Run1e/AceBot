@@ -186,7 +186,7 @@ class EventTimer(DatabaseTimer):
 # ripped from RoboDanny
 class BannedMember(commands.Converter):
 	async def convert(self, ctx, argument):
-		ban_list = await ctx.guild.bans(limit = None).flatten()
+		ban_list = list(await ctx.guild.bans(limit=None))
 
 		try:
 			member_id = int(argument, base=10)
