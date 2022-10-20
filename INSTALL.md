@@ -70,6 +70,9 @@ Please install these according to their instructions.
   APIXU_KEY = None
 
   GAME_PRED_URL = ""
+
+  TEST_GUILDS = None
+  HELP_CONTROLLERS = {}
   ```
   * You can get your bot token from the [Discord Developer Portal](https://discord.com/developers/applications).
     If you haven't already:
