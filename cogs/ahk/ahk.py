@@ -448,7 +448,7 @@ class AutoHotkey(AceMixin, commands.Cog):
 			title=record.get('name') if force_name is None else force_name,
 			description=record.get('content') or 'No description for this page.',
 			color=AHK_COLOR,
-			url=disnake.Embed.Empty if page is None else DOCS_FORMAT.format(record.get('link'))
+			url=page and DOCS_FORMAT.format(record.get('link'))
 		)
 
 		e.set_footer(text='autohotkey.com', icon_url='https://www.autohotkey.com/favicon.ico')
