@@ -363,9 +363,9 @@ class Moderation(AceMixin, commands.Cog):
 			async with con.transaction():
 				try:
 					await self.db.execute(
-						'INSERT INTO mod_timer (guild_id, user_id, mod_id, event, created_at, duration, reason, userdata, completed) '
-						'VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)',
-						ctx.guild.id, member.id, ctx.author.id, 'BAN', now, duration, reason, self._craft_user_data(member), False
+						'INSERT INTO mod_timer (guild_id, user_id, mod_id, event, created_at, duration, reason, userdata)'
+						'VALUES ($1, $2, $3, $4, $5, $6, $7, $8)',
+						ctx.guild.id, member.id, ctx.author.id, 'BAN', now, duration, reason, self._craft_user_data(member)
 					)
 				except UniqueViolationError:
 					# this *should* never happen but I'd rather leave it in
