@@ -3,7 +3,7 @@ asyncpg==0.25.0
 rapidfuzz==1.9.1
 parsedatetime==2.6
 python-Levenshtein==0.12.2
-lxml==4.7.1
+lxml==4.9.1
 beautifulsoup4==4.10.0
 tabulate==0.8.9
 emoji==1.6.1
