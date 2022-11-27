@@ -186,7 +186,7 @@ class EventTimer(DatabaseTimer):
 # ripped from RoboDanny
 class BannedMember(commands.Converter):
 	async def convert(self, ctx, argument):
-		ban_list = list(await ctx.guild.bans(limit=None))
+		ban_list = [ban async for ban in ctx.guild.bans()]
 
 		try:
 			member_id = int(argument, base=10)
@@ -600,7 +600,7 @@ class Moderation(AceMixin, commands.Cog):
 				continue
 
 			try:
-				bans = await guild.bans()
+				bans = [ban async for ban in guild.bans()]
 			except disnake.HTTPException:
 				continue
 
