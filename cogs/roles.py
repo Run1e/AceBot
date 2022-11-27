@@ -782,7 +782,7 @@ class Roles(AceMixin, commands.Cog):
 
 			e.set_author(
 				name=selector.get('title') or 'Role Selector',
-				icon_url=icon if icon else (ctx.guild.icon or '')
+				icon_url=icon if icon else (ctx.guild.icon or None)
 			)
 
 			for role in roles:
