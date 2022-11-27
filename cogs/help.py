@@ -306,8 +306,10 @@ class Controller:
 			# clear claimed_messages if someone else is talking now
 			self._messages.pop(channel.id, None)
 
-			# remove postfix if it's there
-			if self.has_postfix(channel):
+			prefix = await self.bot.prefix_resolver(self.bot, message)
+
+			# remove postfix if it's there (and the message is not a bot invocation)
+			if self.has_postfix(channel) and not message.content.startswith(prefix):
 				create_task(channel._state.http.edit_channel(channel.id, name=self.without_postfix(channel)))
 
 	async def move(self, channel: disnake.TextChannel, parent_id, reason=None):
