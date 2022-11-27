@@ -372,7 +372,7 @@ class MethodListParser(BaseParser):
 
 		for tag in self.bs.find_all('div', id=True):
 			_id = tag.get('id')
-			header = tag.find('h2')
+			header = tag.find('h2') or tag.find('h3')
 			names = self.tag_as_names(header)
 
 			desc, syntax = self.get_desc_and_syntax(header)
