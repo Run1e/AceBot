@@ -50,4 +50,4 @@ async def game(request: Request):
 	return json(dict(p=pred))
 
 
-app.run('localhost', 80)
+app.run('0.0.0.0', 80)
