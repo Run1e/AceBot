@@ -76,6 +76,8 @@ Please install these according to their instructions.
     * Create a new application (its name doesn't matter).
     * Go to “Bot” in the left sidebar.
     * Click “Add Bot”, read the warning and accept it.
+    * **Important:** You must enable all the privileged Intents that you are requesting
+      (by default you are requesting all Intents, so you should enable all of them in that case).
   * Your database bind will look like this:
     ```
     postgresql://ace:your_password@localhost/acebot
