@@ -28,7 +28,7 @@ Please install these according to their instructions.
 * **Linux (and \*nix in general)**
   * The installation of PostgreSQL should have created a user account called `postgres`.
     (If not, it's probably best to reinstall PostgreSQL or search online for a solution.)
-  * Log into that user's account (`sudo -u postgres -i` for example).
+  * Log into that user's account (`sudo -iu postgres` for example).
   * Run `psql`.
 * In this `psql` shell, run the following commands:
   ```postgresql
@@ -70,6 +70,9 @@ Please install these according to their instructions.
   APIXU_KEY = None
 
   GAME_PRED_URL = ""
+
+  TEST_GUILDS = None
+  HELP_CONTROLLERS = {}
   ```
   * You can get your bot token from the [Discord Developer Portal](https://discord.com/developers/applications).
     If you haven't already:
