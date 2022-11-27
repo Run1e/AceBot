@@ -186,7 +186,7 @@ class EventTimer(DatabaseTimer):
 # ripped from RoboDanny
 class BannedMember(commands.Converter):
 	async def convert(self, ctx, argument):
-		ban_list = await ctx.guild.bans()
+		ban_list = list(await ctx.guild.bans(limit=None))
 
 		try:
 			member_id = int(argument, base=10)
@@ -284,7 +284,7 @@ class Moderation(AceMixin, commands.Cog):
 		'''Ban a member. Requires Ban Members perms.'''
 
 		try:
-			await member.ban(reason=reason, delete_message_days=0)
+			await member.ban(reason=reason, clean_history_duration=0)
 		except disnake.HTTPException:
 			raise commands.CommandError('Failed banning member.')
 
@@ -363,7 +363,7 @@ class Moderation(AceMixin, commands.Cog):
 			async with con.transaction():
 				try:
 					await self.db.execute(
-						'INSERT INTO mod_timer (guild_id, user_id, mod_id, event, created_at, duration, reason, userdata) '
+						'INSERT INTO mod_timer (guild_id, user_id, mod_id, event, created_at, duration, reason, userdata)'
 						'VALUES ($1, $2, $3, $4, $5, $6, $7, $8)',
 						ctx.guild.id, member.id, ctx.author.id, 'BAN', now, duration, reason, self._craft_user_data(member)
 					)
@@ -372,7 +372,7 @@ class Moderation(AceMixin, commands.Cog):
 					raise commands.CommandError('Member is already tempbanned.')
 
 				try:
-					await ctx.guild.ban(member, delete_message_days=0, reason=reason)
+					await ctx.guild.ban(member, clean_history_duration=0, reason=reason)
 				except disnake.HTTPException:
 					raise commands.CommandError('Failed tempbanning member.')
 
@@ -447,7 +447,7 @@ class Moderation(AceMixin, commands.Cog):
 			responsible=po(ctx.author), duration=duration_pretty, reason=f'Previous duration was {old_duration_pretty}'
 		)
 
-	async def do_action(self, message, action, reason, delete_message_days=0):
+	async def do_action(self, message, action, reason, clean_history_duration=0):
 		'''Called when an event happens.'''
 
 		member: disnake.Member = message.author
@@ -471,7 +471,7 @@ class Moderation(AceMixin, commands.Cog):
 			elif action is SecurityAction.KICK:
 				await member.kick(reason=reason)
 			elif action is SecurityAction.BAN:
-				await member.ban(delete_message_days=delete_message_days, reason=reason)
+				await member.ban(clean_history_duration=clean_history_duration, reason=reason)
 
 		except Exception as exc:
 			# log error if something happened
@@ -545,7 +545,7 @@ class Moderation(AceMixin, commands.Cog):
 
 			if res is not None:
 				await self.do_action(
-					message, SecurityAction.BAN, reason='Member is spamming (with cleanup)', delete_message_days=1
+					message, SecurityAction.BAN, reason='Member is spamming (with cleanup)', clean_history_duration=timedelta(days=1)
 				)
 
 	@commands.Cog.listener()

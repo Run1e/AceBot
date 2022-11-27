@@ -66,7 +66,7 @@ CREATE TABLE IF NOT EXISTS mod_timer (
 	reason		TEXT NULL,
 	userdata	JSON NULL,
 
-	completed	BOOLEAN NOT NULL
+	completed	BOOLEAN NOT NULL DEFAULT FALSE
 );
 
 -- highlighter languages
