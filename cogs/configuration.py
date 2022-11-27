@@ -29,7 +29,7 @@ class Configuration(AceMixin, commands.Cog):
 		gc = await self.bot.config.get_entry(ctx.guild.id)
 
 		e = disnake.Embed(description='Bot configuration.')
-		e.set_author(name=ctx.guild.name, icon_url=ctx.guild.icon or None)
+		e.set_author(name=ctx.guild.name, icon_url=ctx.guild.icon or '')
 
 		mod_role = gc.mod_role
 
