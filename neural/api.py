@@ -9,7 +9,7 @@ from model import TextCNN
 from text_processor import TextProcessor
 from torch_config import EMBEDDINGS_DIR
 
-app = Sanic('PyTorch API')
+app = Sanic('torch_api')
 
 embeddings = torch.load(f'{EMBEDDINGS_DIR}/vectors.pkl')
 
