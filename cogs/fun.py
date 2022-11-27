@@ -177,7 +177,8 @@ class Fun(AceMixin, commands.Cog):
 			value=boost_desc
 		)
 
-		e.set_thumbnail(url=guild.icon.url)
+		if guild.icon:
+			e.set_thumbnail(url=guild.icon.url)
 		e.set_footer(text='Created')
 
 		await ctx.send(embed=e)
