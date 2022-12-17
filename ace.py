@@ -29,7 +29,6 @@ EXTENSIONS = (
 	'cogs.roles',
 	'cogs.whois',
 	'cogs.hl',
-	'cogs.help',
 	'cogs.ahk.ahk',
 	'cogs.ahk.internal.logger',
 	'cogs.ahk.internal.security',

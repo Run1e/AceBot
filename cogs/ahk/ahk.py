@@ -542,6 +542,9 @@ class AutoHotkey(AceMixin, commands.Cog):
 
         await self.cloudahk_call(ctx, code, 'rlx')
 
+    @commands.command(hidden=True)
+    async def ask(self, ctx):
+        await ctx.send(f'To ask a scripting question, create a new post in <#{HELP_FORUM_CHAN_ID}>.\n\nFor more help on how to do this, see <#{HOW_TO_GET_HELP_CHAN_ID}>')
 
 def setup(bot):
     bot.add_cog(AutoHotkey(bot))
