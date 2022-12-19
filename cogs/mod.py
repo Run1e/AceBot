@@ -14,7 +14,7 @@ from asyncpg.exceptions import UniqueViolationError
 from disnake.ext import commands
 
 from cogs.mixins import AceMixin
-from ids import AHK_GUILD_ID, RULES_MSG_ID
+from ids import AHK_GUILD_ID, RULES_MSG_ID, LEVEL_ROLE_IDS
 from utils.configtable import ConfigTable, ConfigTableRecord
 from utils.context import AceContext, can_prompt, is_mod
 from utils.converters import MaxLengthConverter, MaybeMemberConverter, RangeConverter
@@ -459,6 +459,15 @@ class Moderation(AceMixin, commands.Cog):
 		if await ctx.is_mod():
 			self.bot.dispatch(
 				'log', guild, member, action='IGNORED {0} (MEMBER IS MOD)'.format(action.name), severity=Severity.LOW, message=message,
+				reason=reason,
+			)
+
+			return
+
+		role_ids = list(LEVEL_ROLE_IDS.values())[3:]
+		if any(role.id in role_ids for role in message.author.roles):
+			self.bot.dispatch(
+				'log', guild, member, action='IGNORED {0} (MEMBER IS LEVEL 16+)'.format(action.name), severity=Severity.LOW, message=message,
 				reason=reason,
 			)
 
