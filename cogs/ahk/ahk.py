@@ -617,6 +617,141 @@ class AutoHotkey(AceMixin, commands.Cog):
             f'To ask a scripting question, create a new post in <#{HELP_FORUM_CHAN_ID}>.\n\nFor more help on how to do this, see <#{HOW_TO_GET_HELP_CHAN_ID}>'
         )
 
+    def find_all_emoji(self, message, *, regex=re.compile(r'<a?:.+?:([0-9]{15,21})>')):
+        return regex.findall(message.content)
+
+    @commands.Cog.listener('on_message')
+    async def handle_emoji_suggestion_message(self, message: disnake.Message):
+        if message.guild is None or message.guild.id != AHK_GUILD_ID:
+            return
+
+        if message.channel.id != EMOJI_SUGGESTIONS_CHAN_ID:
+            return
+
+        if message.author.bot:
+            return
+
+        matches = self.find_all_emoji(message)
+
+        async def delete(reason=None):
+            # if await self.bot.is_owner(message.author):
+            #     return
+
+            try:
+                await message.delete()
+            except disnake.HTTPException:
+                return
+
+            if reason is not None:
+                try:
+                    await message.channel.send(content=f'{message.author.mention} {reason}', delete_after=10)
+                except disnake.HTTPException:
+                    pass
+
+        if not matches and not message.attachments:
+            return await delete('Your message has to contain an emoji suggestion.')
+
+        elif message.attachments:
+            # if more than one attachment, delete
+            if len(message.attachments) > 1:
+                return await delete('Please only send one attachment at a time.')
+
+            attachment = message.attachments[0]
+            if attachment.height is None:
+                return await delete('Your attachment is not an image.')
+
+            if attachment.height != attachment.width:
+                return await delete('The attached image is not square.')
+
+            if attachment.size > 256 * 1024:
+                return await delete('The attached image is larger than the emoji size limit (256KB).')
+
+            if message.content:
+                return await delete('Please do not put text in your suggestion.')
+
+        else:
+            if len(matches) > 1:
+                return await delete('Please make sure your message only contains only one emoji.')
+
+            if not re.match(r'^<a?:.+?:([0-9]{15,21})>$', message.content.strip()):
+                return await delete('Please do not put text alongside your emoji suggestion.')
+
+            match = int(matches[0])
+            if any(emoji.id == match for emoji in message.guild.emojis):
+                return await delete('Please do not suggest emojis that have already been added.')
+
+        # Add voting reactions
+        try:
+            await message.add_reaction('✅')
+            await message.add_reaction('❌')
+        except disnake.Forbidden as e:
+            # catch if we can't add the reactions
+            # it could be that person is blocked, but it also could be that the bot doesn't have perms
+            # we treat it the same since this is only used in the ahk discord.
+            if e.text == 'Reaction blocked':
+                # runie: don't send error message to user since they have the bot blocked anyways.
+                # people who block ace don't deserve answers to their misfortunes
+                return await delete()
+
+    @commands.Cog.listener('on_raw_message_edit')
+    async def handle_emoji_suggestion_message_edit(self, message: disnake.RawMessageUpdateEvent):
+        if message.channel_id == EMOJI_SUGGESTIONS_CHAN_ID:
+            channel = self.bot.get_channel(EMOJI_SUGGESTIONS_CHAN_ID)
+            if channel is None:
+                return
+
+            try:
+                await channel.delete_messages([disnake.Object(message.message_id)])
+            except disnake.HTTPException:
+                pass
+
+    @commands.Cog.listener('on_raw_reaction_add')
+    async def handle_emoji_suggestion_reaction(self, reaction: disnake.RawReactionActionEvent):
+        if reaction.channel_id != EMOJI_SUGGESTIONS_CHAN_ID:
+            return
+
+        if reaction.member.bot:
+            return
+
+        emoji = str(reaction.emoji)
+
+        if emoji not in ('✅', '❌'):
+            return
+
+        channel: disnake.TextChannel = self.bot.get_channel(reaction.channel_id)
+        if channel is None:
+            return
+
+        try:
+            message: disnake.Message = await channel.fetch_message(reaction.message_id)
+        except disnake.HTTPException:
+            return
+
+        # remove same emoji if from message author
+        if message.author == reaction.member:
+            try:
+                await message.remove_reaction(emoji, reaction.member)
+            except disnake.HTTPException:
+                pass
+        else:
+            # remove opposite emoji if added
+            remove_from = '✅' if emoji == '❌' else '❌'
+
+            for reac in message.reactions:
+                if str(reac.emoji) == remove_from:
+                    try:
+                        users = await reac.users().flatten()
+                    except disnake.HTTPException:
+                        return
+
+                    if reaction.member in users:
+                        try:
+                            await message.remove_reaction(remove_from, reaction.member)
+                        except disnake.HTTPException:
+                            pass
+
+                    return
+
 
 def setup(bot):
     bot.add_cog(AutoHotkey(bot))
