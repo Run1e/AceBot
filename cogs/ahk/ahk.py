@@ -148,7 +148,7 @@ class AutoHotkey(AceMixin, commands.Cog):
         forum: disnake.ForumChannel = self.bot.get_channel(HELP_FORUM_CHAN_ID)
 
         for thread in forum.threads:
-            if thread.is_pinned() and not thread.archived:
+            if thread.is_pinned() or thread.archived:
                 continue
 
             base = disnake.utils.snowflake_time(thread.last_message_id or thread.id)
