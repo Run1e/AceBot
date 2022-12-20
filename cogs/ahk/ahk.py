@@ -8,6 +8,7 @@ from base64 import b64encode
 from datetime import datetime, timedelta, timezone
 from random import choices
 
+import aiohttp
 import disnake
 from aiohttp import ClientTimeout
 from aiohttp.client_exceptions import ClientConnectorError
@@ -16,7 +17,7 @@ from disnake.ext import commands, tasks
 from rapidfuzz import fuzz, process
 
 from cogs.mixins import AceMixin
-from config import CLOUDAHK_PASS, CLOUDAHK_URL, CLOUDAHK_USER
+from config import CLOUDAHK_PASS, CLOUDAHK_URL, CLOUDAHK_USER, GAME_PRED_URL
 from ids import *
 from utils.docs_parser import parse_docs
 from utils.html2markdown import HTML2Markdown
@@ -56,6 +57,9 @@ class RunnableCodeConverter(commands.Converter):
         return code
 
 
+DEFAULT_PIVOT_VALUE = 0.0
+
+
 class AutoHotkey(AceMixin, commands.Cog):
     '''Commands for the AutoHotkey guild.'''
 
@@ -81,6 +85,7 @@ class AutoHotkey(AceMixin, commands.Cog):
         )
 
         self.rss.start()
+        self.close_help_threads.start()
 
         asyncio.create_task(self._build_docs_cache())
 
@@ -90,6 +95,72 @@ class AutoHotkey(AceMixin, commands.Cog):
     def parse_date(self, date_str):
         date_str = date_str.strip()
         return datetime.strptime(date_str[:-3] + date_str[-2:], "%Y-%m-%dT%H:%M:%S%z")
+
+    async def classify(self, text):
+        try:
+            async with self.bot.aiohttp.post(GAME_PRED_URL, data=dict(q=text)) as resp:
+                if resp.status != 200:
+                    return DEFAULT_PIVOT_VALUE
+
+                json = await resp.json()
+                return json['p']
+        except aiohttp.ClientError:
+            return DEFAULT_PIVOT_VALUE
+
+    def make_classification_embed(self, score):
+        s = (
+            'Your scripting question looks like it might be about a game, which is not allowed here. '
+            f'Please make sure you are familiar with the <#{RULES_CHAN_ID}>, specifically rule 5.\n\n'
+            'If your question does not break the rules, you can safely ignore this message. '
+            'If you continue and your question is later found to break the rules, you might risk a ban.'
+        )
+
+        e = disnake.Embed(
+            title='Hi there!', description=s, color=disnake.Color.orange()
+        )
+
+        e.set_footer(
+            text=f'This message was sent by an automated system (confidence: {int(score * 100)}%)'
+        )
+
+        return e
+
+    @commands.Cog.listener()
+    async def on_thread_create(self, thread: disnake.Thread):
+        # ignore threads created not in the help forum
+        if thread.parent_id != HELP_FORUM_CHAN_ID:
+            return
+
+        content = [thread.name]
+
+        async for message in thread.history():
+            content.append(message.content)
+
+        pivot = await self.classify(' '.join(content))
+
+        if pivot >= 0.65:
+            await asyncio.sleep(2.0)
+            await thread.send(embed=self.make_classification_embed(pivot))
+
+    @tasks.loop(minutes=2)
+    async def close_help_threads(self):
+        await self.bot.wait_until_ready()
+
+        forum: disnake.ForumChannel = self.bot.get_channel(HELP_FORUM_CHAN_ID)
+
+        for thread in forum.threads:
+            # ignore pinned threads
+            if thread.is_pinned():
+                continue
+
+            base = disnake.utils.snowflake_time(thread.last_message_id or thread.id)
+            delta = timedelta(minutes=thread.auto_archive_duration)
+            base += delta
+            now = disnake.utils.utcnow()
+
+            if base < now: 
+                log.info('Archiving %s (auto archive duration: %s)', thread.name, delta)
+                await thread.edit(archived=True, reason='Auto-expired.')
 
     @tasks.loop(minutes=14)
     async def rss(self):
@@ -544,7 +615,10 @@ class AutoHotkey(AceMixin, commands.Cog):
 
     @commands.command(hidden=True)
     async def ask(self, ctx):
-        await ctx.send(f'To ask a scripting question, create a new post in <#{HELP_FORUM_CHAN_ID}>.\n\nFor more help on how to do this, see <#{HOW_TO_GET_HELP_CHAN_ID}>')
+        await ctx.send(
+            f'To ask a scripting question, create a new post in <#{HELP_FORUM_CHAN_ID}>.\n\nFor more help on how to do this, see <#{HOW_TO_GET_HELP_CHAN_ID}>'
+        )
+
 
 def setup(bot):
     bot.add_cog(AutoHotkey(bot))
