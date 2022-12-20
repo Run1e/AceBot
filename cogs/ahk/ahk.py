@@ -127,7 +127,6 @@ class AutoHotkey(AceMixin, commands.Cog):
 
     @commands.Cog.listener()
     async def on_thread_create(self, thread: disnake.Thread):
-        # ignore threads created not in the help forum
         if thread.parent_id != HELP_FORUM_CHAN_ID:
             return
 
@@ -142,15 +141,14 @@ class AutoHotkey(AceMixin, commands.Cog):
             await asyncio.sleep(2.0)
             await thread.send(embed=self.make_classification_embed(pivot))
 
-    @tasks.loop(minutes=2)
+    @tasks.loop(minutes=1)
     async def close_help_threads(self):
         await self.bot.wait_until_ready()
 
         forum: disnake.ForumChannel = self.bot.get_channel(HELP_FORUM_CHAN_ID)
 
         for thread in forum.threads:
-            # ignore pinned threads
-            if thread.is_pinned():
+            if thread.is_pinned() and not thread.archived:
                 continue
 
             base = disnake.utils.snowflake_time(thread.last_message_id or thread.id)
