@@ -614,7 +614,9 @@ class AutoHotkey(AceMixin, commands.Cog):
     @commands.command(hidden=True)
     async def ask(self, ctx):
         await ctx.send(
-            f'To ask a scripting question, create a new post in <#{HELP_FORUM_CHAN_ID}>.\n\nFor more help on how to do this, see <#{HOW_TO_GET_HELP_CHAN_ID}>'
+            f'To ask a scripting question, create a new post in <#{HELP_FORUM_CHAN_ID}> ' +
+            f'or ask in any of the other help channels if their topic fit your problem:\n\n' +
+            '\n'.join(f'<#{_id}>' for _id in HELP_CHANNEL_IDS)
         )
 
     def find_all_emoji(self, message, *, regex=re.compile(r'<a?:.+?:([0-9]{15,21})>')):
