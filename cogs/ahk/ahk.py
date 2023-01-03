@@ -606,6 +606,13 @@ class AutoHotkey(AceMixin, commands.Cog):
 
     @commands.command(hidden=True)
     @commands.cooldown(rate=1, per=5.0, type=commands.BucketType.user)
+    async def ahk2(self, ctx, *, code: RunnableCodeConverter):
+        '''Run ahkv2 code.'''
+
+        await self.cloudahk_call(ctx, code, 'ahk2')
+
+    @commands.command(hidden=True)
+    @commands.cooldown(rate=1, per=5.0, type=commands.BucketType.user)
     async def rlx(self, ctx, *, code: RunnableCodeConverter):
         '''Compile and run Relax code through CloudAHK. Example: `rlx define i32 Main() {return 20}`'''
 
