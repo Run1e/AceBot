@@ -8,7 +8,7 @@ from zipfile import ZipFile
 
 from .handlers import *
 
-DOCS_URL = 'https://www.autohotkey.com/docs/'
+DOCS_URL = 'https://www.autohotkey.com/docs/v1/'
 EXTRACT_TO = 'data'
 DOCS_BASE = f'{EXTRACT_TO}/AutoHotkeyDocs-1' # I don't know why this doesn't have the v but its how GitHub's download is named.
 DOCS_FOLDER = f'{DOCS_BASE}/docs'
@@ -19,8 +19,8 @@ log = logging.getLogger(__name__)
 
 
 ALIASES = {
-	'commands/For.htm': ['For'],
-	'commands/IfExpression.htm': ['If'],
+	'lib/For.htm': ['For'],
+	'lib/IfExpression.htm': ['If'],
 	'misc/EscapeChar.htm': ['EscapeChar'],
 	'Hotstrings.htm': ['hotstrings'],
 }
@@ -125,17 +125,17 @@ def build_docs():
 	BaseParser.DOCS_FOLDER = DOCS_FOLDER
 
 	parsers = (
-		HeadersParser('commands/Math.htm'),
-		HeadersParser('commands/ListView.htm'),
-		HeadersParser('commands/TreeView.htm'),
-		HeadersParser('commands/Gui.htm', prefix='Gui: '),
-		HeadersParser('commands/Menu.htm', prefix='Menu: '),
-		GuiControlParser('commands/GuiControls.htm', postfix=' Control'),
-		HeadersParser('objects/Functor.htm'),
-		MethodListParser('objects/File.htm'),
-		MethodListParser('objects/Func.htm'),
-		MethodListParser('objects/Object.htm'),
-		EnumeratorParser('objects/Enumerator.htm'),
+		HeadersParser('lib/Math.htm'),
+		HeadersParser('lib/ListView.htm'),
+		HeadersParser('lib/TreeView.htm'),
+		HeadersParser('lib/Gui.htm', prefix='Gui: '),
+		HeadersParser('lib/Menu.htm', prefix='Menu: '),
+		GuiControlParser('lib/GuiControls.htm', postfix=' Control'),
+		HeadersParser('misc/Functor.htm'),
+		MethodListParser('lib/File.htm'),
+		MethodListParser('lib/Func.htm'),
+		MethodListParser('lib/Object.htm'),
+		EnumeratorParser('lib/Enumerator.htm'),
 		HeadersParser('KeyList.htm'),
 		HeadersParser('Functions.htm'),
 		VariablesParser('Functions.htm'),
@@ -156,9 +156,9 @@ def build_docs():
 		VariablesParser('AHKL_Features.htm'),
 	)
 
-	for file in sorted(os.listdir('{}/commands'.format(DOCS_FOLDER))):
+	for file in sorted(os.listdir('{}/lib'.format(DOCS_FOLDER))):
 		if file.endswith('.htm'):
-			for entry in CommandParser('commands/{}'.format(file)).run():
+			for entry in CommandParser('lib/{}'.format(file)).run():
 				aggregator.add_entry(entry)
 
 	for parser in parsers:

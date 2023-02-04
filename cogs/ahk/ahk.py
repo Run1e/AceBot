@@ -19,7 +19,7 @@ from rapidfuzz import fuzz, process
 from cogs.mixins import AceMixin
 from config import CLOUDAHK_PASS, CLOUDAHK_URL, CLOUDAHK_USER, GAME_PRED_URL
 from ids import *
-from utils.docs_parser import parse_docs
+from utils.docs_parser import parse_docs, DOCS_URL
 from utils.html2markdown import HTML2Markdown
 from utils.string import shorten
 
@@ -30,7 +30,7 @@ NO_RESULTS_STRING = 'No results'
 AHK_COLOR = 0x95CD95
 RSS_URL = 'https://www.autohotkey.com/boards/feed'
 
-DOCS_FORMAT = 'https://autohotkey.com/docs/{}'
+DOCS_FORMAT = f'{DOCS_URL}{{}}'
 DOCS_NO_MATCH = commands.CommandError('Sorry, couldn\'t find an entry similar to that.')
 
 SUGGESTION_PREFIX = 'suggestion:'
