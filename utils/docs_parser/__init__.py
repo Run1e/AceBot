@@ -10,10 +10,10 @@ from .handlers import *
 
 DOCS_URL = 'https://www.autohotkey.com/docs/'
 EXTRACT_TO = 'data'
-DOCS_BASE = f'{EXTRACT_TO}/AutoHotkey_L-Docs-master'
+DOCS_BASE = f'{EXTRACT_TO}/AutoHotkeyDocs-1' # I don't know why this doesn't have the v but its how GitHub's download is named.
 DOCS_FOLDER = f'{DOCS_BASE}/docs'
 DOWNLOAD_FILE = f'{EXTRACT_TO}/docs.zip'
-DOWNLOAD_LINK = 'https://github.com/Lexikos/AutoHotkey_L-Docs/archive/master.zip'
+DOWNLOAD_LINK = 'https://github.com/AutoHotkey/AutoHotkeyDocs/archive/v1.zip'
 
 log = logging.getLogger(__name__)
 
