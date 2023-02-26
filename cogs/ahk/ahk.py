@@ -84,6 +84,8 @@ class AutoHotkey(AceMixin, commands.Cog):
             minutes=1
         )
 
+        self._tag_reminder_message = dict()
+
         self.rss.start()
         self.close_help_threads.start()
 
@@ -137,9 +139,13 @@ class AutoHotkey(AceMixin, commands.Cog):
 
         pivot = await self.classify(' '.join(content))
 
+        await asyncio.sleep(2.0)
         if pivot >= 0.65:
-            await asyncio.sleep(2.0)
             await thread.send(embed=self.make_classification_embed(pivot))
+        else:
+            self._tag_reminder_message[thread.id] = await thread.send(
+                f'{thread.owner.mention} We recommend tagging your post using the `/tagme` command to make it easier for people to help.'
+            )
 
     @tasks.loop(minutes=1)
     async def close_help_threads(self):
@@ -624,6 +630,128 @@ class AutoHotkey(AceMixin, commands.Cog):
             f'To ask a scripting question, create a new post in <#{HELP_FORUM_CHAN_ID}> ' +
             f'or ask in any of the other help channels if their topic fit your problem: ' +
             ' '.join(f'<#{_id}>' for _id in HELP_CHANNEL_IDS)
+        )
+
+    @commands.slash_command(description='Add tags to your help post.')
+    async def tagme(self, inter: disnake.AppCmdInter):
+        if not isinstance(inter.channel, disnake.Thread) or inter.channel.parent.id != HELP_FORUM_CHAN_ID:
+            raise commands.CommandError('This command should just be run in help channel posts.')
+
+        if inter.author != inter.channel.owner:
+            raise commands.CommandError('Only post author can add tags.')
+
+        async def ask(question, tags: dict):
+            embed = disnake.Embed()
+            embed.set_author(name=inter.bot.user.display_name, icon_url=inter.bot.user.display_avatar.url)
+            embed.color = disnake.Color.green()
+
+            embed.description = question
+
+            rows = []
+
+            for num, (label, tag) in enumerate(tags.items()):
+                if num % 4 == 0:
+                    row = disnake.ui.ActionRow()
+                    rows.append(row)
+
+                row.add_button(
+                    style=disnake.ButtonStyle.primary,
+                    label=label,
+                    emoji=tag.emoji,
+                )
+
+            row.add_button(
+                style=disnake.ButtonStyle.secondary,
+                label='Skip',
+            )
+
+            args = dict(embed=embed, components=rows)
+
+            if not inter.response.is_done():
+                await inter.send(**args, ephemeral=True)
+            else:
+                await inter.edit_original_response(**args)
+
+            def check(inter: disnake.MessageInteraction):
+                for components in inter.message.components:
+                    if inter.component in components.children:
+                        return True
+                return False
+
+            try:
+                button_inter: disnake.MessageInteraction = await self.bot.wait_for(
+                    event='button_click', check=check, timeout=120.0,
+                )
+                await button_inter.response.defer()
+            except asyncio.TimeoutError:
+                raise commands.CommandError('Timed out. Please invoke again to tag post.')
+
+            return tags.get(button_inter.component.label, None)
+
+        tags = {tag.name: tag for tag in inter.channel.parent.available_tags}
+        added_tags = []
+
+        questions = (
+            ('Which version of AHK are you using?', {'v1.1': tags['v1'], 'v2.0': tags['v2']}),
+            ('Which of these topics fit your question best? Skip if none apply.', {
+                'Sending keys/mouse': tags['Send/Click'],
+                'Hotkeys': tags['Hotkeys'],
+                'GUI': tags['GUI'],
+                'RegEx': tags['RegEx'],
+                'WinAPI': tags['WinAPI'],
+                'COM Objects': tags['COM Objects'],
+                'Object-Oriented': tags['Object-Oriented'],
+            }),
+        )
+
+        try:
+            reminder_message_id = self._tag_reminder_message.get(inter.channel.id, None)
+            if reminder_message_id is not None:
+                await inter.channel.delete_messages([reminder_message_id])
+        except:
+            pass
+        
+        for question in questions:
+            picked = await ask(*question)
+
+            if picked is not None:
+                added_tags.append(picked)
+
+        await inter.channel.edit(applied_tags=added_tags)
+
+        await inter.edit_original_response(
+            content='Thanks for tagging your post!\n\nAdded tags: ' + ' '.join(f"`{tag.name}`" for tag in added_tags) + '\n\nIf your issue gets solved, you can mark your post as solved by doing `/solved`',
+            embed=None,
+            components=None,
+        )
+
+    @tagme.error
+    async def tagme_error(self, inter: disnake.CommandInteraction, exc):
+        if exc.__class__ is commands.CommandError:
+            await inter.send(embed=disnake.Embed(description=str(exc)), ephemeral=True)
+        else:
+            raise exc
+
+    @commands.slash_command(description='Mark your post as solved.')
+    async def solved(self, inter: disnake.AppCmdInter):
+        if not isinstance(inter.channel, disnake.Thread) or inter.channel.parent.id != HELP_FORUM_CHAN_ID:
+            raise commands.CommandError('This command should just be run in help channel posts.')
+
+        if inter.author != inter.channel.owner:
+            raise commands.CommandError('Only post author can add tags.')
+
+        solved_tag = disnake.utils.get(inter.channel.parent.available_tags, name='Solved!')
+        if solved_tag is None:
+            raise commands.CommandError('Solved tag not found')
+
+        try:
+            await inter.send(f'{inter.channel.owner.mention} marked the post as solved!')
+        except: # hdafdsjkhfjdas
+            pass
+
+        await inter.channel.edit(
+            archived=True,
+            applied_tags=inter.channel.applied_tags + [solved_tag],
         )
 
     def find_all_emoji(self, message, *, regex=re.compile(r'<a?:.+?:([0-9]{15,21})>')):
