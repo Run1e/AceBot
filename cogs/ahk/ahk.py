@@ -144,7 +144,7 @@ class AutoHotkey(AceMixin, commands.Cog):
             await thread.send(embed=self.make_classification_embed(pivot))
         else:
             self._tag_reminder_message[thread.id] = await thread.send(
-                f'{thread.owner.mention} We recommend tagging your post using the `/tagme` command to make it easier for people to help.'
+                f'{thread.owner.mention} You can tag your post using the `/tagme` command to make it easier for others to help.'
             )
 
     @tasks.loop(minutes=1)
@@ -731,7 +731,7 @@ class AutoHotkey(AceMixin, commands.Cog):
             raise commands.CommandError('This command should just be run in help channel posts.')
 
         if inter.author != inter.channel.owner:
-            raise commands.CommandError('Only post author can add tags.')
+            raise commands.CommandError('Only post author can mark as solved.')
 
         solved_tag = disnake.utils.get(inter.channel.parent.available_tags, name='Solved!')
         if solved_tag is None:
