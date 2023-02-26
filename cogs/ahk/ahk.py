@@ -725,13 +725,6 @@ class AutoHotkey(AceMixin, commands.Cog):
             components=None,
         )
 
-    @tagme.error
-    async def tagme_error(self, inter: disnake.CommandInteraction, exc):
-        if exc.__class__ is commands.CommandError:
-            await inter.send(embed=disnake.Embed(description=str(exc)), ephemeral=True)
-        else:
-            raise exc
-
     @commands.slash_command(description='Mark your post as solved.')
     async def solved(self, inter: disnake.AppCmdInter):
         if not isinstance(inter.channel, disnake.Thread) or inter.channel.parent.id != HELP_FORUM_CHAN_ID:
@@ -753,6 +746,14 @@ class AutoHotkey(AceMixin, commands.Cog):
             archived=True,
             applied_tags=inter.channel.applied_tags + [solved_tag],
         )
+    
+    @solved.error
+    @tagme.error
+    async def slash_error(self, inter: disnake.CommandInteraction, exc):
+        if exc.__class__ is commands.CommandError:
+            await inter.send(embed=disnake.Embed(description=str(exc)), ephemeral=True)
+        else:
+            raise exc
 
     def find_all_emoji(self, message, *, regex=re.compile(r'<a?:.+?:([0-9]{15,21})>')):
         return regex.findall(message.content)
