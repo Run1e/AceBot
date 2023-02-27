@@ -143,9 +143,10 @@ class AutoHotkey(AceMixin, commands.Cog):
         if pivot >= 0.65:
             await thread.send(embed=self.make_classification_embed(pivot))
         else:
-            self._tag_reminder_message[thread.id] = await thread.send(
-                f'{thread.owner.mention} You can tag your post using the `/tagme` command to make it easier for others to help.'
-            )
+            await self.tagask(thread)
+            # self._tag_reminder_message[thread.id] = await thread.send(
+            #     f'{thread.owner.mention} You can tag your post using the `/tagme` command to make it easier for others to help.'
+            # )
 
     @tasks.loop(minutes=1)
     async def close_help_threads(self):
@@ -632,17 +633,13 @@ class AutoHotkey(AceMixin, commands.Cog):
             ' '.join(f'<#{_id}>' for _id in HELP_CHANNEL_IDS)
         )
 
-    @commands.slash_command(description='Add tags to your help post.')
-    async def tagme(self, inter: disnake.AppCmdInter):
-        if not isinstance(inter.channel, disnake.Thread) or inter.channel.parent.id != HELP_FORUM_CHAN_ID:
-            raise commands.CommandError('This command should just be run in help channel posts.')
-
-        if inter.author != inter.channel.owner:
-            raise commands.CommandError('Only post author can add tags.')
+    async def tagask(self, thread: disnake.Thread):
+        message = None
 
         async def ask(question, tags: dict):
+            nonlocal message
             embed = disnake.Embed()
-            embed.set_author(name=inter.bot.user.display_name, icon_url=inter.bot.user.display_avatar.url)
+            embed.set_author(name=self.bot.user.display_name, icon_url=self.bot.user.display_avatar.url)
             embed.color = disnake.Color.green()
 
             embed.description = question
@@ -667,28 +664,33 @@ class AutoHotkey(AceMixin, commands.Cog):
 
             args = dict(embed=embed, components=rows)
 
-            if not inter.response.is_done():
-                await inter.send(**args, ephemeral=True)
+            if message is None:
+                content = f"{thread.owner.mention} Increase your visibility by adding tags to your post here!"
+                message = await thread.send(content=content, **args)
             else:
-                await inter.edit_original_response(**args)
+                await message.edit(content=None, **args)
 
             def check(inter: disnake.MessageInteraction):
+                if inter.author != thread.owner:
+                    return False
+
                 for components in inter.message.components:
                     if inter.component in components.children:
                         return True
+
                 return False
 
             try:
                 button_inter: disnake.MessageInteraction = await self.bot.wait_for(
-                    event='button_click', check=check, timeout=120.0,
+                    event='button_click', check=check, timeout=300.0, # if they haven't done anything in 5 minutes then timeout
                 )
                 await button_inter.response.defer()
             except asyncio.TimeoutError:
-                raise commands.CommandError('Timed out. Please invoke again to tag post.')
+                return None
 
-            return tags.get(button_inter.component.label, None)
+            return tags.get(button_inter.component.label, "Skip")
 
-        tags = {tag.name: tag for tag in inter.channel.parent.available_tags}
+        tags = {tag.name: tag for tag in thread.parent.available_tags}
         added_tags = []
 
         questions = (
@@ -704,23 +706,28 @@ class AutoHotkey(AceMixin, commands.Cog):
             }),
         )
 
-        try:
-            reminder_message_id = self._tag_reminder_message.get(inter.channel.id, None)
-            if reminder_message_id is not None:
-                await inter.channel.delete_messages([reminder_message_id])
-        except:
-            pass
-        
         for question in questions:
             picked = await ask(*question)
 
-            if picked is not None:
+            # None signifies a timeout
+            # add whatever was picked, if anything
+            if picked is None:
+                break
+
+            # add tag to list if we picked one
+            # anything else, probably means a skip
+            if isinstance(picked, disnake.ForumTag):
                 added_tags.append(picked)
 
-        await inter.channel.edit(applied_tags=added_tags)
+        # just delete and stop if we timed out
+        if not added_tags:
+            await message.delete()
+            return
 
-        await inter.edit_original_response(
-            content='Thanks for tagging your post!\n\nAdded tags: ' + ' '.join(f"`{tag.name}`" for tag in added_tags) + '\n\nIf your issue gets solved, you can mark your post as solved by doing `/solved`',
+        await thread.edit(applied_tags=added_tags)
+
+        await message.edit(
+            content='Thanks for tagging your post!\n\nAdded tags: ' + ' '.join(f"`{tag.name}`" for tag in added_tags) + '\n\nIf your issue gets solved, you can mark your post as solved by sending `/solved`',
             embed=None,
             components=None,
         )
@@ -738,7 +745,7 @@ class AutoHotkey(AceMixin, commands.Cog):
             raise commands.CommandError('Solved tag not found')
 
         try:
-            await inter.send(f'{inter.channel.owner.mention} marked the post as solved!')
+            await inter.send("The post has been closed and given the solved tag. The post can be reopened at any time by sending a message.")
         except: # hdafdsjkhfjdas
             pass
 
@@ -748,7 +755,6 @@ class AutoHotkey(AceMixin, commands.Cog):
         )
     
     @solved.error
-    @tagme.error
     async def slash_error(self, inter: disnake.CommandInteraction, exc):
         if exc.__class__ is commands.CommandError:
             await inter.send(embed=disnake.Embed(description=str(exc)), ephemeral=True)
