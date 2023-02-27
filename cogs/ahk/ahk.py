@@ -652,13 +652,13 @@ class AutoHotkey(AceMixin, commands.Cog):
                     rows.append(row)
 
                 row.add_button(
-                    style=disnake.ButtonStyle.primary,
+                    style=disnake.ButtonStyle.secondary,
                     label=label,
                     emoji=tag.emoji,
                 )
 
             row.add_button(
-                style=disnake.ButtonStyle.secondary,
+                style=disnake.ButtonStyle.grey,
                 label='Skip',
             )
 
