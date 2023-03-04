@@ -13,7 +13,7 @@ but for development your local PC will suffice.
 ## Requirements
 
 * PostgreSQL
-* Python 3.8
+* Python 3.9
 * PIP (should come with Python)
 * Git (or GitHub etc.)
 
