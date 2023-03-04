@@ -9,45 +9,45 @@ from model import TextCNN
 from text_processor import TextProcessor
 from torch_config import EMBEDDINGS_DIR
 
-app = Sanic('torch_api')
+app = Sanic("torch_api")
 
-embeddings = torch.load(f'{EMBEDDINGS_DIR}/vectors.pkl')
+embeddings = torch.load(f"{EMBEDDINGS_DIR}/vectors.pkl")
 
 model = TextCNN(
-	embeddings=embeddings,
-	n_filters=64,
-	filter_sizes=[2, 3],
-	dropout=0.0,
+    embeddings=embeddings,
+    n_filters=64,
+    filter_sizes=[2, 3],
+    dropout=0.0,
 )
 
-device = torch.device('cpu')
-model.load_state_dict(torch.load('model.pth', map_location=device))
+device = torch.device("cpu")
+model.load_state_dict(torch.load("model.pth", map_location=device))
 model.eval()
 
 text_processing = TextProcessor(
-	wti=pickle.load(open(f'{EMBEDDINGS_DIR}/wti.pkl', 'rb')),
-	tokenizer=get_tokenizer('basic_english'),
-	standardize=True,
-	min_len=3,
+    wti=pickle.load(open(f"{EMBEDDINGS_DIR}/wti.pkl", "rb")),
+    tokenizer=get_tokenizer("basic_english"),
+    standardize=True,
+    min_len=3,
 )
 
 
-@app.post('/game')
+@app.post("/game")
 async def game(request: Request):
-	q = request.form.get('q', None)
+    q = request.form.get("q", None)
 
-	if q is None:
-		return HTTPResponse(status=400)
+    if q is None:
+        return HTTPResponse(status=400)
 
-	tokens = text_processing.process(q)
-	x = torch.unsqueeze(tokens, dim=0)
+    tokens = text_processing.process(q)
+    x = torch.unsqueeze(tokens, dim=0)
 
-	pred = model(x)
-	pred = torch.squeeze(pred).item()
+    pred = model(x)
+    pred = torch.squeeze(pred).item()
 
-	# TODO: add logging
+    # TODO: add logging
 
-	return json(dict(p=pred))
+    return json(dict(p=pred))
 
 
-app.run('0.0.0.0', 80)
+app.run("0.0.0.0", 80)

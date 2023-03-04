@@ -4,24 +4,24 @@ import asyncpg
 
 from config import DB_BIND
 
-QUERIES = open('migrate.sql', 'r').read()
+QUERIES = open("migrate.sql", "r").read()
 
 
 def log(connection, message):
-	print(message)
+    print(message)
 
 
 async def main():
-	db = await asyncpg.connect(DB_BIND)
-	db.add_log_listener(log)
+    db = await asyncpg.connect(DB_BIND)
+    db.add_log_listener(log)
 
-	async with db.transaction():
-		await db.execute(QUERIES)
+    async with db.transaction():
+        await db.execute(QUERIES)
 
-		# populate facts if empty
-		if await db.fetchval('SELECT COUNT(id) FROM facts') == 0:
-			for fact in facts.split('\n'):
-				await db.execute('INSERT INTO facts (content) VALUES ($1)', fact)
+        # populate facts if empty
+        if await db.fetchval("SELECT COUNT(id) FROM facts") == 0:
+            for fact in facts.split("\n"):
+                await db.execute("INSERT INTO facts (content) VALUES ($1)", fact)
 
 
 facts = """
@@ -325,5 +325,5 @@ Polar bears are left-handed.
 Humans and dolphins are the only species that have sex for pleasure.
 """
 
-if __name__ == '__main__':
-	asyncio.run(main())
+if __name__ == "__main__":
+    asyncio.run(main())
