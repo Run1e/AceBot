@@ -1,4 +1,4 @@
-disnake==2.7.0
+disnake==2.8.1
 asyncpg==0.25.0
 rapidfuzz==1.9.1
 parsedatetime==2.6
