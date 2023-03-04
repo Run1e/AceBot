@@ -74,9 +74,10 @@ class WhoIs(AceMixin, commands.Cog):
 		await ctx.send(embed=e)
 
 	@commands.command()
-	async def avatar(self, ctx, *, member: disnake.Member):
+	async def avatar(self, ctx, *, member: disnake.Member = None):
 		'''Show an enlarged version of a members avatar.'''
-
+		if member is None:
+			member = ctx.author
 		await ctx.send(member.display_avatar.url)
 
 
