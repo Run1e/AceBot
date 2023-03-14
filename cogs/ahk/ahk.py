@@ -17,7 +17,13 @@ from disnake.ext import commands, tasks
 from rapidfuzz import fuzz, process
 
 from cogs.mixins import AceMixin
-from config import CLOUDAHK_PASS, CLOUDAHK_URL, CLOUDAHK_USER, GAME_PRED_URL
+from config import (
+    CLOUDAHK_PASS,
+    CLOUDAHK_URL,
+    CLOUDAHK_USER,
+    GAME_PRED_URL,
+    DOCS_API_URL,
+)
 from ids import *
 from utils.docs_parser import parse_docs, DOCS_URL
 from utils.html2markdown import HTML2Markdown
@@ -88,8 +94,6 @@ class AutoHotkey(AceMixin, commands.Cog):
 
         self.rss.start()
         self.close_help_threads.start()
-
-        asyncio.create_task(self._build_docs_cache())
 
     def cog_unload(self):
         self.rss.cancel()
@@ -305,184 +309,74 @@ class AutoHotkey(AceMixin, commands.Cog):
     async def cmd_docs(self, ctx: commands.Context, *, query: str = None):
         """Search the AutoHotkey documentation. Enter multiple queries by separating with commas."""
 
-        if query is None:
-            await ctx.send(DOCS_FORMAT.format(""))
-            return
-
-        spl = dict.fromkeys(sq.strip() for sq in query.lower().split(","))
-
-        if len(spl) > 3:
-            raise commands.CommandError("Maximum three different queries.")
-
-        embeds = []
-        for subquery in spl.keys():
-            name = self.search_docs(subquery, k=1)[0]
-            result = await self.get_doc(self._docs_id[name], entry=True, syntax=True)
-
-            if not result:
-                if len(spl.keys()) == 1:
-                    raise DOCS_NO_MATCH
-                else:
-                    continue
-
-            embeds.append(self.craft_docs_page(result, force_name=name))
-
-        await ctx.send(embeds=embeds)
+        data = await self.get_doc(1, query)
+        embed=self.craft_docs_page(data)
+        await ctx.send(embed=embed)
 
     @commands.slash_command(name="docs")
     async def slash_docs(self, inter, query: str):
         """Search AutoHotkey documentation."""
 
-        _id = self._docs_id.get(query, None)
-
-        # if this query wasn't picked from the autocomplete, do a search on the freetext query submitted
-        if _id is None:
-            query = self.search_docs(query, k=1)[0]
-
-        record = await self.get_doc(self._docs_id[query], entry=True, syntax=True)
+        data = await self.get_doc(1, query)
 
         await inter.response.send_message(
-            embed=self.craft_docs_page(record, force_name=query)
+            embed=self.craft_docs_page(data)
         )
 
     @slash_docs.autocomplete("query")
     async def docs_autocomplete(self, inter: disnake.AppCommandInter, query: str):
-        return self.search_docs(query, k=SEARCH_COUNT, make_default=True)
+        return await self.search_docs(1, query)
 
-    def search_docs(self, query, k=8, make_default=False):
-        query = query.strip().lower()
+    async def search_docs(self, v, query):
+        query = query.strip()
 
-        if not query:
-            return choices(self._docs_names, k=k) if make_default else None
+        async with self.bot.aiohttp.post(
+            DOCS_API_URL + "/search",
+            json=dict(v=v, q=query),
+            timeout=aiohttp.ClientTimeout(total=4),
+        ) as resp:
+            if resp.status != 200:
+                return ["ahkdocs api is down! :("]
+            data = await resp.json()
+            data = [e[:80] + "..." if len(e) > 80 else e for e in data]
+            return data
 
-        # further fuzzy search it using rapidfuzz ratio matching
-        fuzzed = process.extract(
-            query=query,
-            choices=self._docs_names,
-            scorer=fuzz.ratio,
-            processor=None,
-            limit=max(k, 8),
-        )
+    async def get_doc(self, v, query):
+        async with self.bot.aiohttp.post(
+            DOCS_API_URL + "/entry",
+            json=dict(v=v, q=query),
+            timeout=aiohttp.ClientTimeout(total=4),
+        ) as resp:
+            if resp.status != 200:
+                raise commands.CommandError("ahkdocs api is down :((((")
+            data = await resp.json()
 
-        tweak = list()
+        return data
 
-        for idx, (name, score, junk) in enumerate(fuzzed):
-            lower = name.lower()
+    def craft_docs_page(self, data: dict):
+        page = data.get("page")
 
-            if lower == query:
-                score += 50
-
-            if query in lower:
-                score += 20
-
-            tweak.append((name, score))
-
-        tweak = list(sorted(tweak, key=lambda v: v[1], reverse=True))
-
-        return list(name for name, score in tweak)[:k]
-
-    async def _build_docs_cache(self):
-        records = await self.db.fetch(
-            "SELECT docs_entry.id, name, content FROM docs_name INNER JOIN docs_entry ON docs_name.docs_id = docs_entry.id"
-        )
-
-        self._docs_names = list(record.get("name") for record in records)
-        self._docs_id = {record.get("name"): record.get("id") for record in records}
-
-    async def get_doc(self, id, entry=False, syntax=False):
-        sql = "SELECT * FROM docs_name "
-
-        if entry:
-            sql += "INNER JOIN docs_entry ON docs_name.docs_id = docs_entry.id "
-
-        if syntax:
-            sql += "LEFT OUTER JOIN docs_syntax ON docs_name.docs_id = docs_syntax.docs_id "
-
-        sql += "WHERE docs_entry.id = $1"
-
-        return await self.db.fetchrow(sql, id)
-
-    def craft_docs_page(self, record, force_name=None):
-        page = record.get("page")
+        link = data.get("page")
+        fragment = data.get("fragment")
+        if fragment is not None:
+            link += f"#{fragment}"
 
         e = disnake.Embed(
-            title=record.get("name") if force_name is None else force_name,
-            description=record.get("content") or "No description for this page.",
+            title=data.get("name"),
+            description=data.get("content") or "No description for this page.",
             color=AHK_COLOR,
-            url=page and DOCS_FORMAT.format(record.get("link")),
+            url=page and DOCS_FORMAT.format(link),
         )
 
         e.set_footer(
             text="autohotkey.com", icon_url="https://www.autohotkey.com/favicon.ico"
         )
 
-        syntax = record.get("syntax")
+        syntax = data.get("syntax")
         if syntax is not None:
             e.description += "\n```autoit\n{}\n```".format(syntax)
 
         return e
-
-    @commands.command(hidden=True)
-    @commands.is_owner()
-    async def build(self, ctx, download: bool = True):
-        log.info("Starting documentation build job. Download=%s", download)
-
-        async def on_update(text):
-            log.info("Build job: %s", text)
-            await ctx.send(text)
-
-        try:
-            agg = await parse_docs(on_update, fetch=download, loop=ctx.bot.loop)
-        except Exception as exc:
-            raise commands.CommandError(str(exc))
-
-        await on_update("Building tables...")
-
-        await self.db.execute(
-            "TRUNCATE docs_name, docs_syntax, docs_entry RESTART IDENTITY"
-        )
-
-        async for entry in agg:
-            names = entry.pop("names")
-            link = entry.pop("page")
-            desc = entry.pop("desc")
-            syntax = entry.pop("syntax", None)
-
-            if link is None:
-                page = None
-                fragment = None
-            else:
-                split = link.split("/")
-                split = split[len(split) - 1].split("#")
-                page = split.pop(0)[:-4]
-                fragment = split.pop(0) if split else None
-
-            docs_id = await self.db.fetchval(
-                "INSERT INTO docs_entry (content, link, page, fragment, title) VALUES ($1, $2, $3, $4, $5) "
-                "RETURNING id",
-                desc,
-                link,
-                page,
-                fragment,
-                entry["main"],
-            )
-
-            for name in names:
-                await self.db.execute(
-                    "INSERT INTO docs_name (docs_id, name) VALUES ($1, $2)",
-                    docs_id,
-                    name,
-                )
-
-            if syntax is not None:
-                await self.db.execute(
-                    "INSERT INTO docs_syntax (docs_id, syntax) VALUES ($1, $2)",
-                    docs_id,
-                    syntax,
-                )
-
-        await self._build_docs_cache()
-        await on_update("Done!")
 
     async def _msdn_lookup(self, query, top=1):
         url = "https://docs.microsoft.com/api/search"

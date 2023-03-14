@@ -5,7 +5,7 @@ from datetime import datetime
 
 class AceMixin:
     def __init__(self, bot: AceBot):
-        self.bot = bot
+        self.bot: AceBot = bot
 
     @property
     def db(self):
