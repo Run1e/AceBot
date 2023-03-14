@@ -6,7 +6,6 @@ import re
 from asyncio import TimeoutError
 from base64 import b64encode
 from datetime import datetime, timedelta, timezone
-from random import choices
 
 import aiohttp
 import disnake
@@ -14,18 +13,11 @@ from aiohttp import ClientTimeout
 from aiohttp.client_exceptions import ClientConnectorError
 from bs4 import BeautifulSoup
 from disnake.ext import commands, tasks
-from rapidfuzz import fuzz, process
 
 from cogs.mixins import AceMixin
-from config import (
-    CLOUDAHK_PASS,
-    CLOUDAHK_URL,
-    CLOUDAHK_USER,
-    GAME_PRED_URL,
-    DOCS_API_URL,
-)
+from config import (CLOUDAHK_PASS, CLOUDAHK_URL, CLOUDAHK_USER, DOCS_API_URL,
+                    GAME_PRED_URL)
 from ids import *
-from utils.docs_parser import parse_docs, DOCS_URL
 from utils.html2markdown import HTML2Markdown
 from utils.string import shorten
 
@@ -36,7 +28,7 @@ NO_RESULTS_STRING = "No results"
 AHK_COLOR = 0x95CD95
 RSS_URL = "https://www.autohotkey.com/boards/feed"
 
-DOCS_FORMAT = f"{DOCS_URL}{{}}"
+DOCS_FMT = "https://www.autohotkey.com/docs/v{}/{}"
 DOCS_NO_MATCH = commands.CommandError("Sorry, couldn't find an entry similar to that.")
 
 SUGGESTION_PREFIX = "suggestion:"
@@ -47,7 +39,7 @@ INACTIVITY_LIMIT = timedelta(weeks=4)
 
 DISCORD_UPLOAD_LIMIT = 8000000  # 8 MB
 
-SEARCH_COUNT = 8
+BULLET = "•"
 
 
 class RunnableCodeConverter(commands.Converter):
@@ -148,9 +140,6 @@ class AutoHotkey(AceMixin, commands.Cog):
             await thread.send(embed=self.make_classification_embed(pivot))
         else:
             await self.tagask(thread)
-            # self._tag_reminder_message[thread.id] = await thread.send(
-            #     f'{thread.owner.mention} You can tag your post using the `/tagme` command to make it easier for others to help.'
-            # )
 
     @tasks.loop(minutes=1)
     async def close_help_threads(self):
@@ -309,30 +298,26 @@ class AutoHotkey(AceMixin, commands.Cog):
     async def cmd_docs(self, ctx: commands.Context, *, query: str = None):
         """Search the AutoHotkey documentation. Enter multiple queries by separating with commas."""
 
-        data = await self.get_doc(1, query)
-        embed=self.craft_docs_page(data)
-        await ctx.send(embed=embed)
+        data = await self.query_docs_service(1, query)
+        await ctx.send(embed=self.craft_docs_page(data))
 
     @commands.slash_command(name="docs")
     async def slash_docs(self, inter, query: str):
         """Search AutoHotkey documentation."""
 
-        data = await self.get_doc(1, query)
-
-        await inter.response.send_message(
-            embed=self.craft_docs_page(data)
-        )
+        data = await self.query_docs_service(1, query)
+        await inter.response.send_message(embed=self.craft_docs_page(data))
 
     @slash_docs.autocomplete("query")
     async def docs_autocomplete(self, inter: disnake.AppCommandInter, query: str):
         return await self.search_docs(1, query)
 
-    async def search_docs(self, v, query):
+    async def search_docs(self, version, query):
         query = query.strip()
 
         async with self.bot.aiohttp.post(
             DOCS_API_URL + "/search",
-            json=dict(v=v, q=query),
+            json=dict(v=version, q=query),
             timeout=aiohttp.ClientTimeout(total=4),
         ) as resp:
             if resp.status != 200:
@@ -341,10 +326,10 @@ class AutoHotkey(AceMixin, commands.Cog):
             data = [e[:80] + "..." if len(e) > 80 else e for e in data]
             return data
 
-    async def get_doc(self, v, query):
+    async def query_docs_service(self, version, query):
         async with self.bot.aiohttp.post(
             DOCS_API_URL + "/entry",
-            json=dict(v=v, q=query),
+            json=dict(v=version, q=query),
             timeout=aiohttp.ClientTimeout(total=4),
         ) as resp:
             if resp.status != 200:
@@ -354,27 +339,67 @@ class AutoHotkey(AceMixin, commands.Cog):
         return data
 
     def craft_docs_page(self, data: dict):
+        def link_list(entries, sep):
+            parts = []
+            for entry in entries:
+                name = entry["name"]
+                page = entry["page"]
+                fragment = entry["fragment"]
+                if fragment is not None:
+                    page += f"#{fragment}"
+                link = DOCS_FMT.format(v, page)
+                parts.append(f"[{name}]({link})")
+            return sep.join(parts)
+
+        name = data["name"]
         page = data.get("page")
+        syntax = data["syntax"]
+        content = data["content"]
+        v = data["v"]
+        version = data["version"]
+        parents = data["parents"]
+        children = data["children"]
 
         link = data.get("page")
         fragment = data.get("fragment")
         if fragment is not None:
             link += f"#{fragment}"
 
-        e = disnake.Embed(
-            title=data.get("name"),
-            description=data.get("content") or "No description for this page.",
-            color=AHK_COLOR,
-            url=page and DOCS_FORMAT.format(link),
-        )
+        desc = (content or "") + "\n"
 
-        e.set_footer(
-            text="autohotkey.com", icon_url="https://www.autohotkey.com/favicon.ico"
-        )
-
-        syntax = data.get("syntax")
         if syntax is not None:
-            e.description += "\n```autoit\n{}\n```".format(syntax)
+            desc += f"```autoit\n{syntax}\n```"
+
+        desc += "\n"
+
+        if parents:
+            if children:
+                desc += "Part of: "
+            desc += link_list(parents, ", ")
+
+
+        if children:
+            if content is None:
+                desc += "\n\n"
+            else:
+                desc += "\nSections: "
+            desc += link_list(children, "\n" if content is None else f" {BULLET} ")
+
+        e = disnake.Embed(
+            title=name,
+            description=desc.strip() or "No description for this page.",
+            color=AHK_COLOR,
+            url=page and DOCS_FMT.format(v, link),
+        )
+
+        # footer_text = "autohotkey.com"
+
+        # if version:
+        #     footer_text += f" {version}"
+
+        # e.set_footer(
+        #     text=footer_text, icon_url="https://www.autohotkey.com/favicon.ico"
+        # )
 
         return e
 

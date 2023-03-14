@@ -59,10 +59,8 @@ def docs_search(names, query, k=8):
     return l
 
 
-async def get_entry(conn: asyncpg.Connection, docs_id: int, with_parents=True):
-    row = await conn.fetchrow("SELECT * FROM docs_entry WHERE id=$1", docs_id)
-
-    o = dict(
+def entry_to_dict(row):
+    return dict(
         id=row.get("id"),
         v=row.get("v"),
         name=row.get("name"),
@@ -73,13 +71,30 @@ async def get_entry(conn: asyncpg.Connection, docs_id: int, with_parents=True):
         version=row.get("version"),
     )
 
-    if with_parents:
+
+async def get_entry(conn: asyncpg.Connection, docs_id: int, lineage=True):
+    row = await conn.fetchrow("SELECT * FROM docs_entry WHERE id=$1", docs_id)
+
+    o = entry_to_dict(row)
+
+    if lineage:
         parents = []
+        children = []
+
         for parent_id in row.get("parents"):
             if parent_id is None:  # shouldn't happen
                 continue
-            parents.append(await get_entry(conn, parent_id, with_parents=False))
+            parents.append(await get_entry(conn, parent_id, lineage=False))
+
+        rows = await conn.fetch(
+            "SELECT * FROM docs_entry WHERE parents[array_upper(parents, 1)] = $1",
+            docs_id,
+        )
+        for row in rows:
+            children.append(entry_to_dict(row))
+
         o["parents"] = parents
+        o["children"] = children
 
     return o
 

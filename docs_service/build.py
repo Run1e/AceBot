@@ -58,7 +58,7 @@ async def store(pool: asyncpg.Pool, agg: Aggregator, version: int, id_start_at=1
             entry.name,
             entry.page,
             entry.fragment,
-            entry.content,
+            entry.content if entry.content else None,
             entry.syntax,
             entry.version,
             [e.id for e in entry.parents or []],
