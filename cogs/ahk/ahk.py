@@ -298,26 +298,45 @@ class AutoHotkey(AceMixin, commands.Cog):
 
         await self.cloudahk_call(ctx, code)
 
+    async def _docs(self, sender, query, version):
+        data = await self.query_docs_service(query, version)
+        await sender(embed=self.craft_docs_page(data))
+
     @commands.command(name="docs", aliases=["d", "doc", "rtfm"])
     @commands.bot_has_permissions(embed_links=True)
     async def cmd_docs(self, ctx: commands.Context, *, query: str = None):
-        """Search the AutoHotkey documentation. Enter multiple queries by separating with commas."""
+        """Search the AutoHotkey v1.1 documentation"""
 
-        data = await self.query_docs_service(1, query)
-        await ctx.send(embed=self.craft_docs_page(data))
+        await self._docs(ctx.send, query, 1)
 
     @commands.slash_command(name="docs")
     async def slash_docs(self, inter, query: str):
-        """Search AutoHotkey documentation."""
+        """Search the AutoHotkey v1.1 documentation."""
 
-        data = await self.query_docs_service(1, query)
-        await inter.response.send_message(embed=self.craft_docs_page(data))
+        await self._docs(inter.response.send_message, query, 1)
+
+    @commands.command(name="docs2", aliases=["d2", "doc2", "rtfm2"])
+    @commands.bot_has_permissions(embed_links=True)
+    async def cmd_docs2(self, ctx: commands.Context, *, query: str = None):
+        """Search the AutoHotkey v2.0 documentation"""
+
+        await self._docs(ctx.send, query, 2)
+
+    @commands.slash_command(name="docs2")
+    async def slash_docs2(self, inter, query: str):
+        """Search the AutoHotkey v2.0 documentation."""
+
+        await self._docs(inter.response.send_message, query, 2)
 
     @slash_docs.autocomplete("query")
     async def docs_autocomplete(self, inter: disnake.AppCommandInter, query: str):
-        return await self.search_docs(1, query)
+        return await self.search_docs(query, 1)
 
-    async def search_docs(self, version, query):
+    @slash_docs2.autocomplete("query")
+    async def docs_autocomplete(self, inter: disnake.AppCommandInter, query: str):
+        return await self.search_docs(query, 2)
+
+    async def search_docs(self, query, version):
         query = query.strip()
 
         async with self.bot.aiohttp.post(
@@ -331,7 +350,7 @@ class AutoHotkey(AceMixin, commands.Cog):
             data = [e[:80] + "..." if len(e) > 80 else e for e in data]
             return data
 
-    async def query_docs_service(self, version, query):
+    async def query_docs_service(self, query, version):
         async with self.bot.aiohttp.post(
             DOCS_API_URL + "/entry",
             json=dict(v=version, q=query),

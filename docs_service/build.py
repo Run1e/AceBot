@@ -8,11 +8,9 @@ import aiohttp
 import asyncpg
 from aggregator import Aggregator
 from bs4 import BeautifulSoup
-from parser_instances.v1 import command as v1_command
-from parser_instances.common import default
+from parser_instances.common import default, command
 from parser_instances.v1 import get as v1_get
 from parser_instances.v2 import get as v2_get
-from parser_instances.v2 import command as v2_command
 from parsers import HeadersParser
 
 import config
@@ -136,7 +134,7 @@ async def build_v1_aggregator(folder, download=False) -> Aggregator:
     agg = Aggregator(folder=folder, version=1)
 
     agg.bulk_parse(v1_get(folder))
-    agg.bulk_parse_from_dir("lib", parser_type=HeadersParser, **v1_command)
+    agg.bulk_parse_from_dir("lib", parser_type=HeadersParser, **command)
     agg.bulk_parse_from_dir("misc", parser_type=HeadersParser, **default())
     agg.parse_data_index("static/source/data_index.js")
 
@@ -158,7 +156,7 @@ async def build_v2_aggregator(folder, download=False) -> Aggregator:
     agg = Aggregator(folder=folder, version=2)
 
     agg.bulk_parse(v2_get(folder))
-    agg.bulk_parse_from_dir("lib", parser_type=HeadersParser, **v2_command)
+    agg.bulk_parse_from_dir("lib", parser_type=HeadersParser, **command)
     agg.bulk_parse_from_dir("misc", parser_type=HeadersParser, **default())
     agg.parse_data_index("static/source/data_index.js")
 
@@ -186,4 +184,4 @@ async def main():
 if __name__ == "__main__":
     loop = asyncio.new_event_loop()
     loop.run_until_complete(main())
-    loop.run_forever()
+    # loop.run_forever()

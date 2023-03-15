@@ -1,5 +1,8 @@
 from parsers import BULLET_SPACED
 
+# for simple command pages (like Abs.htm)
+command = dict(ignore=lambda h, t, p: h > 1)
+
 
 # for pages with commands that have subcommands
 def subcommand(prefix):
@@ -49,7 +52,7 @@ def obj(
 # stop: which h* to stop adding at
 # remap: remap the name of the h1 tag when prefixing
 # ignore: list of fragments to ignore
-# prefix
+# prefix: up to which h* should the remapper apply
 def default(stop=3, remap=1, ignore=None, prefix=None):
     if stop > 3:
         raise ValueError("You gotta fix the mapper in this case")

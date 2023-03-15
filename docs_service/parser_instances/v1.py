@@ -1,6 +1,6 @@
 from parsers import HeadersParser, TableParser
 
-from .common import default, obj, subcommand
+from .common import default, obj, subcommand, command
 
 # listview, treeview, etc
 view = dict(
@@ -27,9 +27,6 @@ guicontrols = dict(
         and not (h == 2 and t.find_next_sibling("p").text.startswith("Description:"))
     ),
 )
-
-# for simple command pages (like Abs.htm)
-command = dict(ignore=lambda h, t, p: h > 1)
 
 
 def get(base):

@@ -1,14 +1,21 @@
-from parser_instances.common import default, obj
+from parser_instances.common import default, obj, command
 from parsers import HeadersParser
 
-# for simple function pages
-command = dict(
-    # prefix_mapper=[
-    #     (lambda h, t, p: True, "{}()"),
-    # ],
-    # basic_name_check=lambda h, t, p: False,
-    ignore=lambda h, t, p: h
-    > 1,
+# guicontrols.htm page which is unique
+# also holy shit what is going on
+guicontrols = dict(
+    prefix_mapper=[
+        (
+            lambda h, t, p: h == 2
+            and t.find_next_sibling("p").text.startswith("Description:"),
+            "{} Control",
+        ),
+        (2, 1),
+        (3, -1),
+        (4, -1),
+    ],
+    basic_name_check=lambda h, t, p: h == 1,
+    ignore=lambda h, t, p: h > 3,
 )
 
 
@@ -48,30 +55,19 @@ def get(base):
         HeadersParser(base, 2, "lib/Menu.htm", **obj("Menu", "MyMenu")),
         HeadersParser(base, 2, "lib/Object.htm", **obj("Object", "Obj")),
         # HeadersParser(base, 2, "lib/InputHook.htm", **object("InputHook")),  # h3 tags that should be h2, and new property id names???
+        HeadersParser(base, 2, "lib/GuiControls.htm", **guicontrols),
+        HeadersParser(base, 2, "lib/Hotstring.htm", **default(stop=2)),
+        HeadersParser(
+            base, 2, "lib/ListView.htm", **obj("ListView", "LV", meth="BuiltIn")
+        ),
+        HeadersParser(
+            base, 2, "lib/TreeView.htm", **obj("TreeView", "TV", meth="BuiltIn")
+        ),
+        HeadersParser(base, 2, "lib/Math.htm", **default(prefix=2)),
     )
 
 
 """
 issues:
 ClassObj.Call() should also have an entry for ClassObj() really
-
-DllCall.htm set()
-Format.htm set()
-FormatTime.htm set()
-GuiControls.htm set()
-GuiOnEvent.htm set()
-Hotstring.htm set()
-InputHook.htm set()
-InstallKeybdHook.htm set()
-ListView.htm set()
-Math.htm set()
-MsgBox.htm set()
-RegExMatch.htm set()
-Send.htm set()
-Sort.htm set()
-String.htm set()
-Thread.htm set()
-TreeView.htm set()
-_HotIf.htm set()
-_Hotstring.htm set()
 """
