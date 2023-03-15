@@ -15,13 +15,8 @@ from bs4 import BeautifulSoup
 from disnake.ext import commands, tasks
 
 from cogs.mixins import AceMixin
-from config import (
-    CLOUDAHK_PASS,
-    CLOUDAHK_URL,
-    CLOUDAHK_USER,
-    DOCS_API_URL,
-    GAME_PRED_URL,
-)
+from config import (CLOUDAHK_PASS, CLOUDAHK_URL, CLOUDAHK_USER, DOCS_API_URL,
+                    GAME_PRED_URL)
 from ids import *
 from utils.html2markdown import HTML2Markdown
 from utils.string import shorten
@@ -583,7 +578,7 @@ class AutoHotkey(AceMixin, commands.Cog):
             args = dict(embed=embed, components=rows)
 
             if message is None:
-                content = f"{thread.owner.mention} Increase your visibility by adding tags to your post here!"
+                content = f"{thread.owner.mention} Increase your visibility by adding tags your post!"
                 message = await thread.send(content=content, **args)
             else:
                 await message.edit(content=None, **args)
@@ -653,9 +648,9 @@ class AutoHotkey(AceMixin, commands.Cog):
         await thread.edit(applied_tags=added_tags)
 
         await message.edit(
-            content="Thanks for tagging your post!\n\nAdded tags: "
-            + " ".join(f"`{tag.name}`" for tag in added_tags)
-            + "\n\nIf your issue gets solved, you can mark your post as solved by sending `/solved`",
+            content=(
+                "Thanks for tagging your post!\n\nIf your issue gets solved, you can mark your post as solved by sending `/solved`"
+            ),
             embed=None,
             components=None,
         )
