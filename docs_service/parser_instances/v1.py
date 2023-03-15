@@ -1,4 +1,4 @@
-from parsers import HeadersParser, TableParser, BULLET
+from parsers import BULLET, HeadersParser, TableParser
 
 view_kwargs = dict(
     prefix_mapper=[(2, 1), (3, 1), (4, 3)],
@@ -88,53 +88,58 @@ def h1_simplifier(new):
 
 def get(base):
     return (
-        HeadersParser(base, "lib/Math.htm", **function_list_kwargs),
-        HeadersParser(base, "lib/ListView.htm", **view_kwargs),
-        HeadersParser(base, "lib/TreeView.htm", **view_kwargs),
-        HeadersParser(base, "lib/Gui.htm", **make_subcommand_like("Gui, ")),
-        HeadersParser(base, "lib/Menu.htm", **make_subcommand_like("Menu, ")),
-        HeadersParser(base, "lib/Control.htm", **make_subcommand_like("Control, ")),
+        HeadersParser(base, 1, "lib/Math.htm", **function_list_kwargs),
+        HeadersParser(base, 1, "lib/ListView.htm", **view_kwargs),
+        HeadersParser(base, 1, "lib/TreeView.htm", **view_kwargs),
+        HeadersParser(base, 1, "lib/Gui.htm", **make_subcommand_like("Gui, ")),
+        HeadersParser(base, 1, "lib/Menu.htm", **make_subcommand_like("Menu, ")),
+        HeadersParser(base, 1, "lib/Control.htm", **make_subcommand_like("Control, ")),
         HeadersParser(
-            base, "lib/GuiControl.htm", **make_subcommand_like("GuiControl, ")
+            base, 1, "lib/GuiControl.htm", **make_subcommand_like("GuiControl, ")
         ),
-        HeadersParser(base, "lib/GuiControls.htm", **guicontrols_kwargs),
-        HeadersParser(base, "lib/File.htm", **make_object_like("File")),
-        HeadersParser(base, "lib/Func.htm", **make_object_like("Func")),
-        HeadersParser(base, "lib/Object.htm", **make_object_like("Object")),
-        HeadersParser(base, "lib/Enumerator.htm", **make_object_like("Enum")),
+        HeadersParser(base, 1, "lib/GuiControls.htm", **guicontrols_kwargs),
+        HeadersParser(base, 1, "lib/File.htm", **make_object_like("File")),
+        HeadersParser(base, 1, "lib/Func.htm", **make_object_like("Func")),
+        HeadersParser(base, 1, "lib/Object.htm", **make_object_like("Object")),
+        HeadersParser(base, 1, "lib/Enumerator.htm", **make_object_like("Enum")),
         HeadersParser(
             base,
+            1,
             "lib/InputHook.htm",
             **make_object_like("InputHook", property_id="object"),
         ),  # TODO: docs are dumb I cba fixing this one
         HeadersParser(
-            base, "lib/ControlGet.htm", **make_subcommand_like("ControlGet, ")
+            base, 1, "lib/ControlGet.htm", **make_subcommand_like("ControlGet, ")
         ),
-        HeadersParser(base, "lib/Drive.htm", **make_subcommand_like("Drive, ")),
-        HeadersParser(base, "lib/DriveGet.htm", **make_subcommand_like("DriveGet, ")),
+        HeadersParser(base, 1, "lib/Drive.htm", **make_subcommand_like("Drive, ")),
         HeadersParser(
-            base, "lib/GuiControlGet.htm", **make_subcommand_like("GuiControlGet, ")
+            base, 1, "lib/DriveGet.htm", **make_subcommand_like("DriveGet, ")
         ),
-        HeadersParser(base, "lib/SysGet.htm", **make_subcommand_like("SysGet, ")),
-        HeadersParser(base, "lib/Transform.htm", **make_subcommand_like("Transform, ")),
-        HeadersParser(base, "lib/WinGet.htm", **make_subcommand_like("WinGet, ")),
-        HeadersParser(base, "lib/WinSet.htm", **make_subcommand_like("WinSet, ")),
-        HeadersParser(base, "misc/RegEx-QuickRef.htm", **h1_simplifier("RegEx")),
-        HeadersParser(base, "AHKL_DBGPClients.htm", **default_misc_kwargs),
-        HeadersParser(base, "AHKL_Features.htm", **default_misc_kwargs),
-        HeadersParser(base, "Concepts.htm", **default_misc_kwargs),
-        HeadersParser(base, "FAQ.htm", **h1_simplifier("FAQ")),
-        HeadersParser(base, "Functions.htm", **default_misc_kwargs),
-        HeadersParser(base, "Hotkeys.htm", **h1_simplifier("Hotkeys")),
-        HeadersParser(base, "Hotstrings.htm", **default_misc_kwargs),
-        HeadersParser(base, "Language.htm", **h1_h2_kwargs),
-        HeadersParser(base, "Objects.htm", **default_misc_kwargs),
-        HeadersParser(base, "Program.htm", **h1_h2_kwargs),
-        HeadersParser(base, "Scripts.htm", **h1_h2_kwargs),
-        HeadersParser(base, "Tutorial.htm", **h1_simplifier("Tutorial")),
-        HeadersParser(base, "Variables.htm", **variables_kwargs),
-        HeadersParser(base, "KeyList.htm", **h1_simplifier("List of Keys")),
-        TableParser(base, "Variables.htm"),
-        TableParser(base, "KeyList.htm"),
-        TableParser(base, "Hotkeys.htm"),
+        HeadersParser(
+            base, 1, "lib/GuiControlGet.htm", **make_subcommand_like("GuiControlGet, ")
+        ),
+        HeadersParser(base, 1, "lib/SysGet.htm", **make_subcommand_like("SysGet, ")),
+        HeadersParser(
+            base, 1, "lib/Transform.htm", **make_subcommand_like("Transform, ")
+        ),
+        HeadersParser(base, 1, "lib/WinGet.htm", **make_subcommand_like("WinGet, ")),
+        HeadersParser(base, 1, "lib/WinSet.htm", **make_subcommand_like("WinSet, ")),
+        HeadersParser(base, 1, "misc/RegEx-QuickRef.htm", **h1_simplifier("RegEx")),
+        HeadersParser(base, 1, "AHKL_DBGPClients.htm", **default_misc_kwargs),
+        HeadersParser(base, 1, "AHKL_Features.htm", **default_misc_kwargs),
+        HeadersParser(base, 1, "Concepts.htm", **default_misc_kwargs),
+        HeadersParser(base, 1, "FAQ.htm", **h1_simplifier("FAQ")),
+        HeadersParser(base, 1, "Functions.htm", **default_misc_kwargs),
+        HeadersParser(base, 1, "Hotkeys.htm", **h1_simplifier("Hotkeys")),
+        HeadersParser(base, 1, "Hotstrings.htm", **default_misc_kwargs),
+        HeadersParser(base, 1, "Language.htm", **h1_h2_kwargs),
+        HeadersParser(base, 1, "Objects.htm", **default_misc_kwargs),
+        HeadersParser(base, 1, "Program.htm", **h1_h2_kwargs),
+        HeadersParser(base, 1, "Scripts.htm", **h1_h2_kwargs),
+        HeadersParser(base, 1, "Tutorial.htm", **h1_simplifier("Tutorial")),
+        HeadersParser(base, 1, "Variables.htm", **variables_kwargs),
+        HeadersParser(base, 1, "KeyList.htm", **h1_simplifier("List of Keys")),
+        TableParser(base, 1, "Variables.htm"),
+        TableParser(base, 1, "KeyList.htm"),
+        TableParser(base, 1, "Hotkeys.htm"),
     )

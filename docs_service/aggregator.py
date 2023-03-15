@@ -6,15 +6,16 @@ from tqdm import tqdm
 
 
 class Aggregator:
-    def __init__(self, folder) -> None:
+    def __init__(self, folder, version) -> None:
         self.folder = folder
+        self.version = version
         self.entries = dict()
         self._parsed_files = set()
 
     def bulk_parse_from_dir(self, path, parser_type, **parser_kwargs):
         return self.bulk_parse(
             [
-                parser_type(self.folder, htm, **parser_kwargs)
+                parser_type(self.folder, self.version, htm, **parser_kwargs)
                 for htm in self._get_htms(path, parser_type)
             ]
         )
@@ -54,7 +55,7 @@ class Aggregator:
                 if page in parser_cache:
                     parser = parser_cache[page]
                 else:
-                    parser = HeadersParser(self.folder, page)
+                    parser = HeadersParser(self.folder, self.version, page)
                     parser_cache[page] = parser
 
                 tag = parser.bs.find(True, id=fragment)

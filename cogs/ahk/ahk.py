@@ -15,8 +15,13 @@ from bs4 import BeautifulSoup
 from disnake.ext import commands, tasks
 
 from cogs.mixins import AceMixin
-from config import (CLOUDAHK_PASS, CLOUDAHK_URL, CLOUDAHK_USER, DOCS_API_URL,
-                    GAME_PRED_URL)
+from config import (
+    CLOUDAHK_PASS,
+    CLOUDAHK_URL,
+    CLOUDAHK_USER,
+    DOCS_API_URL,
+    GAME_PRED_URL,
+)
 from ids import *
 from utils.html2markdown import HTML2Markdown
 from utils.string import shorten
@@ -352,6 +357,7 @@ class AutoHotkey(AceMixin, commands.Cog):
             return sep.join(parts)
 
         name = data["name"]
+        search_match = data["search_match"]
         page = data.get("page")
         syntax = data["syntax"]
         content = data["content"]
@@ -376,17 +382,17 @@ class AutoHotkey(AceMixin, commands.Cog):
             if children:
                 desc += "Part of: "
             desc += link_list(parents, ", ")
-
+            desc += "\n"
 
         if children:
             if content is None:
                 desc += "\n\n"
             else:
-                desc += "\nSections: "
+                desc += "Subsections: "
             desc += link_list(children, "\n" if content is None else f" {BULLET} ")
 
         e = disnake.Embed(
-            title=name,
+            title=search_match or name,
             description=desc.strip() or "No description for this page.",
             color=AHK_COLOR,
             url=page and DOCS_FMT.format(v, link),

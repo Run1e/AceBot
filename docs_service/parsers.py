@@ -1,12 +1,10 @@
 import re
 from itertools import chain
-from typing import List
-from uuid import uuid4
 
 from bs4 import BeautifulSoup, NavigableString, Tag
 from markdownify import MarkdownConverter
 
-DOCS_URL = "https://www.autohotkey.com/docs/v1/"
+DOCS_URL_FMT = "https://www.autohotkey.com/docs/v{}/"
 ANY_HEADER_RE = re.compile(r"^h\d$")
 BIG_HEADER_RE = re.compile(r"^h[1-3]$")
 BULLET = "•"
@@ -48,6 +46,11 @@ class Entry:
 
 
 class DocsMarkdownConverter(MarkdownConverter):
+    def __init__(self, url_folder, url_file, **options):
+        self.url_folder = url_folder
+        self.url_file = url_file
+        super().__init__(**options)
+
     def convert_span(self, el: Tag, text, convert_as_inline):
         classes = el.get("class", None)
         if classes is None:
@@ -64,17 +67,20 @@ class DocsMarkdownConverter(MarkdownConverter):
     def convert_code(self, el, text, convert_as_inline):
         return f"`{text}`"
 
+    def convert_a(self, el, text, convert_as_inline):
+        href = el.get("href")
+        if href.startswith("#"):
+            url = f"{self.url_folder}/{self.url_file}#{href}"
+        else:
+            url = f"{self.url_folder}/{href}"
 
-def md(soup, **converter_kwargs):
-    converter = DocsMarkdownConverter(convert=["span", "code"], **converter_kwargs)
-    converter.version = None
-    text = converter.convert_soup(soup).strip()
-    return text, converter
+        return f"[{text}]({url})"
 
 
 class Parser:
-    def __init__(self, base, page) -> None:
+    def __init__(self, base, version, page) -> None:
         self.base = base
+        self.version = version
         self.page = page
         self.parser = "lxml"
 
@@ -82,6 +88,29 @@ class Parser:
 
         with open(f"{self.base}/{self.page}", "r") as f:
             self.bs = BeautifulSoup(f.read(), self.parser)
+
+        full_url = DOCS_URL_FMT.format(version) + page
+        *to_join, url_file = full_url.split("/")
+        url_folder = "/".join(to_join)
+
+        self.converter = DocsMarkdownConverter(
+            url_folder=url_folder, url_file=url_file, convert=["span", "code", "a"]
+        )
+
+    def md(self, soup, **opt):
+        self.converter.version = None
+
+        restore = dict()
+        for k, v in opt.items():
+            restore[k] = self.converter.options[k]
+            self.converter.options[k] = v
+
+        md = self.converter.convert_soup(soup).strip()
+
+        for k, v in restore.items():
+            self.converter.options[k] = v
+
+        return md
 
     def add_entry(self, entry: Entry):
         self.entries[entry.fragment] = entry
@@ -138,38 +167,40 @@ class Parser:
                 _classes = tag.get("class", [])
 
                 if "Syntax" in _classes:
-                    syntax, _ = md(tag, escape_underscores=False)
+                    syntax = self.md(tag, escape_underscores=False)
 
                 break
 
             else:
                 break
 
-        text, conv = md(BeautifulSoup(markup, self.parser))
-        return text, syntax, conv.version
+        text = self.md(BeautifulSoup(markup, self.parser))
+        return text, syntax, self.converter.version
 
-    def name_splitter(self, orig_name):
-        names = [orig_name]
+    def name_splitter(self, name):
+        if name.startswith("MinIndeMinIndexx"):
+            print("what")
+
         splits = [" / ", "\n"]
 
         temp = []
-        for name in names:
-            for split in splits:
-                if split in name:
-                    temp.extend(name.split(split))
-                    break
-            else:
-                temp.append(name)
+        for split in splits:
+            if split in name:
+                temp.extend(name.split(split))
+                break
+        else:
+            temp.append(name)
 
-        temp = [name.strip() for name in temp if name.strip()]
+        names = [name.strip() for name in temp if name.strip()]
 
-        return orig_name, temp
+        return " / ".join(names), names
 
 
 class HeadersParser(Parser):
     def __init__(
         self,
         base,
+        version,
         page,
         prefix_mapper=None,
         basic_name_check=lambda h, t, p: True,
@@ -178,7 +209,7 @@ class HeadersParser(Parser):
         self.prefix_mapper: list = prefix_mapper
         self.basic_name_check = basic_name_check
         self.ignore = ignore
-        super().__init__(base, page)
+        super().__init__(base, version, page)
 
     def level_from_header_tag(self, tag: Tag):
         return int(tag.name[1])
@@ -304,7 +335,7 @@ class TableParser(Parser):
                     version = self.strip_versioning(td)
                     orig_name, names = self.name_splitter(self.tag_to_str(td))
                 else:
-                    desc, conv = md(td)
+                    desc = self.md(td)
 
             fragment = tr.get("id")
 
@@ -314,7 +345,7 @@ class TableParser(Parser):
                 page=self.page,
                 content=desc,
                 fragment=fragment,
-                version=version or conv.version,
+                version=version or self.converter.version,
             )
 
             self.add_entry(entry)

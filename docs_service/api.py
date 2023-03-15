@@ -72,7 +72,9 @@ def entry_to_dict(row):
     )
 
 
-async def get_entry(conn: asyncpg.Connection, docs_id: int, lineage=True):
+async def get_entry(
+    conn: asyncpg.Connection, docs_id: int, lineage=True, search_match=None
+):
     row = await conn.fetchrow("SELECT * FROM docs_entry WHERE id=$1", docs_id)
 
     o = entry_to_dict(row)
@@ -95,6 +97,7 @@ async def get_entry(conn: asyncpg.Connection, docs_id: int, lineage=True):
 
         o["parents"] = parents
         o["children"] = children
+        o["search_match"] = search_match
 
     return o
 
@@ -139,13 +142,13 @@ async def entry(request: Request):
 
     names = app.ctx.names[v]
 
-    res = docs_search(names, q, k=1)
-    docs_id = app.ctx.id_map[v][res[0]]
+    res = docs_search(names, q, k=1)[0]
+    docs_id = app.ctx.id_map[v][res]
 
     async with app.ctx.pool.acquire() as conn:
         conn: asyncpg.Connection
         async with conn.transaction():
-            return json(await get_entry(conn, docs_id))
+            return json(await get_entry(conn, docs_id, lineage=True, search_match=res))
 
 
 app.blueprint(api)
@@ -169,9 +172,21 @@ async def setup(app, loop):
                 id_map[v][name] = docs_id
                 names[v].append(name)
 
-    app.ctx.names = names
-    app.ctx.id_map = id_map
-    app.ctx.pool = pool
+    if True:
+        from pprint import pprint as pp
+        while True:
+            i = input("Prompt: ")
+            res = docs_search(names[1], i)
+            pp(res)
+    else:
+        app.ctx.names = names
+        app.ctx.id_map = id_map
+        app.ctx.pool = pool
 
 
-app.run("0.0.0.0", 80)
+if False:
+    app.run("0.0.0.0", 80)
+else:
+    loop = asyncio.new_event_loop()
+    loop.create_task(setup(None, None))
+    loop.run_forever()

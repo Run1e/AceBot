@@ -80,7 +80,7 @@ async def store(pool: asyncpg.Pool, agg: Aggregator, version: int, id_start_at=1
 async def build_v1_aggregator(folder) -> Aggregator:
     print("parsing v1 docs")
 
-    agg = Aggregator(folder)
+    agg = Aggregator(folder=folder, version=1)
 
     agg.bulk_parse(v1_get(folder))
     agg.bulk_parse_from_dir("lib", parser_type=HeadersParser, **default_command_kwargs)
