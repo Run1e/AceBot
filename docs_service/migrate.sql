@@ -14,5 +14,5 @@ CREATE TABLE IF NOT EXISTS docs_name (
 	id			SERIAL UNIQUE,
     v           SMALLINT NOT NULL,
 	docs_id		INT REFERENCES docs_entry (id) NOT NULL,
-	name		TEXT UNIQUE NOT NULL
+	name		TEXT NOT NULL
 );

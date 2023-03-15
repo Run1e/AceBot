@@ -7,7 +7,7 @@ from markdownify import MarkdownConverter
 DOCS_URL_FMT = "https://www.autohotkey.com/docs/v{}/"
 ANY_HEADER_RE = re.compile(r"^h\d$")
 BIG_HEADER_RE = re.compile(r"^h[1-3]$")
-BULLET = "•"
+BULLET_SPACED = " • "
 
 """
 current issues:
@@ -252,12 +252,8 @@ class HeadersParser(Parser):
             if isinstance(action, int):
                 try:
                     parent = parents[action]
-                    parent_name = parent.primary_names[0]
-                    if text.startswith(parent_name):
-                        new_text = text[len(parent_name) :].strip()
-                    else:
-                        new_text = text
-                    names.append(f"{parent.primary_names[0]} {BULLET} {new_text}")
+                    parent_name = parent.name
+                    names.append(f"{parent_name}{BULLET_SPACED}{text}")
                 except IndexError:
                     pass
             elif isinstance(action, str):
@@ -294,9 +290,13 @@ class HeadersParser(Parser):
         # just manually check for that instead
         # really we should not be using a HeadersParser, and rather
         # use something that finds methods by finding divs with ids
-        previous = tag.previous_element
-        if previous.name == "div" and "methodShort" in previous.get("class", []):
-            fragment = previous.get("id", None)
+        # the range(3) is a hack to make it work for v2 Gui.htm
+        previous = tag
+        for _ in range(3):
+            previous = previous.previous_element
+            if previous.name == "div" and "methodShort" in previous.get("class", []):
+                fragment = previous.get("id", None)
+                break
 
         entry = Entry(
             name=name,

@@ -15,8 +15,13 @@ from bs4 import BeautifulSoup
 from disnake.ext import commands, tasks
 
 from cogs.mixins import AceMixin
-from config import (CLOUDAHK_PASS, CLOUDAHK_URL, CLOUDAHK_USER, DOCS_API_URL,
-                    GAME_PRED_URL)
+from config import (
+    CLOUDAHK_PASS,
+    CLOUDAHK_URL,
+    CLOUDAHK_USER,
+    DOCS_API_URL,
+    GAME_PRED_URL,
+)
 from ids import *
 from utils.html2markdown import HTML2Markdown
 from utils.string import shorten
@@ -376,7 +381,7 @@ class AutoHotkey(AceMixin, commands.Cog):
         if parents:
             if children:
                 desc += "Part of: "
-            desc += link_list(parents, ", ")
+            desc += link_list(parents, f" {BULLET} ")
             desc += "\n"
 
         if children:

@@ -1,4 +1,5 @@
 import asyncio
+import re
 import os
 import shutil
 from zipfile import ZipFile
@@ -7,39 +8,49 @@ import aiohttp
 import asyncpg
 from aggregator import Aggregator
 from bs4 import BeautifulSoup
-from parser_instances.v1 import default_command_kwargs, default_misc_kwargs
+from parser_instances.v1 import command as v1_command
+from parser_instances.common import default
 from parser_instances.v1 import get as v1_get
+from parser_instances.v2 import get as v2_get
+from parser_instances.v2 import command as v2_command
 from parsers import HeadersParser
 
 import config
 
 
-async def main():
-    if False:
-        for i, file in enumerate(sorted(os.listdir("docs/lib"))):
-            if i < 98:
-                continue
+async def view_h(parsers, base, path):
+    folder = base
+    if path:
+        folder += f"/{path}"
+    for i, file in enumerate(sorted(os.listdir(folder))):
+        if not file.endswith(".htm"):
+            continue
 
-            found = False
-            for parser in parsers:
-                if parser.page == f"lib/{file}":
-                    found = True
-                    break
+        ff = f"{folder}/{file}"
 
-            if found:
-                continue
+        found = False
+        for parser in parsers:
+            parser_doink = f"{parser.base}/{parser.page}"
+            if parser_doink == ff:
+                found = True
+                break
 
-            bs = BeautifulSoup(open(f"docs/lib/{file}", "r").read(), "lxml")
-            print(file)
-            h = []
-            for tag in bs.find_all(re.compile(r"^h\d$")):
-                h.append(tag.name)
+        if found:
+            continue
 
+        bs = BeautifulSoup(open(ff, "r").read(), "lxml")
+        h = []
+        a = set()
+        for tag in bs.find_all(re.compile(r"^h\d$")):
+            h.append(tag.name)
+        if bs.find("h3", id="Methods") or bs.find("h3", id="Properties"):
+            a.add("object")
+        if bs.find("h3", id="SubCommands"):
+            a.add("subcommands")
+
+        if a:
+            print(file, a)
             print(h)
-
-            print()
-            print("-" * 200)
-            print()
 
 
 async def store(pool: asyncpg.Pool, agg: Aggregator, version: int, id_start_at=1):
@@ -111,11 +122,12 @@ async def downloader(url, download_to, extract_to):
 
 
 async def build_v1_aggregator(folder, download=False) -> Aggregator:
-    await downloader(
-        url="https://github.com/AutoHotkey/AutoHotkeyDocs/archive/v1.zip",
-        download_to="docs_v1.zip",
-        extract_to=folder,
-    )
+    if download:
+        await downloader(
+            url="https://github.com/AutoHotkey/AutoHotkeyDocs/archive/v1.zip",
+            download_to="docs_v1.zip",
+            extract_to=folder,
+        )
 
     print("parsing v1 docs")
 
@@ -124,8 +136,30 @@ async def build_v1_aggregator(folder, download=False) -> Aggregator:
     agg = Aggregator(folder=folder, version=1)
 
     agg.bulk_parse(v1_get(folder))
-    agg.bulk_parse_from_dir("lib", parser_type=HeadersParser, **default_command_kwargs)
-    agg.bulk_parse_from_dir("misc", parser_type=HeadersParser, **default_misc_kwargs)
+    agg.bulk_parse_from_dir("lib", parser_type=HeadersParser, **v1_command)
+    agg.bulk_parse_from_dir("misc", parser_type=HeadersParser, **default())
+    agg.parse_data_index("static/source/data_index.js")
+
+    return agg
+
+
+async def build_v2_aggregator(folder, download=False) -> Aggregator:
+    if download:
+        await downloader(
+            url="https://github.com/AutoHotkey/AutoHotkeyDocs/archive/v2.zip",
+            download_to="docs_v2.zip",
+            extract_to=folder,
+        )
+
+    print("parsing v2 docs")
+
+    folder += "/AutoHotkeyDocs-2/docs"
+
+    agg = Aggregator(folder=folder, version=2)
+
+    agg.bulk_parse(v2_get(folder))
+    agg.bulk_parse_from_dir("lib", parser_type=HeadersParser, **v2_command)
+    agg.bulk_parse_from_dir("misc", parser_type=HeadersParser, **default())
     agg.parse_data_index("static/source/data_index.js")
 
     return agg
@@ -135,14 +169,21 @@ async def main():
     db = await asyncpg.create_pool(config.DB_BIND)
     await db.execute("TRUNCATE docs_name, docs_entry RESTART IDENTITY")
 
-    agg = await build_v1_aggregator("docs_v1")
+    agg = await build_v1_aggregator("docs_v1", download=False)
     await store(db, agg, 1)
-
     start_at = agg.entry_count + 1
 
+    print()
+
+    agg = await build_v2_aggregator("docs_v2", download=False)
+    await store(db, agg, 2, id_start_at=start_at)
+
     await db.close()
+
+    print("done")
 
 
 if __name__ == "__main__":
     loop = asyncio.new_event_loop()
     loop.run_until_complete(main())
+    loop.run_forever()
