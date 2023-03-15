@@ -9,6 +9,12 @@ ANY_HEADER_RE = re.compile(r"^h\d$")
 BIG_HEADER_RE = re.compile(r"^h[1-3]$")
 BULLET = "•"
 
+"""
+current issues:
+- bold/italic markdown is added in code boxes
+- see gui cancel/hide and how it wraps a div around with another id
+"""
+
 
 class Entry:
     def __init__(
@@ -76,6 +82,12 @@ class DocsMarkdownConverter(MarkdownConverter):
 
         return f"[{text}]({url})"
 
+    def convert_strong(self, el, text, convert_as_inline):
+        return f"**{text}**"
+
+    def convert_em(self, el, text, convert_as_inline):
+        return f"*{text}*"
+
 
 class Parser:
     def __init__(self, base, version, page) -> None:
@@ -94,7 +106,9 @@ class Parser:
         url_folder = "/".join(to_join)
 
         self.converter = DocsMarkdownConverter(
-            url_folder=url_folder, url_file=url_file, convert=["span", "code", "a"]
+            url_folder=url_folder,
+            url_file=url_file,
+            convert=["span", "code", "a", "strong", "em"],
         )
 
     def md(self, soup, **opt):

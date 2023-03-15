@@ -1,4 +1,5 @@
 from collections import defaultdict
+import re
 
 import asyncpg
 from rapidfuzz import fuzz, process
@@ -14,6 +15,10 @@ api = Blueprint("api", url_prefix="/api")
 
 meaning_scalar = lambda v: 1 / ((v * 0.5) ** 2 + 1)
 
+def processor(s):
+    s = s.strip().lower()
+    return re.sub(r"(\(|\))", "", s)
+
 
 def docs_search(names, query, k=8):
     if not query:
@@ -25,27 +30,23 @@ def docs_search(names, query, k=8):
 
     splitters = [query]
     splitters.extend(query.split(" "))
+    scores = defaultdict(float)
 
     for i, word in enumerate(splitters):
-        scores = process.extract(
+        word_scores = process.extract(
             query=word,
             choices=names,
             scorer=fuzz.WRatio,
-            processor=lambda s: s.lower().strip(),
+            processor=processor,
             limit=100,
         )
-        word_scores.append(
-            [(name, score * meaning_scalar(i)) for name, score, _ in scores]
-        )
 
-    combined = defaultdict(float)
-    for scores in word_scores:
-        for name, score in scores:
-            combined[name] += score
+        for name, score, _ in word_scores:
+            scores[name] += score * meaning_scalar(i)
 
     return list(
         name
-        for name, _ in sorted(combined.items(), key=lambda item: item[1], reverse=True)
+        for name, _ in sorted(scores.items(), key=lambda item: item[1], reverse=True)
     )[:k]
 
 

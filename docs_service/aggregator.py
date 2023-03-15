@@ -87,6 +87,17 @@ class Aggregator:
             for entry in entries.values():
                 yield entry
 
+    def check_name_semantically_exists(self, name, names):
+        def cmp(a, b):
+            a = a.lower()
+            b = b.lower()
+            return a == b or a == b + "()"
+
+        for check_name in names:
+            if cmp(name, check_name):
+                return True
+        return False
+
     def name_map(self):
         mapper = dict()  # name: id
 
@@ -101,6 +112,20 @@ class Aggregator:
             for pname in entry.secondary_names:
                 if pname not in mapper:
                     mapper[pname] = entry.id
+
+        used = set()
+        to_delete = set()
+        for name in mapper.keys():
+            lower_name = name.lower()
+            if lower_name in used or f"{lower_name}()" in used:
+                to_delete.add(name)
+            elif lower_name.endswith("()") and lower_name[:-2] in used:
+                to_delete.add(name[:-2])
+            else:
+                used.add(lower_name)
+
+        for item in to_delete:
+            del mapper[item]
 
         return mapper
 

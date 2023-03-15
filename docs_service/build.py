@@ -41,6 +41,8 @@ async def main():
 
 async def store(pool: asyncpg.Pool, agg: Aggregator, version: int, id_start_at=1):
     print("storing version", version, "starting at id", id_start_at)
+    print(agg.entry_count, "entries")
+    print(len(agg.name_map()), "names")
 
     entry_sql = (
         "INSERT INTO docs_entry (id, v, name, page, fragment, content, syntax, version, parents) "
@@ -86,9 +88,6 @@ async def build_v1_aggregator(folder) -> Aggregator:
     agg.bulk_parse_from_dir("lib", parser_type=HeadersParser, **default_command_kwargs)
     agg.bulk_parse_from_dir("misc", parser_type=HeadersParser, **default_misc_kwargs)
     agg.parse_data_index("static/source/data_index.js")
-
-    print(agg.entry_count, "entries")
-    print(len(agg.name_map()), "names")
 
     return agg
 

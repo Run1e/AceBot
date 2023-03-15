@@ -398,15 +398,6 @@ class AutoHotkey(AceMixin, commands.Cog):
             url=page and DOCS_FMT.format(v, link),
         )
 
-        # footer_text = "autohotkey.com"
-
-        # if version:
-        #     footer_text += f" {version}"
-
-        # e.set_footer(
-        #     text=footer_text, icon_url="https://www.autohotkey.com/favicon.ico"
-        # )
-
         return e
 
     async def _msdn_lookup(self, query, top=1):
