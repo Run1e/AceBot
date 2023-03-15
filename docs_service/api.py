@@ -1,4 +1,4 @@
-import asyncio
+from collections import defaultdict
 
 import asyncpg
 from rapidfuzz import fuzz, process
@@ -11,7 +11,8 @@ app = Sanic("ahkdocs_api")
 
 api = Blueprint("api", url_prefix="/api")
 
-from pprint import pprint as pp
+
+meaning_scalar = lambda v: 1 / ((v * 0.5) ** 2 + 1)
 
 
 def docs_search(names, query, k=8):
@@ -20,43 +21,32 @@ def docs_search(names, query, k=8):
 
     query = query.strip()
 
-    ratio = process.extract(
-        query=query,
-        choices=names,
-        scorer=fuzz.token_ratio,
-        processor=None,
-        limit=10,
-    )
+    word_scores = []
 
-    # pp(ratio[:4])
+    splitters = [query]
+    splitters.extend(query.split(" "))
 
-    tweak = list()
-    query = query.lower()
+    for i, word in enumerate(splitters):
+        scores = process.extract(
+            query=word,
+            choices=names,
+            scorer=fuzz.WRatio,
+            processor=lambda s: s.lower().strip(),
+            limit=100,
+        )
+        word_scores.append(
+            [(name, score * meaning_scalar(i)) for name, score, _ in scores]
+        )
 
-    for name, score, junk in ratio:
-        lower = name.lower()
+    combined = defaultdict(float)
+    for scores in word_scores:
+        for name, score in scores:
+            combined[name] += score
 
-        # we could do this for more chars? like iteratively
-        if query[0] == lower[0]:
-            score += 5
-
-        if lower == query:
-            score += 40
-
-        if lower.startswith(query):
-            score += 20
-
-        if query in lower:
-            score += 10
-
-        tweak.append((name, score))
-
-    tweak = list(sorted(tweak, key=lambda v: v[1], reverse=True))
-    # pp(tweak[:4])
-
-    l = list(name for name, score in tweak)[:k]
-
-    return l
+    return list(
+        name
+        for name, _ in sorted(combined.items(), key=lambda item: item[1], reverse=True)
+    )[:k]
 
 
 def entry_to_dict(row):
@@ -151,9 +141,6 @@ async def entry(request: Request):
             return json(await get_entry(conn, docs_id, lineage=True, search_match=res))
 
 
-app.blueprint(api)
-
-
 @app.signal("server.init.before")
 async def setup(app, loop):
     pool = await asyncpg.create_pool(config.DB_BIND)
@@ -172,21 +159,10 @@ async def setup(app, loop):
                 id_map[v][name] = docs_id
                 names[v].append(name)
 
-    if True:
-        from pprint import pprint as pp
-        while True:
-            i = input("Prompt: ")
-            res = docs_search(names[1], i)
-            pp(res)
-    else:
-        app.ctx.names = names
-        app.ctx.id_map = id_map
-        app.ctx.pool = pool
+    app.ctx.names = names
+    app.ctx.id_map = id_map
+    app.ctx.pool = pool
 
 
-if False:
-    app.run("0.0.0.0", 80)
-else:
-    loop = asyncio.new_event_loop()
-    loop.create_task(setup(None, None))
-    loop.run_forever()
+app.blueprint(api)
+app.run("0.0.0.0", 80)
