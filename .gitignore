@@ -22,5 +22,7 @@ torch_config.py
 neural/embeddings
 neural/models
 
-docs_service/docs
-docs_service/docs.zip
+docs_service/docs_v1
+docs_service/docs_v2
+docs_service/docs_v1.zip
+docs_service/docs_v2.zip

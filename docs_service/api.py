@@ -1,4 +1,5 @@
 from collections import defaultdict
+from random import choices
 import re
 
 import asyncpg
@@ -15,16 +16,17 @@ api = Blueprint("api", url_prefix="/api")
 
 meaning_scalar = lambda v: 1 / ((v * 0.5) ** 2 + 1)
 
+
 def processor(s):
     s = s.strip().lower()
     return re.sub(r"(\(|\))", "", s)
 
 
-def docs_search(names, query, k=8):
-    if not query:
-        return []
-
+def docs_search(names, query, k):
     query = query.strip()
+
+    if not query:
+        return choices(names, k=k)
 
     word_scores = []
 

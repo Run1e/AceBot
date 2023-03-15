@@ -1,5 +1,8 @@
 import asyncio
 import os
+import shutil
+from zipfile import ZipFile
+import aiohttp
 
 import asyncpg
 from aggregator import Aggregator
@@ -79,8 +82,44 @@ async def store(pool: asyncpg.Pool, agg: Aggregator, version: int, id_start_at=1
     print("finished storing version", version)
 
 
-async def build_v1_aggregator(folder) -> Aggregator:
+async def downloader(url, download_to, extract_to):
+    print("downloading", url)
+
+    # delete old stuff
+    try:
+        os.remove(download_to)
+    except FileNotFoundError:
+        pass
+
+    shutil.rmtree(extract_to, ignore_errors=True)
+
+    # fetch docs package
+    async with aiohttp.ClientSession() as session:
+        async with session.get(url) as resp:
+            if resp.status != 200:
+                raise ValueError("http returned:", resp.status)
+
+            with open(download_to, "wb") as f:
+                f.write(await resp.read())
+
+    print("extracting to ", extract_to)
+
+    # and extract it
+    zip_ref = ZipFile(download_to, "r")
+    zip_ref.extractall(extract_to)
+    zip_ref.close()
+
+
+async def build_v1_aggregator(folder, download=False) -> Aggregator:
+    await downloader(
+        url="https://github.com/AutoHotkey/AutoHotkeyDocs/archive/v1.zip",
+        download_to="docs_v1.zip",
+        extract_to=folder,
+    )
+
     print("parsing v1 docs")
+
+    folder += "/AutoHotkeyDocs-1/docs"
 
     agg = Aggregator(folder=folder, version=1)
 
@@ -96,7 +135,7 @@ async def main():
     db = await asyncpg.create_pool(config.DB_BIND)
     await db.execute("TRUNCATE docs_name, docs_entry RESTART IDENTITY")
 
-    agg = await build_v1_aggregator("docs")
+    agg = await build_v1_aggregator("docs_v1")
     await store(db, agg, 1)
 
     start_at = agg.entry_count + 1
