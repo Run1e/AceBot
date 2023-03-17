@@ -25,9 +25,7 @@ def is_mod():
 
 async def can_prompt_pred(ctx):
     perms = ctx.perms
-    missing_perms = list(
-        perm for perm in PROMPT_REQUIRED_PERMS if not getattr(perms, perm)
-    )
+    missing_perms = list(perm for perm in PROMPT_REQUIRED_PERMS if not getattr(perms, perm))
 
     if not missing_perms:
         return True
@@ -77,9 +75,7 @@ class PromptView(disnake.ui.View):
         self.result = True
         await self.finish(inter.message)
 
-    @disnake.ui.button(
-        label="Abort", emoji="\N{CROSS MARK}", style=disnake.ButtonStyle.secondary
-    )
+    @disnake.ui.button(label="Abort", emoji="\N{CROSS MARK}", style=disnake.ButtonStyle.secondary)
     async def no(self, button: disnake.ui.Button, inter: disnake.MessageInteraction):
         self.result = False
         await self.finish(inter.message)
@@ -104,9 +100,7 @@ class AceContext(commands.Context):
 
     @property
     def pretty(self):
-        return "{0.display_name} ({0.id}) in {1.name} ({1.id})".format(
-            self.author, self.guild
-        )
+        return "{0.display_name} ({0.id}) in {1.name} ({1.id})".format(self.author, self.guild)
 
     @property
     def stamp(self):

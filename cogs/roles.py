@@ -78,16 +78,12 @@ class CustomRoleConverter(commands.RoleConverter):
             raise commands.CommandError("The *everyone* role is not allowed.")
 
         if role.id in (
-            other_role.role_id
-            for selector in ctx.head.selectors
-            for other_role in selector.roles
+            other_role.role_id for selector in ctx.head.selectors for other_role in selector.roles
         ):
             raise commands.CommandError("This role already exists somewhere else.")
 
         if ctx.author != ctx.guild.owner and role >= ctx.author.top_role:
-            raise commands.CommandError(
-                "Sorry, you can't add roles higher than your top role."
-            )
+            raise commands.CommandError("Sorry, you can't add roles higher than your top role.")
 
         config = await ctx.bot.config.get_entry(ctx.guild.id)
         if role == config.mod_role:
@@ -106,9 +102,7 @@ NEW_ROLE_PREDS = (
     ("What description should this role have?", role_desc_converter),
 )
 
-NEW_SEL_PREDS = (
-    ("What should the name of the selector be?", selector_title_converter),
-)
+NEW_SEL_PREDS = (("What should the name of the selector be?", selector_title_converter),)
 
 EDIT_FOOTER = "Send a message with your answer! Send 'exit' to cancel."
 RETRY_MSG = "Please try again, or send 'exit' to cancel."
@@ -299,9 +293,7 @@ class RoleHead(MaybeDirty):
         )
 
         if not self.selectors:
-            e.description = "Click {} to create your first role selector!".format(
-                ADD_SEL_EMOJI
-            )
+            e.description = "Click {} to create your first role selector!".format(ADD_SEL_EMOJI)
             return e
 
         e.set_footer(text=footer)
@@ -326,9 +318,7 @@ class RoleHead(MaybeDirty):
                 else selector.title,
                 value="\n".join(rls)
                 if rls
-                else "Select the selector and press {} to add a role!".format(
-                    ADD_ROLE_EMOJI
-                ),
+                else "Select the selector and press {} to add a role!".format(ADD_ROLE_EMOJI),
                 inline=False,
             )
 
@@ -339,14 +329,9 @@ class RoleHead(MaybeDirty):
 
         # delete role entries
 
-        selector_ids = list(
-            selector.id for selector in self.selectors if selector.id is not None
-        )
+        selector_ids = list(selector.id for selector in self.selectors if selector.id is not None)
         role_ids = list(
-            role.id
-            for selector in self.selectors
-            for role in selector.roles
-            if role.id is not None
+            role.id for selector in self.selectors for role in selector.roles if role.id is not None
         )
 
         # delete role entries that don't exist anymore
@@ -488,9 +473,7 @@ class Roles(AceMixin, commands.Cog):
                 slc.get("roles"),
             )
 
-            selector = Selector.from_record(
-                slc, list(Role.from_record(role) for role in roles)
-            )
+            selector = Selector.from_record(slc, list(Role.from_record(role) for role in roles))
             selectors.append(selector)
 
         head = RoleHead(conf, selectors)
@@ -499,9 +482,7 @@ class Roles(AceMixin, commands.Cog):
         ctx.head = head
 
         msg = await ctx.send(
-            embed=disnake.Embed(
-                description="Please wait while reactions are being added..."
-            )
+            embed=disnake.Embed(description="Please wait while reactions are being added...")
         )
 
         self.messages[ctx.guild.id] = msg
@@ -524,14 +505,10 @@ class Roles(AceMixin, commands.Cog):
             await msg.edit(embed=head.embed())
 
             try:
-                reaction, user = await self.bot.wait_for(
-                    "reaction_add", check=pred, timeout=300.0
-                )
+                reaction, user = await self.bot.wait_for("reaction_add", check=pred, timeout=300.0)
             except asyncio.TimeoutError:
                 await close()
-                raise commands.CommandError(
-                    "Role editor closed after 5 minutes of inactivity."
-                )
+                raise commands.CommandError("Role editor closed after 5 minutes of inactivity.")
             else:
                 await msg.remove_reaction(reaction.emoji, user)
 
@@ -540,9 +517,7 @@ class Roles(AceMixin, commands.Cog):
                 if reac == ADD_SEL_EMOJI:
                     if len(head.selectors) > 7:
                         await ctx.send(
-                            embed=disnake.Embed(
-                                description="No more than 8 selectors, sorry!"
-                            ),
+                            embed=disnake.Embed(description="No more than 8 selectors, sorry!"),
                             delete_after=6,
                         )
                         continue
@@ -658,9 +633,7 @@ class Roles(AceMixin, commands.Cog):
         outs = list()
 
         def pred(message):
-            return (
-                message.author.id == ctx.author.id and ctx.channel.id == ctx.channel.id
-            )
+            return message.author.id == ctx.author.id and ctx.channel.id == ctx.channel.id
 
         def new_embed(question):
             e = disnake.Embed(description=question)
@@ -677,9 +650,7 @@ class Roles(AceMixin, commands.Cog):
 
             while True:
                 try:
-                    message = await self.bot.wait_for(
-                        "message", check=pred, timeout=60.0
-                    )
+                    message = await self.bot.wait_for("message", check=pred, timeout=60.0)
                     await message.delete()
                 except asyncio.TimeoutError:
                     return None
@@ -695,9 +666,7 @@ class Roles(AceMixin, commands.Cog):
                             await msg.delete()
                         except disnake.HTTPException:
                             pass
-                        raise commands.CommandError(
-                            "Embed seems to have been removed, aborting."
-                        )
+                        raise commands.CommandError("Embed seems to have been removed, aborting.")
 
                     e = msg.embeds[0]
                     e.set_footer(text="NOTE: " + str(exc) + " " + RETRY_MSG)
@@ -727,9 +696,7 @@ class Roles(AceMixin, commands.Cog):
 
         opts = {emoji: q for emoji, q in zip(EMBED_EMOJIS, questions.keys())}
 
-        opt_string = "\n".join(
-            "{} {}".format(key, value) for key, value in opts.items()
-        )
+        opt_string = "\n".join("{} {}".format(key, value) for key, value in opts.items())
 
         e = disnake.Embed(description="What would you like to edit?\n\n" + opt_string)
 
@@ -768,16 +735,11 @@ class Roles(AceMixin, commands.Cog):
         await msg.edit(embed=e)
 
         def msg_pred(message):
-            return (
-                message.channel.id == msg.channel.id
-                and message.author.id == ctx.author.id
-            )
+            return message.channel.id == msg.channel.id and message.author.id == ctx.author.id
 
         while True:
             try:
-                message = await self.bot.wait_for(
-                    "message", check=msg_pred, timeout=60.0
-                )
+                message = await self.bot.wait_for("message", check=msg_pred, timeout=60.0)
             except asyncio.TimeoutError:
                 return
 
@@ -794,9 +756,7 @@ class Roles(AceMixin, commands.Cog):
                         await msg.delete()
                     except disnake.HTTPException:
                         pass
-                    raise commands.CommandError(
-                        "Embed seems to have been removed, aborting."
-                    )
+                    raise commands.CommandError("Embed seems to have been removed, aborting.")
 
                 e = msg.embeds[0]
                 e.set_footer(text="NOTE: " + str(exc) + " " + RETRY_MSG)
@@ -808,9 +768,7 @@ class Roles(AceMixin, commands.Cog):
             return
 
     @roles.command()
-    @commands.bot_has_permissions(
-        embed_links=True, add_reactions=True, manage_messages=True
-    )
+    @commands.bot_has_permissions(embed_links=True, add_reactions=True, manage_messages=True)
     async def spawn(self, ctx):
         """Spawn role selectors."""
 
@@ -829,9 +787,7 @@ class Roles(AceMixin, commands.Cog):
         )
 
         if not selectors:
-            raise commands.CommandError(
-                "No selectors configured. Do `roles editor` to set one up."
-            )
+            raise commands.CommandError("No selectors configured. Do `roles editor` to set one up.")
 
         if any(not selector.get("roles") for selector in selectors):
             raise commands.CommandError(
@@ -914,9 +870,7 @@ class Roles(AceMixin, commands.Cog):
                     )
                 )
 
-        await conf.update(
-            channel_id=ctx.channel.id, message_ids=list(msg.id for msg in msgs)
-        )
+        await conf.update(channel_id=ctx.channel.id, message_ids=list(msg.id for msg in msgs))
 
     @commands.Cog.listener()
     async def on_raw_reaction_add(self, payload):
@@ -962,9 +916,7 @@ class Roles(AceMixin, commands.Cog):
 
         selector_id = conf.selectors[conf.message_ids.index(message_id)]
 
-        selector = await self.db.fetchrow(
-            "SELECT * FROM role_selector WHERE id=$1", selector_id
-        )
+        selector = await self.db.fetchrow("SELECT * FROM role_selector WHERE id=$1", selector_id)
         if selector is None:
             return
 

@@ -14,8 +14,7 @@ view = dict(
 guicontrols = dict(
     prefix_mapper=[
         (
-            lambda h, t, p: h == 2
-            and t.find_next_sibling("p").text.startswith("Description:"),
+            lambda h, t, p: h == 2 and t.find_next_sibling("p").text.startswith("Description:"),
             "{} Control",
         ),
         (2, 1),
@@ -55,9 +54,7 @@ def get(base):
         HeadersParser(base, 1, "lib/ControlGet.htm", **subcommand("ControlGet, ")),
         HeadersParser(base, 1, "lib/Drive.htm", **subcommand("Drive, ")),
         HeadersParser(base, 1, "lib/DriveGet.htm", **subcommand("DriveGet, ")),
-        HeadersParser(
-            base, 1, "lib/GuiControlGet.htm", **subcommand("GuiControlGet, ")
-        ),
+        HeadersParser(base, 1, "lib/GuiControlGet.htm", **subcommand("GuiControlGet, ")),
         HeadersParser(base, 1, "lib/SysGet.htm", **subcommand("SysGet, ")),
         HeadersParser(base, 1, "lib/Transform.htm", **subcommand("Transform, ")),
         HeadersParser(base, 1, "lib/WinGet.htm", **subcommand("WinGet, ")),

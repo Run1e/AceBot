@@ -16,9 +16,7 @@ STAR_EMOJI = "\N{WHITE MEDIUM STAR}"
 STAR_COOLDOWN = timedelta(minutes=3)
 STAR_CUTOFF = timedelta(days=7)
 
-SB_NOT_EXIST_ERROR = commands.CommandError(
-    "Please set up a starboard using `star create` first."
-)
+SB_NOT_EXIST_ERROR = commands.CommandError("Please set up a starboard using `star create` first.")
 SB_NOT_SET_ERROR = commands.CommandError("No starboard channel has been set yet.")
 SB_NOT_FOUND_ERROR = commands.CommandError(
     "Starboard channel set but not found. Please create a new one."
@@ -54,9 +52,7 @@ class StarConverter(commands.MessageConverter, commands.IDConverter):
                 _id = int(argument, base=10)
             except ValueError:
                 name = param_name(self, ctx)
-                raise commands.BadArgument(
-                    f"{name} doesn't seem to be a message or message id."
-                )
+                raise commands.BadArgument(f"{name} doesn't seem to be a message or message id.")
 
         row = await ctx.bot.db.fetchrow(
             "SELECT * FROM star_msg WHERE guild_id=$1 AND (message_id=$2 OR star_message_id=$2)",
@@ -132,17 +128,13 @@ class Starboard(AceMixin, commands.Cog):
                 to_delete.append(row.get("id"))
 
                 try:
-                    star_message = await star_channel.fetch_message(
-                        row.get("star_message_id")
-                    )
+                    star_message = await star_channel.fetch_message(row.get("star_message_id"))
                     await star_message.delete()
                 except disnake.HTTPException:
                     continue
 
         if to_delete:
-            await self.db.execute(
-                "DELETE FROM star_msg WHERE id=ANY($1::bigint[])", to_delete
-            )
+            await self.db.execute("DELETE FROM star_msg WHERE id=ANY($1::bigint[])", to_delete)
 
     async def get_board(self, guild_id, raise_on_locked=True):
         board = await self.config.get_entry(guild_id, construct=False)
@@ -522,9 +514,7 @@ class Starboard(AceMixin, commands.Cog):
 
         return star_message
 
-    async def _on_star(
-        self, board, starrer, star_channel, message, star_message, record
-    ):
+    async def _on_star(self, board, starrer, star_channel, message, star_message, record):
         if record is None:
             # new star. post it and store it
 
@@ -591,9 +581,7 @@ class Starboard(AceMixin, commands.Cog):
 
             # author of message can't star
             if starrer.id == record.get("user_id"):
-                raise commands.CommandError(
-                    "Message authors can't star their own message."
-                )
+                raise commands.CommandError("Message authors can't star their own message.")
 
             try:
                 await self.db.execute(
@@ -610,24 +598,18 @@ class Starboard(AceMixin, commands.Cog):
 
             if star_message is not None:
                 # update star if star_message exists
-                await self.update_star(
-                    record.get("message_id"), star_message, starrer_count + 1
-                )
+                await self.update_star(record.get("message_id"), star_message, starrer_count + 1)
 
             elif board.minimum is None or board.minimum <= starrer_count:
                 # post star if minimum is now None, or <= starrer_count
-                star_message = await self.post_star(
-                    star_channel, message, starrer_count + 1
-                )
+                star_message = await self.post_star(star_channel, message, starrer_count + 1)
                 await self.db.execute(
                     "UPDATE star_msg SET star_message_id=$1 WHERE id=$2",
                     star_message.id,
                     record.get("id"),
                 )
 
-    async def _on_unstar(
-        self, board, starrer, star_channel, message, star_message, record
-    ):
+    async def _on_unstar(self, board, starrer, star_channel, message, star_message, record):
         if record:
             result = await self.db.execute(
                 "DELETE FROM starrers WHERE star_id=$1 AND user_id=$2",
@@ -647,9 +629,7 @@ class Starboard(AceMixin, commands.Cog):
             )
 
             if star_message is not None:
-                await self.update_star(
-                    record.get("message_id"), star_message, starrer_count + 1
-                )
+                await self.update_star(record.get("message_id"), star_message, starrer_count + 1)
 
         else:
             raise commands.CommandError("This message has not previously been starred.")

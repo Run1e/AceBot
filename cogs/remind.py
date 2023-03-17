@@ -46,9 +46,7 @@ class RemindPager(Pager):
             time_text = pretty_timedelta(delta)
             embed.add_field(
                 name=f"{_id}: {time_text}",
-                value=shorten(message, 256)
-                if message is not None
-                else DEFAULT_REMINDER_MESSAGE,
+                value=shorten(message, 256) if message is not None else DEFAULT_REMINDER_MESSAGE,
                 inline=False,
             )
 
@@ -121,9 +119,7 @@ class Reminders(AceMixin, commands.Cog):
 
     def __init__(self, bot):
         super().__init__(bot)
-        self.timer = ColumnTimer(
-            self.bot, "reminder_complete", table="remind", column="remind_on"
-        )
+        self.timer = ColumnTimer(self.bot, "reminder_complete", table="remind", column="remind_on")
 
     @commands.Cog.listener()
     async def on_reminder_complete(self, record):
@@ -169,14 +165,10 @@ class Reminders(AceMixin, commands.Cog):
             raise commands.CommandError("Specified time is in the past.")
 
         if when - now > MAX_DELTA:
-            raise commands.CommandError(
-                "Sorry, can't remind in more than a year in the future."
-            )
+            raise commands.CommandError("Sorry, can't remind in more than a year in the future.")
 
         if message is not None and len(message) > 1024:
-            raise commands.CommandError(
-                "Sorry, keep the message below 1024 characters!"
-            )
+            raise commands.CommandError("Sorry, keep the message below 1024 characters!")
 
         count = await self.db.fetchval(
             "SELECT COUNT(id) FROM remind WHERE user_id=$1", ctx.author.id
@@ -200,13 +192,9 @@ class Reminders(AceMixin, commands.Cog):
         self.timer.maybe_restart(when)
 
         remind_in = when - now
-        remind_in += timedelta(
-            microseconds=1000000 - (remind_in.microseconds % 1000000)
-        )
+        remind_in += timedelta(microseconds=1000000 - (remind_in.microseconds % 1000000))
 
-        await ctx.send(
-            "You will be reminded in {}.".format(pretty_timedelta(remind_in))
-        )
+        await ctx.send("You will be reminded in {}.".format(pretty_timedelta(remind_in)))
 
         log.info("%s set a reminder for %s.", po(ctx.author), pretty_datetime(when))
 

@@ -57,16 +57,12 @@ class TagCreateConverter(LengthConverter):
         if tag_name in self._reserved:
             raise commands.BadArgument("Sorry, that tag name is reserved.")
 
-        escape_converter = commands.clean_content(
-            fix_channel_mentions=True, escape_markdown=True
-        )
+        escape_converter = commands.clean_content(fix_channel_mentions=True, escape_markdown=True)
         if tag_name != await escape_converter.convert(ctx, tag_name):
             raise commands.BadArgument("Tag name has disallowed formatting in it.")
 
         if ctx.cog.tag_is_being_made(ctx, tag_name):
-            raise commands.BadArgument(
-                "Tag with that name is currently being made elsewhere."
-            )
+            raise commands.BadArgument("Tag with that name is currently being made elsewhere.")
 
         exist_id = await ctx.bot.db.fetchval(
             "SELECT id FROM tag WHERE guild_id=$1 AND (name=$2 OR alias=$2)",
@@ -82,9 +78,7 @@ class TagCreateConverter(LengthConverter):
 
 tag_create_converter = TagCreateConverter(2, 32)
 
-ACCESS_ERROR = commands.CommandError(
-    "Tag not found or you do not have edit permissions for it."
-)
+ACCESS_ERROR = commands.CommandError("Tag not found or you do not have edit permissions for it.")
 
 
 class TagEditConverter(commands.Converter):
@@ -104,9 +98,7 @@ class TagEditConverter(commands.Converter):
             raise ACCESS_ERROR
 
         # check if invoker owns tag. if not, check if bot owner is invoking
-        if rec.get("user_id") != ctx.author.id and not await ctx.bot.is_owner(
-            ctx.author
-        ):
+        if rec.get("user_id") != ctx.author.id and not await ctx.bot.is_owner(ctx.author):
             # if not, check if mod should be allowed to do this action. if not, raise access error
             # if they can, check if invoker is mod, if not, raise access error
             if not self.allow_mod or not await ctx.is_mod():
@@ -141,9 +133,7 @@ class TagViewConverter(commands.Converter):
 
         if similars:
             tag_list = "\n".join(build_tag_name(record) for record in similars)
-            raise commands.CommandError(
-                f"Tag not found. Did you mean any of these?\n\n{tag_list}"
-            )
+            raise commands.CommandError(f"Tag not found. Did you mean any of these?\n\n{tag_list}")
 
         # and if none found, just raise the not found error
         raise commands.CommandError("Tag not found.")
@@ -157,9 +147,7 @@ class TagPager(Pager):
 
         embed.set_author(
             name=self.member.display_name if self.member else self.ctx.guild.name,
-            icon_url=self.member.display_avatar
-            if self.member
-            else (self.ctx.guild.icon or None),
+            icon_url=self.member.display_avatar if self.member else (self.ctx.guild.icon or None),
         )
 
         embed.description = f"{len(self.entries)} total tags."
@@ -235,9 +223,7 @@ class Tags(AceMixin, commands.Cog):
             content += ("\n" if len(content) else "") + ctx.message.attachments[0].url
 
         if not content:
-            raise commands.UserInputError(
-                "content is a required argument that is missing."
-            )
+            raise commands.UserInputError("content is a required argument that is missing.")
 
         return content
 
@@ -265,9 +251,7 @@ class Tags(AceMixin, commands.Cog):
             return
 
         tag_name, record = tag_name
-        await ctx.send(
-            record.get("content"), allowed_mentions=disnake.AllowedMentions.none()
-        )
+        await ctx.send(record.get("content"), allowed_mentions=disnake.AllowedMentions.none())
 
         await self.db.execute(
             "UPDATE tag SET uses=$2, viewed_at=$3 WHERE id=$1",
@@ -339,8 +323,7 @@ class Tags(AceMixin, commands.Cog):
             raise commands.CommandError("No tags found.")
 
         tag_list = [
-            (record.get("name"), record.get("alias"), record.get("uses"))
-            for record in tags
+            (record.get("name"), record.get("alias"), record.get("uses")) for record in tags
         ]
 
         p = TagPager(ctx, tag_list)
@@ -366,9 +349,7 @@ class Tags(AceMixin, commands.Cog):
 
         while True:
             try:
-                message = await ctx.bot.wait_for(
-                    "message", check=msg_check, timeout=360.0
-                )
+                message = await ctx.bot.wait_for("message", check=msg_check, timeout=360.0)
             except asyncio.TimeoutError:
                 await ctx.send(
                     "The tag make command timed out. Please try again by doing "
@@ -440,31 +421,23 @@ class Tags(AceMixin, commands.Cog):
 
     @tag.command()
     @can_prompt()
-    async def rename(
-        self, ctx, old_name: TagEditConverter(), *, new_name: tag_create_converter
-    ):
+    async def rename(self, ctx, old_name: TagEditConverter(), *, new_name: tag_create_converter):
         """Rename a tag."""
 
         old_name, record = old_name
 
-        await self.db.execute(
-            "UPDATE tag SET name=$2 WHERE id=$1", record.get("id"), new_name
-        )
+        await self.db.execute("UPDATE tag SET name=$2 WHERE id=$1", record.get("id"), new_name)
 
         await ctx.send(f"Tag '{record.get('name')}' renamed to '{new_name}'.")
 
     @tag.command()
     @can_prompt()
-    async def alias(
-        self, ctx, tag_name: TagEditConverter(), *, alias: tag_create_converter = None
-    ):
+    async def alias(self, ctx, tag_name: TagEditConverter(), *, alias: tag_create_converter = None):
         """Give a tag an alias. Omit the alias parameter to clear existing alias."""
 
         tag_name, record = tag_name
 
-        await self.db.execute(
-            "UPDATE tag SET alias=$2 WHERE id=$1", record.get("id"), alias
-        )
+        await self.db.execute("UPDATE tag SET alias=$2 WHERE id=$1", record.get("id"), alias)
 
         if alias is None:
             await ctx.send(f"Alias cleared for '{record.get('name')}'")
@@ -556,9 +529,7 @@ class Tags(AceMixin, commands.Cog):
 
         if res == "UPDATE 1":
             await ctx.send(
-                "Tag '{}' transferred to '{}'".format(
-                    record.get("name"), new_owner.display_name
-                )
+                "Tag '{}' transferred to '{}'".format(record.get("name"), new_owner.display_name)
             )
         else:
             raise commands.CommandError("Unknown error occured.")

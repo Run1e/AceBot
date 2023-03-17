@@ -83,9 +83,7 @@ class AutoHotkey(AceMixin, commands.Cog):
         )
 
         self.forum_thread_channel = None
-        self.rss_time = datetime.now(tz=timezone(timedelta(hours=1))) - timedelta(
-            minutes=1
-        )
+        self.rss_time = datetime.now(tz=timezone(timedelta(hours=1))) - timedelta(minutes=1)
 
         self._tag_reminder_message = dict()
 
@@ -118,9 +116,7 @@ class AutoHotkey(AceMixin, commands.Cog):
             "If you continue and your question is later found to break the rules, you might risk a ban."
         )
 
-        e = disnake.Embed(
-            title="Hi there!", description=s, color=disnake.Color.orange()
-        )
+        e = disnake.Embed(title="Hi there!", description=s, color=disnake.Color.orange())
 
         e.set_footer(
             text=f"This message was sent by an automated system (confidence: {int(score * 100)}%)"
@@ -450,9 +446,7 @@ class AutoHotkey(AceMixin, commands.Cog):
             url=result["url"],
         )
 
-        e.set_footer(
-            text="docs.microsoft.com", icon_url="https://i.imgur.com/UvkNAEh.png"
-        )
+        e.set_footer(text="docs.microsoft.com", icon_url="https://i.imgur.com/UvkNAEh.png")
 
         return e
 
@@ -474,9 +468,7 @@ class AutoHotkey(AceMixin, commands.Cog):
         await ctx.send(embed=e)
 
     @commands.slash_command(name="msdn")
-    async def slash_msdn(
-        self, inter: disnake.ApplicationCommandInteraction, query: str
-    ):
+    async def slash_msdn(self, inter: disnake.ApplicationCommandInteraction, query: str):
         """Search Microsofts documentation."""
 
         if query == NO_RESULTS_STRING:
@@ -602,7 +594,9 @@ class AutoHotkey(AceMixin, commands.Cog):
             args = dict(embed=embed, components=rows)
 
             if message is None:
-                content = f"{thread.owner.mention} Increase your visibility by adding tags your post!"
+                content = (
+                    f"{thread.owner.mention} Increase your visibility by adding tags your post!"
+                )
                 message = await thread.send(content=content, **args)
             else:
                 await message.edit(content=None, **args)
@@ -685,16 +679,12 @@ class AutoHotkey(AceMixin, commands.Cog):
             not isinstance(inter.channel, disnake.Thread)
             or inter.channel.parent.id != HELP_FORUM_CHAN_ID
         ):
-            raise commands.CommandError(
-                "This command should just be run in help channel posts."
-            )
+            raise commands.CommandError("This command should just be run in help channel posts.")
 
         if inter.author != inter.channel.owner:
             raise commands.CommandError("Only post author can mark as solved.")
 
-        solved_tag = disnake.utils.get(
-            inter.channel.parent.available_tags, name="Solved!"
-        )
+        solved_tag = disnake.utils.get(inter.channel.parent.available_tags, name="Solved!")
         if solved_tag is None:
             raise commands.CommandError("Solved tag not found")
 
@@ -775,20 +765,14 @@ class AutoHotkey(AceMixin, commands.Cog):
 
         else:
             if len(matches) > 1:
-                return await delete(
-                    "Please make sure your message only contains only one emoji."
-                )
+                return await delete("Please make sure your message only contains only one emoji.")
 
             if not re.match(r"^<a?:.+?:([0-9]{15,21})>$", message.content.strip()):
-                return await delete(
-                    "Please do not put text alongside your emoji suggestion."
-                )
+                return await delete("Please do not put text alongside your emoji suggestion.")
 
             match = int(matches[0])
             if any(emoji.id == match for emoji in message.guild.emojis):
-                return await delete(
-                    "Please do not suggest emojis that have already been added."
-                )
+                return await delete("Please do not suggest emojis that have already been added.")
 
         # Add voting reactions
         try:
@@ -804,9 +788,7 @@ class AutoHotkey(AceMixin, commands.Cog):
                 return await delete()
 
     @commands.Cog.listener("on_raw_message_edit")
-    async def handle_emoji_suggestion_message_edit(
-        self, message: disnake.RawMessageUpdateEvent
-    ):
+    async def handle_emoji_suggestion_message_edit(self, message: disnake.RawMessageUpdateEvent):
         if message.channel_id == EMOJI_SUGGESTIONS_CHAN_ID:
             channel = self.bot.get_channel(EMOJI_SUGGESTIONS_CHAN_ID)
             if channel is None:
@@ -818,9 +800,7 @@ class AutoHotkey(AceMixin, commands.Cog):
                 pass
 
     @commands.Cog.listener("on_raw_reaction_add")
-    async def handle_emoji_suggestion_reaction(
-        self, reaction: disnake.RawReactionActionEvent
-    ):
+    async def handle_emoji_suggestion_reaction(self, reaction: disnake.RawReactionActionEvent):
         if reaction.channel_id != EMOJI_SUGGESTIONS_CHAN_ID:
             return
 

@@ -63,14 +63,10 @@ class Dwitter(AceMixin, commands.Cog):
             )
 
         author = dweet["author"]
-        e.set_author(
-            name=author["username"], url=author["link"], icon_url=author["avatar"]
-        )
+        e.set_author(name=author["username"], url=author["link"], icon_url=author["avatar"])
 
         e.set_footer(text="Posted")
-        e.timestamp = datetime.strptime(
-            dweet["posted"].split(".")[0], "%Y-%m-%dT%H:%M:%S"
-        )
+        e.timestamp = datetime.strptime(dweet["posted"].split(".")[0], "%Y-%m-%dT%H:%M:%S")
 
         return e
 

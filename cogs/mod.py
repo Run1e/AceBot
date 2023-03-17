@@ -163,9 +163,7 @@ class SecurityConfigRecord(ConfigTableRecord):
         )
 
     def create_content_cooldown(self):
-        self.content_cooldown = CooldownByContent.from_cooldown(
-            5, 32.0, commands.BucketType.member
-        )
+        self.content_cooldown = CooldownByContent.from_cooldown(5, 32.0, commands.BucketType.member)
 
 
 class EventTimer(DatabaseTimer):
@@ -229,9 +227,7 @@ class Moderation(AceMixin, commands.Cog):
     def __init__(self, bot):
         super().__init__(bot)
 
-        self.config = ConfigTable(
-            bot, "mod_config", "guild_id", record_class=SecurityConfigRecord
-        )
+        self.config = ConfigTable(bot, "mod_config", "guild_id", record_class=SecurityConfigRecord)
         self.event_timer = EventTimer(bot, "event_complete")
 
         asyncio.create_task(self.check_tempbans())
@@ -290,9 +286,7 @@ class Moderation(AceMixin, commands.Cog):
     @commands.command()
     @commands.has_permissions(ban_members=True)
     @commands.bot_has_permissions(ban_members=True)
-    async def ban(
-        self, ctx, member: disnake.Member, *, reason: reason_converter = None
-    ):
+    async def ban(self, ctx, member: disnake.Member, *, reason: reason_converter = None):
         """Ban a member. Requires Ban Members perms."""
 
         try:
@@ -306,9 +300,7 @@ class Moderation(AceMixin, commands.Cog):
     @can_prompt()
     @commands.has_permissions(ban_members=True)
     @commands.bot_has_permissions(ban_members=True)
-    async def unban(
-        self, ctx, member: BannedMember, *, reason: reason_converter = None
-    ):
+    async def unban(self, ctx, member: BannedMember, *, reason: reason_converter = None):
         """Unban a member. Requires Ban Members perms."""
 
         if member.reason is None:
@@ -384,8 +376,10 @@ class Moderation(AceMixin, commands.Cog):
 
         # only send DMs for initial bans
         if on_guild:
-            ban_msg = "You have received a ban lasting {0} from {1}.\n\nReason:\n```\n{2}\n```".format(
-                pretty_duration, ctx.guild.name, reason
+            ban_msg = (
+                "You have received a ban lasting {0} from {1}.\n\nReason:\n```\n{2}\n```".format(
+                    pretty_duration, ctx.guild.name, reason
+                )
             )
 
             try:
@@ -421,9 +415,7 @@ class Moderation(AceMixin, commands.Cog):
         self.event_timer.maybe_restart(until)
 
         try:
-            await ctx.send(
-                "{0} tempbanned for {1}.".format(str(member), pretty_duration)
-            )
+            await ctx.send("{0} tempbanned for {1}.".format(str(member), pretty_duration))
         except disnake.HTTPException:
             pass
 
@@ -469,9 +461,7 @@ class Moderation(AceMixin, commands.Cog):
         )
 
         if record is None:
-            raise commands.CommandError(
-                "Could not find a tempban referencing this member."
-            )
+            raise commands.CommandError("Could not find a tempban referencing this member.")
 
         now = datetime.utcnow()
         old_now = record.get("created_at")
@@ -480,9 +470,7 @@ class Moderation(AceMixin, commands.Cog):
         old_until = old_now + old_duration
 
         if duration == old_duration:
-            raise commands.CommandError(
-                "New ban duration is the same as the current duration."
-            )
+            raise commands.CommandError("New ban duration is the same as the current duration.")
 
         old_duration_pretty = pretty_timedelta(old_duration)
         old_end_pretty = pretty_timedelta(old_until - now)
@@ -491,9 +479,7 @@ class Moderation(AceMixin, commands.Cog):
         prompt = f"The previous ban duration was {old_duration_pretty} and will end in {old_end_pretty}.\n\n"
 
         if new_until < now:
-            prompt += (
-                "The new duration ends in the past and will cause an immediate unban."
-            )
+            prompt += "The new duration ends in the past and will cause an immediate unban."
         else:
             prompt += f"The new ban duration is {duration_pretty} and will end in {pretty_timedelta(new_until - now)}."
 
@@ -565,15 +551,11 @@ class Moderation(AceMixin, commands.Cog):
         # otherwise, check against security actions and perform punishment
         try:
             if action is SecurityAction.TIMEOUT:
-                await member.timeout(
-                    until=datetime.utcnow() + timedelta(days=28), reason=reason
-                )
+                await member.timeout(until=datetime.utcnow() + timedelta(days=28), reason=reason)
             elif action is SecurityAction.KICK:
                 await member.kick(reason=reason)
             elif action is SecurityAction.BAN:
-                await member.ban(
-                    clean_history_duration=clean_history_duration, reason=reason
-                )
+                await member.ban(clean_history_duration=clean_history_duration, reason=reason)
 
         except Exception as exc:
             # log error if something happened
@@ -602,9 +584,7 @@ class Moderation(AceMixin, commands.Cog):
 
         try:
             await message.channel.send(
-                "{0} {1}: {2}".format(
-                    po(member), SecurityVerb[action.name].value, reason
-                )
+                "{0} {1}: {2}".format(po(member), SecurityVerb[action.name].value, reason)
             )
         except disnake.HTTPException:
             pass
@@ -627,9 +607,7 @@ class Moderation(AceMixin, commands.Cog):
             async with SPAM_LOCK:
                 res = mc.spam_cooldown.update_rate_limit(message)
                 if res is not None:
-                    mc.spam_cooldown._cache[
-                        mc.spam_cooldown._bucket_key(message)
-                    ].reset()
+                    mc.spam_cooldown._cache[mc.spam_cooldown._bucket_key(message)].reset()
 
             # if so, perform the spam action
             if res is not None:
@@ -645,9 +623,7 @@ class Moderation(AceMixin, commands.Cog):
                 for mention in message.mentions:
                     res = mc.mention_cooldown.update_rate_limit(message)
                     if res is not None:
-                        mc.mention_cooldown._cache[
-                            mc.mention_cooldown._bucket_key(message)
-                        ].reset()
+                        mc.mention_cooldown._cache[mc.mention_cooldown._bucket_key(message)].reset()
                         break
 
             if res is not None:
@@ -664,9 +640,7 @@ class Moderation(AceMixin, commands.Cog):
                 # since we're using the bucket key (guild_id, author_id, message_content)
                 # we can just as well reset the bucket after a ban
                 if res is not None:
-                    mc.content_cooldown._cache[
-                        mc.content_cooldown._bucket_key(message)
-                    ].reset()
+                    mc.content_cooldown._cache[mc.content_cooldown._bucket_key(message)].reset()
 
             if res is not None:
                 await self.do_action(
@@ -705,9 +679,7 @@ class Moderation(AceMixin, commands.Cog):
         member = self.fakeuser_from_record(record, guild)
 
         try:
-            await guild.unban(
-                member, reason="Completed tempban issued by {0}".format(pretty_mod)
-            )
+            await guild.unban(member, reason="Completed tempban issued by {0}".format(pretty_mod))
         except disnake.HTTPException:
             return  # rip :)
 
@@ -757,9 +729,7 @@ class Moderation(AceMixin, commands.Cog):
 
             # if this user is not banned anymore, run the on_member_unban event to clear the tempban
             if user_id not in banned_ids:
-                await self.on_member_unban(
-                    guild, self.fakeuser_from_record(tempban, guild)
-                )
+                await self.on_member_unban(guild, self.fakeuser_from_record(tempban, guild))
 
     @commands.Cog.listener()
     async def on_member_unban(self, guild, user):
@@ -791,9 +761,7 @@ class Moderation(AceMixin, commands.Cog):
         """Simple purge command. Clear messages, either from user or indiscriminately."""
 
         if message_count < 1:
-            raise commands.CommandError(
-                "Please choose a positive message amount to clear."
-            )
+            raise commands.CommandError("Please choose a positive message amount to clear.")
 
         if message_count > 100:
             raise commands.CommandError("Please choose a message count below 100.")
@@ -824,9 +792,7 @@ class Moderation(AceMixin, commands.Cog):
 
         log.info("%s cleared %s messages in %s", po(ctx.author), count, po(ctx.guild))
 
-        await ctx.send(
-            f'Deleted {count} message{"s" if count > 1 else ""}.', delete_after=5
-        )
+        await ctx.send(f'Deleted {count} message{"s" if count > 1 else ""}.', delete_after=5)
 
     @commands.command()
     @commands.has_permissions(manage_messages=True)
@@ -886,9 +852,7 @@ class Moderation(AceMixin, commands.Cog):
             metavar="message_count",
             help="Total amount of messages the bot will delete.",
         )
-        parser.add_argument(
-            "--bot", action="store_true", help="Only delete messages from bots."
-        )
+        parser.add_argument("--bot", action="store_true", help="Only delete messages from bots.")
         parser.add_argument(
             "-u",
             "--user",
@@ -956,24 +920,18 @@ class Moderation(AceMixin, commands.Cog):
             preds.append(lambda m: any(m.author.id == member.id for member in members))
 
         if args.contains:
-            preds.append(
-                lambda m: any((s.lower() in m.content.lower()) for s in args.contains)
-            )
+            preds.append(lambda m: any((s.lower() in m.content.lower()) for s in args.contains))
 
         if args.bot:
             preds.append(lambda m: m.author.bot)
 
         if args.starts:
             preds.append(
-                lambda m: any(
-                    m.content.lower().startswith(s.lower()) for s in args.starts
-                )
+                lambda m: any(m.content.lower().startswith(s.lower()) for s in args.starts)
             )
 
         if args.ends:
-            preds.append(
-                lambda m: any(m.content.lower().endswith(s.lower()) for s in args.ends)
-            )
+            preds.append(lambda m: any(m.content.lower().endswith(s.lower()) for s in args.ends))
 
         count = args.max
         deleted = 0
@@ -1014,9 +972,7 @@ class Moderation(AceMixin, commands.Cog):
 
         deleted_count = len(deleted_messages)
 
-        log.info(
-            "%s purged %s messages in %s", po(ctx.author), deleted_count, po(ctx.guild)
-        )
+        log.info("%s purged %s messages in %s", po(ctx.author), deleted_count, po(ctx.guild))
 
         await ctx.send("{0} messages deleted.".format(deleted_count), delete_after=10)
 
@@ -1036,9 +992,7 @@ class Moderation(AceMixin, commands.Cog):
 
     @commands.command(hidden=True)
     @is_mod()
-    async def perms(
-        self, ctx, user: disnake.Member = None, channel: disnake.TextChannel = None
-    ):
+    async def perms(self, ctx, user: disnake.Member = None, channel: disnake.TextChannel = None):
         """Lists a users permissions in a channel."""
 
         if user is None:
@@ -1107,9 +1061,7 @@ class Moderation(AceMixin, commands.Cog):
                 type
             )
         else:
-            data += "\n\nNo issues found with current configuration. Anti-{0} is live!".format(
-                type
-            )
+            data += "\n\nNo issues found with current configuration. Anti-{0} is live!".format(type)
 
         return data
 
@@ -1138,9 +1090,7 @@ class Moderation(AceMixin, commands.Cog):
 
     @spam.command(name="rate")
     @is_mod()
-    async def antispam_rate(
-        self, ctx, count: count_converter, interval: interval_converter
-    ):
+    async def antispam_rate(self, ctx, count: count_converter, interval: interval_converter):
         """A member is spamming if they send `count` or more messages in `interval` seconds."""
 
         conf = await self.config.get_entry(ctx.guild.id)
@@ -1175,9 +1125,7 @@ class Moderation(AceMixin, commands.Cog):
 
     @mention.command(name="rate")
     @is_mod()
-    async def mention_rate(
-        self, ctx, count: count_converter, interval: interval_converter
-    ):
+    async def mention_rate(self, ctx, count: count_converter, interval: interval_converter):
         """A member is mention-spamming if they send `count` or more mentions in `interval` seconds."""
 
         conf = await self.config.get_entry(ctx.guild.id)

@@ -88,9 +88,7 @@ class CommandErrorLogic:
         ctx = self.ctx
         exc = self.exc
 
-        timestamp = (
-            str(datetime.utcnow()).split(".")[0].replace(" ", "_").replace(":", "")
-        )
+        timestamp = str(datetime.utcnow()).split(".")[0].replace(" ", "_").replace(":", "")
         filename = str(ctx.message.id) + "_" + timestamp + ".error"
 
         try:
