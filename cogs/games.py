@@ -30,6 +30,8 @@ class Difficulty(Enum):
     HARD = 3
 
 
+TRIVIA_CUSTOM_ID_PREFIX = "trivia:v1:"
+
 CORRECT_EMOJI = "\N{WHITE HEAVY CHECK MARK}"
 WRONG_EMOJI = "\N{CROSS MARK}"
 
@@ -163,6 +165,21 @@ class TriviaQuestion:
         return self._options
 
     @property
+    def buttons(self) -> list[disnake.ui.Button]:
+        buttons = []
+        longest_option = max(len(opt) for opt in self.options)
+        for emoji, option in zip(self.option_emojis, self.options):
+            buttons.append(
+                disnake.ui.Button(
+                    style=disnake.ButtonStyle.primary,
+                    label=option,
+                    emoji=emoji,
+                    custom_id=TRIVIA_CUSTOM_ID_PREFIX + "ans_choices:" + emoji,
+                )
+            )
+        return buttons
+
+    @property
     def correct_emoji(self) -> str:
         if not self._correct_emoji:
             self.options  # get the correct emoji
@@ -189,9 +206,6 @@ class TriviaQuestion:
             color=DIFFICULTY_COLORS[self.difficulty],
         )
         e.add_field(name="Question", value=question_string, inline=False)
-        e.set_footer(
-            text="Answer by pressing a reaction after all options have appeared."
-        )
         return e
 
 
@@ -307,7 +321,7 @@ class Games(AceMixin, commands.Cog):
         return question
 
     @commands.group(invoke_without_command=True, cooldown_after_parsing=True)
-    @commands.bot_has_permissions(embed_links=True, add_reactions=True)
+    @commands.bot_has_permissions(embed_links=True)
     @commands.cooldown(rate=2, per=60.0, type=commands.BucketType.member)
     async def trivia(
         self,
@@ -336,29 +350,34 @@ class Games(AceMixin, commands.Cog):
 
         embed = question.to_embed()
 
-        msg = await ctx.send(embed=embed)
-
-        for emoji in question.option_emojis:
-            await msg.add_reaction(emoji)
+        msg = await ctx.send(embed=embed, components=question.buttons)
 
         now = datetime.utcnow()
 
-        def check(reaction, user):
+        def check(interaction: disnake.MessageInteraction):
             return (
-                reaction.message.id == msg.id
-                and user == ctx.author
-                and str(reaction) in question.option_emojis
+                interaction.message.id == msg.id
+                and interaction.author.id == ctx.author.id
+                and (custom_id := interaction.data.custom_id).startswith(
+                    TRIVIA_CUSTOM_ID_PREFIX + "ans_choices:"
+                )
+                and custom_id.removeprefix(TRIVIA_CUSTOM_ID_PREFIX + "ans_choices:")
+                in question.option_emojis
             )
 
         try:
-            reaction, user = await self.bot.wait_for(
-                "reaction_add", check=check, timeout=QUESTION_TIMEOUT
+            interaction: disnake.MessageInteraction = await self.bot.wait_for(
+                "message_interaction", check=check, timeout=QUESTION_TIMEOUT
+            )
+
+            answer = interaction.component.custom_id.removeprefix(
+                TRIVIA_CUSTOM_ID_PREFIX + "ans_choices:"
             )
 
             answered_at = datetime.utcnow()
             score = self._calculate_score(SCORE_POT[diff], answered_at - now)
 
-            if str(reaction) == question.correct_emoji:
+            if answer == question.correct_emoji:
                 # apply penalty if category was specified
                 if category:
                     score = int(score / CATEGORY_PENALTY)
@@ -373,7 +392,16 @@ class Games(AceMixin, commands.Cog):
                     color=disnake.Color.green(),
                 )
 
-                await ctx.send(embed=e)
+                # make the correct answer green and disable the buttons
+                components = disnake.ui.ActionRow.rows_from_message(msg)
+                for row in components:
+                    for component in row:
+                        component.disabled = True
+                        if component.custom_id == interaction.component.custom_id:
+                            component.style = disnake.ButtonStyle.green
+                await interaction.response.edit_message(components=components)
+
+                await interaction.followup.send(embed=e)
             else:
                 score = int(score / PENALTY_DIV)
                 current_score = await self._on_wrong(
@@ -391,14 +419,34 @@ class Games(AceMixin, commands.Cog):
                         question.correct_answer
                     )
 
-                await ctx.send(embed=e)
+                # make the correct answer green, the guessed answer red, and disable the buttons
+                components = disnake.ui.ActionRow.rows_from_message(msg)
+                for row in components:
+                    for component in row:
+                        component.disabled = True
+                        if not isinstance(component, disnake.ui.Button):
+                            continue
+                        if component.custom_id == interaction.component.custom_id:
+                            component.style = disnake.ButtonStyle.red
+                        elif str(component.emoji) == question.correct_emoji:
+                            component.style = disnake.ButtonStyle.green
+
+                await interaction.response.edit_message(components=components)
+
+                await interaction.followup.send(embed=e)
 
         except asyncio.TimeoutError:
             score = int(SCORE_POT[diff] / 4)
             answered_at = datetime.utcnow()
 
+            components = disnake.ui.ActionRow.rows_from_message(msg)
+            for row in components:
+                for component in row:
+                    if isinstance(component, disnake.ui.Button):
+                        component.disabled = True
+                        component.style = disnake.ButtonStyle.gray
             try:
-                await msg.clear_reactions()
+                await msg.edit(components=components)
             except disnake.HTTPException:
                 pass
 
