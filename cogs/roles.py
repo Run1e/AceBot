@@ -479,9 +479,9 @@ class Roles(AceMixin, commands.Cog):
         for slc in slcs:
             roles = await self.db.fetch(
                 """
-				SELECT re.* 
-				FROM role_entry as re 
-				JOIN unnest($1::INTEGER[]) WITH ORDINALITY t(id, ord) USING (id) 
+				SELECT re.*
+				FROM role_entry as re
+				JOIN unnest($1::INTEGER[]) WITH ORDINALITY t(id, ord) USING (id)
 				WHERE id=ANY($1::INTEGER[])
 				ORDER BY t.ord
 				""",
@@ -864,9 +864,9 @@ class Roles(AceMixin, commands.Cog):
             # https://stackoverflow.com/questions/866465/order-by-the-in-value-list
             roles = await self.db.fetch(
                 """
-				SELECT re.* 
-				FROM role_entry as re 
-				JOIN unnest($1::INTEGER[]) WITH ORDINALITY t(id, ord) USING (id) 
+				SELECT re.*
+				FROM role_entry as re
+				JOIN unnest($1::INTEGER[]) WITH ORDINALITY t(id, ord) USING (id)
 				WHERE id=ANY($1::INTEGER[])
 				ORDER BY t.ord
 				""",
