@@ -189,12 +189,11 @@ class TriviaQuestion:
         return BOOLEAN_MAP if self.type == "boolean" else MULTIPLE_MAP
 
     def to_embed(self) -> disnake.Embed:
-        option_emojis = BOOLEAN_MAP if self.type == "boolean" else MULTIPLE_MAP
         question_string = "{}\n\n{}\n".format(
             self.question,
             "\n".join(
                 "{} {}".format(emoji, option)
-                for emoji, option in zip(option_emojis, self.options)
+                for emoji, option in zip(self.option_emojis, self.options)
             ),
         )
         e = disnake.Embed(
