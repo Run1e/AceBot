@@ -449,10 +449,11 @@ class Games(AceMixin, commands.Cog):
             except disnake.HTTPException:
                 pass
 
-            await ctx.send(
+            await msg.reply(
                 "Question timed out and you lost {} points. Answer within {} seconds next time!".format(
                     score, int(QUESTION_TIMEOUT)
-                )
+                ),
+                fail_if_not_exists=False,
             )
 
             await self._on_wrong(ctx, answered_at, question.hash, score)
