@@ -173,7 +173,6 @@ class TriviaQuestion:
                 disnake.ui.Button(
                     style=disnake.ButtonStyle.primary,
                     label=option,
-                    emoji=emoji,
                     custom_id=TRIVIA_CUSTOM_ID_PREFIX + "ans_choices:" + emoji,
                 )
             )
@@ -205,7 +204,7 @@ class TriviaQuestion:
             ),
             color=DIFFICULTY_COLORS[self.difficulty],
         )
-        e.add_field(name="Question", value=question_string, inline=False)
+        e.add_field(name="Question", value=self.question, inline=False)
         return e
 
 
@@ -428,7 +427,7 @@ class Games(AceMixin, commands.Cog):
                             continue
                         if component.custom_id == interaction.component.custom_id:
                             component.style = disnake.ButtonStyle.red
-                        elif str(component.emoji) == question.correct_emoji:
+                        elif component.custom_id.removeprefix(TRIVIA_CUSTOM_ID_PREFIX + "ans_choices:") == question.correct_emoji:
                             component.style = disnake.ButtonStyle.green
 
                 await interaction.response.edit_message(components=components)
