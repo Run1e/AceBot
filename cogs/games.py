@@ -1,12 +1,14 @@
 import asyncio
+import dataclasses
 import logging
 import string
 from datetime import datetime
 from enum import Enum
 from random import choice, randrange, sample
-from typing import Optional
+from typing import Any, Literal, Optional, Union
 from urllib.parse import unquote
 
+import aiohttp
 import disnake
 from disnake.ext import commands
 from rapidfuzz import fuzz, process
@@ -27,6 +29,8 @@ class Difficulty(Enum):
     MEDIUM = 2
     HARD = 3
 
+
+TRIVIA_CUSTOM_ID_PREFIX = "trivia:v1:"
 
 CORRECT_EMOJI = "\N{WHITE HEAVY CHECK MARK}"
 WRONG_EMOJI = "\N{CROSS MARK}"
@@ -114,6 +118,95 @@ LETTERS = list(string.ascii_lowercase)
 NATO = {x[0]: x[1] for x in zip(LETTERS, PHONETICS)}
 
 
+@dataclasses.dataclass
+class TriviaQuestion:
+    type: Literal["multiple", "boolean"]
+    category: str
+    question: str
+    hash: int = dataclasses.field(init=False)
+    correct_answer: str
+    difficulty: Difficulty
+    incorrect_answers: list[str]
+    _options: Optional[list] = dataclasses.field(init=False, default=None)
+    _correct_emoji: Optional[str] = dataclasses.field(init=False, default=None)
+
+    def __post_init__(self):
+        if self.type not in ("multiple", "boolean"):
+            raise ValueError("Unknown question type: {}".format(self.type))
+        self.hash = hash(self.question)
+
+    @classmethod
+    def from_result(cls, res: dict, *, difficulty: Difficulty) -> "TriviaQuestion":
+        question = unquote(res["question"])
+        return cls(
+            type=res["type"],
+            category=unquote(res["category"]),
+            correct_answer=unquote(res["correct_answer"]),
+            incorrect_answers=list(unquote(ans) for ans in res["incorrect_answers"]),
+            question=question,
+            difficulty=difficulty,
+        )
+
+    @property
+    def options(self) -> list[str]:
+        if not self._options:
+            if self.type == "multiple":
+                options = list(self.incorrect_answers)
+                correct_pos = randrange(0, len(options) + 1)
+                options.insert(correct_pos, self.correct_answer)
+                self._correct_emoji = MULTIPLE_MAP[correct_pos]
+
+            elif self.type == "boolean":
+                options = ["True", "False"]
+                self._correct_emoji = BOOLEAN_MAP[int(self.correct_answer == "False")]
+            else:
+                raise RuntimeError
+            self._options = options
+        return self._options
+
+    @property
+    def buttons(self) -> list[disnake.ui.Button]:
+        buttons = []
+        longest_option = max(len(opt) for opt in self.options)
+        for emoji, option in zip(self.option_emojis, self.options):
+            buttons.append(
+                disnake.ui.Button(
+                    style=disnake.ButtonStyle.primary,
+                    label=option,
+                    custom_id=TRIVIA_CUSTOM_ID_PREFIX + "ans_choices:" + emoji,
+                )
+            )
+        return buttons
+
+    @property
+    def correct_emoji(self) -> str:
+        if not self._correct_emoji:
+            self.options  # get the correct emoji
+        return self._correct_emoji
+
+    @property
+    def option_emojis(self) -> tuple[str, ...]:
+        return BOOLEAN_MAP if self.type == "boolean" else MULTIPLE_MAP
+
+    def to_embed(self) -> disnake.Embed:
+        question_string = "{}\n\n{}\n".format(
+            self.question,
+            "\n".join(
+                "{} {}".format(emoji, option)
+                for emoji, option in zip(self.option_emojis, self.options)
+            ),
+        )
+        e = disnake.Embed(
+            title="Trivia time!",
+            description="**Category**: {}\n**Difficulty**: {}".format(
+                self.category, self.difficulty.name.lower()
+            ),
+            color=DIFFICULTY_COLORS[self.difficulty],
+        )
+        e.add_field(name="Question", value=self.question, inline=False)
+        return e
+
+
 class CategoryConverter(commands.Converter):
     async def convert(self, ctx, argument):
         res, score, junk = process.extractOne(
@@ -154,7 +247,7 @@ class Games(AceMixin, commands.Cog):
 
         self.config = ConfigTable(bot, "trivia", ("guild_id", "user_id"))
 
-        self.trivia_categories = None
+        self.trivia_categories: dict[str, Any] = {}
 
         self.bot.loop.create_task(self.get_trivia_categories())
 
@@ -200,8 +293,33 @@ class Games(AceMixin, commands.Cog):
 
         self.trivia_categories = categories
 
+    async def fetch_question(
+        self,
+        *,
+        difficulty: Difficulty = Difficulty.MEDIUM,
+        category: Optional[Union[str, list[str]]] = None,
+    ):
+        params = dict(
+            amount=1,
+            encode="url3986",
+            difficulty=difficulty.name.lower(),
+        )
+        if category is not None:
+            params["category"] = choice(category) if category is list else category
+        try:
+            async with self.bot.aiohttp.get(
+                API_URL, params=params, raise_for_status=True
+            ) as resp:
+                resp.raise_for_status()
+                res = await resp.json()
+        except (TimeoutError, aiohttp.ClientResponseError) as e:
+            raise REQUEST_FAILED from e
+
+        question = TriviaQuestion.from_result(res["results"][0], difficulty=difficulty)
+        return question
+
     @commands.group(invoke_without_command=True, cooldown_after_parsing=True)
-    @commands.bot_has_permissions(embed_links=True, add_reactions=True)
+    @commands.bot_has_permissions(embed_links=True)
     @commands.cooldown(rate=2, per=60.0, type=commands.BucketType.member)
     async def trivia(
         self,
@@ -217,101 +335,53 @@ class Games(AceMixin, commands.Cog):
         if diff is None:
             diff = choice(list(Difficulty))
 
-        params = dict(
-            amount=1,
-            encode="url3986",
-            difficulty=diff.name.lower(),
-        )
-
         # if we have a category ID, insert it into the query params for the question request
-        if category is not None:
-            params["category"] = choice(category) if category is list else category
 
         try:
-            async with ctx.http.get(API_URL, params=params) as resp:
-                if resp.status != 200:
-                    self.trivia.reset_cooldown(ctx)
-                    raise REQUEST_FAILED
-
-                res = await resp.json()
-        except asyncio.TimeoutError:
+            question = await self.fetch_question(
+                difficulty=diff,
+                category=category,
+            )
+        except Exception:
             self.trivia.reset_cooldown(ctx)
-            raise REQUEST_FAILED
+            raise
 
-        result = res["results"][0]
+        embed = question.to_embed()
 
-        question_type = result["type"]
-        category = unquote(result["category"])
-        correct_answer = unquote(result["correct_answer"])
-
-        question = unquote(result["question"])
-        question_hash = hash(question)
-
-        if question_type == "multiple":
-            options = list(unquote(option) for option in result["incorrect_answers"])
-            correct_pos = randrange(0, len(options) + 1)
-            correct_emoji = MULTIPLE_MAP[correct_pos]
-            options.insert(correct_pos, correct_answer)
-
-        elif question_type == "boolean":
-            options = ("True", "False")
-            correct_emoji = BOOLEAN_MAP[int(correct_answer == "False")]
-
-        else:
-            self.trivia.reset_cooldown(ctx)
-            raise ValueError("Unknown question type: {}".format(question_type))
-
-        option_emojis = BOOLEAN_MAP if question_type == "boolean" else MULTIPLE_MAP
-
-        question_string = "{}\n\n{}\n".format(
-            question,
-            "\n".join(
-                "{} {}".format(emoji, option)
-                for emoji, option in zip(option_emojis, options)
-            ),
-        )
-
-        e = disnake.Embed(
-            title="Trivia time!",
-            description="**Category**: {}\n**Difficulty**: {}".format(
-                category, diff.name.lower()
-            ),
-            color=DIFFICULTY_COLORS[diff],
-        )
-        e.add_field(name="Question", value=question_string, inline=False)
-        e.set_footer(
-            text="Answer by pressing a reaction after all options have appeared."
-        )
-
-        msg = await ctx.send(embed=e)
-
-        for emoji in option_emojis:
-            await msg.add_reaction(emoji)
+        msg = await ctx.send(embed=embed, components=question.buttons)
 
         now = datetime.utcnow()
 
-        def check(reaction, user):
+        def check(interaction: disnake.MessageInteraction):
             return (
-                reaction.message.id == msg.id
-                and user == ctx.author
-                and str(reaction) in option_emojis
+                interaction.message.id == msg.id
+                and interaction.author.id == ctx.author.id
+                and (custom_id := interaction.data.custom_id).startswith(
+                    TRIVIA_CUSTOM_ID_PREFIX + "ans_choices:"
+                )
+                and custom_id.removeprefix(TRIVIA_CUSTOM_ID_PREFIX + "ans_choices:")
+                in question.option_emojis
             )
 
         try:
-            reaction, user = await self.bot.wait_for(
-                "reaction_add", check=check, timeout=QUESTION_TIMEOUT
+            interaction: disnake.MessageInteraction = await self.bot.wait_for(
+                "message_interaction", check=check, timeout=QUESTION_TIMEOUT
+            )
+
+            answer = interaction.component.custom_id.removeprefix(
+                TRIVIA_CUSTOM_ID_PREFIX + "ans_choices:"
             )
 
             answered_at = datetime.utcnow()
             score = self._calculate_score(SCORE_POT[diff], answered_at - now)
 
-            if str(reaction) == correct_emoji:
+            if answer == question.correct_emoji:
                 # apply penalty if category was specified
-                if "category" in params:
+                if category:
                     score = int(score / CATEGORY_PENALTY)
 
                 current_score = await self._on_correct(
-                    ctx, answered_at, question_hash, score
+                    ctx, answered_at, question.hash, score
                 )
 
                 e = disnake.Embed(
@@ -320,11 +390,20 @@ class Games(AceMixin, commands.Cog):
                     color=disnake.Color.green(),
                 )
 
-                await ctx.send(embed=e)
+                # make the correct answer green and disable the buttons
+                components = disnake.ui.ActionRow.rows_from_message(msg)
+                for row in components:
+                    for component in row:
+                        component.disabled = True
+                        if component.custom_id == interaction.component.custom_id:
+                            component.style = disnake.ButtonStyle.green
+                await interaction.response.edit_message(components=components)
+
+                await interaction.followup.send(embed=e)
             else:
                 score = int(score / PENALTY_DIV)
                 current_score = await self._on_wrong(
-                    ctx, answered_at, question_hash, score
+                    ctx, answered_at, question.hash, score
                 )
 
                 e = disnake.Embed(
@@ -333,29 +412,50 @@ class Games(AceMixin, commands.Cog):
                     color=disnake.Color.red(),
                 )
 
-                if question_type == "multiple":
+                if question.type == "multiple":
                     e.description += "\nThe correct answer is ***`{}`***".format(
-                        correct_answer
+                        question.correct_answer
                     )
 
-                await ctx.send(embed=e)
+                # make the correct answer green, the guessed answer red, and disable the buttons
+                components = disnake.ui.ActionRow.rows_from_message(msg)
+                for row in components:
+                    for component in row:
+                        component.disabled = True
+                        if not isinstance(component, disnake.ui.Button):
+                            continue
+                        if component.custom_id == interaction.component.custom_id:
+                            component.style = disnake.ButtonStyle.red
+                        elif component.custom_id.removeprefix(TRIVIA_CUSTOM_ID_PREFIX + "ans_choices:") == question.correct_emoji:
+                            component.style = disnake.ButtonStyle.green
+
+                await interaction.response.edit_message(components=components)
+
+                await interaction.followup.send(embed=e)
 
         except asyncio.TimeoutError:
             score = int(SCORE_POT[diff] / 4)
             answered_at = datetime.utcnow()
 
+            components = disnake.ui.ActionRow.rows_from_message(msg)
+            for row in components:
+                for component in row:
+                    if isinstance(component, disnake.ui.Button):
+                        component.disabled = True
+                        component.style = disnake.ButtonStyle.gray
             try:
-                await msg.clear_reactions()
+                await msg.edit(components=components)
             except disnake.HTTPException:
                 pass
 
-            await ctx.send(
+            await msg.reply(
                 "Question timed out and you lost {} points. Answer within {} seconds next time!".format(
                     score, int(QUESTION_TIMEOUT)
-                )
+                ),
+                fail_if_not_exists=False,
             )
 
-            await self._on_wrong(ctx, answered_at, question_hash, score)
+            await self._on_wrong(ctx, answered_at, question.hash, score)
 
     def _calculate_score(self, pot, time_spent):
         time_div = QUESTION_TIMEOUT - time_spent.total_seconds() / 2
