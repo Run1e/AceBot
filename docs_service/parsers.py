@@ -11,7 +11,6 @@ BULLET_SPACED = " • "
 
 """
 current issues:
-- bold/italic markdown is added in code boxes
 - see gui cancel/hide and how it wraps a div around with another id
 """
 
@@ -55,6 +54,7 @@ class DocsMarkdownConverter(MarkdownConverter):
     def __init__(self, url_folder, url_file, **options):
         self.url_folder = url_folder
         self.url_file = url_file
+        self.version = None
         super().__init__(**options)
 
     def convert_span(self, el: Tag, text, convert_as_inline):
@@ -88,6 +88,32 @@ class DocsMarkdownConverter(MarkdownConverter):
     def convert_em(self, el, text, convert_as_inline):
         return f"*{text}*"
 
+    def convert_pre(self, el, text, convert_as_inline):
+        if not text:
+            return ""
+        code_language = self.options["code_language"]
+
+        if self.options["code_language_callback"]:
+            code_language = self.options["code_language_callback"](el) or code_language
+
+        return "\n```%s\n%s\n```\n" % (code_language, text)
+
+
+class TemporaryOptions:
+    def __init__(self, converter, **options) -> None:
+        self.converter = converter
+        self.options = options
+        self._restore = {}
+
+    def __enter__(self):
+        for k, v in self.options.items():
+            self._restore[k] = self.converter.options[k]
+            self.converter.options[k] = v
+
+    def __exit__(self, exc_type, exc_value, exc_traceback):
+        for k, v in self._restore.items():
+            self.converter.options[k] = v
+
 
 class Parser:
     def __init__(self, base, version, page) -> None:
@@ -112,19 +138,8 @@ class Parser:
         )
 
     def md(self, soup, **opt):
-        self.converter.version = None
-
-        restore = dict()
-        for k, v in opt.items():
-            restore[k] = self.converter.options[k]
-            self.converter.options[k] = v
-
-        md = self.converter.convert_soup(soup).strip()
-
-        for k, v in restore.items():
-            self.converter.options[k] = v
-
-        return md
+        with TemporaryOptions(self.converter, **opt):
+            return self.converter.convert_soup(soup).strip()
 
     def add_entry(self, entry: Entry):
         self.entries[entry.fragment] = entry
@@ -181,7 +196,12 @@ class Parser:
                 _classes = tag.get("class", [])
 
                 if "Syntax" in _classes:
-                    syntax = self.md(tag, escape_underscores=False)
+                    syntax = self.md(
+                        tag,
+                        escape_underscores=False,
+                        escape_asterisks=False,
+                        convert=["span"],
+                    )
 
                 break
 

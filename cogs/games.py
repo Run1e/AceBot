@@ -426,7 +426,12 @@ class Games(AceMixin, commands.Cog):
                             continue
                         if component.custom_id == interaction.component.custom_id:
                             component.style = disnake.ButtonStyle.red
-                        elif component.custom_id.removeprefix(TRIVIA_CUSTOM_ID_PREFIX + "ans_choices:") == question.correct_emoji:
+                        elif (
+                            component.custom_id.removeprefix(
+                                TRIVIA_CUSTOM_ID_PREFIX + "ans_choices:"
+                            )
+                            == question.correct_emoji
+                        ):
                             component.style = disnake.ButtonStyle.green
 
                 await interaction.response.edit_message(components=components)
