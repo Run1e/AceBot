@@ -39,9 +39,7 @@ class ErrorHandler(commands.Cog, AceMixin):
             elif isinstance(exc, commands.CommandOnCooldown):
                 handler.set(
                     title="You are on cooldown.",
-                    description="Try again in {0}.".format(
-                        pretty_seconds(exc.retry_after)
-                    ),
+                    description="Try again in {0}.".format(pretty_seconds(exc.retry_after)),
                 )
 
             elif isinstance(exc, commands.BotMissingPermissions):

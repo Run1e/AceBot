@@ -235,9 +235,7 @@ class DifficultyConverter(commands.Converter):
         except ValueError:
             cleaner = commands.clean_content(escape_markdown=True)
             raise commands.CommandError(
-                "'{}' is not a valid difficulty.".format(
-                    await cleaner.convert(ctx, name)
-                )
+                "'{}' is not a valid difficulty.".format(await cleaner.convert(ctx, name))
             )
 
 
@@ -255,9 +253,7 @@ class Games(AceMixin, commands.Cog):
         try:
             async with self.bot.aiohttp.get(API_CATEGORY_LIST_URL) as resp:
                 if resp.status != 200:
-                    log.info(
-                        "Failed getting trivia categories, trying again in 10 seconds..."
-                    )
+                    log.info("Failed getting trivia categories, trying again in 10 seconds...")
                     await asyncio.sleep(10)
                     asyncio.create_task(self.get_trivia_categories())
                     return
@@ -307,9 +303,7 @@ class Games(AceMixin, commands.Cog):
         if category is not None:
             params["category"] = choice(category) if category is list else category
         try:
-            async with self.bot.aiohttp.get(
-                API_URL, params=params, raise_for_status=True
-            ) as resp:
+            async with self.bot.aiohttp.get(API_URL, params=params, raise_for_status=True) as resp:
                 resp.raise_for_status()
                 res = await resp.json()
         except (TimeoutError, aiohttp.ClientResponseError) as e:
@@ -380,9 +374,7 @@ class Games(AceMixin, commands.Cog):
                 if category:
                     score = int(score / CATEGORY_PENALTY)
 
-                current_score = await self._on_correct(
-                    ctx, answered_at, question.hash, score
-                )
+                current_score = await self._on_correct(ctx, answered_at, question.hash, score)
 
                 e = disnake.Embed(
                     title="{}  {}".format(CORRECT_EMOJI, choice(CORRECT_MESSAGES)),
@@ -402,9 +394,7 @@ class Games(AceMixin, commands.Cog):
                 await interaction.followup.send(embed=e)
             else:
                 score = int(score / PENALTY_DIV)
-                current_score = await self._on_wrong(
-                    ctx, answered_at, question.hash, score
-                )
+                current_score = await self._on_wrong(ctx, answered_at, question.hash, score)
 
                 e = disnake.Embed(
                     title="{}  {}".format(WRONG_EMOJI, choice(WRONG_MESSAGES)),
@@ -470,9 +460,7 @@ class Games(AceMixin, commands.Cog):
     async def _on_correct(self, ctx, answered_at, question_hash, add_score):
         entry = await self.config.get_entry(ctx.guild.id, ctx.author.id)
 
-        await entry.update(
-            score=entry.score + add_score, correct_count=entry.correct_count + 1
-        )
+        await entry.update(score=entry.score + add_score, correct_count=entry.correct_count + 1)
         await self._insert_question(ctx, answered_at, question_hash, True)
 
         return entry.score
@@ -480,9 +468,7 @@ class Games(AceMixin, commands.Cog):
     async def _on_wrong(self, ctx, answered_at, question_hash, remove_score):
         entry = await self.config.get_entry(ctx.guild.id, ctx.author.id)
 
-        await entry.update(
-            score=entry.score - remove_score, wrong_count=entry.wrong_count + 1
-        )
+        await entry.update(score=entry.score - remove_score, wrong_count=entry.wrong_count + 1)
         await self._insert_question(ctx, answered_at, question_hash, False)
 
         return entry.score
@@ -545,13 +531,9 @@ class Games(AceMixin, commands.Cog):
             ctx.guild.id,
         )
 
-        e = disnake.Embed(
-            title="Trivia leaderboard", color=DIFFICULTY_COLORS[Difficulty.MEDIUM]
-        )
+        e = disnake.Embed(title="Trivia leaderboard", color=DIFFICULTY_COLORS[Difficulty.MEDIUM])
 
-        mentions = "\n".join(
-            "<@{}>".format(leader.get("user_id")) for leader in leaders
-        )
+        mentions = "\n".join("<@{}>".format(leader.get("user_id")) for leader in leaders)
         scores = "\n".join(str(leader.get("score")) for leader in leaders)
 
         e.add_field(name="User", value=mentions)
@@ -567,9 +549,7 @@ class Games(AceMixin, commands.Cog):
             raise commands.CommandError("Please pick a length larger than 0.")
 
         if count > 16:
-            raise commands.CommandError(
-                "Sorry, please pick lengths lower or equal to 16."
-            )
+            raise commands.CommandError("Sorry, please pick lengths lower or equal to 16.")
 
         lets = sample(LETTERS, k=count)
 

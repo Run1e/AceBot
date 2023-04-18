@@ -66,9 +66,7 @@ def main():
         sampler=sampler,
     )
 
-    test_loader = DataLoader(
-        dataset=test_set, batch_size=32, collate_fn=Sequencer(SEQUENCE_LEN)
-    )
+    test_loader = DataLoader(dataset=test_set, batch_size=32, collate_fn=Sequencer(SEQUENCE_LEN))
 
     # number of filters in each convolutional filter
     N_FILTERS = 64

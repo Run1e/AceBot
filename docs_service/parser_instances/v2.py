@@ -6,8 +6,7 @@ from parsers import HeadersParser
 guicontrols = dict(
     prefix_mapper=[
         (
-            lambda h, t, p: h == 2
-            and t.find_next_sibling("p").text.startswith("Description:"),
+            lambda h, t, p: h == 2 and t.find_next_sibling("p").text.startswith("Description:"),
             "{} Control",
         ),
         (2, 1),
@@ -47,9 +46,7 @@ def get(base):
         ),  # kind of weird, has a function thing too?
         HeadersParser(base, 2, "lib/File.htm", **obj("File", "FileObj")),
         HeadersParser(base, 2, "lib/Func.htm", **obj("Func", "FuncObj")),
-        HeadersParser(
-            base, 2, "lib/Gui.htm", **obj("Gui", "MyGui", staticmeth="Static_Methods")
-        ),
+        HeadersParser(base, 2, "lib/Gui.htm", **obj("Gui", "MyGui", staticmeth="Static_Methods")),
         HeadersParser(base, 2, "lib/GuiControl.htm", **obj("GuiControl", "GuiCtrl")),
         HeadersParser(base, 2, "lib/Map.htm", **obj("Map", "MapObj")),
         HeadersParser(base, 2, "lib/Menu.htm", **obj("Menu", "MyMenu")),
@@ -57,12 +54,8 @@ def get(base):
         # HeadersParser(base, 2, "lib/InputHook.htm", **object("InputHook")),  # h3 tags that should be h2, and new property id names???
         HeadersParser(base, 2, "lib/GuiControls.htm", **guicontrols),
         HeadersParser(base, 2, "lib/Hotstring.htm", **default(stop=2)),
-        HeadersParser(
-            base, 2, "lib/ListView.htm", **obj("ListView", "LV", meth="BuiltIn")
-        ),
-        HeadersParser(
-            base, 2, "lib/TreeView.htm", **obj("TreeView", "TV", meth="BuiltIn")
-        ),
+        HeadersParser(base, 2, "lib/ListView.htm", **obj("ListView", "LV", meth="BuiltIn")),
+        HeadersParser(base, 2, "lib/TreeView.htm", **obj("TreeView", "TV", meth="BuiltIn")),
         HeadersParser(base, 2, "lib/Math.htm", **default(prefix=2)),
     )
 

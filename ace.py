@@ -54,7 +54,7 @@ class AceBot(commands.Bot):
             max_messages=20000,
             activity=disnake.Game("Booting up..."),
             status=disnake.Status.do_not_disturb,
-            **kwargs
+            **kwargs,
         )
 
         # created in login

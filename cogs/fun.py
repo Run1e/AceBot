@@ -165,9 +165,7 @@ class Fun(AceMixin, commands.Cog):
 
         e = disnake.Embed(
             title=guild.name,
-            description="\n".join(
-                "**{}**: {}".format(key, value) for key, value in desc.items()
-            ),
+            description="\n".join("**{}**: {}".format(key, value) for key, value in desc.items()),
             timestamp=guild.created_at,
         )
 
@@ -205,8 +203,7 @@ class Fun(AceMixin, commands.Cog):
             e.add_field(
                 name="Features",
                 value="\n".join(
-                    "• " + feature.replace("_", " ").title()
-                    for feature in sorted(guild.features)
+                    "• " + feature.replace("_", " ").title() for feature in sorted(guild.features)
                 ),
             )
 
@@ -247,9 +244,7 @@ class Fun(AceMixin, commands.Cog):
 
         if guild.premium_subscribers:
             # actually get the last premium subscriber. this list is always fucked
-            booster = sorted(guild.premium_subscribers, key=lambda m: m.premium_since)[
-                -1
-            ]
+            booster = sorted(guild.premium_subscribers, key=lambda m: m.premium_since)[-1]
             boost_desc += "\nLast boost by {} {}".format(
                 booster.mention, f"<t:{round(booster.premium_since.timestamp())}:R>"
             )
@@ -306,15 +301,11 @@ class Fun(AceMixin, commands.Cog):
             success = res["success"] and res["numpods"]
 
             e = disnake.Embed(color=0xFF6600)
-            e.set_author(
-                name="Wolfram|Alpha", icon_url="https://i.imgur.com/KFppH69.png"
-            )
+            e.set_author(name="Wolfram|Alpha", icon_url="https://i.imgur.com/KFppH69.png")
             e.set_footer(text="wolframalpha.com")
 
             if not success:
-                e.description = (
-                    "Sorry, Wolfram Alpha was not able to parse your request."
-                )
+                e.description = "Sorry, Wolfram Alpha was not able to parse your request."
                 means = res.get("didyoumeans", None)
 
                 if means is not None:
@@ -364,9 +355,7 @@ class Fun(AceMixin, commands.Cog):
                     imagesource = subpods[0]["imagesource"]
 
                     if "en.wikipedia.org/wiki/File:" in imagesource:
-                        commons_image = await self.unpack_commons_image(
-                            ctx.http, imagesource
-                        )
+                        commons_image = await self.unpack_commons_image(ctx.http, imagesource)
 
                         if commons_image is not None:
                             e.set_image(url=commons_image)
@@ -392,9 +381,7 @@ class Fun(AceMixin, commands.Cog):
 
                 if value:
                     wraps = "`" if _id == "Input" else "```"
-                    e.add_field(
-                        name=name, value="{0}{1}{0}".format(wraps, value), inline=False
-                    )
+                    e.add_field(name=name, value="{0}{1}{0}".format(wraps, value), inline=False)
 
             await ctx.send(embed=e)
 
@@ -444,9 +431,7 @@ class Fun(AceMixin, commands.Cog):
             location = data["location"]
             current = data["current"]
 
-            observation_time = datetime.strptime(
-                current["observation_time"], "%I:%M %p"
-            ).time()
+            observation_time = datetime.strptime(current["observation_time"], "%I:%M %p").time()
 
             e = disnake.Embed(
                 title="Weather for {}, {} {}".format(
@@ -512,9 +497,7 @@ class Fun(AceMixin, commands.Cog):
 
         e = disnake.Embed(description=selected)
 
-        e.set_author(
-            name=choice(choose_prompts), icon_url=self.bot.user.display_avatar.url
-        )
+        e.set_author(name=choice(choose_prompts), icon_url=self.bot.user.display_avatar.url)
 
         msg = await ctx.send(":thinking:")
 
@@ -527,9 +510,7 @@ class Fun(AceMixin, commands.Cog):
 
         fact = await self.db.fetchrow("SELECT * FROM facts ORDER BY random()")
 
-        e = disnake.Embed(
-            title="Fact #{}".format(fact.get("id")), description=fact.get("content")
-        )
+        e = disnake.Embed(title="Fact #{}".format(fact.get("id")), description=fact.get("content"))
 
         await ctx.send(embed=e)
 
@@ -675,9 +656,7 @@ class Fun(AceMixin, commands.Cog):
     async def search(self, ctx, *, search: str):
         """Get a relevant xkcd from [`relevantxkcd.appspot.com`](https://relevantxkcd.appspot.com)."""
 
-        relevant_xkcd_url = (
-            "https://relevantxkcd.appspot.com/process?action=xkcd&query="
-        )
+        relevant_xkcd_url = "https://relevantxkcd.appspot.com/process?action=xkcd&query="
         search_url = relevant_xkcd_url + urllib.parse.quote(search)
 
         async with ctx.http.get(search_url) as resp:
@@ -719,9 +698,7 @@ class Fun(AceMixin, commands.Cog):
             url=comic_url,
             description="{}".format(comic_json["alt"]),
         )
-        comic_date = date(
-            int(comic_json["year"]), int(comic_json["month"]), int(comic_json["day"])
-        )
+        comic_date = date(int(comic_json["year"]), int(comic_json["month"]), int(comic_json["day"]))
         footer_text = "xkcd.com/{}  •  {}".format(comic_json["num"], comic_date)
         e.set_image(url=comic_json["img"])
         e.set_footer(text=footer_text, icon_url="https://i.imgur.com/onzWnfd.png")

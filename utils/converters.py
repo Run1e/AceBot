@@ -126,9 +126,7 @@ class LengthConverter(commands.Converter):
 
     def _make_error(self, ctx):
         name = param_name(self, ctx)
-        return commands.BadArgument(
-            f"{name} must be between {self.min} and {self.max} characters."
-        )
+        return commands.BadArgument(f"{name} must be between {self.min} and {self.max} characters.")
 
     async def convert(self, ctx, argument):
         length = len(argument)
@@ -151,8 +149,6 @@ class MaxLengthConverter(commands.Converter):
 
         if length > self.max:
             name = param_name(self, ctx)
-            raise commands.BadArgument(
-                f"{name} must be shorter than {self.max} characters."
-            )
+            raise commands.BadArgument(f"{name} must be shorter than {self.max} characters.")
 
         return argument

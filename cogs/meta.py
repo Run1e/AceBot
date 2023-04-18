@@ -90,9 +90,7 @@ class Meta(AceMixin, commands.Cog):
         e = disnake.Embed()
         e.set_author(name=member.name, icon_url=member.display_avatar.url)
         e.add_field(name="Top Commands", value=self._stats_craft_list(commands_alltime))
-        e.add_field(
-            name="Top Commands Today", value=self._stats_craft_list(commands_today)
-        )
+        e.add_field(name="Top Commands Today", value=self._stats_craft_list(commands_today))
 
         self._stats_embed_fill(e, total_uses, first_command)
 
@@ -136,9 +134,7 @@ class Meta(AceMixin, commands.Cog):
         e = disnake.Embed()
         e.set_author(name=ctx.guild.name, icon_url=ctx.guild.icon or None)
         e.add_field(name="Top Commands", value=self._stats_craft_list(commands_alltime))
-        e.add_field(
-            name="Top Commands Today", value=self._stats_craft_list(commands_today)
-        )
+        e.add_field(name="Top Commands Today", value=self._stats_craft_list(commands_today))
 
         e.add_field(
             name="Top Users",
@@ -187,9 +183,7 @@ class Meta(AceMixin, commands.Cog):
     def get_last_commits(self, count=3):
         return "\n".join(
             self.format_commit(c)
-            for c in islice(
-                self.repo.walk(self.repo.head.target, GIT_SORT_TOPOLOGICAL), count
-            )
+            for c in islice(self.repo.walk(self.repo.head.target, GIT_SORT_TOPOLOGICAL), count)
         )
 
     @commands.command()
@@ -243,9 +237,7 @@ class Meta(AceMixin, commands.Cog):
             value="CPU: {0:.2f}%\nMemory: {1:.2f} MiB".format(cpu_usage, memory_usage),
         )
 
-        e.add_field(
-            name="Members", value="{0:,d} total\n{1:,d} unique".format(users, unique)
-        )
+        e.add_field(name="Members", value="{0:,d} total\n{1:,d} unique".format(users, unique))
         e.add_field(
             name="Channels",
             value="{0:,d} total\n{1:,d} text channels\n{2:,d} voice channels".format(
@@ -255,9 +247,7 @@ class Meta(AceMixin, commands.Cog):
 
         now = datetime.utcnow()
         e.set_footer(
-            text="Last restart {0} ago".format(
-                pretty_timedelta(now - self.bot.startup_time)
-            )
+            text="Last restart {0} ago".format(pretty_timedelta(now - self.bot.startup_time))
         )
 
         await ctx.send(embed=e)

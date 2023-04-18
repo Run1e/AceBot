@@ -46,10 +46,9 @@ def docs_search(names, query, k):
         for name, score, _ in word_scores:
             scores[name] += score * meaning_scalar(i)
 
-    return list(
-        name
-        for name, _ in sorted(scores.items(), key=lambda item: item[1], reverse=True)
-    )[:k]
+    return list(name for name, _ in sorted(scores.items(), key=lambda item: item[1], reverse=True))[
+        :k
+    ]
 
 
 def entry_to_dict(row):
@@ -65,9 +64,7 @@ def entry_to_dict(row):
     )
 
 
-async def get_entry(
-    conn: asyncpg.Connection, docs_id: int, lineage=True, search_match=None
-):
+async def get_entry(conn: asyncpg.Connection, docs_id: int, lineage=True, search_match=None):
     row = await conn.fetchrow("SELECT * FROM docs_entry WHERE id=$1", docs_id)
 
     o = entry_to_dict(row)

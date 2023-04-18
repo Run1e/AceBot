@@ -34,9 +34,7 @@ class InternalLogger(commands.Cog, AceMixin):
         )
 
     @commands.Cog.listener()
-    async def on_slash_command_completion(
-        self, inter: disnake.ApplicationCommandInteraction
-    ):
+    async def on_slash_command_completion(self, inter: disnake.ApplicationCommandInteraction):
         await self.bot.db.execute(
             "INSERT INTO log (guild_id, channel_id, user_id, timestamp, command, type) VALUES ($1, $2, $3, $4, $5, $6)",
             inter.guild.id,
