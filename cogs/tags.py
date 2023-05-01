@@ -287,7 +287,7 @@ class Tags(AceMixin, commands.Cog):
 
     @tag.command()
     @can_prompt()
-    async def edit(self, ctx, tag_name: TagEditConverter(), *, new_content: str = None):
+    async def edit(self, ctx, tag_name: TagEditConverter(allow_mod=True), *, new_content: str = None):
         """Edit an existing tag."""
 
         tag_name, record = tag_name
@@ -441,7 +441,7 @@ class Tags(AceMixin, commands.Cog):
     @tag.command()
     @can_prompt()
     async def rename(
-        self, ctx, old_name: TagEditConverter(), *, new_name: tag_create_converter
+        self, ctx, old_name: TagEditConverter(allow_mod=True), *, new_name: tag_create_converter
     ):
         """Rename a tag."""
 
@@ -456,7 +456,7 @@ class Tags(AceMixin, commands.Cog):
     @tag.command()
     @can_prompt()
     async def alias(
-        self, ctx, tag_name: TagEditConverter(), *, alias: tag_create_converter = None
+        self, ctx, tag_name: TagEditConverter(allow_mod=True), *, alias: tag_create_converter = None
     ):
         """Give a tag an alias. Omit the alias parameter to clear existing alias."""
 
@@ -527,7 +527,7 @@ class Tags(AceMixin, commands.Cog):
     async def transfer(
         self,
         ctx: AceContext,
-        tag_name: TagEditConverter(),
+        tag_name: TagEditConverter(allow_mod=True),
         *,
         new_owner: disnake.Member,
     ):
