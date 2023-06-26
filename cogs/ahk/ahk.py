@@ -144,7 +144,8 @@ class AutoHotkey(AceMixin, commands.Cog):
         if pivot >= 0.65:
             await thread.send(embed=self.make_classification_embed(pivot))
         else:
-            await self.tagask(thread)
+            if not thread.applied_tags:
+                await self.tagask(thread)
 
     @tasks.loop(minutes=1)
     async def close_help_threads(self):
@@ -567,7 +568,23 @@ class AutoHotkey(AceMixin, commands.Cog):
             + " ".join(f"<#{_id}>" for _id in HELP_CHANNEL_IDS)
         )
 
-    async def tagask(self, thread: disnake.Thread):
+    @commands.slash_command(name="retag", description="Tag your help channel anew.", guild_ids=[AHK_GUILD_ID])
+    async def retag(self, inter: disnake.AppCmdInter):
+        channel = inter.channel
+        if not isinstance(channel, disnake.Thread):
+            return
+
+        thread = channel
+
+        if thread.parent_id != HELP_FORUM_CHAN_ID:
+            return
+
+        if inter.author != thread.owner:
+            return
+
+        await self.tagask(thread, inter)
+
+    async def tagask(self, thread: disnake.Thread, inter: disnake.AppCmdInter = None):
         message = None
 
         async def ask(question, tags: dict):
@@ -603,7 +620,11 @@ class AutoHotkey(AceMixin, commands.Cog):
 
             if message is None:
                 content = f"{thread.owner.mention} Increase your visibility by adding tags your post!"
-                message = await thread.send(content=content, **args)
+                if inter:
+                    await inter.response.send_message(content=content, **args)
+                    message = await inter.original_message()
+                else:
+                    message = await thread.send(content=content, **args)
             else:
                 await message.edit(content=None, **args)
 
@@ -679,7 +700,7 @@ class AutoHotkey(AceMixin, commands.Cog):
             components=None,
         )
 
-    @commands.slash_command(description="Mark your post as solved.")
+    @commands.slash_command(description="Mark your post as solved.", guild_ids=[AHK_GUILD_ID])
     async def solved(self, inter: disnake.AppCmdInter):
         if (
             not isinstance(inter.channel, disnake.Thread)
