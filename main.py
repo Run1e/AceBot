@@ -5,6 +5,7 @@ import os
 import asyncpg
 import coloredlogs
 import disnake
+from disnake.ext.commands import CommandSyncFlags
 
 from ace import AceBot
 from config import BOT_INTENTS, BOT_TOKEN, LOG_LEVEL, TEST_GUILDS
@@ -107,12 +108,22 @@ def setup():
         replied_user=True,
     )
 
+    command_sync_flags = CommandSyncFlags(
+        allow_command_deletion=True,
+        sync_commands=True,
+        sync_commands_debug=True,
+        sync_global_commands=True,
+        sync_guild_commands=True,
+        sync_on_cog_actions=False,
+    )
+
     # init bot
     log.info("Initializing bot")
     bot = AceBot(
         loop=loop,
         intents=BOT_INTENTS,
         allowed_mentions=allowed_mentions,
+        command_sync_flags=command_sync_flags,
         test_guilds=TEST_GUILDS,
     )
 
