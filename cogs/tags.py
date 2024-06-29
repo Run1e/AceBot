@@ -271,7 +271,9 @@ class Tags(AceMixin, commands.Cog):
 
     @tag.command()
     @can_prompt()
-    async def edit(self, ctx, tag_name: TagEditConverter(allow_mod=True), *, new_content: str = None):
+    async def edit(
+        self, ctx, tag_name: TagEditConverter(allow_mod=True), *, new_content: str = None
+    ):
         """Edit an existing tag."""
 
         tag_name, record = tag_name
