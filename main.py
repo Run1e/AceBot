@@ -45,7 +45,7 @@ def setup_logger():
     )
 
     file = logging.handlers.TimedRotatingFileHandler(
-        "logs/log.log", when="midnight", encoding="utf-8-sig"
+        "data/logs/log.log", when="midnight", encoding="utf-8-sig"
     )
     file.setFormatter(fmt)
     file.setLevel(logging.INFO)
@@ -59,11 +59,6 @@ def setup_logger():
 
 
 def setup():
-    # create folders
-    for path in ("data", "error", "feedback", "ahk_eval"):
-        if not os.path.exists(path):
-            log.info("Creating folder: %s", path)
-            os.makedirs(path)
 
     # misc. monkey-patching
     class Embed(disnake.Embed):
@@ -131,6 +126,11 @@ def setup():
 
 
 if __name__ == "__main__":
+    # create folders
+    for path in ("data", "data/logs", "data/error", "data/feedback", "data/ahk_eval"):
+        if not os.path.exists(path):
+            os.makedirs(path)
+
     log = setup_logger()
     loop = asyncio.get_event_loop()
 

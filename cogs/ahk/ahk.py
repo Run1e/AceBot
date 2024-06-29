@@ -274,7 +274,7 @@ class AutoHotkey(AceMixin, commands.Cog):
                 raise commands.CommandError("Output greater than 8 MB.")
 
         # logging for security purposes and checking for abuse
-        filename = "ahk_eval/{0}_{1}_{2}_{3}".format(
+        filename = "data/ahk_eval/{0}_{1}_{2}_{3}".format(
             ctx.guild.id, ctx.author.id, ctx.message.id, lang
         )
         with open(filename, "w", encoding="utf-8-sig") as f:

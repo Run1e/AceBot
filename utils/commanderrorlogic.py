@@ -101,5 +101,5 @@ class CommandErrorLogic:
             "COMMAND: {0.command.qualified_name}\nARGS: {1}\nKWARGS: {2}\n\n{3}"
         ).format(ctx, saferepr(ctx.args[2:]), saferepr(ctx.kwargs), tb)
 
-        with open("error/{0}".format(filename), "w", encoding="utf-8-sig") as f:
+        with open("data/error/{0}".format(filename), "w", encoding="utf-8-sig") as f:
             f.write(content)
