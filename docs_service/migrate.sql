@@ -16,3 +16,9 @@ CREATE TABLE IF NOT EXISTS docs_name (
 	docs_id		INT REFERENCES docs_entry (id) NOT NULL,
 	name		TEXT NOT NULL
 );
+
+CREATE TABLE IF NOT EXISTS docs_syntax (
+	id			SERIAL UNIQUE,
+	docs_id		INT REFERENCES docs_entry (id) NOT NULL,
+	syntax		TEXT NOT NULL
+);

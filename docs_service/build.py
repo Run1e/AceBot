@@ -165,15 +165,15 @@ async def build_v2_aggregator(folder, download=False) -> Aggregator:
 
 async def main():
     db = await asyncpg.create_pool(config.DB_BIND)
-    await db.execute("TRUNCATE docs_name, docs_entry RESTART IDENTITY")
+    await db.execute("TRUNCATE docs_name, docs_entry, docs_syntax RESTART IDENTITY")
 
-    agg = await build_v1_aggregator("docs_v1", download=False)
+    agg = await build_v1_aggregator("docs_v1", download=True)
     await store(db, agg, 1)
     start_at = agg.entry_count + 1
 
     print()
 
-    agg = await build_v2_aggregator("docs_v2", download=False)
+    agg = await build_v2_aggregator("docs_v2", download=True)
     await store(db, agg, 2, id_start_at=start_at)
 
     await db.close()

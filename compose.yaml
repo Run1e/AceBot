@@ -1,0 +1,15 @@
+services:
+  postgres:
+    container_name: ace-postgres
+    image: postgres:16.2
+    ports:
+      - 5432:5432
+    environment:
+      POSTGRES_USER: ace_user
+      POSTGRES_PASSWORD: ace_pass
+      POSTGRES_DB: ace_db
+    volumes:
+      - ace-pg-data:/var/lib/postgresql/data
+
+volumes:
+  ace-pg-data:

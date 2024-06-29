@@ -1,5 +1,6 @@
 import logging
 from datetime import datetime, timedelta
+from urllib.parse import urlparse
 
 import disnake
 from asyncpg.exceptions import UniqueViolationError
@@ -14,6 +15,7 @@ from utils.string import yesno
 log = logging.getLogger(__name__)
 STAR_EMOJI = "\N{WHITE MEDIUM STAR}"
 STAR_COOLDOWN = timedelta(minutes=3)
+STAR_COOLDOWN = timedelta(minutes=0)
 STAR_CUTOFF = timedelta(days=7)
 
 SB_NOT_EXIST_ERROR = commands.CommandError("Please set up a starboard using `star create` first.")
@@ -444,12 +446,12 @@ class Starboard(AceMixin, commands.Cog):
             "SELECT COUNT(*) FROM starrers WHERE star_id=$1", row.get("id")
         )
 
-        new_embed = self.get_embed(message, star_count + 1)
+        new_embed = await self.get_embed(message, star_count + 1)
         edited = new_embed.description != star_message.embeds[0].description
 
         await star_message.edit(
             content=self.get_header(message.id, star_count + 1),
-            embed=self.get_embed(message, star_count + 1),
+            embed=await self.get_embed(message, star_count + 1),
         )
 
         parts = list()
@@ -504,7 +506,7 @@ class Starboard(AceMixin, commands.Cog):
         try:
             star_message = await star_channel.send(
                 self.get_header(message.id, starrer_count),
-                embed=self.get_embed(message, starrer_count),
+                embed=await self.get_embed(message, starrer_count),
             )
             await star_message.add_reaction(STAR_EMOJI)
         except disnake.HTTPException:
@@ -870,7 +872,7 @@ class Starboard(AceMixin, commands.Cog):
     def get_header(self, message_id, stars):
         return f"{self.star_emoji(stars)} **{stars}**  `ID: {message_id}`"
 
-    def get_embed(self, message, stars):
+    async def get_embed(self, message: disnake.Message, stars):
         """
         Stolen from Rapptz with minor tweaks, thanks!
         https://github.com/Rapptz/RoboDanny/blob/rewrite/cogs/stars.py#L168-L193
@@ -888,13 +890,15 @@ class Starboard(AceMixin, commands.Cog):
                 embed.set_image(url=data.url)
 
         if message.attachments:
-            file = message.attachments[0]
-            if file.url.lower().endswith(("png", "jpeg", "jpg", "gif", "webp")):
-                embed.set_image(url=file.url)
+            attachment = message.attachments[0]
+            path = urlparse(attachment.url).path
+            if path.lower().endswith(("png", "jpeg", "jpg", "gif", "webp")):
+                file = await attachment.to_file()
+                embed.set_image(file=file)
             else:
                 embed.add_field(
                     name="Attachment",
-                    value=f"[{file.filename}]({file.url})",
+                    value=f"[{attachment.filename}]({attachment.url})",
                     inline=False,
                 )
 

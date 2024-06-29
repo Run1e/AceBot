@@ -55,7 +55,10 @@ class Aggregator:
                 if page in parser_cache:
                     parser = parser_cache[page]
                 else:
-                    parser = HeadersParser(self.folder, self.version, page)
+                    try:
+                        parser = HeadersParser(self.folder, self.version, page)
+                    except FileNotFoundError:
+                        continue
                     parser_cache[page] = parser
 
                 tag = parser.bs.find(True, id=fragment)

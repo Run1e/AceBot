@@ -168,27 +168,6 @@ CREATE TABLE IF NOT EXISTS welcome (
 );
 
 -- docs stuff
-CREATE TABLE IF NOT EXISTS docs_entry (
-	id			SERIAL UNIQUE,
-	content		TEXT NULL,
-	link		TEXT UNIQUE,
-	page		TEXT NULL,
-	fragment	TEXT NULL,
-	title		TEXT NOT NULL
-);
-
-CREATE TABLE IF NOT EXISTS docs_name (
-	id			SERIAL UNIQUE,
-	docs_id		INT REFERENCES docs_entry (id) NOT NULL,
-	name		TEXT UNIQUE NOT NULL
-);
-
-CREATE TABLE IF NOT EXISTS docs_syntax (
-	id			SERIAL UNIQUE,
-	docs_id		INT REFERENCES docs_entry (id) NOT NULL,
-	syntax		TEXT NOT NULL
-);
-
 CREATE TABLE IF NOT EXISTS role (
 	id			SERIAL UNIQUE,
 	guild_id	BIGINT UNIQUE NOT NULL,
