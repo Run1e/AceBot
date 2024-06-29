@@ -194,8 +194,8 @@ class Highlighter(AceMixin, commands.Cog):
 
         if ctx.guild.id == AHK_GUILD_ID:
             msg += (
-                "If you have a larger script you want to share, paste it to the AutoHotkey pastebin instead:\n"
-                "http://p.ahkscript.org/"
+                "\nIf you have a larger script you want to share, paste it to the AutoHotkey pastebin instead:\n"
+                "https://p.autohotkey.com/"
             )
 
         await ctx.send(msg)
