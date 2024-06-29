@@ -77,9 +77,7 @@ class Sequencer:
         # batch = sorted(batch, key=lambda x: x[0].size(), reverse=True)
 
         # and pad and stack into a LongTensor
-        tokens = torch.stack(
-            [pad(token_list, self.sequence_len) for token_list, _ in batch]
-        )
+        tokens = torch.stack([pad(token_list, self.sequence_len) for token_list, _ in batch])
 
         # strip labels
         labels = torch.tensor([label for _, label in batch], dtype=torch.float32)

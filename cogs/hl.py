@@ -3,8 +3,8 @@ import re
 import disnake
 from disnake.ext import commands
 
-from ids import AHK_GUILD_ID
 from cogs.mixins import AceMixin
+from ids import AHK_GUILD_ID
 from utils.context import is_mod
 from utils.converters import LengthConverter
 
@@ -59,9 +59,7 @@ class Highlighter(AceMixin, commands.Cog):
         )
 
         code = "```{}\n{}\n```".format(lang, code)
-        code += "*Paste by {0} - Click {1} to delete.*".format(
-            ctx.author.mention, DELETE_EMOJI
-        )
+        code += "*Paste by {0} - Click {1} to delete.*".format(ctx.author.mention, DELETE_EMOJI)
 
         if len(code) > 2000:
             raise commands.CommandError("Code contents too long to paste.")
@@ -149,9 +147,7 @@ class Highlighter(AceMixin, commands.Cog):
             )
 
             await ctx.send(
-                "No preference previously set"
-                if ret == "DELETE 0"
-                else "Preference cleared."
+                "No preference previously set" if ret == "DELETE 0" else "Preference cleared."
             )
         else:
             await self.db.execute(
@@ -177,9 +173,7 @@ class Highlighter(AceMixin, commands.Cog):
             )
 
             await ctx.send(
-                "No preference previously set"
-                if ret == "DELETE 0"
-                else "Preference cleared."
+                "No preference previously set" if ret == "DELETE 0" else "Preference cleared."
             )
         else:
             await self.db.execute(
@@ -190,9 +184,7 @@ class Highlighter(AceMixin, commands.Cog):
                 language,
             )
 
-            await ctx.send(
-                f"Set server-specific highlighting language to '{language}'."
-            )
+            await ctx.send(f"Set server-specific highlighting language to '{language}'.")
 
     @commands.command(aliases=["p"], hidden=True)
     async def paste(self, ctx):

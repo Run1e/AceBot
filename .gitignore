@@ -21,6 +21,8 @@ torch_config.py
 *.pth
 neural/embeddings
 neural/models
+neural/corpus
+neural/corpus.zip
 
 docs_service/docs_v1
 docs_service/docs_v2

@@ -46,9 +46,7 @@ class FakeUser(Object):
     @property
     def avatar(self):
         return FakeAsset(
-            url=self._data.get(
-                "avatar_url", "https://cdn.discordapp.com/embed/avatars/0.png"
-            )
+            url=self._data.get("avatar_url", "https://cdn.discordapp.com/embed/avatars/0.png")
         )
 
     @property

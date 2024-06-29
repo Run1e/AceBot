@@ -1,7 +1,6 @@
 import asyncio
 import logging
 
-
 log = logging.getLogger(__name__)
 
 
@@ -28,8 +27,7 @@ class ConfigTableRecord(object):
 
     def _build_dirty(self, start_at=1):
         return ", ".join(
-            "{} = ${}".format(key, idx + start_at)
-            for idx, key in enumerate(self._dirty)
+            "{} = ${}".format(key, idx + start_at) for idx, key in enumerate(self._dirty)
         )
 
     def _set_dirty(self, key):
@@ -103,8 +101,7 @@ class ConfigTable:
 
     def build_predicate(self, start_at=1):
         return " AND ".join(
-            "{} = ${}".format(key, idx + start_at)
-            for idx, key in enumerate(self.primary)
+            "{} = ${}".format(key, idx + start_at) for idx, key in enumerate(self.primary)
         )
 
     def get_keys_from_record(self, record):
@@ -145,9 +142,7 @@ class ConfigTable:
             if keys in self.entries:
                 return self.entries[keys]
 
-            get_query = (
-                "SELECT * FROM {} WHERE ".format(self.table) + self.build_predicate()
-            )
+            get_query = "SELECT * FROM {} WHERE ".format(self.table) + self.build_predicate()
 
             record = await self.bot.db.fetchrow(get_query, *keys)
 
@@ -173,9 +168,7 @@ class ConfigTable:
 
         async with self._lock:
             if keys in self._non_existent:
-                log.info(
-                    "Clearing non-existent entry %s for table %s", keys, self.table
-                )
+                log.info("Clearing non-existent entry %s for table %s", keys, self.table)
                 self._non_existent.remove(keys)
 
             removed = bool(self.entries.pop(keys, False))

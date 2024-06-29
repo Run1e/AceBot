@@ -1,14 +1,14 @@
 import asyncio
-import re
 import os
+import re
 import shutil
 from zipfile import ZipFile
-import aiohttp
 
+import aiohttp
 import asyncpg
 from aggregator import Aggregator
 from bs4 import BeautifulSoup
-from parser_instances.common import default, command
+from parser_instances.common import command, default
 from parser_instances.v1 import get as v1_get
 from parser_instances.v2 import get as v2_get
 from parsers import HeadersParser

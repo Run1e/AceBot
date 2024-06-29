@@ -1,7 +1,7 @@
 from math import ceil
+from typing import TYPE_CHECKING, Union
 
 import disnake
-from typing import TYPE_CHECKING, Union
 
 if TYPE_CHECKING:
     from disnake.ext import commands
@@ -123,47 +123,31 @@ class Pager(disnake.ui.View):
         except disnake.HTTPException:
             pass
 
-    @disnake.ui.button(
-        label=PREV_LABEL, emoji=PREV_EMOJI, style=disnake.ButtonStyle.primary, row=0
-    )
-    async def prev_page(
-        self, button: disnake.ui.Button, inter: disnake.MessageInteraction
-    ):
+    @disnake.ui.button(label=PREV_LABEL, emoji=PREV_EMOJI, style=disnake.ButtonStyle.primary, row=0)
+    async def prev_page(self, button: disnake.ui.Button, inter: disnake.MessageInteraction):
         await self.try_page(self.page - 1)
         await inter.response.edit_message(embed=self.embed, view=self)
 
-    @disnake.ui.button(
-        label=NEXT_LABEL, emoji=NEXT_EMOJI, style=disnake.ButtonStyle.primary, row=0
-    )
-    async def next_page(
-        self, button: disnake.ui.Button, inter: disnake.MessageInteraction
-    ):
+    @disnake.ui.button(label=NEXT_LABEL, emoji=NEXT_EMOJI, style=disnake.ButtonStyle.primary, row=0)
+    async def next_page(self, button: disnake.ui.Button, inter: disnake.MessageInteraction):
         await self.try_page(self.page + 1)
         await inter.response.edit_message(embed=self.embed, view=self)
 
     @disnake.ui.button(
         label=FIRST_LABEL, emoji=FIRST_EMOJI, style=disnake.ButtonStyle.secondary, row=1
     )
-    async def first_page(
-        self, button: disnake.ui.Button, inter: disnake.MessageInteraction
-    ):
+    async def first_page(self, button: disnake.ui.Button, inter: disnake.MessageInteraction):
         await self.try_page(0)
         await inter.response.edit_message(embed=self.embed, view=self)
 
     @disnake.ui.button(
         label=LAST_LABEL, emoji=LAST_EMOJI, style=disnake.ButtonStyle.secondary, row=1
     )
-    async def last_page(
-        self, button: disnake.ui.Button, inter: disnake.MessageInteraction
-    ):
+    async def last_page(self, button: disnake.ui.Button, inter: disnake.MessageInteraction):
         await self.try_page(self.top_page)
         await inter.response.edit_message(embed=self.embed, view=self)
 
-    @disnake.ui.button(
-        label=STOP_LABEL, emoji=STOP_EMOJI, style=disnake.ButtonStyle.danger, row=1
-    )
-    async def stop_pager(
-        self, button: disnake.ui.Button, inter: disnake.MessageInteraction
-    ):
+    @disnake.ui.button(label=STOP_LABEL, emoji=STOP_EMOJI, style=disnake.ButtonStyle.danger, row=1)
+    async def stop_pager(self, button: disnake.ui.Button, inter: disnake.MessageInteraction):
         await inter.response.edit_message(view=None)
         self.stop()

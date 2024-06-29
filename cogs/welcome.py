@@ -1,14 +1,12 @@
-import disnake
-import logging
 import asyncio
+import logging
 
+import disnake
 from disnake.ext import commands
 
-
 from cogs.mixins import AceMixin
-from utils.string import po
 from utils.configtable import ConfigTable, ConfigTableRecord
-
+from utils.string import po
 
 log = logging.getLogger(__name__)
 
@@ -99,9 +97,7 @@ class Welcome(AceMixin, commands.Cog):
         """Set a new welcome message."""
 
         if len(message) > 1024:
-            raise commands.CommandError(
-                "Welcome message has to be shorter than 1024 characters."
-            )
+            raise commands.CommandError("Welcome message has to be shorter than 1024 characters.")
 
         # make sure an entry for this exists...
         entry = await self.config.get_entry(ctx.guild.id)

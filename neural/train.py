@@ -1,17 +1,17 @@
-import pickle
-import os
 import glob
+import os
+import pickle
 
 import torch
+from dataset import Sequencer, TextDataset
+from text_processor import TextProcessor
 from torch import nn
 from torch.utils.data import DataLoader
+from torch_config import CORPUS_DIR, EMBEDDINGS_DIR
 from torchtext.data.utils import get_tokenizer
 from tqdm import tqdm
 
-from dataset import Sequencer, TextDataset
 from model import TextCNN
-from text_processor import TextProcessor
-from torch_config import CORPUS_DIR, EMBEDDINGS_DIR
 
 DATA_SPLIT = 0.75
 SEQUENCE_LEN = 380
@@ -66,9 +66,7 @@ def main():
         sampler=sampler,
     )
 
-    test_loader = DataLoader(
-        dataset=test_set, batch_size=32, collate_fn=Sequencer(SEQUENCE_LEN)
-    )
+    test_loader = DataLoader(dataset=test_set, batch_size=32, collate_fn=Sequencer(SEQUENCE_LEN))
 
     # number of filters in each convolutional filter
     N_FILTERS = 64

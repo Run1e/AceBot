@@ -3,10 +3,9 @@ import pickle
 from collections import Counter
 
 import torch
+from torch_config import CORPUS_DIR, EMBEDDINGS_DIR, GLOVE_DIR
 from torchtext.data.utils import get_tokenizer
 from tqdm import tqdm
-
-from torch_config import CORPUS_DIR, EMBEDDINGS_DIR, GLOVE_DIR
 
 tokenizer = get_tokenizer("basic_english")
 counter = Counter()

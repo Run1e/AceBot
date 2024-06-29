@@ -4,8 +4,8 @@ import disnake
 from disnake.ext import commands
 
 from cogs.mixins import AceMixin
-from utils.time import pretty_timedelta, pretty_datetime
 from utils.string import po
+from utils.time import pretty_datetime, pretty_timedelta
 
 
 class WhoIs(AceMixin, commands.Cog):

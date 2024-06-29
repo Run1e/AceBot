@@ -3,11 +3,11 @@ import pickle
 import torch
 from sanic import Request, Sanic
 from sanic.response import HTTPResponse, json
+from text_processor import TextProcessor
+from torch_config import EMBEDDINGS_DIR
 from torchtext.data.utils import get_tokenizer
 
 from model import TextCNN
-from text_processor import TextProcessor
-from torch_config import EMBEDDINGS_DIR
 
 app = Sanic("torch_api")
 

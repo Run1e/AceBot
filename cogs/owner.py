@@ -67,6 +67,7 @@ class Owner(AceMixin, commands.Cog):
         """Evaluates some code."""
 
         from pprint import pprint
+
         from tabulate import tabulate
 
         env = {
@@ -112,9 +113,7 @@ class Owner(AceMixin, commands.Cog):
                 if value:
                     if len(value) > 1990:
                         fp = io.BytesIO(value.encode("utf-8"))
-                        await ctx.send(
-                            "Log too large...", file=disnake.File(fp, "results.txt")
-                        )
+                        await ctx.send("Log too large...", file=disnake.File(fp, "results.txt"))
                     else:
                         await ctx.send(f"```py\n{value}\n```")
 
@@ -145,8 +144,7 @@ class Owner(AceMixin, commands.Cog):
 
         table = tabulate(
             tabular_data=[
-                (name, format(count, ",d"))
-                for name, count in self.event_counter.most_common(n)
+                (name, format(count, ",d")) for name, count in self.event_counter.most_common(n)
             ],
             headers=("Event", "Count"),
         )
@@ -195,9 +193,7 @@ class Owner(AceMixin, commands.Cog):
 
         if reloaded:
             log.info("Reloaded cogs: %s", ", ".join(reloaded))
-            await ctx.send(
-                "Reloaded cogs: " + ", ".join("`{0}`".format(ext) for ext in reloaded)
-            )
+            await ctx.send("Reloaded cogs: " + ", ".join("`{0}`".format(ext) for ext in reloaded))
         else:
             await ctx.send("Nothing to reload.")
 

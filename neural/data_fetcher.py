@@ -2,8 +2,7 @@ import asyncio
 import os
 
 import asyncpg
-
-from torch_config import DB_BIND, CORPUS_DIR
+from torch_config import CORPUS_DIR, DB_BIND
 
 
 async def fetch_data():

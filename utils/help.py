@@ -45,9 +45,7 @@ class HelpPager(Pager):
             embed.add_field(name=name, value=value, inline=False)
 
     async def help_embed(self, e):
-        e.set_author(
-            name="How do I use the bot?", icon_url=self.bot.user.display_avatar.url
-        )
+        e.set_author(name="How do I use the bot?", icon_url=self.bot.user.display_avatar.url)
 
         e.description = (
             "Invoke a command by sending the prefix followed by a command name.\n\n"
@@ -56,9 +54,7 @@ class HelpPager(Pager):
         )
 
         e.add_field(name="<argument>", value="the argument is required.", inline=False)
-        e.add_field(
-            name="[argument]", value="the argument is optional.\n\u200b", inline=False
-        )
+        e.add_field(name="[argument]", value="the argument is optional.\n\u200b", inline=False)
 
         e.add_field(
             name="Support Server",
@@ -181,9 +177,7 @@ class PaginatedHelpCommand(commands.HelpCommand):
         await self.pager.go()
 
     async def stop(self):
-        await self.send_error_message(
-            await self.command_not_found(self.context.kwargs["command"])
-        )
+        await self.send_error_message(await self.command_not_found(self.context.kwargs["command"]))
 
     async def command_not_found(self, command_name):
         return commands.CommandNotFound(command_name)
@@ -225,9 +219,7 @@ def get_signature(command):
             # We don't want None or '' to trigger the [name=value] case and instead it should
             # do [name] since [name=None] or [name=] are not exactly useful for the user.
             should_print = (
-                param.default
-                if isinstance(param.default, str)
-                else param.default is not None
+                param.default if isinstance(param.default, str) else param.default is not None
             )
             if should_print:
                 result.append("[%s=%s]" % (name, param.default))

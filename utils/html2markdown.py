@@ -1,4 +1,5 @@
 import re
+
 from bs4 import BeautifulSoup, NavigableString
 
 PREPEND = dict(
@@ -82,9 +83,7 @@ class Result:
 
 
 class HTML2Markdown:
-    def __init__(
-        self, escaper=None, big_box=False, lang=None, max_len=2000, base_url=None
-    ):
+    def __init__(self, escaper=None, big_box=False, lang=None, max_len=2000, base_url=None):
         self.result = None
         self.escaper = escaper
         self.max_len = max_len

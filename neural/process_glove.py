@@ -1,9 +1,8 @@
 import pickle
 
 import torch
-from tqdm import tqdm
-
 from torch_config import GLOVE_DIR
+from tqdm import tqdm
 
 idx = 0
 word2idx = {}

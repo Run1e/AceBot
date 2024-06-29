@@ -10,9 +10,7 @@ class TextCNN(nn.Module):
         num_embeddings = embeddings.size(0)
         embedding_dim = embeddings.size(1)
 
-        self.embedding = nn.Embedding(
-            num_embeddings, embedding_dim, padding_idx=0, sparse=False
-        )
+        self.embedding = nn.Embedding(num_embeddings, embedding_dim, padding_idx=0, sparse=False)
         self.embedding.load_state_dict(dict(weight=embeddings))
         # self.embedding.weight.requires_grad = False
 
