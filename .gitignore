@@ -28,3 +28,4 @@ docs_service/docs_v1
 docs_service/docs_v2
 docs_service/docs_v1.zip
 docs_service/docs_v2.zip
+build_tag_upload.sh

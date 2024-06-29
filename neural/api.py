@@ -50,4 +50,5 @@ async def game(request: Request):
     return json(dict(p=pred))
 
 
-app.run("0.0.0.0", 80)
+if __name__ == "__main__":
+    app.run(host="0.0.0.0", port=7000)

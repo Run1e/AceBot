@@ -7,7 +7,7 @@ from pathlib import Path
 import disnake
 import psutil
 from disnake.ext import commands
-from pygit2 import GIT_SORT_TOPOLOGICAL, GIT_STATUS_IGNORED, Repository
+from pygit2 import GIT_SORT_TOPOLOGICAL, GIT_STATUS_IGNORED, Repository, GitError
 
 from cogs.mixins import AceMixin
 from utils.context import AceContext
@@ -34,7 +34,10 @@ class Meta(AceMixin, commands.Cog):
     def __init__(self, bot):
         super().__init__(bot)
 
-        self.repo = Repository(".")
+        try:
+            self.repo = Repository(".")
+        except GitError:
+            self.repo = None
 
         self.process = psutil.Process()
 
@@ -181,6 +184,9 @@ class Meta(AceMixin, commands.Cog):
         return f"[`{short_sha2}`]({GITHUB_LINK}/commit/{commit.hex}) {short} ({offset})"
 
     def get_last_commits(self, count=3):
+        if self.repo is None:
+            return "-"
+
         return "\n".join(
             self.format_commit(c)
             for c in islice(self.repo.walk(self.repo.head.target, GIT_SORT_TOPOLOGICAL), count)
@@ -323,18 +329,19 @@ class Meta(AceMixin, commands.Cog):
         callback = cmd.callback
         source_file = Path(inspect.getsourcefile(callback)).relative_to(getcwd())
 
-        # pygit2 expects forward slashes which breaks on windows with pathlib
-        source_file_str = str(source_file).replace("\\", "/")
+        if self.repo is not None:
+            # pygit2 expects forward slashes which breaks on windows with pathlib
+            source_file_str = str(source_file).replace("\\", "/")
 
-        # not in repo
-        try:
-            file_status = self.repo.status_file(source_file_str)
-        except KeyError:
-            raise COULD_NOT_FIND
+            # not in repo
+            try:
+                file_status = self.repo.status_file(source_file_str)
+            except KeyError:
+                raise COULD_NOT_FIND
 
-        # ignored
-        if file_status & GIT_STATUS_IGNORED:
-            raise COULD_NOT_FIND
+            # ignored
+            if file_status & GIT_STATUS_IGNORED:
+                raise COULD_NOT_FIND
 
         lines, first_line_no = inspect.getsourcelines(callback)
         await ctx.send(
