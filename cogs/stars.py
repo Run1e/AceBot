@@ -861,13 +861,13 @@ class Starboard(AceMixin, commands.Cog):
         except disnake.HTTPException:
             pass
 
-    async def update_star(self, message_id, star_message, stars):
+    async def update_star(self, message_id: int, star_message: disnake.Message, stars: int):
         if not len(star_message.embeds):
             return
 
         embed = star_message.embeds[0]
         embed.colour = self.star_gradient_colour(stars)
-        await star_message.edit(content=self.get_header(message_id, stars), embed=embed)
+        await star_message.edit(content=self.get_header(message_id, stars), embed=embed, attachments=None)
 
     def get_header(self, message_id, stars):
         return f"{self.star_emoji(stars)} **{stars}**  `ID: {message_id}`"
