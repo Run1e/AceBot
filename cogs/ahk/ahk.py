@@ -90,6 +90,8 @@ class AutoHotkey(AceMixin, commands.Cog):
         self.rss.start()
         self.close_help_threads.start()
 
+        self._docs_msg_map = {}
+
     def cog_unload(self):
         self.rss.cancel()
 
@@ -295,35 +297,56 @@ class AutoHotkey(AceMixin, commands.Cog):
 
         await self.cloudahk_call(ctx, code)
 
-    async def _docs(self, sender, query, version):
+    @commands.Cog.listener()
+    async def on_button_click(self, inter: disnake.MessageInteraction):
+        if inter.component.custom_id != "docsdeletebutton":
+            return
+
+        author_id = self._docs_msg_map.pop(inter.message.id, None)
+        if author_id is None:
+            return
+
+        if author_id != inter.author.id:
+            return
+
+        await inter.message.delete()
+
+    async def _docs(self, thing: commands.Context | disnake.AppCmdInter, sender, query, version):
         data = await self.query_docs_service(query, version)
-        await sender(embed=self.craft_docs_page(data))
+        ar = disnake.ui.ActionRow()
+        ar.add_button(0, style=disnake.ButtonStyle.danger, label="🗑️", custom_id="docsdeletebutton")
+        msg = await sender(embed=self.craft_docs_page(data), components=[ar])
+
+        if isinstance(thing, disnake.AppCmdInter):
+            msg = await thing.original_message()
+
+        self._docs_msg_map[msg.id] = thing.author.id
 
     @commands.command(name="docs", aliases=["d", "doc", "rtfm"])
     @commands.bot_has_permissions(embed_links=True)
     async def cmd_docs(self, ctx: commands.Context, *, query: str = None):
         """Search the AutoHotkey v1.1 documentation"""
 
-        await self._docs(ctx.send, query, 1)
+        await self._docs(ctx, ctx.send, query, 1)
 
     @commands.slash_command(name="docs")
-    async def slash_docs(self, inter, query: str):
+    async def slash_docs(self, inter: disnake.AppCmdInter, query: str):
         """Search the AutoHotkey v1.1 documentation."""
 
-        await self._docs(inter.response.send_message, query, 1)
+        await self._docs(inter, inter.response.send_message, query, 1)
 
     @commands.command(name="docs2", aliases=["d2", "doc2", "rtfm2"])
     @commands.bot_has_permissions(embed_links=True)
     async def cmd_docs2(self, ctx: commands.Context, *, query: str = None):
         """Search the AutoHotkey v2.0 documentation"""
 
-        await self._docs(ctx.send, query, 2)
+        await self._docs(ctx, ctx.send, query, 2)
 
     @commands.slash_command(name="docs2")
-    async def slash_docs2(self, inter, query: str):
+    async def slash_docs2(self, inter: disnake.AppCmdInter, query: str):
         """Search the AutoHotkey v2.0 documentation."""
 
-        await self._docs(inter.response.send_message, query, 2)
+        await self._docs(inter, inter.response.send_message, query, 2)
 
     @slash_docs.autocomplete("query")
     async def docs_autocomplete(self, inter: disnake.AppCommandInter, query: str):

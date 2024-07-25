@@ -25,8 +25,6 @@ class WhoIs(AceMixin, commands.Cog):
 
         e.description += member.mention
 
-        e.add_field(name="Status", value=member.status)
-
         if member.activity:
             e.add_field(name="Activity", value=member.activity.name)
 
