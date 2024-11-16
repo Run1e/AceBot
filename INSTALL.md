@@ -86,7 +86,7 @@ Please install these according to their instructions.
     postgresql://ace:your_password@localhost/acebot
     ```
   * Your owner ID is the ID of your Discord account.
-    * To obtain it, open your Discord user settings, go to “Appearance”, and enable “Developer Mode”.
+    * To obtain it, open your Discord user settings, under "APP SETTINGS", go to “Advanced”, and enable “Developer Mode”.
       Exit the settings, then right-click yourself anywhere and click “Copy ID”.
 * Create another file called `ids.py`, this time with these contents:
   ```python
