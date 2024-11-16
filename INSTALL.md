@@ -108,6 +108,7 @@ Please install these according to their instructions.
   GENERAL_CHAN_ID = None
   LOGS_CHAN_ID = None
   FORUM_THRD_CHAN_ID = None
+  HELP_FORUM_CHAN_ID = = None
   ACTIVITY_CHAN_ID = None
   EDITED_CHAN_ID = None
   DELETED_CHAN_ID = None

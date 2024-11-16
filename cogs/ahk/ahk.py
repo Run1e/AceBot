@@ -713,7 +713,7 @@ class AutoHotkey(AceMixin, commands.Cog):
 
         await message.edit(
             content=(
-                "Thanks for tagging your post!\n\nIf your issue gets solved, you can mark your post as solved by sending `/solved`"
+                "Thanks for tagging your post as {added_tags}!\n\nIf your issue gets solved, you can mark your post as solved by sending `/solved`"
             ),
             embed=None,
             components=None,
@@ -741,9 +741,42 @@ class AutoHotkey(AceMixin, commands.Cog):
         except:  # hdafdsjkhfjdas
             pass
 
+        if (solved_tag in inter.channel.applied_tags):
+            await inter.channel.edit(
+                archived=True,
+                applied_tags=inter.channel.applied_tags,
+            )
+        else:
+            await inter.channel.edit(
+                archived=True,
+                applied_tags=inter.channel.applied_tags + [solved_tag],
+            )
+        
+    @commands.slash_command(description="Unark your post as solved.", guild_ids=[AHK_GUILD_ID])
+    async def unsolved(self, inter: disnake.AppCmdInter):
+        if (
+            not isinstance(inter.channel, disnake.Thread)
+            or inter.channel.parent.id != HELP_FORUM_CHAN_ID
+        ):
+            raise commands.CommandError("This command should just be run in help channel posts.")
+
+        if inter.author != inter.channel.owner:
+            raise commands.CommandError("Only post author can mark as unsolved.")
+
+        solved_tag = disnake.utils.get(inter.channel.parent.available_tags, name="Solved!")
+        if solved_tag is None:
+            raise commands.CommandError("Solved tag not found")
+
+        try:
+            await inter.send(
+                "The post has been opened and lost the solved tag. The post can be resolved at any time by using /solved again."
+            )
+        except:  # hdafdsjkhfjdas
+            pass
+
         await inter.channel.edit(
-            archived=True,
-            applied_tags=inter.channel.applied_tags + [solved_tag],
+            archived=False,
+            applied_tags=[x for x in inter.channel.applied_tags if x not in [solved_tag]]
         )
 
     @solved.error

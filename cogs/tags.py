@@ -242,6 +242,24 @@ class Tags(AceMixin, commands.Cog):
         except Exception:
             raise commands.CommandError("Failed to create tag for unknown reasons.")
 
+    @commands.slash_command(name="tag")
+    async def slash_docs(self, inter: disnake.AppCmdInter, tag_name: str):
+        """Retrieve a tags content."""
+
+        if tag_name is None:
+            await inter.response.send_message_help(self.tag)
+            return
+
+        tag_name, record = tag_name
+        await ctx.send(record.get("content"), allowed_mentions=disnake.AllowedMentions.none())
+
+        await self.db.execute(
+            "UPDATE tag SET uses=$2, viewed_at=$3 WHERE id=$1",
+            record.get("id"),
+            record.get("uses") + 1,
+            datetime.utcnow(),
+        )
+
     @commands.group(invoke_without_command=True)
     async def tag(self, ctx, *, tag_name: TagViewConverter = None):
         """Retrieve a tags content."""
