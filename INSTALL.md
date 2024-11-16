@@ -52,13 +52,13 @@ Please install these according to their instructions.
   DESCRIPTION = '''A.C.E. - Non-official Instance'''
 
   BOT_TOKEN = 'your_bot_token'
-  BOT_INTENTS = discord.Intents.all()
+  BOT_INTENTS = disnake.Intents.all()
   DEFAULT_PREFIX = '.'
   OWNER_ID = your_discord_id # do not put quotes around this
   DB_BIND = 'your_database_bind'
   LOG_LEVEL = logging.DEBUG  # logging.INFO recommended for production
 
-  BOT_ACTIVITY = discord.Game(name='@me for help menu')
+  BOT_ACTIVITY = disnake.Game(name='@me for help menu')
 
   CLOUDAHK_URL = None
   CLOUDAHK_USER = None
