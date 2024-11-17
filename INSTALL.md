@@ -126,6 +126,7 @@ Please install these according to their instructions.
   ACTIVE_INFO_CHAN_ID = None
   CLOSED_CATEGORY_ID = None
 
+  HELP_CHANNEL_IDS = {}
   IGNORE_ACTIVE_CHAN_IDS = tuple()
   ```
 Both of these files are templates and you can change almost any value in them as you see fit.
