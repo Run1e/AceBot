@@ -711,9 +711,10 @@ class AutoHotkey(AceMixin, commands.Cog):
 
         await thread.edit(applied_tags=added_tags)
 
+        tag_list = " and ".join((tag.emoji.name if tag.emoji else "") + tag.name for tag in added_tags)
         await message.edit(
             content=(
-                "Thanks for tagging your post as {added_tags}!\n\nIf your issue gets solved, you can mark your post as solved by sending `/solved`"
+                "Thanks for tagging your post as " + tag_list + "!\n\nIf your issue gets solved, you can mark your post as solved by sending `/solved`"
             ),
             embed=None,
             components=None,
