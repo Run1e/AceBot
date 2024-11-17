@@ -37,7 +37,7 @@ async def convert2(self, inter, tag_name):
     # otherwise, find a list of potential matches
 
     similars = await inter.bot.db.fetch(
-        "SELECT name, alias FROM tag WHERE guild_id=$1 AND (name %'" + tag_name + "%' OR alias '%" + tag_name + "%') LIMIT 5",
+        "SELECT name, alias FROM tag WHERE guild_id=$1 AND (name %'" + tag_name + "%' OR alias '%" + tag_name + "%') LIMIT 5 ORDER BY uses DESC, viewed_at DESC, edited_at DESC, CREATED_AT DESC",
         inter.guild.id,
     )
 
@@ -153,7 +153,7 @@ class TagViewConverter(commands.Converter):
         # otherwise, find a list of potential matches
 
         similars = await ctx.bot.db.fetch(
-            "SELECT name, alias FROM tag WHERE guild_id=$1 AND (name LIKE '%" + tag_name + "%' OR alias LIKE '%" + tag_name + "%') LIMIT 5",
+            "SELECT name, alias FROM tag WHERE guild_id=$1 AND (name LIKE '%" + tag_name + "%' OR alias LIKE '%" + tag_name + "%') LIMIT 5 ORDER BY uses DESC, viewed_at DESC, edited_at DESC, CREATED_AT DESC",
             ctx.guild.id,
         )
 
@@ -292,11 +292,10 @@ class Tags(AceMixin, commands.Cog):
         query = query.strip().lower()
 
         similars = await inter.bot.db.fetch(
-            "SELECT * FROM tag WHERE guild_id=$1 AND (name LIKE '%" + query + "%' OR alias LIKE '%" + query + "%')",
+            "SELECT * FROM tag WHERE guild_id=$1 AND (name LIKE '%" + query + "%' OR alias LIKE '%" + query + "%') ORDER BY uses DESC, viewed_at DESC, edited_at DESC, CREATED_AT DESC",
             inter.guild.id,
         )
 
-        print(not not similars[0]["alias"])
         data = [(record["name"] + str((" (" + (record["alias"]) + ")") if record["alias"] else " ")) for record in similars]
         return data
 
