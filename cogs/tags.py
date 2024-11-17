@@ -22,7 +22,7 @@ def build_tag_name(record):
         name += f" ({record.get('alias')})"
     return name
 
-async def convert2(self, inter, tag_name):
+async def convert_slash(self, inter, tag_name):
     tag_name = tag_name.lower()
 
     rec = await inter.bot.db.fetchrow(
@@ -37,16 +37,18 @@ async def convert2(self, inter, tag_name):
     # otherwise, find a list of potential matches
 
     similars = await inter.bot.db.fetch(
-        "SELECT name, alias FROM tag WHERE guild_id=$1 AND (name %'" + tag_name + "%' OR alias '%" + tag_name + "%') LIMIT 5 ORDER BY uses DESC, viewed_at DESC, edited_at DESC, CREATED_AT DESC",
+        "SELECT name, alias FROM tag WHERE guild_id=$1 AND (name LIKE '%" + tag_name + "%' OR alias LIKE '%" + tag_name + "%') ORDER BY uses DESC, viewed_at DESC, edited_at DESC, created_at DESC LIMIT 5",
         inter.guild.id,
     )
-
+            
     if similars:
         tag_list = "\n".join(build_tag_name(record) for record in similars)
-        raise commands.CommandError(f"Tag not found. Did you mean any of these?\n\n{tag_list}")
+        await inter.response.send_message(f"Tag not found. Did you mean any of these?\n\n{tag_list}", ephemeral=True)
+        return
 
     # and if none found, just raise the not found error
-    raise commands.CommandError("Tag not found.")
+    await inter.send("Tag not found.", ephemeral=True)
+    return
 
 
 class TagCreateConverter(LengthConverter):
@@ -153,7 +155,7 @@ class TagViewConverter(commands.Converter):
         # otherwise, find a list of potential matches
 
         similars = await ctx.bot.db.fetch(
-            "SELECT name, alias FROM tag WHERE guild_id=$1 AND (name LIKE '%" + tag_name + "%' OR alias LIKE '%" + tag_name + "%') LIMIT 5 ORDER BY uses DESC, viewed_at DESC, edited_at DESC, CREATED_AT DESC",
+            "SELECT name, alias FROM tag WHERE guild_id=$1 AND (name LIKE '%" + tag_name + "%' OR alias LIKE '%" + tag_name + "%') ORDER BY uses DESC, viewed_at DESC, edited_at DESC, created_at DESC LIMIT 5",
             ctx.guild.id,
         )
 
@@ -272,13 +274,12 @@ class Tags(AceMixin, commands.Cog):
     async def slash_tags(self, inter: disnake.AppCmdInter, query: str):
         """Retrieve a tags content."""
 
-        tag_name = await convert2(self, inter, re.sub(" .*", "", query))
+        tag_name = await convert_slash(self, inter, re.sub(" .*", "", query))
         if tag_name is None:
-            await inter.response.send_message_help(self.tag)
             return
 
         record = tag_name
-        await inter.response.send_message(record.get("content"), allowed_mentions=disnake.AllowedMentions.none())
+        await inter.send(record.get("content"), allowed_mentions=disnake.AllowedMentions.none())
 
         await self.db.execute(
             "UPDATE tag SET uses=$2, viewed_at=$3 WHERE id=$1",
@@ -292,7 +293,7 @@ class Tags(AceMixin, commands.Cog):
         query = query.strip().lower()
 
         similars = await inter.bot.db.fetch(
-            "SELECT * FROM tag WHERE guild_id=$1 AND (name LIKE '%" + query + "%' OR alias LIKE '%" + query + "%') ORDER BY uses DESC, viewed_at DESC, edited_at DESC, CREATED_AT DESC",
+            "SELECT * FROM tag WHERE guild_id=$1 AND (name LIKE '%" + query + "%' OR alias LIKE '%" + query + "%') ORDER BY uses DESC, viewed_at DESC, edited_at DESC, created_at DESC",
             inter.guild.id,
         )
 
