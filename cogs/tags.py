@@ -37,8 +37,9 @@ async def convert_slash(self, inter, tag_name):
     # otherwise, find a list of potential matches
 
     similars = await inter.bot.db.fetch(
-        "SELECT name, alias FROM tag WHERE guild_id=$1 AND (name LIKE '%" + tag_name + "%' OR alias LIKE '%" + tag_name + "%') ORDER BY uses DESC, viewed_at DESC, edited_at DESC, created_at DESC LIMIT 5",
+        "SELECT name, alias FROM tag WHERE guild_id=$1 AND (name LIKE '%$2%' OR alias LIKE '%$2%') ORDER BY uses DESC, viewed_at DESC, edited_at DESC, created_at DESC LIMIT 5",
         inter.guild.id,
+        tag_name,
     )
             
     if similars:
@@ -155,8 +156,9 @@ class TagViewConverter(commands.Converter):
         # otherwise, find a list of potential matches
 
         similars = await ctx.bot.db.fetch(
-            "SELECT name, alias FROM tag WHERE guild_id=$1 AND (name LIKE '%" + tag_name + "%' OR alias LIKE '%" + tag_name + "%') ORDER BY uses DESC, viewed_at DESC, edited_at DESC, created_at DESC LIMIT 5",
+            "SELECT name, alias FROM tag WHERE guild_id=$1 AND (name LIKE '%$2%' OR alias LIKE '%$2%') ORDER BY uses DESC, viewed_at DESC, edited_at DESC, created_at DESC LIMIT 5",
             ctx.guild.id,
+            tag_name,
         )
 
         if similars:

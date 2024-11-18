@@ -46,6 +46,8 @@ DISCORD_UPLOAD_LIMIT = 8000000  # 8 MB
 
 BULLET = "•"
 
+def tag_string(tag):
+    return (tag.emoji.name + " " if tag.emoji else "") + tag.name
 
 class RunnableCodeConverter(commands.Converter):
     async def convert(self, ctx, code):
@@ -711,10 +713,19 @@ class AutoHotkey(AceMixin, commands.Cog):
 
         await thread.edit(applied_tags=added_tags)
 
-        tag_list = " and ".join((tag.emoji.name if tag.emoji else "") + tag.name for tag in added_tags)
+        tag_list = ""
+        match len(added_tags):
+            case 0:
+                tag_list = ""
+            case 1:
+                tag_list = tag_string(added_tags[0])
+            case 2:
+                tag_list = " and ".join(tag_string(tag) for tag in added_tags)
+            case _:
+                tag_list = ", ".join(tag_string(tag) for tag in added_tags[:-1]) + ", and " + tag_string(added_tags[-1])
         await message.edit(
             content=(
-                "Thanks for tagging your post as " + tag_list + "!\n\nIf your issue gets solved, you can mark your post as solved by sending `/solved`"
+                f"Thanks for tagging your post as {tag_list}!\n\nIf your issue gets solved, you can mark your post as solved by sending `/solved`"
             ),
             embed=None,
             components=None,
@@ -742,16 +753,10 @@ class AutoHotkey(AceMixin, commands.Cog):
         except:  # hdafdsjkhfjdas
             pass
 
-        if (solved_tag in inter.channel.applied_tags):
-            await inter.channel.edit(
-                archived=True,
-                applied_tags=inter.channel.applied_tags,
-            )
-        else:
-            await inter.channel.edit(
-                archived=True,
-                applied_tags=inter.channel.applied_tags + [solved_tag],
-            )
+        await inter.channel.edit(
+            archived=True,
+            applied_tags=inter.channel.applied_tags + ([] if solved_tag in inter.channel.applied_tags else [solved_tag]),
+        )
         
     @commands.slash_command(description="Unark your post as solved.", guild_ids=[AHK_GUILD_ID])
     async def unsolved(self, inter: disnake.AppCmdInter):
@@ -777,7 +782,7 @@ class AutoHotkey(AceMixin, commands.Cog):
 
         await inter.channel.edit(
             archived=False,
-            applied_tags=[x for x in inter.channel.applied_tags if x not in [solved_tag]]
+            applied_tags=[x for x in inter.channel.applied_tags if x != solved_tag]
         )
 
     @solved.error
