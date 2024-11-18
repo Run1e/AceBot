@@ -46,6 +46,8 @@ DISCORD_UPLOAD_LIMIT = 8000000  # 8 MB
 
 BULLET = "•"
 
+def tag_string(tag):
+    return (tag.emoji.name + " " if tag.emoji else "") + tag.name
 
 class RunnableCodeConverter(commands.Converter):
     async def convert(self, ctx, code):
@@ -727,9 +729,19 @@ class AutoHotkey(AceMixin, commands.Cog):
 
         await thread.edit(applied_tags=added_tags)
 
+        tag_list = ""
+        match len(added_tags):
+            case 0:
+                tag_list = ""
+            case 1:
+                tag_list = tag_string(added_tags[0])
+            case 2:
+                tag_list = " and ".join(tag_string(tag) for tag in added_tags)
+            case _:
+                tag_list = ", ".join(tag_string(tag) for tag in added_tags[:-1]) + ", and " + tag_string(added_tags[-1])
         await message.edit(
             content=(
-                "Thanks for tagging your post!\n\nIf your issue gets solved, you can mark your post as solved by sending `/solved`"
+                f"Thanks for tagging your post as {tag_list}!\n\nIf your issue gets solved, you can mark your post as solved by sending `/solved`"
             ),
             embed=None,
             components=None,
