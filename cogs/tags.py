@@ -1,4 +1,5 @@
 import asyncio
+import re
 import logging
 from datetime import datetime
 
@@ -20,6 +21,35 @@ def build_tag_name(record):
     if record.get("alias") is not None:
         name += f" ({record.get('alias')})"
     return name
+
+async def convert_slash(self, inter, tag_name):
+    tag_name = tag_name.lower()
+
+    rec = await inter.bot.db.fetchrow(
+        "SELECT * FROM tag WHERE guild_id=$1 AND (name=$2 OR alias=$2)",
+        inter.guild.id,
+        tag_name,
+    )
+
+    if rec is not None:
+        return rec
+
+    # otherwise, find a list of potential matches
+
+    similars = await inter.bot.db.fetch(
+        "SELECT name, alias FROM tag WHERE guild_id=$1 AND (name LIKE '%$2%' OR alias LIKE '%$2%') ORDER BY uses DESC, viewed_at DESC, edited_at DESC, created_at DESC LIMIT 5",
+        inter.guild.id,
+        tag_name,
+    )
+            
+    if similars:
+        tag_list = "\n".join(build_tag_name(record) for record in similars)
+        await inter.response.send_message(f"Tag not found. Did you mean any of these?\n\n{tag_list}", ephemeral=True)
+        return
+
+    # and if none found, just raise the not found error
+    await inter.send("Tag not found.", ephemeral=True)
+    return
 
 
 class TagCreateConverter(LengthConverter):
@@ -241,6 +271,36 @@ class Tags(AceMixin, commands.Cog):
             raise commands.CommandError("Tag already exists.")
         except Exception:
             raise commands.CommandError("Failed to create tag for unknown reasons.")
+
+    @commands.slash_command(name="tag")
+    async def slash_tags(self, inter: disnake.AppCmdInter, query: str):
+        """Retrieve a tags content."""
+
+        tag_name = await convert_slash(self, inter, re.sub(" .*", "", query))
+        if tag_name is None:
+            return
+
+        record = tag_name
+        await inter.send(record.get("content"), allowed_mentions=disnake.AllowedMentions.none())
+
+        await self.db.execute(
+            "UPDATE tag SET uses=$2, viewed_at=$3 WHERE id=$1",
+            record.get("id"),
+            record.get("uses") + 1,
+            datetime.utcnow(),
+        )
+
+    @slash_tags.autocomplete("query")
+    async def tags_autocomplete(self, inter: disnake.AppCmdInter, query: str):
+        query = query.strip().lower()
+
+        similars = await inter.bot.db.fetch(
+            "SELECT * FROM tag WHERE guild_id=$1 AND (name LIKE '%" + query + "%' OR alias LIKE '%" + query + "%') ORDER BY uses DESC, viewed_at DESC, edited_at DESC, created_at DESC",
+            inter.guild.id,
+        )
+
+        data = [(record["name"] + str((" (" + (record["alias"]) + ")") if record["alias"] else " ")) for record in similars]
+        return data
 
     @commands.group(invoke_without_command=True)
     async def tag(self, ctx, *, tag_name: TagViewConverter = None):
