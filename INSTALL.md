@@ -52,13 +52,13 @@ Please install these according to their instructions.
   DESCRIPTION = '''A.C.E. - Non-official Instance'''
 
   BOT_TOKEN = 'your_bot_token'
-  BOT_INTENTS = discord.Intents.all()
+  BOT_INTENTS = disnake.Intents.all()
   DEFAULT_PREFIX = '.'
   OWNER_ID = your_discord_id # do not put quotes around this
   DB_BIND = 'your_database_bind'
   LOG_LEVEL = logging.DEBUG  # logging.INFO recommended for production
 
-  BOT_ACTIVITY = discord.Game(name='@me for help menu')
+  BOT_ACTIVITY = disnake.Game(name='@me for help menu')
 
   CLOUDAHK_URL = None
   CLOUDAHK_USER = None
@@ -86,7 +86,7 @@ Please install these according to their instructions.
     postgresql://ace:your_password@localhost/acebot
     ```
   * Your owner ID is the ID of your Discord account.
-    * To obtain it, open your Discord user settings, go to “Appearance”, and enable “Developer Mode”.
+    * To obtain it, open your Discord user settings, under "APP SETTINGS", go to “Advanced”, and enable “Developer Mode”.
       Exit the settings, then right-click yourself anywhere and click “Copy ID”.
 * Create another file called `ids.py`, this time with these contents:
   ```python
@@ -108,6 +108,7 @@ Please install these according to their instructions.
   GENERAL_CHAN_ID = None
   LOGS_CHAN_ID = None
   FORUM_THRD_CHAN_ID = None
+  HELP_FORUM_CHAN_ID = = None
   ACTIVITY_CHAN_ID = None
   EDITED_CHAN_ID = None
   DELETED_CHAN_ID = None
@@ -125,6 +126,7 @@ Please install these according to their instructions.
   ACTIVE_INFO_CHAN_ID = None
   CLOSED_CATEGORY_ID = None
 
+  HELP_CHANNEL_IDS = {}
   IGNORE_ACTIVE_CHAN_IDS = tuple()
   ```
 Both of these files are templates and you can change almost any value in them as you see fit.
