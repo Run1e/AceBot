@@ -9,8 +9,9 @@ from utils.time import pretty_seconds
 
 
 class ErrorHandler(commands.Cog, AceMixin):
-    @commands.Cog.listener()
-    async def on_command_error(self, ctx: AceContext, exc):
+    @commands.Cog.listener("on_command_error")
+    @commands.Cog.listener("on_slash_command_error")
+    async def on_invocable_error(self, ctx: AceContext, exc):
         """Handle command errors."""
         async with CommandErrorLogic(ctx, exc) as handler:
             if isinstance(exc, commands.CommandInvokeError):
