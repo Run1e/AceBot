@@ -3,6 +3,7 @@ from datetime import datetime
 from pprint import saferepr
 
 import disnake
+from disnake.ext import commands
 
 
 class CommandErrorLogic:
@@ -27,7 +28,9 @@ class CommandErrorLogic:
             ctx = self.ctx
             e = self.embed
 
-            if ctx.perms.embed_links:
+            perms = ctx.perms if isinstance(ctx, commands.Context) else ctx.permissions
+
+            if perms.embed_links:
                 if self.save:
                     e.description += self.support_text(True)
                 await ctx.send(embed=e)

@@ -1,4 +1,5 @@
 import asyncio
+import re
 import logging
 from datetime import datetime
 
@@ -126,9 +127,9 @@ class TagViewConverter(commands.Converter):
         # otherwise, find a list of potential matches
 
         similars = await ctx.bot.db.fetch(
-            "SELECT name, alias FROM tag WHERE guild_id=$1 AND (name % $2 OR alias % $2) LIMIT 5",
+            "SELECT name, alias FROM tag WHERE guild_id=$1 AND (name LIKE $2 OR alias LIKE $2) LIMIT 5",
             ctx.guild.id,
-            tag_name,
+            f"%{tag_name}%",
         )
 
         if similars:
@@ -241,6 +242,31 @@ class Tags(AceMixin, commands.Cog):
             raise commands.CommandError("Tag already exists.")
         except Exception:
             raise commands.CommandError("Failed to create tag for unknown reasons.")
+
+    @commands.slash_command(name="tag")
+    async def slash_tags(self, inter: disnake.AppCmdInter, query: str):
+        """Retrieve a tags content."""
+
+        _, record = await TagViewConverter().convert(inter, query)
+
+        await inter.send(record.get("content"), allowed_mentions=disnake.AllowedMentions.none())
+
+        await self.db.execute(
+            "UPDATE tag SET uses=$2, viewed_at=$3 WHERE id=$1",
+            record.get("id"),
+            record.get("uses") + 1,
+            datetime.utcnow(),
+        )
+
+    @slash_tags.autocomplete("query")
+    async def tags_autocomplete(self, inter: disnake.AppCmdInter, query: str):
+        similars = await inter.bot.db.fetch(
+            "SELECT * FROM tag WHERE guild_id=$1 AND (name LIKE $2 OR alias LIKE $2) ORDER BY uses DESC, viewed_at DESC LIMIT 5",
+            inter.guild.id,
+            f"%{query.lower()}%",
+        )
+
+        return [build_tag_name(record) for record in similars]
 
     @commands.group(invoke_without_command=True)
     async def tag(self, ctx, *, tag_name: TagViewConverter = None):
