@@ -719,8 +719,7 @@ class AutoHotkey(AceMixin, commands.Cog):
             components=None,
         )
 
-    @commands.slash_command(description="Mark your post as solved.", guild_ids=[AHK_GUILD_ID])
-    async def solved(self, inter: disnake.AppCmdInter):
+    def solved_perms(inter):
         if (
             not isinstance(inter.channel, disnake.Thread)
             or inter.channel.parent.id != HELP_FORUM_CHAN_ID
@@ -733,6 +732,12 @@ class AutoHotkey(AceMixin, commands.Cog):
         solved_tag = disnake.utils.get(inter.channel.parent.available_tags, name="Solved!")
         if solved_tag is None:
             raise commands.CommandError("Solved tag not found")
+        return True
+
+    @commands.slash_command(description="Mark your post as solved.", guild_ids=[AHK_GUILD_ID])
+    @commands.check(solved_perms)
+    async def solved(self, inter: disnake.AppCmdInter):
+        solved_tag = disnake.utils.get(inter.channel.parent.available_tags, name="Solved!")
 
         try:
             await inter.send(
@@ -740,37 +745,31 @@ class AutoHotkey(AceMixin, commands.Cog):
             )
         except:  # hdafdsjkhfjdas
             pass
-
+        
+        add = dict()
+        if solved_tag not in inter.channel.applied_tags:
+            add["applied_tags"] = inter.channel.applied_tags + [solved_tag]
+            
         await inter.channel.edit(
             archived=True,
-            applied_tags=inter.channel.applied_tags + ([] if solved_tag in inter.channel.applied_tags else [solved_tag]),
+            **add,
         )
         
-    @commands.slash_command(description="Unark your post as solved.", guild_ids=[AHK_GUILD_ID])
+    @commands.slash_command(description="Unmark your post as solved.", guild_ids=[AHK_GUILD_ID])
+    @commands.check(solved_perms)
     async def unsolved(self, inter: disnake.AppCmdInter):
-        if (
-            not isinstance(inter.channel, disnake.Thread)
-            or inter.channel.parent.id != HELP_FORUM_CHAN_ID
-        ):
-            raise commands.CommandError("This command should just be run in help channel posts.")
-
-        if inter.author != inter.channel.owner:
-            raise commands.CommandError("Only post author can mark as unsolved.")
-
         solved_tag = disnake.utils.get(inter.channel.parent.available_tags, name="Solved!")
-        if solved_tag is None:
-            raise commands.CommandError("Solved tag not found")
 
         try:
             await inter.send(
                 "The post has been opened and lost the solved tag. The post can be resolved at any time by using /solved again."
             )
-        except:  # hdafdsjkhfjdas
+        except disnake.HTTPException:  # hdafdsjkhfjdas
             pass
 
         await inter.channel.edit(
             archived=False,
-            applied_tags=[x for x in inter.channel.applied_tags if x != solved_tag]
+            applied_tags=[tag for tag in inter.channel.applied_tags if tag != solved_tag]
         )
 
     @solved.error
