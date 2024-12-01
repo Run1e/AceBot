@@ -543,11 +543,6 @@ class AutoHotkey(AceMixin, commands.Cog):
 
         return ret
 
-    @slash_msdn.error
-    async def slash_msdn_error(self, inter: disnake.CommandInteraction, exc):
-        if isinstance(exc, commands.CommandError):
-            await inter.send(embed=disnake.Embed(description=str(exc)), ephemeral=True)
-
     @commands.command()
     async def version(self, ctx):
         """Get changelog and download for the latest AutoHotkey_L version."""
@@ -779,13 +774,6 @@ class AutoHotkey(AceMixin, commands.Cog):
             archived=False,
             applied_tags=[tag for tag in inter.channel.applied_tags if tag != solved_tag],
         )
-
-    @solved.error
-    async def slash_error(self, inter: disnake.CommandInteraction, exc):
-        if exc.__class__ is commands.CommandError:
-            await inter.send(embed=disnake.Embed(description=str(exc)), ephemeral=True)
-        else:
-            raise exc
 
     def find_all_emoji(self, message, *, regex=re.compile(r"<a?:.+?:([0-9]{15,21})>")):
         return regex.findall(message.content)

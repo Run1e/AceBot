@@ -28,12 +28,17 @@ class CommandErrorLogic:
             ctx = self.ctx
             e = self.embed
 
-            perms = ctx.perms if isinstance(ctx, commands.Context) else ctx.permissions
+            extra = dict()
+            if isinstance(ctx, commands.Context):
+                perms = ctx.perms
+            else:
+                perms = ctx.permissions
+                extra["ephemeral"] = True
 
             if perms.embed_links:
                 if self.save:
                     e.description += self.support_text(True)
-                await ctx.send(embed=e)
+                await ctx.send(embed=e, **extra)
             else:
                 content = str()
                 if isinstance(e.title, str):
@@ -47,7 +52,7 @@ class CommandErrorLogic:
                 if self.save:
                     content += self.support_text(False)
 
-                await ctx.send(content)
+                await ctx.send(content, **extra)
 
         except disnake.HTTPException:
             pass
