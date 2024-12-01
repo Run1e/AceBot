@@ -15,11 +15,13 @@ from utils.time import pretty_datetime
 
 log = logging.getLogger(__name__)
 
+ZWS = "\u200c"
 
-def build_tag_name(record):
+
+def build_tag_name(record, zws=False):
     name = record.get("name")
     if record.get("alias") is not None:
-        name += f" ({record.get('alias')})"
+        name += f"{ZWS if zws else ''} ({record.get('alias')})"
     return name
 
 
@@ -247,7 +249,7 @@ class Tags(AceMixin, commands.Cog):
     async def slash_tags(self, inter: disnake.AppCmdInter, query: str):
         """Retrieve a tags content."""
 
-        _, record = await TagViewConverter().convert(inter, query)
+        _, record = await TagViewConverter().convert(inter, query.split(ZWS)[0])
 
         await inter.send(record.get("content"), allowed_mentions=disnake.AllowedMentions.none())
 
@@ -266,7 +268,7 @@ class Tags(AceMixin, commands.Cog):
             f"%{query.lower()}%",
         )
 
-        return [build_tag_name(record) for record in similars]
+        return [build_tag_name(record, zws=True) for record in similars]
 
     @commands.group(invoke_without_command=True)
     async def tag(self, ctx, *, tag_name: TagViewConverter = None):
