@@ -46,8 +46,10 @@ DISCORD_UPLOAD_LIMIT = 8000000  # 8 MB
 
 BULLET = "•"
 
+
 def tag_string(tag):
     return (tag.emoji.name + " " if tag.emoji else "") + tag.name
+
 
 class RunnableCodeConverter(commands.Converter):
     async def convert(self, ctx, code):
@@ -688,7 +690,7 @@ class AutoHotkey(AceMixin, commands.Cog):
             return tags.get(button_inter.component.label, "Skip")
 
         tags = {tag.name: tag for tag in thread.parent.available_tags}
-        added_tags = []
+        added_tags: list[disnake.ForumTag] = []
 
         questions = (
             (
@@ -729,18 +731,19 @@ class AutoHotkey(AceMixin, commands.Cog):
 
         await thread.edit(applied_tags=added_tags)
 
-        tag_list = ""
-        for tag in added_tags:
-            tag_list += "\n- " + tag_string(tag)
-        if (tag_list != ""):
-            tag_list += "\n"
-        await message.edit(
-            content=(
-                f"Thanks for tagging your post!\n{tag_list}\n**If your issue gets solved, you can mark your post as solved by sending `/solved`**"
-            ),
-            embed=None,
-            components=None,
-        )
+        content = "Thanks for tagging your post!\n"
+
+        if added_tags:
+            content += "\n"
+            for tag in added_tags:
+                if tag.emoji:
+                    content += f"- {tag.emoji} {tag.name}\n"
+                else:
+                    content += f"- {tag.name}\n"
+
+        content += "\n**If your issue gets solved, you can mark your post as solved by sending `/solved`**"
+
+        await message.edit(content=content, embed=None, components=None)
 
     @commands.slash_command(description="Mark your post as solved.", guild_ids=[AHK_GUILD_ID])
     @commands.check(solved_perms)
