@@ -2,6 +2,7 @@ import asyncio
 import re
 import logging
 from datetime import datetime
+from enum import Enum
 
 import asyncpg
 import disnake
@@ -170,7 +171,19 @@ class TagPager(Pager):
         embed.clear_fields()
         embed.add_field(name="Name", value=tags[1:])
         embed.add_field(name="Uses", value="\n".join(str(use) for use in uses))
-
+class Choices(str, Enum):
+    Default = ' '
+    Create = 'create'
+    Edit = 'edit'
+    Delete = 'delete'
+    List = 'list'
+    Make = 'make'
+    Raw = 'raw'
+    Ren = 'rename'
+    Alias = 'alias'
+    Info = 'info'
+    Transfer = 'transfer'
+    Tags = 'tags'
 
 class Tags(AceMixin, commands.Cog):
     """Store and bring up text using tags. Tags are unique to each server."""
@@ -246,22 +259,26 @@ class Tags(AceMixin, commands.Cog):
             raise commands.CommandError("Failed to create tag for unknown reasons.")
 
     @commands.slash_command(name="tag")
-    async def slash_tags(self, inter: disnake.AppCmdInter, query: str):
+    async def slash_tags(self, inter: disnake.AppCmdInter, query: str, subcom: Choices = Choices.Default):
         """Retrieve a tags content."""
 
-        _, record = await TagViewConverter().convert(inter, query.split(ZWS)[0])
+        match subcom:
+            case Choices.Default:
+                _, record = await TagViewConverter().convert(inter, query.split(ZWS)[0])
 
-        await inter.send(record.get("content"), allowed_mentions=disnake.AllowedMentions.none())
+                await inter.send(record.get("content"), allowed_mentions=disnake.AllowedMentions.none())
 
-        await self.db.execute(
-            "UPDATE tag SET uses=$2, viewed_at=$3 WHERE id=$1",
-            record.get("id"),
-            record.get("uses") + 1,
-            datetime.utcnow(),
-        )
+                await self.db.execute(
+                    "UPDATE tag SET uses=$2, viewed_at=$3 WHERE id=$1",
+                    record.get("id"),
+                    record.get("uses") + 1,
+                    datetime.utcnow(),
+                )
+            # case Choices.Info:
+
 
     @slash_tags.autocomplete("query")
-    async def tags_autocomplete(self, inter: disnake.AppCmdInter, query: str):
+    async def tags_autocomplete(self, inter: disnake.AppCmdInter, query: str, subcom: Choices = Choices.Default):
         similars = await inter.bot.db.fetch(
             "SELECT * FROM tag WHERE guild_id=$1 AND (name LIKE $2 OR alias LIKE $2) ORDER BY uses DESC, viewed_at DESC LIMIT 5",
             inter.guild.id,
