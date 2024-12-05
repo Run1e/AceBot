@@ -7,8 +7,10 @@ from enum import Enum
 import asyncpg
 import disnake
 from disnake.ext import commands
+import disnake.ext.commands
 
 from cogs.mixins import AceMixin
+import disnake.ext
 from utils.context import AceContext, can_prompt
 from utils.converters import LengthConverter, MaybeMemberConverter
 from utils.pager import Pager
@@ -260,7 +262,6 @@ class Tags(AceMixin, commands.Cog):
     @commands.slash_command(name="tag")
     async def slash_tags(self, inter: disnake.AppCmdInter, query: str, subcom: Choices = Choices.Default, string: str = None, member: disnake.Member = None):
         """Retrieve a tags content."""
-        print(string)
         match subcom:
             case Choices.Default:
                 _, record = await TagViewConverter().convert(inter, query.split(ZWS)[0])
@@ -276,8 +277,12 @@ class Tags(AceMixin, commands.Cog):
             case Choices.Create:
                 if (string == None):
                     raise commands.CommandError("Please input the tag content in the string paramater.")
-                content = await self.craft_tag_contents(inter, string)
-
+                content = string
+                if (string.isnumeric()):
+                    await inter.response.defer()
+                    message = await inter.original_response()
+                    message = await message.channel.fetch_message(int(string))
+                    content = message.content
                 await self.create_tag(inter, query, content)
                 await inter.send(f"Tag '{query}' created.")
             case Choices.Edit:
