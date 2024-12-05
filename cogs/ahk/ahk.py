@@ -775,6 +775,38 @@ class AutoHotkey(AceMixin, commands.Cog):
             applied_tags=[tag for tag in inter.channel.applied_tags if tag != solved_tag],
         )
 
+    @commands.slash_command(description="Close your post without marking as solved.", guild_ids=[AHK_GUILD_ID])
+    async def close(self, inter: disnake.AppCmdInter):
+        solved_tag = disnake.utils.get(inter.channel.parent.available_tags, name="Solved!")
+
+        if (
+            not isinstance(inter.channel, disnake.Thread)
+            or inter.channel.parent.id != HELP_FORUM_CHAN_ID
+        ):
+            raise commands.CommandError("This command should just be run in help channel posts.")
+
+        solved_tag = disnake.utils.get(inter.channel.parent.available_tags, name="Solved!")
+        if solved_tag is None:
+            raise commands.CommandError("Solved tag not found")
+
+        owned = True
+        try :
+            await inter.channel.fetch_member(inter.channel.owner.id)
+        except disnake.NotFound:
+            owned = False
+        if inter.author != inter.channel.owner and owned and not solved_tag in inter.channel.applied_tags:
+            raise commands.CommandError("Only post author can close unsolved posts while they're in the post.")
+
+        try:
+            await inter.send(
+                "The post has been closed. The post can be reopened at any time by sending a message."
+            )
+        except disnake.HTTPException:
+            pass
+
+
+        await inter.channel.edit(archived=True)
+
     def find_all_emoji(self, message, *, regex=re.compile(r"<a?:.+?:([0-9]{15,21})>")):
         return regex.findall(message.content)
 
