@@ -260,7 +260,7 @@ class Tags(AceMixin, commands.Cog):
     @commands.slash_command(name="tag")
     async def slash_tags(self, inter: disnake.AppCmdInter, query: str, subcom: Choices = Choices.Default, string: str = None, member: disnake.Member = None):
         """Retrieve a tags content."""
-
+        print(string)
         match subcom:
             case Choices.Default:
                 _, record = await TagViewConverter().convert(inter, query.split(ZWS)[0])
@@ -276,6 +276,10 @@ class Tags(AceMixin, commands.Cog):
             case Choices.Create:
                 if (string == None):
                     raise commands.CommandError("Please input the tag content in the string paramater.")
+                content = await self.craft_tag_contents(inter, string)
+
+                await self.create_tag(inter, query, content)
+                await inter.send(f"Tag '{query}' created.")
             case Choices.Edit:
                 if (string == None):
                     raise commands.CommandError("Please input the new tag content in the string paramater.")
