@@ -177,9 +177,8 @@ class Choices(str, Enum):
     Edit = 'edit'
     Delete = 'delete'
     List = 'list'
-    Make = 'make'
     Raw = 'raw'
-    Ren = 'rename'
+    Rename = 'rename'
     Alias = 'alias'
     Info = 'info'
     Transfer = 'transfer'
@@ -259,7 +258,7 @@ class Tags(AceMixin, commands.Cog):
             raise commands.CommandError("Failed to create tag for unknown reasons.")
 
     @commands.slash_command(name="tag")
-    async def slash_tags(self, inter: disnake.AppCmdInter, query: str, subcom: Choices = Choices.Default):
+    async def slash_tags(self, inter: disnake.AppCmdInter, query: str, subcom: Choices = Choices.Default, string: str = None, member: disnake.Member = None):
         """Retrieve a tags content."""
 
         match subcom:
@@ -274,11 +273,36 @@ class Tags(AceMixin, commands.Cog):
                     record.get("uses") + 1,
                     datetime.utcnow(),
                 )
-            # case Choices.Info:
+            case Choices.Create:
+                if (string == None):
+                    raise commands.CommandError("Please input the tag content in the string paramater.")
+            case Choices.Edit:
+                if (string == None):
+                    raise commands.CommandError("Please input the new tag content in the string paramater.")
+            case Choices.Delete:
+                pass
+            case Choices.List:
+                pass
+            case Choices.Raw:
+                pass
+            case Choices.Rename:
+                if (string == None):
+                    raise commands.CommandError("Please input the new tag name in the string paramater.")
+            case Choices.Alias:
+                if (string == None):
+                    raise commands.CommandError("Please input the new tag alias in the string paramater.")
+            case Choices.Info:
+                pass
+            case Choices.Transfer:
+                if (member == None):
+                    raise commands.CommandError("Please input the new tag owner in the member paramater.")
+            case Choices.Tags:
+                pass
+
 
 
     @slash_tags.autocomplete("query")
-    async def tags_autocomplete(self, inter: disnake.AppCmdInter, query: str, subcom: Choices = Choices.Default):
+    async def tags_autocomplete(self, inter: disnake.AppCmdInter, query: str):
         similars = await inter.bot.db.fetch(
             "SELECT * FROM tag WHERE guild_id=$1 AND (name LIKE $2 OR alias LIKE $2) ORDER BY uses DESC, viewed_at DESC LIMIT 5",
             inter.guild.id,
