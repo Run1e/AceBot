@@ -4,6 +4,7 @@ from pprint import saferepr
 
 import disnake
 from disnake.ext import commands
+from utils import string, time
 
 
 class CommandErrorLogic:
@@ -60,7 +61,7 @@ class CommandErrorLogic:
         # after doing that, save and raise if it's an oops
         finally:
             if self.save:
-                self.save_error()
+                await self.save_error()
                 raise self.exc
 
     @staticmethod
@@ -92,11 +93,26 @@ class CommandErrorLogic:
         self.save = True
         self.embed = e
 
-    def save_error(self):
+    async def save_error(self):
         ctx = self.ctx
         exc = self.exc
 
         timestamp = str(datetime.utcnow()).split(".")[0].replace(" ", "_").replace(":", "")
+        if isinstance(ctx, disnake.ApplicationCommandInteraction):
+            ctx.message = await ctx.original_message()
+            ctx.command = ctx.application_command
+            kwargs = ctx.filled_options
+            args = kwargs.items()
+            ctx.stamp = "TIME: {}\nGUILD: {}\nCHANNEL: #{}\nAUTHOR: {}\nMESSAGE ID: {}".format(
+                time.pretty_datetime(ctx.message.created_at),
+                string.po(ctx.guild),
+                string.po(ctx.channel),
+                string.po(ctx.author),
+                str(ctx.message.id),
+            )
+        else:
+            args = ctx.args[2:]
+            kwargs = ctx.kwargs
         filename = str(ctx.message.id) + "_" + timestamp + ".error"
 
         try:
@@ -107,7 +123,7 @@ class CommandErrorLogic:
         content = (
             "{0.stamp}\n\nMESSAGE CONTENT:\n{0.message.content}\n\n"
             "COMMAND: {0.command.qualified_name}\nARGS: {1}\nKWARGS: {2}\n\n{3}"
-        ).format(ctx, saferepr(ctx.args[2:]), saferepr(ctx.kwargs), tb)
+        ).format(ctx, saferepr(args), saferepr(kwargs), tb)
 
         with open("data/error/{0}".format(filename), "w", encoding="utf-8-sig") as f:
             f.write(content)
