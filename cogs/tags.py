@@ -83,7 +83,7 @@ class TagCreateConverter(LengthConverter):
 
         if exist_id is not None:
             raise commands.BadArgument("Tag name is already in use.")
-        print("converted")
+
         return tag_name
 
 
@@ -286,14 +286,14 @@ class Tags(AceMixin, commands.Cog):
                 if string is None:
                     raise commands.CommandError("Please input the tag content in the string paramater.")
                 content = string
+
                 if (string.isnumeric()):
                     await inter.response.defer()
                     message = await inter.original_response()
                     message = await message.channel.fetch_message(int(string))
                     content = message.content
-                print(query)
-                _, record = await TagCreateConverter().convert(inter, query.split(ZWS)[0])
-                print(record)
+
+                record = await TagCreateConverter().convert(inter, query.split(ZWS)[0])
                 await self.create_tag(inter, record, content)
                 await inter.send(f"Tag '{query}' created.")
             case Choices.Edit:
