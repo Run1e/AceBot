@@ -67,7 +67,12 @@ class TagCreateConverter(LengthConverter):
         if tag_name != await escape_converter.convert(ctx, tag_name):
             raise commands.BadArgument("Tag name has disallowed formatting in it.")
 
-        if ctx.cog.tag_is_being_made(ctx, tag_name):
+        if isinstance(ctx, disnake.ApplicationCommandInteraction):
+            cog = ctx.application_command.cog
+        else:
+            cog = ctx.cog
+
+        if cog.tag_is_being_made(ctx, tag_name):
             raise commands.BadArgument("Tag with that name is currently being made elsewhere.")
 
         exist_id = await ctx.bot.db.fetchval(
@@ -78,7 +83,7 @@ class TagCreateConverter(LengthConverter):
 
         if exist_id is not None:
             raise commands.BadArgument("Tag name is already in use.")
-
+        print("converted")
         return tag_name
 
 
@@ -107,7 +112,7 @@ class TagEditConverter(commands.Converter):
         if rec.get("user_id") != ctx.author.id and not await ctx.bot.is_owner(ctx.author):
             # if not, check if mod should be allowed to do this action. if not, raise access error
             # if they can, check if invoker is mod, if not, raise access error
-            if not self.allow_mod or not await ctx.is_mod():
+            if not self.allow_mod or not await AceContext.is_mod(ctx):
                 raise ACCESS_ERROR
 
             # if user is moderator, run the admin prompt
@@ -184,7 +189,6 @@ class Choices(str, Enum):
     Alias = 'alias'
     Info = 'info'
     Transfer = 'transfer'
-    Tags = 'tags'
 
 class Tags(AceMixin, commands.Cog):
     """Store and bring up text using tags. Tags are unique to each server."""
@@ -260,10 +264,12 @@ class Tags(AceMixin, commands.Cog):
             raise commands.CommandError("Failed to create tag for unknown reasons.")
 
     @commands.slash_command(name="tag")
-    async def slash_tags(self, inter: disnake.AppCmdInter, query: str, subcom: Choices = Choices.Default, string: str = None, member: disnake.Member = None):
+    async def slash_tags(self, inter: disnake.AppCmdInter, subcom: Choices = Choices.Default, query: str = None, string: str = None, member: disnake.Member = None):
         """Retrieve a tags content."""
         match subcom:
             case Choices.Default:
+                if query is None:
+                    raise commands.CommandError("Please input the tag you want to send.")
                 _, record = await TagViewConverter().convert(inter, query.split(ZWS)[0])
 
                 await inter.send(record.get("content"), allowed_mentions=disnake.AllowedMentions.none())
@@ -275,7 +281,9 @@ class Tags(AceMixin, commands.Cog):
                     datetime.utcnow(),
                 )
             case Choices.Create:
-                if (string == None):
+                if query is None:
+                    raise commands.CommandError("Please input the tag you want to create.")
+                if string is None:
                     raise commands.CommandError("Please input the tag content in the string paramater.")
                 content = string
                 if (string.isnumeric()):
@@ -283,30 +291,88 @@ class Tags(AceMixin, commands.Cog):
                     message = await inter.original_response()
                     message = await message.channel.fetch_message(int(string))
                     content = message.content
-                await self.create_tag(inter, query, content)
+                print(query)
+                _, record = await TagCreateConverter().convert(inter, query.split(ZWS)[0])
+                print(record)
+                await self.create_tag(inter, record, content)
                 await inter.send(f"Tag '{query}' created.")
             case Choices.Edit:
-                if (string == None):
+                if query is None:
+                    raise commands.CommandError("Please input the tag you want to edit.")
+                if string is None:
                     raise commands.CommandError("Please input the new tag content in the string paramater.")
+                content = string
+                if (string.isnumeric()):
+                    await inter.response.defer()
+                    message = await inter.original_response()
+                    message = await message.channel.fetch_message(int(string))
+                    content = message.content
+                _, record = await TagEditConverter(allow_mod=True).convert(inter, query.split(ZWS)[0])
+                await self.db.execute(
+                    "UPDATE tag SET content=$2, edited_at=$3 WHERE id=$1",
+                    record.get("id"),
+                    content,
+                    datetime.utcnow(),
+                )
+                await inter.send(f"Tag '{record.get('name')}' edited.")
             case Choices.Delete:
+                if query is None:
+                    raise commands.CommandError("Please input the tag you want to delete.")
+                _, record = await TagEditConverter(allow_mod=True).convert(inter, query.split(ZWS)[0])
+                await self.db.execute("DELETE FROM tag WHERE id=$1", record.get("id"))
+                await inter.send(f"Tag '{record.get('name')}' deleted.")
                 pass
             case Choices.List:
-                pass
+                if member is None:
+                    tags = await self.db.fetch(
+                        "SELECT name, alias, uses FROM tag WHERE guild_id=$1 ORDER BY uses DESC",
+                        inter.guild.id
+                    )
+                else:
+                    tags = await self.db.fetch(
+                        "SELECT name, alias, uses FROM tag WHERE guild_id=$1 AND user_id=$2 ORDER BY uses DESC",
+                        inter.guild.id,
+                        member.id,
+                    )
+                if not tags:
+                    raise commands.CommandError("No tags found.")
+
+                tag_list = [
+                    (record.get("name"), record.get("alias"), record.get("uses")) for record in tags
+                ]
+
+                p = TagPager(inter, tag_list)
+                p.member = member
+
+                await p.go()
             case Choices.Raw:
+                if query is None:
+                    raise commands.CommandError("Please input the tag you want to see the contents of.")
+                _, record = await TagViewConverter().convert(inter, query.split(ZWS)[0])
                 pass
             case Choices.Rename:
-                if (string == None):
+                if query is None:
+                    raise commands.CommandError("Please input the tag you want to rename.")
+                _, record = await TagEditConverter(allow_mod=True).convert(inter, query.split(ZWS)[0])
+                if string is None:
                     raise commands.CommandError("Please input the new tag name in the string paramater.")
             case Choices.Alias:
-                if (string == None):
+                if query is None:
+                    raise commands.CommandError("Please input the tag you want to create an alias for.")
+                _, record = await TagEditConverter(allow_mod=True).convert(inter, query.split(ZWS)[0])
+                if string is None:
                     raise commands.CommandError("Please input the new tag alias in the string paramater.")
             case Choices.Info:
+                if query is None:
+                    raise commands.CommandError("Please input the tag you want to see the statistics for.")
+                _, record = await TagViewConverter().convert(inter, query.split(ZWS)[0])
                 pass
             case Choices.Transfer:
-                if (member == None):
+                if query is None:
+                    raise commands.CommandError("Please input the tag you want to transfer.")
+                _, record = await TagEditConverter(allow_mod=True).convert(inter, query.split(ZWS)[0])
+                if member is None:
                     raise commands.CommandError("Please input the new tag owner in the member paramater.")
-            case Choices.Tags:
-                pass
 
 
 
