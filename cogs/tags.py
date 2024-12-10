@@ -266,7 +266,7 @@ class Tags(AceMixin, commands.Cog):
             raise commands.CommandError("Failed to create tag for unknown reasons.")
 
     @commands.slash_command(name="tag")
-    async def slash_tags(self, inter: disnake.AppCmdInter, subcom: Choices = Choices.Default, query: str = None, string: str = None, member: disnake.Member = None):
+    async def slash_tags(self, inter: disnake.AppCmdInter, query: str, subcom: Choices = Choices.Default, string: str = None, member: disnake.Member = None):
         """Retrieve a tags content."""
         match subcom:
             case Choices.Default:
