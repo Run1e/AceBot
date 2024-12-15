@@ -1,3 +1,4 @@
+from functools import partial
 from math import ceil
 from typing import TYPE_CHECKING, Union
 
@@ -40,12 +41,12 @@ class Pager(disnake.ui.View):
 
         self.__buttons = None
 
-    async def go(self, at_page=0):
+    async def go(self, at_page=0, ephemeral=False):
         if isinstance(self.ctx, disnake.Interaction):
             meth = (
-                self.ctx.followup.send
+                partial(self.ctx.followup.send, ephemeral=ephemeral)
                 if self.ctx.response.is_done()
-                else self.ctx.response.send_message
+                else partial(self.ctx.response.send_message, ephemeral=ephemeral)
             )
         else:
             meth = self.ctx.send

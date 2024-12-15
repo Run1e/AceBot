@@ -266,7 +266,7 @@ class Tags(AceMixin, commands.Cog):
             raise commands.CommandError("Failed to create tag for unknown reasons.")
 
     @commands.slash_command(name="tag")
-    async def slash_tags(self, inter: disnake.AppCmdInter, query: str, subcom: Choices = Choices.Default, string: str = None, member: disnake.Member = None):
+    async def slash_tags(self, inter: disnake.AppCmdInter, query: str, subcom: Choices = Choices.Default, string: str = None, member: disnake.Member = None, ephemeral: bool = False):
         """Retrieve a tags content."""
         match subcom:
             case Choices.Default:
@@ -274,7 +274,7 @@ class Tags(AceMixin, commands.Cog):
                     raise commands.CommandError("Please input the tag you want to send.")
                 _, record = await TagViewConverter().convert(inter, query.split(ZWS)[0])
 
-                await inter.send(record.get("content"), allowed_mentions=disnake.AllowedMentions.none())
+                await inter.send(record.get("content"), allowed_mentions=disnake.AllowedMentions.none(), ephemeral=ephemeral)
 
                 await self.db.execute(
                     "UPDATE tag SET uses=$2, viewed_at=$3 WHERE id=$1",
@@ -297,7 +297,7 @@ class Tags(AceMixin, commands.Cog):
 
                 record = await TagCreateConverter().convert(inter, query.split(ZWS)[0])
                 await self.create_tag(inter, record, content)
-                await inter.send(f"Tag '{query}' created.")
+                await inter.send(f"Tag '{query}' created.", ephemeral=ephemeral)
             case Choices.Edit:
                 if query is None:
                     raise commands.CommandError("Please input the tag you want to edit.")
@@ -316,19 +316,18 @@ class Tags(AceMixin, commands.Cog):
                     content,
                     datetime.utcnow(),
                 )
-                await inter.send(f"Tag '{record.get('name')}' edited.")
+                await inter.send(f"Tag '{record.get('name')}' edited.", ephemeral=ephemeral)
             case Choices.Delete:
                 if query is None:
                     raise commands.CommandError("Please input the tag you want to delete.")
                 _, record = await TagEditConverter(allow_mod=True).convert(inter, query.split(ZWS)[0])
                 inter.perms = inter.channel.permissions_for(inter.guild.me)
                 if not await AceContext.prompt(inter,
-                    title="Are you sure?", prompt="This will delete the tag permanently."
-                ):
+                    title="Are you sure?", prompt="This will delete the tag permanently.",
+                    ephemeral=ephemeral):
                     raise commands.CommandError("Tag deletion aborted.")
                 await self.db.execute("DELETE FROM tag WHERE id=$1", record.get("id"))
-                await inter.send(f"Tag '{record.get('name')}' deleted.")
-                pass
+                await inter.send(f"Tag '{record.get('name')}' deleted.", ephemeral=ephemeral)
             case Choices.List:
                 if member is None:
                     tags = await self.db.fetch(
@@ -351,7 +350,7 @@ class Tags(AceMixin, commands.Cog):
                 p = TagPager(inter, tag_list)
                 p.member = member
 
-                await p.go()
+                await p.go(ephemeral=ephemeral)
             case Choices.Make:
                 def msg_check(message):
                     return message.channel is inter.channel and message.author is inter.author
@@ -362,7 +361,7 @@ class Tags(AceMixin, commands.Cog):
 
                 name_prompt = "What would you like the name of your tag to be?"
 
-                inter.message = await inter.send("Hi there! " + name_prompt)
+                inter.message = await inter.send("Hi there! " + name_prompt, ephemeral=ephemeral)
 
                 while True:
                     try:
@@ -370,15 +369,18 @@ class Tags(AceMixin, commands.Cog):
                     except asyncio.TimeoutError:
                         await inter.send(
                             "The tag make command timed out. Please try again by doing "
-                            "`/tag subcom:make`"
+                            "`/tag subcom:make`",
+                            ephemeral=ephemeral
                         )
 
                         self.unset_tag_being_made(inter)
                         return
 
                     if message.content == "/abort":
-                        await inter.send("Tag creation aborted.")
+                        await inter.send("Tag creation aborted.", ephemeral=ephemeral)
                         self.unset_tag_being_made(inter)
+                        if (ephemeral):
+                            await message.delete()
                         return
 
                     if name is None:
@@ -388,17 +390,20 @@ class Tags(AceMixin, commands.Cog):
                             await tag_create_converter.convert(inter, message.content)
                             inter.message = old_message
                         except commands.CommandError as exc:
-                            await inter.send("Sorry! {} {}".format(str(exc), name_prompt))
+                            await inter.send("Sorry! {} {}".format(str(exc), name_prompt), ephemeral=ephemeral)
                             continue
 
                         name = message.content.lower()
+                        if (ephemeral):
+                            await message.delete()
                         self.set_tag_being_made(inter, name)
 
                         await inter.send(
                             "Great! The tag name is `{}`. What would you like the tags content to be?\n".format(
                                 name
                             )
-                            + "You can abort the tag creation by sending `/abort` at any time."
+                            + "You can abort the tag creation by sending `/abort` at any time.",
+                            ephemeral=ephemeral
                         )
 
                         continue
@@ -416,8 +421,11 @@ class Tags(AceMixin, commands.Cog):
                 await inter.send(
                     "Tag `{0}` created! Bring up the tag contents by doing `/tag {0}`".format(
                         name
-                    )
+                    ),
+                    ephemeral=ephemeral
                 )
+                if (ephemeral):
+                    await message.delete()
             case Choices.Raw:
                 if query is None:
                     raise commands.CommandError("Please input the tag you want to see the contents of.")
@@ -425,6 +433,7 @@ class Tags(AceMixin, commands.Cog):
                 await inter.send(
                     disnake.utils.escape_markdown(record.get("content")),
                     allowed_mentions=disnake.AllowedMentions.none(),
+                    ephemeral=ephemeral
                 )
             case Choices.Rename:
                 if query is None:
@@ -434,7 +443,7 @@ class Tags(AceMixin, commands.Cog):
                     raise commands.CommandError("Please input the new tag name in the string paramater.")
                 await self.db.execute("UPDATE tag SET name=$2 WHERE id=$1", record.get("id"), string)
 
-                await inter.send(f"Tag '{record.get('name')}' renamed to '{string}'.")
+                await inter.send(f"Tag '{record.get('name')}' renamed to '{string}'.", ephemeral=ephemeral)
             case Choices.Alias:
                 if query is None:
                     raise commands.CommandError("Please input the tag you want to create an alias for.")
@@ -444,9 +453,9 @@ class Tags(AceMixin, commands.Cog):
                 await self.db.execute("UPDATE tag SET alias=$2 WHERE id=$1", record.get("id"), string)
 
                 if string is None:
-                    await inter.send(f"Alias cleared for '{record.get('name')}'")
+                    await inter.send(f"Alias cleared for '{record.get('name')}'", ephemeral=ephemeral)
                 else:
-                    await inter.send(f"Alias for '{record.get('name')}' set to '{string}'")
+                    await inter.send(f"Alias for '{record.get('name')}' set to '{string}'", ephemeral=ephemeral)
             case Choices.Info:
                 if query is None:
                     raise commands.CommandError("Please input the tag you want to see the statistics for.")
@@ -493,7 +502,7 @@ class Tags(AceMixin, commands.Cog):
                 if edited_at:
                     e.add_field(name="Last edited at", value=pretty_datetime(edited_at))
 
-                await inter.send(embed=e)
+                await inter.send(embed=e, ephemeral=ephemeral)
             case Choices.Transfer:
                 if query is None:
                     raise commands.CommandError("Please input the tag you want to transfer.")
@@ -511,6 +520,7 @@ class Tags(AceMixin, commands.Cog):
                     title="Tag transfer request",
                     prompt=f"{inter.author.mention} wants to transfer ownership of the tag '{query}' to you.\n\nDo you accept?",
                     user_override=member,
+                    ephemeral=ephemeral
                 )
 
                 if not await prompt:
@@ -523,7 +533,8 @@ class Tags(AceMixin, commands.Cog):
                 if res == "UPDATE 1":
                     await inter.send(
                         "Tag '{}' transferred to '{}'".format(record.get("name"), member.display_name)
-                    )
+                    ),
+                    ephemeral=ephemeral
                 else:
                     raise commands.CommandError("Unknown error occured.")
             case Choices.Tags:
