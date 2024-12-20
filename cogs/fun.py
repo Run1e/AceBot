@@ -270,7 +270,7 @@ class Fun(AceMixin, commands.Cog):
             "appid": WOLFRAM_KEY,
             "input": query,
             "output": "json",
-            "ip": "",
+            "ip": "127.0.0.1",
             "units": "metric",
             "format": "plaintext",
             "podindex": "1,2,3",
@@ -341,7 +341,7 @@ class Fun(AceMixin, commands.Cog):
                 return
 
             has_image = False
-            for idx, pod in enumerate(res["pods"]):
+            for pod in res["pods"]:
                 name = pod["title"]
                 _id = pod["id"]
                 subpods = pod["subpods"]
