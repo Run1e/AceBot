@@ -747,7 +747,7 @@ class AutoHotkey(AceMixin, commands.Cog):
 
         try:
             await inter.send(
-                "The post has been closed and given the solved tag. The post can be reopened at any time by sending a message."
+                "The post has been closed and given the solved tag. The post can be reopened at any time by sending a message. You can use `/unsolved` if the issue is no longer solved."
             )
         except disnake.HTTPException:
             pass
