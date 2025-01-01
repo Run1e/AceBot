@@ -726,7 +726,7 @@ class AutoHotkey(AceMixin, commands.Cog):
 
         await thread.edit(applied_tags=added_tags)
 
-        content = "Thanks for tagging your post!\n"
+        content = "Thanks for tagging your post!\nYou can change the tags at any time by using `/retag`\n"
 
         if added_tags:
             content += "\n"
