@@ -765,7 +765,7 @@ class AutoHotkey(AceMixin, commands.Cog):
 
         try:
             await inter.send(
-                "The post has been opened and lost the solved tag. The post can be resolved at any time by using /solved again."
+                "The post has been opened and lost the solved tag. The post can be resolved at any time by using `/solved` again."
             )
         except disnake.HTTPException:
             pass
