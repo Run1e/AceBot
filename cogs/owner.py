@@ -234,7 +234,7 @@ class Owner(AceMixin, commands.Cog):
         """Refresh the status of the bot in case Discord cleared it."""
 
         await self.bot.change_presence()
-        await self.bot.change_presence(activity=BOT_ACTIVITY)
+        await self.bot.set_status(activity_text=BOT_ACTIVITY)
 
     @commands.command()
     async def print(self, ctx, *, body: str):

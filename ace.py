@@ -52,7 +52,7 @@ class AceBot(commands.Bot):
             description=DESCRIPTION,
             help_command=PaginatedHelpCommand(),
             max_messages=20000,
-            activity=disnake.Game("Booting up..."),
+            activity=disnake.CustomActivity(name="Custom Status", state="Booting up..."),
             status=disnake.Status.do_not_disturb,
             **kwargs,
         )
@@ -100,11 +100,19 @@ class AceBot(commands.Bot):
 
         # re-set presence on connection resumed
         await self.change_presence()
-        await self.change_presence(activity=BOT_ACTIVITY)
+        await self.set_status(activity_text=BOT_ACTIVITY)
 
     async def on_ready(self):
-        await self.change_presence(activity=BOT_ACTIVITY, status=disnake.Status.online)
+        await self.set_status(activity_text=BOT_ACTIVITY)
         self.log.info("Ready! %s", po(self.user))
+
+    async def set_status(
+        self,
+        status: disnake.Status = disnake.Status.online,
+        activity_text: str = None,
+    ):
+        activity = disnake.CustomActivity(name="Custom Status", state=activity_text)
+        await self.change_presence(activity=activity, status=status)
 
     async def on_message(self, message):
         # ignore DMs and bot accounts
