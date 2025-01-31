@@ -2,12 +2,15 @@ import asyncio
 import re
 import logging
 from datetime import datetime
+from enum import Enum
 
 import asyncpg
 import disnake
 from disnake.ext import commands
+import disnake.ext.commands
 
 from cogs.mixins import AceMixin
+import disnake.ext
 from utils.context import AceContext, can_prompt
 from utils.converters import LengthConverter, MaybeMemberConverter
 from utils.pager import Pager
@@ -64,7 +67,12 @@ class TagCreateConverter(LengthConverter):
         if tag_name != await escape_converter.convert(ctx, tag_name):
             raise commands.BadArgument("Tag name has disallowed formatting in it.")
 
-        if ctx.cog.tag_is_being_made(ctx, tag_name):
+        if isinstance(ctx, disnake.ApplicationCommandInteraction):
+            cog = ctx.application_command.cog
+        else:
+            cog = ctx.cog
+
+        if cog.tag_is_being_made(ctx, tag_name):
             raise commands.BadArgument("Tag with that name is currently being made elsewhere.")
 
         exist_id = await ctx.bot.db.fetchval(
@@ -104,7 +112,7 @@ class TagEditConverter(commands.Converter):
         if rec.get("user_id") != ctx.author.id and not await ctx.bot.is_owner(ctx.author):
             # if not, check if mod should be allowed to do this action. if not, raise access error
             # if they can, check if invoker is mod, if not, raise access error
-            if not self.allow_mod or not await ctx.is_mod():
+            if not self.allow_mod or not await AceContext.is_mod(ctx):
                 raise ACCESS_ERROR
 
             # if user is moderator, run the admin prompt
@@ -170,7 +178,19 @@ class TagPager(Pager):
         embed.clear_fields()
         embed.add_field(name="Name", value=tags[1:])
         embed.add_field(name="Uses", value="\n".join(str(use) for use in uses))
-
+class Choices(str, Enum):
+    Default = ' '
+    Create = 'create'
+    Edit = 'edit'
+    Delete = 'delete'
+    List = 'list'
+    Make = 'make'
+    Raw = 'raw'
+    Rename = 'rename'
+    Alias = 'alias'
+    Info = 'info'
+    Transfer = 'transfer'
+    Tags = 'tags'
 
 class Tags(AceMixin, commands.Cog):
     """Store and bring up text using tags. Tags are unique to each server."""
@@ -246,19 +266,281 @@ class Tags(AceMixin, commands.Cog):
             raise commands.CommandError("Failed to create tag for unknown reasons.")
 
     @commands.slash_command(name="tag")
-    async def slash_tags(self, inter: disnake.AppCmdInter, query: str):
+    async def slash_tags(self, inter: disnake.AppCmdInter, query: str, subcom: Choices = Choices.Default, string: str = None, member: disnake.Member = None, ephemeral: bool = False):
         """Retrieve a tags content."""
+        match subcom:
+            case Choices.Default:
+                if query is None:
+                    raise commands.CommandError("Please input the tag you want to send.")
+                _, record = await TagViewConverter().convert(inter, query.split(ZWS)[0])
 
-        _, record = await TagViewConverter().convert(inter, query.split(ZWS)[0])
+                await inter.send(record.get("content"), allowed_mentions=disnake.AllowedMentions.none(), ephemeral=ephemeral)
 
-        await inter.send(record.get("content"), allowed_mentions=disnake.AllowedMentions.none())
+                await self.db.execute(
+                    "UPDATE tag SET uses=$2, viewed_at=$3 WHERE id=$1",
+                    record.get("id"),
+                    record.get("uses") + 1,
+                    datetime.utcnow(),
+                )
+            case Choices.Create:
+                if query is None:
+                    raise commands.CommandError("Please input the tag you want to create.")
+                if string is None:
+                    raise commands.CommandError("Please input the tag content in the string paramater.")
+                content = string
 
-        await self.db.execute(
-            "UPDATE tag SET uses=$2, viewed_at=$3 WHERE id=$1",
-            record.get("id"),
-            record.get("uses") + 1,
-            datetime.utcnow(),
-        )
+                if (string.isnumeric()):
+                    await inter.response.defer()
+                    message = await inter.original_response()
+                    message = await message.channel.fetch_message(int(string))
+                    content = message.content
+
+                record = await TagCreateConverter().convert(inter, query.split(ZWS)[0])
+                await self.create_tag(inter, record, content)
+                await inter.send(f"Tag '{query}' created.", ephemeral=ephemeral)
+            case Choices.Edit:
+                if query is None:
+                    raise commands.CommandError("Please input the tag you want to edit.")
+                if string is None:
+                    raise commands.CommandError("Please input the new tag content in the string paramater.")
+                content = string
+                if (string.isnumeric()):
+                    await inter.response.defer()
+                    message = await inter.original_response()
+                    message = await message.channel.fetch_message(int(string))
+                    content = message.content
+                _, record = await TagEditConverter(allow_mod=True).convert(inter, query.split(ZWS)[0])
+                await self.db.execute(
+                    "UPDATE tag SET content=$2, edited_at=$3 WHERE id=$1",
+                    record.get("id"),
+                    content,
+                    datetime.utcnow(),
+                )
+                await inter.send(f"Tag '{record.get('name')}' edited.", ephemeral=ephemeral)
+            case Choices.Delete:
+                if query is None:
+                    raise commands.CommandError("Please input the tag you want to delete.")
+                _, record = await TagEditConverter(allow_mod=True).convert(inter, query.split(ZWS)[0])
+                inter.perms = inter.channel.permissions_for(inter.guild.me)
+                if not await AceContext.prompt(inter,
+                    title="Are you sure?", prompt="This will delete the tag permanently.",
+                    ephemeral=ephemeral):
+                    raise commands.CommandError("Tag deletion aborted.")
+                await self.db.execute("DELETE FROM tag WHERE id=$1", record.get("id"))
+                await inter.send(f"Tag '{record.get('name')}' deleted.", ephemeral=ephemeral)
+            case Choices.List:
+                if member is None:
+                    tags = await self.db.fetch(
+                        "SELECT name, alias, uses FROM tag WHERE guild_id=$1 ORDER BY uses DESC",
+                        inter.guild.id
+                    )
+                else:
+                    tags = await self.db.fetch(
+                        "SELECT name, alias, uses FROM tag WHERE guild_id=$1 AND user_id=$2 ORDER BY uses DESC",
+                        inter.guild.id,
+                        member.id,
+                    )
+                if not tags:
+                    raise commands.CommandError("No tags found.")
+
+                tag_list = [
+                    (record.get("name"), record.get("alias"), record.get("uses")) for record in tags
+                ]
+
+                p = TagPager(inter, tag_list)
+                p.member = member
+
+                await p.go(ephemeral=ephemeral)
+            case Choices.Make:
+                def msg_check(message):
+                    return message.channel is inter.channel and message.author is inter.author
+                name = None
+                content = None
+
+                self.set_tag_being_made(inter, name)
+
+                name_prompt = "What would you like the name of your tag to be?"
+
+                inter.message = await inter.send("Hi there! " + name_prompt, ephemeral=ephemeral)
+
+                while True:
+                    try:
+                        message = await inter.bot.wait_for("message", check=msg_check, timeout=360.0)
+                    except asyncio.TimeoutError:
+                        await inter.send(
+                            "The tag make command timed out. Please try again by doing "
+                            "`/tag subcom:make`",
+                            ephemeral=ephemeral
+                        )
+
+                        self.unset_tag_being_made(inter)
+                        return
+
+                    if message.content == "/abort":
+                        await inter.send("Tag creation aborted.", ephemeral=ephemeral)
+                        self.unset_tag_being_made(inter)
+                        if (ephemeral):
+                            await message.delete()
+                        return
+
+                    if name is None:
+                        try:
+                            old_message = inter.message
+                            inter.message = message
+                            await tag_create_converter.convert(inter, message.content)
+                            inter.message = old_message
+                        except commands.CommandError as exc:
+                            await inter.send("Sorry! {} {}".format(str(exc), name_prompt), ephemeral=ephemeral)
+                            continue
+
+                        name = message.content.lower()
+                        if (ephemeral):
+                            await message.delete()
+                        self.set_tag_being_made(inter, name)
+
+                        await inter.send(
+                            "Great! The tag name is `{}`. What would you like the tags content to be?\n".format(
+                                name
+                            )
+                            + "You can abort the tag creation by sending `/abort` at any time.",
+                            ephemeral=ephemeral
+                        )
+
+                        continue
+
+                    if content is None:
+                        old_message = inter.message
+                        inter.message = message
+                        content = await self.craft_tag_contents(inter, message.content)
+                        inter.message = old_message
+                        break
+
+                self.unset_tag_being_made(inter)
+                await self.create_tag(inter, name, content)
+
+                await inter.send(
+                    "Tag `{0}` created! Bring up the tag contents by doing `/tag {0}`".format(
+                        name
+                    ),
+                    ephemeral=ephemeral
+                )
+                if (ephemeral):
+                    await message.delete()
+            case Choices.Raw:
+                if query is None:
+                    raise commands.CommandError("Please input the tag you want to see the contents of.")
+                _, record = await TagViewConverter().convert(inter, query.split(ZWS)[0])
+                await inter.send(
+                    disnake.utils.escape_markdown(record.get("content")),
+                    allowed_mentions=disnake.AllowedMentions.none(),
+                    ephemeral=ephemeral
+                )
+            case Choices.Rename:
+                if query is None:
+                    raise commands.CommandError("Please input the tag you want to rename.")
+                _, record = await TagEditConverter(allow_mod=True).convert(inter, query.split(ZWS)[0])
+                if string is None:
+                    raise commands.CommandError("Please input the new tag name in the string paramater.")
+                await self.db.execute("UPDATE tag SET name=$2 WHERE id=$1", record.get("id"), string)
+
+                await inter.send(f"Tag '{record.get('name')}' renamed to '{string}'.", ephemeral=ephemeral)
+            case Choices.Alias:
+                if query is None:
+                    raise commands.CommandError("Please input the tag you want to create an alias for.")
+                _, record = await TagEditConverter(allow_mod=True).convert(inter, query.split(ZWS)[0])
+                if string is None:
+                    raise commands.CommandError("Please input the new tag alias in the string paramater.")
+                await self.db.execute("UPDATE tag SET alias=$2 WHERE id=$1", record.get("id"), string)
+
+                if string is None:
+                    await inter.send(f"Alias cleared for '{record.get('name')}'", ephemeral=ephemeral)
+                else:
+                    await inter.send(f"Alias for '{record.get('name')}' set to '{string}'", ephemeral=ephemeral)
+            case Choices.Info:
+                if query is None:
+                    raise commands.CommandError("Please input the tag you want to see the statistics for.")
+                _, record = await TagViewConverter().convert(inter, query.split(ZWS)[0])
+
+                owner = inter.guild.get_member(record.get("user_id"))
+                if owner is None:
+                    nick = "Unknown User"
+                    avatar = inter.guild.icon or None
+                else:
+                    nick = owner.display_name
+                    avatar = owner.display_avatar.url
+
+                e = disnake.Embed(
+                    description=f"**{record.get('name')}**",
+                )
+
+                e.set_author(name=nick, icon_url=avatar)
+                e.add_field(name="Owner", value=owner.mention if owner else nick)
+
+                rank = await self.db.fetchval(
+                    "SELECT COUNT(id) FROM tag WHERE guild_id=$1 AND uses > $2",
+                    inter.guild.id,
+                    record.get("uses") + 1,
+                )
+
+                e.add_field(name="Rank", value=f"#{rank + 1}")
+
+                e.add_field(name="Uses", value=record.get("uses"))
+
+                alias = record.get("alias")
+                created_at = record.get("created_at")
+                viewed_at = record.get("viewed_at")
+                edited_at = record.get("edited_at")
+
+                if alias is not None:
+                    e.add_field(name="Alias", value=alias)
+
+                e.add_field(name="Created at", value=pretty_datetime(created_at))
+
+                if viewed_at:
+                    e.add_field(name="Last viewed at", value=pretty_datetime(viewed_at))
+
+                if edited_at:
+                    e.add_field(name="Last edited at", value=pretty_datetime(edited_at))
+
+                await inter.send(embed=e, ephemeral=ephemeral)
+            case Choices.Transfer:
+                if query is None:
+                    raise commands.CommandError("Please input the tag you want to transfer.")
+                _, record = await TagEditConverter(allow_mod=True).convert(inter, query.split(ZWS)[0])
+                if member is None:
+                    raise commands.CommandError("Please input the new tag owner in the member paramater.")
+                if member.bot:
+                    raise commands.CommandError("Can't transfer tag to bot.")
+
+                if record.get("user_id") == member.id:
+                    raise commands.CommandError("User already owns tag.")
+
+                inter.perms = inter.channel.permissions_for(inter.guild.me)
+                prompt = AceContext.prompt(inter,
+                    title="Tag transfer request",
+                    prompt=f"{inter.author.mention} wants to transfer ownership of the tag '{query}' to you.\n\nDo you accept?",
+                    user_override=member,
+                    ephemeral=ephemeral
+                )
+
+                if not await prompt:
+                    raise commands.CommandError("Tag transfer aborted.")
+
+                res = await self.db.execute(
+                    "UPDATE tag SET user_id=$1 WHERE id=$2", member.id, record.get("id")
+                )
+
+                if res == "UPDATE 1":
+                    await inter.send(
+                        "Tag '{}' transferred to '{}'".format(record.get("name"), member.display_name)
+                    ),
+                    ephemeral=ephemeral
+                else:
+                    raise commands.CommandError("Unknown error occured.")
+            case Choices.Tags:
+                await inter.application_command.callback(self, inter, subcom=Choices.List,member=member or inter.author)
+
+
 
     @slash_tags.autocomplete("query")
     async def tags_autocomplete(self, inter: disnake.AppCmdInter, query: str):

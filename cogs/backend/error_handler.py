@@ -25,10 +25,16 @@ class ErrorHandler(commands.Cog, AceMixin):
                 handler.oops()
 
             elif isinstance(exc, commands.UserInputError):
+                if isinstance(ctx, disnake.ApplicationCommandInteraction):
+                    command = ctx.application_command
+                    ctx.prefix = '/'
+                    command.signature = " ".join([key + ": " + value for key, value in ctx.filled_options.items()])
+                else:
+                    command = ctx.command
                 handler.set(
                     title=str(exc),
                     description="Usage: `{0.prefix}{1.qualified_name} {1.signature}`".format(
-                        ctx, ctx.command
+                        ctx, command
                     ),
                 )
 

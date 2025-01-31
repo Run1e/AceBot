@@ -155,7 +155,7 @@ class AceContext(commands.Context):
 
         await help_cmd.command_callback(self, command=command)
 
-    async def prompt(self, title=None, prompt=None, user_override=None):
+    async def prompt(self, title=None, prompt=None, user_override=None, ephemeral=None):
         """Creates a yes/no prompt."""
 
         perms = self.perms
@@ -168,16 +168,29 @@ class AceContext(commands.Context):
 
         view = PromptView(check_user=user_override or self.author, timeout=60.0)
 
-        try:
-            message = await self.send(
-                content=None if user_override is None else user_override.mention,
-                embed=e,
-                view=view,
-            )
+        if (isinstance(self, disnake.AppCmdInter) and isinstance(ephemeral, bool) and ephemeral):
+            try:
+                message = await self.send(
+                    content=None if user_override is None else user_override.mention,
+                    embed=e,
+                    view=view,
+                    ephemeral=ephemeral
+                )
 
-            view.message = message
-        except disnake.HTTPException:
-            return False
+                view.message = message
+            except disnake.HTTPException:
+                return False
+        else:
+            try:
+                message = await self.send(
+                    content=None if user_override is None else user_override.mention,
+                    embed=e,
+                    view=view,
+                )
+
+                view.message = message
+            except disnake.HTTPException:
+                return False
 
         return await view.wait()
 
