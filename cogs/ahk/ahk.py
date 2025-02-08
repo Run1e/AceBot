@@ -726,7 +726,7 @@ class AutoHotkey(AceMixin, commands.Cog):
 
         await thread.edit(applied_tags=added_tags)
 
-        content = "Thanks for tagging your post!\n"
+        content = "Thanks for tagging your post!\nYou can change the tags at any time by using `/retag`\n"
 
         if added_tags:
             content += "\n"
@@ -747,7 +747,7 @@ class AutoHotkey(AceMixin, commands.Cog):
 
         try:
             await inter.send(
-                "The post has been closed and given the solved tag. The post can be reopened at any time by sending a message."
+                "The post has been closed and given the solved tag. The post can be reopened at any time by sending a message. You can use `/unsolved` if the issue is no longer solved."
             )
         except disnake.HTTPException:
             pass
@@ -765,7 +765,7 @@ class AutoHotkey(AceMixin, commands.Cog):
 
         try:
             await inter.send(
-                "The post has been opened and lost the solved tag. The post can be resolved at any time by using /solved again."
+                "The post has been opened and lost the solved tag. The post can be resolved at any time by using `/solved` again."
             )
         except disnake.HTTPException:
             pass
