@@ -1,3 +1,4 @@
+import logging
 import re
 
 import disnake
@@ -7,6 +8,8 @@ from cogs.mixins import AceMixin
 from ids import AHK_GUILD_ID
 from utils.context import is_mod
 from utils.converters import LengthConverter
+
+log = logging.getLogger(__name__)
 
 DELETE_EMOJI = "\N{Put Litter in Its Place Symbol}"
 DEFAULT_LANG = "py"
@@ -101,6 +104,7 @@ class Highlighter(AceMixin, commands.Cog):
             return
 
         try:
+            log.info("Deleting highlight msg %s", message)
             message = await channel.fetch_message(payload.message_id)
             await message.delete()
         except disnake.HTTPException:

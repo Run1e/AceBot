@@ -795,6 +795,8 @@ class AutoHotkey(AceMixin, commands.Cog):
             # if await self.bot.is_owner(message.author):
             #     return
 
+            log.info("Deleting emoji suggestions message with reason %s", reason)
+
             try:
                 await message.delete()
             except disnake.HTTPException:
@@ -847,6 +849,7 @@ class AutoHotkey(AceMixin, commands.Cog):
             await message.add_reaction("✅")
             await message.add_reaction("❌")
         except disnake.Forbidden as e:
+            log.exception(e)
             # catch if we can't add the reactions
             # it could be that person is blocked, but it also could be that the bot doesn't have perms
             # we treat it the same since this is only used in the ahk discord.
@@ -862,10 +865,12 @@ class AutoHotkey(AceMixin, commands.Cog):
             if channel is None:
                 return
 
-            try:
-                await channel.delete_messages([disnake.Object(message.message_id)])
-            except disnake.HTTPException:
-                pass
+            log.info("Deleting edited emoji suggestions message %s", message)
+
+            # try:
+            #     await channel.delete_messages([disnake.Object(message.message_id)])
+            # except disnake.HTTPException:
+            #     pass
 
     @commands.Cog.listener("on_raw_reaction_add")
     async def handle_emoji_suggestion_reaction(self, reaction: disnake.RawReactionActionEvent):
