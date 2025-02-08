@@ -179,6 +179,7 @@ class Tags(AceMixin, commands.Cog):
         super().__init__(bot)
 
         self._being_made = dict()
+        self._tags_msg_map = {}
 
     async def bot_check(self, ctx):
         try:
@@ -245,13 +246,34 @@ class Tags(AceMixin, commands.Cog):
         except Exception:
             raise commands.CommandError("Failed to create tag for unknown reasons.")
 
+    @commands.Cog.listener()
+    async def on_button_click(self, inter: disnake.MessageInteraction):
+        if inter.component.custom_id != "tagsdeletebutton":
+            return
+        
+        author_id = self._tags_msg_map.pop(inter.message.id, None)
+        if author_id is None:
+            return
+        
+        if author_id != inter.author.id:
+            return
+        
+        await inter.message.delete()
+
     @commands.slash_command(name="tag")
     async def slash_tags(self, inter: disnake.AppCmdInter, query: str):
         """Retrieve a tags content."""
 
         _, record = await TagViewConverter().convert(inter, query.split(ZWS)[0])
 
-        await inter.send(record.get("content"), allowed_mentions=disnake.AllowedMentions.none())
+        ar = disnake.ui.ActionRow()
+        ar.add_button(0, style=disnake.ButtonStyle.danger, label="🗑️", custom_id="tagsdeletebutton")
+        msg = await inter.send(record.get("content"), allowed_mentions=disnake.AllowedMentions.none(), components=[ar])
+
+        if isinstance(inter, disnake.AppCmdInter):
+            msg = await inter.original_message()
+
+        self._tags_msg_map[msg.id] = inter.author.id
 
         await self.db.execute(
             "UPDATE tag SET uses=$2, viewed_at=$3 WHERE id=$1",
