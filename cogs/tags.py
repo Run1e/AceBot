@@ -175,6 +175,8 @@ class TagPager(Pager):
 class Tags(AceMixin, commands.Cog):
     """Store and bring up text using tags. Tags are unique to each server."""
 
+    bot: "AceBot"
+
     def __init__(self, bot):
         super().__init__(bot)
 
@@ -248,11 +250,16 @@ class Tags(AceMixin, commands.Cog):
 
     @commands.Cog.listener()
     async def on_button_click(self, inter: disnake.MessageInteraction):
-        if inter.component.custom_id != "tagsdeletebutton":
+        if inter.message.author != self.bot.user:
             return
-        
-        author_id = self._tags_msg_map.pop(inter.message.id, None)
-        if author_id is None:
+
+        if not inter.component.custom_id.startswith("tagsdeletebutton"):
+            return
+
+        # try to get author_id
+        try:
+            author_id: str = int(inter.component.custom_id.split("_")[1])
+        except ValueError:
             return
         
         if author_id != inter.author.id:
@@ -267,7 +274,7 @@ class Tags(AceMixin, commands.Cog):
         _, record = await TagViewConverter().convert(inter, query.split(ZWS)[0])
 
         ar = disnake.ui.ActionRow()
-        ar.add_button(0, style=disnake.ButtonStyle.danger, label="🗑️", custom_id="tagsdeletebutton")
+        ar.add_button(0, style=disnake.ButtonStyle.danger, label="🗑️", custom_id=f"tagsdeletebutton_{inter.author.id}")
         msg = await inter.send(record.get("content"), allowed_mentions=disnake.AllowedMentions.none(), components=[ar])
 
         msg = await inter.original_message()
@@ -300,7 +307,7 @@ class Tags(AceMixin, commands.Cog):
 
         tag_name, record = tag_name
         ar = disnake.ui.ActionRow()
-        ar.add_button(0, style=disnake.ButtonStyle.danger, label="🗑️", custom_id="tagsdeletebutton")
+        ar.add_button(0, style=disnake.ButtonStyle.danger, label="🗑️", custom_id=f"tagsdeletebutton_{ctx.author.id}")
         msg = await ctx.send(record.get("content"), allowed_mentions=disnake.AllowedMentions.none(), components=[ar])
         self._tags_msg_map[msg.id] = ctx.author.id
 
