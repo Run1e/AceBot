@@ -270,9 +270,7 @@ class Tags(AceMixin, commands.Cog):
         ar.add_button(0, style=disnake.ButtonStyle.danger, label="🗑️", custom_id="tagsdeletebutton")
         msg = await inter.send(record.get("content"), allowed_mentions=disnake.AllowedMentions.none(), components=[ar])
 
-        if isinstance(inter, disnake.AppCmdInter):
-            msg = await inter.original_message()
-
+        msg = await inter.original_message()
         self._tags_msg_map[msg.id] = inter.author.id
 
         await self.db.execute(
@@ -301,7 +299,10 @@ class Tags(AceMixin, commands.Cog):
             return
 
         tag_name, record = tag_name
-        await ctx.send(record.get("content"), allowed_mentions=disnake.AllowedMentions.none())
+        ar = disnake.ui.ActionRow()
+        ar.add_button(0, style=disnake.ButtonStyle.danger, label="🗑️", custom_id="tagsdeletebutton")
+        msg = await ctx.send(record.get("content"), allowed_mentions=disnake.AllowedMentions.none(), components=[ar])
+        self._tags_msg_map[msg.id] = ctx.author.id
 
         await self.db.execute(
             "UPDATE tag SET uses=$2, viewed_at=$3 WHERE id=$1",
