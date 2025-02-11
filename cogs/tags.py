@@ -181,7 +181,6 @@ class Tags(AceMixin, commands.Cog):
         super().__init__(bot)
 
         self._being_made = dict()
-        self._tags_msg_map = {}
 
     async def bot_check(self, ctx):
         try:
@@ -263,6 +262,7 @@ class Tags(AceMixin, commands.Cog):
             return
         
         if author_id != inter.author.id:
+            await inter.response.send_message("Sorry, this button is not for you!", ephemeral=True, delete_after=12)
             return
         
         await inter.message.delete()
@@ -278,7 +278,6 @@ class Tags(AceMixin, commands.Cog):
         msg = await inter.send(record.get("content"), allowed_mentions=disnake.AllowedMentions.none(), components=[ar])
 
         msg = await inter.original_message()
-        self._tags_msg_map[msg.id] = inter.author.id
 
         await self.db.execute(
             "UPDATE tag SET uses=$2, viewed_at=$3 WHERE id=$1",
@@ -308,8 +307,7 @@ class Tags(AceMixin, commands.Cog):
         tag_name, record = tag_name
         ar = disnake.ui.ActionRow()
         ar.add_button(0, style=disnake.ButtonStyle.danger, label="🗑️", custom_id=f"tagsdeletebutton_{ctx.author.id}")
-        msg = await ctx.send(record.get("content"), allowed_mentions=disnake.AllowedMentions.none(), components=[ar])
-        self._tags_msg_map[msg.id] = ctx.author.id
+        await ctx.send(record.get("content"), allowed_mentions=disnake.AllowedMentions.none(), components=[ar])
 
         await self.db.execute(
             "UPDATE tag SET uses=$2, viewed_at=$3 WHERE id=$1",
