@@ -221,3 +221,12 @@ CREATE TABLE IF NOT EXISTS help_claim (
 	user_id			BIGINT NOT NULL,
 	UNIQUE			(guild_id, channel_id)
 );
+
+CREATE TABLE IF NOT EXISTS dismiss (
+	id			SERIAL UNIQUE,
+	guild_id	BIGINT NOT NULL,
+	channel_id	BIGINT NOT NULL,
+	user_id		BIGINT NOT NULL,
+	message_id	BIGINT NULL,
+	dismiss_on	TIMESTAMP NOT NULL
+);

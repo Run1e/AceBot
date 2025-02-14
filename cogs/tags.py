@@ -1,7 +1,7 @@
 import asyncio
 import re
 import logging
-from datetime import datetime
+from datetime import datetime, timedelta
 
 import asyncpg
 import disnake
@@ -10,6 +10,7 @@ from disnake.ext import commands
 from cogs.mixins import AceMixin
 from utils.context import AceContext, can_prompt
 from utils.converters import LengthConverter, MaybeMemberConverter
+from utils.databasetimer import ColumnTimer
 from utils.pager import Pager
 from utils.time import pretty_datetime
 
@@ -181,6 +182,7 @@ class Tags(AceMixin, commands.Cog):
         super().__init__(bot)
 
         self._being_made = dict()
+        self.timer = ColumnTimer(self.bot, "dismiss_time", table="dismiss", column="dismiss_on")
 
     async def bot_check(self, ctx):
         try:
@@ -248,6 +250,10 @@ class Tags(AceMixin, commands.Cog):
             raise commands.CommandError("Failed to create tag for unknown reasons.")
 
     @commands.Cog.listener()
+    async def on_dismiss_time(self, record):
+        print(record)
+
+    @commands.Cog.listener()
     async def on_button_click(self, inter: disnake.MessageInteraction):
         if inter.message.author != self.bot.user:
             return
@@ -275,9 +281,20 @@ class Tags(AceMixin, commands.Cog):
 
         ar = disnake.ui.ActionRow()
         ar.add_button(0, style=disnake.ButtonStyle.danger, label="🗑️", custom_id=f"tagsdeletebutton_{inter.author.id}")
-        msg = await inter.send(record.get("content"), allowed_mentions=disnake.AllowedMentions.none(), components=[ar])
+        await inter.send(record.get("content"), allowed_mentions=disnake.AllowedMentions.none(), components=[ar])
+        message = await inter.original_response()
 
-        msg = await inter.original_message()
+        now = datetime.utcnow()
+        when = now + timedelta(seconds=15)
+        await self.db.execute(
+            "INSERT INTO dismiss (guild_id, channel_id, user_id, message_id, dismiss_on) VALUES ($1, $2, $3, $4, $5)",
+            inter.guild.id,
+            inter.channel.id,
+            inter.author.id,
+            message.id,
+            when,
+        )
+        self.timer.maybe_restart(when)
 
         await self.db.execute(
             "UPDATE tag SET uses=$2, viewed_at=$3 WHERE id=$1",
@@ -291,7 +308,7 @@ class Tags(AceMixin, commands.Cog):
         similars = await inter.bot.db.fetch(
             "SELECT * FROM tag WHERE guild_id=$1 AND (name LIKE $2 OR alias LIKE $2) ORDER BY uses DESC, viewed_at DESC LIMIT 5",
             inter.guild.id,
-            f"%{query.lower()}%",
+            f"%{query.lower().strip()}%",
         )
 
         return [build_tag_name(record, zws=True) for record in similars]
