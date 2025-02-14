@@ -251,7 +251,8 @@ class Tags(AceMixin, commands.Cog):
 
     @commands.Cog.listener()
     async def on_dismiss_time(self, record):
-        print(record)
+        message = await self.bot.get_channel(record.get("channel_id")).fetch_message(record.get("message_id"))
+        await message.edit(message.content, allowed_mentions=disnake.AllowedMentions.none(), components=[])
 
     @commands.Cog.listener()
     async def on_button_click(self, inter: disnake.MessageInteraction):
@@ -271,6 +272,13 @@ class Tags(AceMixin, commands.Cog):
             await inter.response.send_message("Sorry, this button is not for you!", ephemeral=True, delete_after=12)
             return
         
+        res = await self.db.execute(
+            "DELETE FROM dismiss WHERE message_id=$1 AND guild_id=$2 AND user_id=$3",
+            inter.message.id,
+            inter.guild.id,
+            inter.author.id,
+        )
+        self.timer.restart_if(lambda record: record.get("message_id") == inter.message.id)
         await inter.message.delete()
 
     @commands.slash_command(name="tag")
@@ -324,7 +332,19 @@ class Tags(AceMixin, commands.Cog):
         tag_name, record = tag_name
         ar = disnake.ui.ActionRow()
         ar.add_button(0, style=disnake.ButtonStyle.danger, label="🗑️", custom_id=f"tagsdeletebutton_{ctx.author.id}")
-        await ctx.send(record.get("content"), allowed_mentions=disnake.AllowedMentions.none(), components=[ar])
+        message = await ctx.send(record.get("content"), allowed_mentions=disnake.AllowedMentions.none(), components=[ar])
+
+        now = datetime.utcnow()
+        when = now + timedelta(seconds=15)
+        await self.db.execute(
+            "INSERT INTO dismiss (guild_id, channel_id, user_id, message_id, dismiss_on) VALUES ($1, $2, $3, $4, $5)",
+            ctx.guild.id,
+            ctx.channel.id,
+            ctx.author.id,
+            message.id,
+            when,
+        )
+        self.timer.maybe_restart(when)
 
         await self.db.execute(
             "UPDATE tag SET uses=$2, viewed_at=$3 WHERE id=$1",
