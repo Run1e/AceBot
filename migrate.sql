@@ -78,15 +78,6 @@ CREATE TABLE IF NOT EXISTS highlight_lang (
 	UNIQUE 		(guild_id, user_id)
 );
 
--- highlighter messages
-CREATE TABLE IF NOT EXISTS highlight_msg (
-	id			SERIAL UNIQUE,
-	guild_id	BIGINT NOT NULL,
-	channel_id	BIGINT NOT NULL,
-	user_id		BIGINT NOT NULL,
-	message_id	BIGINT NOT NULL
-);
-
 -- starboard config
 CREATE TABLE IF NOT EXISTS starboard (
 	id			SERIAL UNIQUE,
