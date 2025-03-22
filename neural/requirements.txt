@@ -1,5 +1,5 @@
 numpy<2
-torch==2.1.0
+torch==2.4.0
 torchtext==0.16.0
 sanic==23.12.1
 unidecode==1.1.1
