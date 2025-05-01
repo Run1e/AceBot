@@ -68,7 +68,12 @@ class Highlighter(AceMixin, commands.Cog):
             raise commands.CommandError("Code contents too long to paste.")
 
         ar = disnake.ui.ActionRow()
-        ar.add_button(0, style=disnake.ButtonStyle.secondary, label="🗑️", custom_id=f"hldeletebutton_{ctx.author.id}")
+        ar.add_button(
+            0,
+            style=disnake.ButtonStyle.secondary,
+            label="🗑️",
+            custom_id=f"hldeletebutton_{ctx.author.id}",
+        )
         await ctx.send(code, components=[ar])
 
     @commands.Cog.listener()
@@ -83,9 +88,13 @@ class Highlighter(AceMixin, commands.Cog):
             author_id: str = int(inter.component.custom_id.split("_")[1])
         except ValueError:
             return
-        
+
         if author_id != inter.author.id:
-            await inter.response.send_message("Sorry, this button is not for you!", ephemeral=True, delete_after=12)
+            await inter.response.send_message(
+                "Sorry, this button is not for you!",
+                ephemeral=True,
+                delete_after=12,
+            )
             return
 
         await inter.message.delete()
