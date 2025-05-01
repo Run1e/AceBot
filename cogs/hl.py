@@ -67,48 +67,28 @@ class Highlighter(AceMixin, commands.Cog):
         if len(code) > 2000:
             raise commands.CommandError("Code contents too long to paste.")
 
-        message = await ctx.send(code)
-
-        await self.db.execute(
-            "INSERT INTO highlight_msg (guild_id, channel_id, user_id, message_id) VALUES ($1, $2, $3, $4)",
-            ctx.guild.id,
-            ctx.channel.id,
-            ctx.author.id,
-            message.id,
-        )
-
-        await message.add_reaction(DELETE_EMOJI)
+        ar = disnake.ui.ActionRow()
+        ar.add_button(0, style=disnake.ButtonStyle.secondary, label="🗑️", custom_id=f"hldeletebutton_{ctx.author.id}")
+        await ctx.send(code, components=[ar])
 
     @commands.Cog.listener()
-    async def on_raw_reaction_add(self, payload):
-        """Listens for raw reactions and removes a highlighted message if appropriate."""
-
-        if payload.guild_id is None:
+    async def on_button_click(self, inter: disnake.MessageInteraction):
+        if inter.guild_id is None:
             return
 
-        if str(payload.emoji) != DELETE_EMOJI or payload.user_id == self.bot.user.id:
-            return
-
-        if (
-            await self.db.execute(
-                "DELETE FROM highlight_msg WHERE user_id=$1 AND message_id=$2",
-                payload.user_id,
-                payload.message_id,
-            )
-            == "DELETE 0"
-        ):
-            return
-
-        channel = self.bot.get_channel(payload.channel_id)
-        if channel is None:
+        if not inter.component.custom_id.startswith("hldeletebutton"):
             return
 
         try:
-            log.info("Deleting highlight msg %s", message)
-            message = await channel.fetch_message(payload.message_id)
-            await message.delete()
-        except disnake.HTTPException:
+            author_id: str = int(inter.component.custom_id.split("_")[1])
+        except ValueError:
             return
+        
+        if author_id != inter.author.id:
+            await inter.response.send_message("Sorry, this button is not for you!", ephemeral=True, delete_after=12)
+            return
+
+        await inter.message.delete()
 
     @commands.command()
     @commands.bot_has_permissions(embed_links=True)
