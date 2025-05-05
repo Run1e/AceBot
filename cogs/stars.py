@@ -867,7 +867,11 @@ class Starboard(AceMixin, commands.Cog):
 
         embed = star_message.embeds[0]
         embed.colour = self.star_gradient_colour(stars)
-        await star_message.edit(content=self.get_header(message_id, stars), embed=embed, attachments=None)
+        await star_message.edit(
+            content=self.get_header(message_id, stars),
+            embed=embed,
+            attachments=None,
+        )
 
     def get_header(self, message_id, stars):
         return f"{self.star_emoji(stars)} **{stars}**  `ID: {message_id}`"
@@ -893,8 +897,7 @@ class Starboard(AceMixin, commands.Cog):
             attachment = message.attachments[0]
             path = urlparse(attachment.url).path
             if path.lower().endswith(("png", "jpeg", "jpg", "gif", "webp")):
-                file = await attachment.to_file()
-                embed.set_image(file=file)
+                embed.set_image(url=attachment.url)
             else:
                 embed.add_field(
                     name="Attachment",
