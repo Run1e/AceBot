@@ -505,10 +505,14 @@ class Fun(AceMixin, commands.Cog):
         await msg.edit(content=None, embed=e)
 
     @commands.command()
-    async def fact(self, ctx):
-        """Get a random fact."""
+    async def fact(self, ctx, num:int = 0):
+        """Get a random or specific (by ID) fact."""
 
-        fact = await self.db.fetchrow("SELECT * FROM facts ORDER BY random()")
+        max = await self.db.fetchrow("SELECT COUNT(*) FROM facts")
+        if (num > 0 and num < max.get("count")):
+            fact = await self.db.fetchrow("SELECT * FROM facts WHERE id=$1", num)
+        else:
+            fact = await self.db.fetchrow("SELECT * FROM facts ORDER BY random()")
 
         e = disnake.Embed(title="Fact #{}".format(fact.get("id")), description=fact.get("content"))
 
