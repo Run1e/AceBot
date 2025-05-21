@@ -37,8 +37,8 @@ DOCS_FMT = "https://www.autohotkey.com/docs/v{}/{}"
 DOCS_NO_MATCH = commands.CommandError("Sorry, couldn't find an entry similar to that.")
 
 SUGGESTION_PREFIX = "suggestion:"
-UPVOTE_EMOJI = "\N{Thumbs Up Sign}"
-DOWNVOTE_EMOJI = "\N{Thumbs Down Sign}"
+UPVOTE_EMOJI = "\N{THUMBS UP SIGN}"
+DOWNVOTE_EMOJI = "\N{THUMBS DOWN SIGN}"
 
 INACTIVITY_LIMIT = timedelta(weeks=4)
 
@@ -726,7 +726,9 @@ class AutoHotkey(AceMixin, commands.Cog):
 
         await thread.edit(applied_tags=added_tags)
 
-        content = "Thanks for tagging your post!\nYou can change the tags at any time by using `/retag`\n"
+        content = (
+            "Thanks for tagging your post!\nYou can change the tags at any time by using `/retag`\n"
+        )
 
         if added_tags:
             content += "\n"
@@ -736,7 +738,9 @@ class AutoHotkey(AceMixin, commands.Cog):
                 else:
                     content += f"- {tag.name}\n"
 
-        content += "\n**If your issue gets solved, you can mark your post as solved by sending `/solved`**"
+        content += (
+            "\n**If your issue gets solved, you can mark your post as solved by sending `/solved`**"
+        )
 
         await message.edit(content=content, embed=None, components=None)
 
@@ -921,22 +925,25 @@ class AutoHotkey(AceMixin, commands.Cog):
 
     @commands.Cog.listener()
     async def on_member_remove(self, member: disnake.Member):
-        forum: disnake.ForumChannel = self.bot.get_channel(HELP_FORUM_CHAN_ID)
+        forum = self.bot.get_channel(HELP_FORUM_CHAN_ID)
 
-        if not forum:
+        if not isinstance(forum, disnake.ForumChannel):
             return
-        
+
         for thread in forum.threads:
             if thread.owner_id != member.id:
                 continue
-            
+
             if thread.archived:
                 continue
-            
+
             if thread.locked:
                 continue
-            
-            await thread.send(embed=disnake.Embed(description="The thread owner is no longer in this server."))
+
+            await thread.send(
+                embed=disnake.Embed(description="The thread owner is no longer in this server.")
+            )
+
 
 def setup(bot):
     bot.add_cog(AutoHotkey(bot))
