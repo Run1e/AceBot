@@ -919,6 +919,21 @@ class AutoHotkey(AceMixin, commands.Cog):
 
                     return
 
+    @commands.Cog.listener()
+    async def on_member_remove(self, member: disnake.Member):
+        forum: disnake.ForumChannel = self.bot.get_channel(HELP_FORUM_CHAN_ID)
+
+        for thread in forum.threads:
+            if thread.owner_id != member.id:
+                continue
+            
+            if thread.archived:
+                continue
+            
+            if thread.locked:
+                continue
+            
+            await thread.send("❕ The thread owner is no longer in this server.")
 
 def setup(bot):
     bot.add_cog(AutoHotkey(bot))
