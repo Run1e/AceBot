@@ -64,6 +64,8 @@ Please install these according to their instructions.
   CLOUDAHK_USER = None
   CLOUDAHK_PASS = None
 
+  DOCS_API_URL = None
+
   DBL_KEY = None
   THECATAPI_KEY = None
   WOLFRAM_KEY = None
