@@ -165,6 +165,9 @@ class AutoHotkey(AceMixin, commands.Cog):
             if not thread.applied_tags:
                 await self.tagask(thread)
 
+        await asyncio.sleep(2)
+        await self.handle_attachments(thread)
+
     @tasks.loop(minutes=1)
     async def close_help_threads(self):
         await self.bot.wait_until_ready()
@@ -943,6 +946,157 @@ class AutoHotkey(AceMixin, commands.Cog):
             await thread.send(
                 embed=disnake.Embed(description="The thread owner is no longer in this server.")
             )
+
+    async def handle_attachments(self, thing: disnake.Message | disnake.Thread):
+        if isinstance(thing, disnake.Thread):
+            try:
+                message: disnake.Message = self.bot.get_message(thing.id)
+                if not message:
+                    message = await thing.fetch_message(thing.id)
+            except disnake.NotFound:
+                return
+            except disnake.HTTPException:
+                return
+        else:
+            message: disnake.Message = thing
+            if not (
+                message.channel.id in HELP_CHANNEL_IDS
+                or isinstance(message.channel, disnake.Thread)
+            ):
+                return
+
+        if not message.attachments:
+            return
+
+        async def _parse_attachments(attachments: list[disnake.Attachment]) -> list[str, str]:
+            valid_attachments = []
+            for attachment in attachments:
+                if attachment.size > 2 * 1024 * 1024:
+                    continue
+
+                try:
+                    data = await attachment.read()
+                except (disnake.HTTPException, disnake.NotFound):
+                    continue
+
+                try:
+                    decoded = data.decode("utf-8-sig")
+                except UnicodeDecodeError:
+                    continue
+
+                if "\0" in decoded:
+                    continue
+
+                valid_attachments.append([attachment.filename, decoded])
+            return valid_attachments
+
+        valid_attachments = await _parse_attachments(message.attachments)
+
+        if not valid_attachments:
+            return
+
+        embed = disnake.Embed()
+        embed.title = "Share your file(s) via our paste service (p.autohotkey.com)?"
+        embed.description = (
+            "Click Yes if you want to upload.\n"
+            "This allows others to read your code without downloading files."
+        )
+        embed.color = disnake.Color.blue()
+
+        row = disnake.ui.ActionRow()
+
+        row.add_button(
+            style=disnake.ButtonStyle.primary,
+            custom_id="pahk_upload",
+            label="Upload",
+            emoji="☁️",
+        )
+
+        reply = await message.reply(embed=embed, components=[row])
+
+        def check(inter: disnake.MessageInteraction):
+            nonlocal message
+            if inter.author != message.author:
+                return False
+
+            for components in inter.message.components:
+                if inter.component in components.children:
+                    return True
+
+            if inter.component.custom_id not in ("pahk_upload", "pahk_delete"):
+                return False
+
+            return False
+
+        async def upload_to_pahk(attachments: list[str, str]) -> list[str, str]:
+            url = "https://pahk.geekdude.io/"
+            headers = {"Content-Type": "application/x-www-form-urlencoded"}
+            links = []
+            async with aiohttp.ClientSession(connector=aiohttp.TCPConnector(ssl=False)) as session:
+                for filename, attachment in attachments:
+                    try:
+                        async with session.post(
+                            url, data=f"code={attachment}", headers=headers, allow_redirects=False
+                        ) as r:
+                            if r.status == 302 and r.headers.get("Location"):
+                                links.append(
+                                    [filename, f"https://p.autohotkey.com{r.headers['Location'][1:]}"]
+                                )
+                    except (aiohttp.ClientError, asyncio.TimeoutError):
+                        pass
+            return links
+
+        try:
+            await self.bot.wait_for(
+                event="button_click",
+                check=check,
+                timeout=180.0,
+            )
+        except asyncio.TimeoutError:
+            await reply.delete()
+            return None
+
+        await reply.delete()
+
+        links = await upload_to_pahk(valid_attachments)
+
+        if not links:
+            return
+
+        embed = disnake.Embed()
+        embed.set_author(
+            name=message.author.display_name, icon_url=message.author.display_avatar.url
+        )
+        embed.title = "Files uploaded to p.autohotkey.com"
+        embed.description = "\n".join(f"{link} ({filename})" for filename, link in links)
+        embed.color = disnake.Color.green()
+
+        row = disnake.ui.ActionRow()
+
+        row.add_button(
+            style=disnake.ButtonStyle.danger,
+            custom_id="pahk_delete",
+            label="Delete",
+            emoji="🗑️",
+        )
+
+        uploads_message = await message.reply(embed=embed, components=[row])
+
+        try:
+            await self.bot.wait_for(
+                event="button_click",
+                check=check,
+                timeout=240.0,
+            )
+            await uploads_message.delete()
+        except asyncio.TimeoutError:
+            await uploads_message.edit(embed=embed, components=None)
+
+    @commands.Cog.listener()
+    async def on_message(self, message: disnake.Message):
+        if isinstance(message.channel, disnake.Thread) and message.id == message.channel.id:
+            return
+        await self.handle_attachments(message)
 
 
 def setup(bot):
