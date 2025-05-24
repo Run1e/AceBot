@@ -996,9 +996,9 @@ class AutoHotkey(AceMixin, commands.Cog):
             return
 
         embed = disnake.Embed()
-        embed.title = "Share your file(s) via our paste service (p.autohotkey.com)?"
+        embed.title = "Share your file(s) using our paste service (p.autohotkey.com)?"
         embed.description = (
-            "Click Yes if you want to upload.\n"
+            "Click Yes if you want to upload them automatically.\n"
             "This allows others to read your code without downloading files."
         )
         embed.color = disnake.Color.blue()
@@ -1014,19 +1014,22 @@ class AutoHotkey(AceMixin, commands.Cog):
 
         reply = await message.reply(embed=embed, components=[row])
 
-        def check(inter: disnake.MessageInteraction):
-            nonlocal message
-            if inter.author != message.author:
-                return False
+        def iter_checker(
+            author: disnake.Member | disnake.User,
+            channel: disnake.GroupChannel,
+            expected_custom_id: str,
+        ):
+            def check(inter: disnake.MessageInteraction) -> bool:
+                if inter.author != author:
+                    return False
+                if inter.channel != channel:
+                    return False
+                return (
+                    hasattr(inter.component, "custom_id")
+                    and inter.component.custom_id == expected_custom_id
+                )
 
-            for components in inter.message.components:
-                if inter.component in components.children:
-                    return True
-
-            if inter.component.custom_id not in ("pahk_upload", "pahk_delete"):
-                return False
-
-            return False
+            return check
 
         async def upload_to_pahk(attachments: list[str, str]) -> list[str, str]:
             url = "https://pahk.geekdude.io/"
@@ -1040,13 +1043,17 @@ class AutoHotkey(AceMixin, commands.Cog):
                         ) as r:
                             if r.status == 302 and r.headers.get("Location"):
                                 links.append(
-                                    [filename, f"https://p.autohotkey.com{r.headers['Location'][1:]}"]
+                                    [
+                                        filename,
+                                        f"https://p.autohotkey.com{r.headers['Location'][1:]}",
+                                    ]
                                 )
                     except (aiohttp.ClientError, asyncio.TimeoutError):
                         pass
             return links
 
         try:
+            check = iter_checker(message.author, message.channel, "pahk_upload")
             await self.bot.wait_for(
                 event="button_click",
                 check=check,
@@ -1083,6 +1090,7 @@ class AutoHotkey(AceMixin, commands.Cog):
         uploads_message = await message.reply(embed=embed, components=[row])
 
         try:
+            check = iter_checker(message.author, message.channel, "pahk_delete")
             await self.bot.wait_for(
                 event="button_click",
                 check=check,
