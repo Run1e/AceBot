@@ -314,13 +314,17 @@ class Meta(AceMixin, commands.Cog):
 
     @commands.command(aliases=["source"])
     async def code(self, ctx: AceContext, *, command: str = None):
-        """Get a github link to the source code of a command."""
+        """Get a github link to the source code of a command (include a / at the start to recieve a / command)."""
 
         if command is None:
             await ctx.send(GITHUB_LINK)
             return
 
-        cmd: commands.Command = self.bot.get_command(command)
+        # check if it's a / command
+        if command.startswith("/"):
+            cmd: commands.Command = self.bot.get_slash_command(command[1:])
+        else:
+            cmd: commands.Command = self.bot.get_command(command)
 
         # not a command
         if cmd is None:
