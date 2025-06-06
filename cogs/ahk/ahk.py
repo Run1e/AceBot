@@ -630,24 +630,25 @@ class AutoHotkey(AceMixin, commands.Cog):
 
             embed.description = question
 
-            view = []
+            rows = []
+
             for num, (label, tag) in enumerate(tags.items()):
                 if num % 4 == 0:
                     row = disnake.ui.ActionRow()
-                    view.append(row)
+                    rows.append(row)
 
                 row.add_button(
                     style=disnake.ButtonStyle.secondary,
                     label=label,
-                        emoji=tag.emoji,
-                    )
+                    emoji=tag.emoji,
+                )
 
             row.add_button(
                 style=disnake.ButtonStyle.grey,
                 label="Skip" if single else "Skip/Done",
             )
 
-            args = dict(embed=embed, components=view)
+            args = dict(embed=embed, components=rows)
 
             if message is None:
                 content = (
@@ -695,12 +696,12 @@ class AutoHotkey(AceMixin, commands.Cog):
                 tag = tags.get(interaction.component.label)
                 index = list(tags.keys()).index(interaction.component.label)
                 if tag in out:
-                    view[int(index/4)][index%4].style = disnake.ButtonStyle.secondary
+                    rows[int(index/4)][index%4].style = disnake.ButtonStyle.secondary
                     out.remove(tag)
                 else:
-                    view[int(index/4)][index%4].style = disnake.ButtonStyle.primary
+                    rows[int(index/4)][index%4].style = disnake.ButtonStyle.primary
                     out.append(tag)
-                await message.edit(content=None, embed=embed, components=view)
+                await message.edit(content=None, embed=embed, components=rows)
 
             return out
 
