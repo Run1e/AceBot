@@ -630,25 +630,15 @@ class AutoHotkey(AceMixin, commands.Cog):
 
             embed.description = question
 
-            rows = []
+            view = disnake.ui.StringSelect(max_values=len(list(tags.keys()))+1, options=[disnake.SelectOption(label="Skip")])
 
-            for num, (label, tag) in enumerate(tags.items()):
-                if num % 4 == 0:
-                    row = disnake.ui.ActionRow()
-                    rows.append(row)
-
-                row.add_button(
-                    style=disnake.ButtonStyle.secondary,
+            for (label, tag) in list(tags.items()):
+                view.add_option(
                     label=label,
                     emoji=tag.emoji,
                 )
 
-            row.add_button(
-                style=disnake.ButtonStyle.grey,
-                label="Skip",
-            )
-
-            args = dict(embed=embed, components=rows)
+            args = dict(embed=embed, components=view)
 
             if message is None:
                 content = (
@@ -663,26 +653,19 @@ class AutoHotkey(AceMixin, commands.Cog):
                 await message.edit(content=None, **args)
 
             def check(inter: disnake.MessageInteraction):
-                if inter.author != thread.owner:
-                    return False
-
-                for components in inter.message.components:
-                    if inter.component in components.children:
-                        return True
-
-                return False
+                return inter.author == thread.owner and inter.component in inter.message.components[0].children
 
             try:
-                button_inter: disnake.MessageInteraction = await self.bot.wait_for(
-                    event="button_click",
+                select_inter: disnake.MessageInteraction = await self.bot.wait_for(
+                    event="dropdown",
                     check=check,
                     timeout=300.0,  # if they haven't done anything in 5 minutes then timeout
                 )
-                await button_inter.response.defer()
+                await select_inter.response.defer()
             except asyncio.TimeoutError:
                 return None
 
-            return tags.get(button_inter.component.label, "Skip")
+            return [tags.get(val, "Skip") for val in select_inter.data.values]
 
         tags = {tag.name: tag for tag in thread.parent.available_tags}
         added_tags: list[disnake.ForumTag] = []
@@ -704,6 +687,13 @@ class AutoHotkey(AceMixin, commands.Cog):
                     "Object-Oriented": tags["Object-Oriented"],
                 },
             ),
+            (
+                "Do any of the following apply to your post? Skip if none apply.",
+                {
+                    "Used Artifical Intelligence": tags["ChatGPT / AI"],
+                    "Some else wrote it": tags["Someone Else"],
+                },
+            ),
         )
 
         for question in questions:
@@ -716,27 +706,22 @@ class AutoHotkey(AceMixin, commands.Cog):
 
             # add tag to list if we picked one
             # anything else, probably means a skip
-            if isinstance(picked, disnake.ForumTag):
-                added_tags.append(picked)
+            for pick in picked:
+                if isinstance(pick, disnake.ForumTag):
+                    added_tags.append(pick)
 
-        # just delete and stop if we timed out
-        if not added_tags:
-            await message.delete()
-            return
 
         await thread.edit(applied_tags=added_tags)
 
-        content = (
-            "Thanks for tagging your post!\nYou can change the tags at any time by using `/retag`\n"
-        )
-
         if added_tags:
-            content += "\n"
+            content = "Thanks for tagging your post!\nYou can change the tags at any time by using `/retag`\n\n"
             for tag in added_tags:
                 if tag.emoji:
                     content += f"- {tag.emoji} {tag.name}\n"
                 else:
                     content += f"- {tag.name}\n"
+        else:
+            content = "You did not select any tags for your post.\nYou can add tags at any time by using `/retag`\n"
 
         content += (
             "\n**If your issue gets solved, you can mark your post as solved by sending `/solved`**"
