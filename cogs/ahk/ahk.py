@@ -48,7 +48,7 @@ BULLET = "•"
 
 
 def tag_string(tag):
-    return (tag.emoji.name + " " if tag.emoji else "") + tag.name
+    return "- " + (tag.emoji.name + " " if tag.emoji else "") + tag.name + "\n"
 
 
 class RunnableCodeConverter(commands.Converter):
@@ -619,7 +619,7 @@ class AutoHotkey(AceMixin, commands.Cog):
     async def tagask(self, thread: disnake.Thread, inter: disnake.AppCmdInter = None):
         message = None
 
-        async def ask(question, tags: dict, button: bool = True):
+        async def ask(question, tags: dict, single: bool = True):
             nonlocal message
             embed = disnake.Embed()
             embed.set_author(
@@ -630,37 +630,28 @@ class AutoHotkey(AceMixin, commands.Cog):
 
             embed.description = question
 
-            if button:
-                view = []
-                for num, (label, tag) in enumerate(tags.items()):
-                    if num % 4 == 0:
-                        row = disnake.ui.ActionRow()
-                        view.append(row)
+            view = []
+            for num, (label, tag) in enumerate(tags.items()):
+                if num % 4 == 0:
+                    row = disnake.ui.ActionRow()
+                    view.append(row)
 
-                    row.add_button(
-                        style=disnake.ButtonStyle.secondary,
-                        label=label,
-                            emoji=tag.emoji,
-                        )
-  
                 row.add_button(
-                    style=disnake.ButtonStyle.grey,
-                    label="Skip",
-                )
-            else:
-                view = disnake.ui.StringSelect(max_values=3, options=[disnake.SelectOption(label="Skip")]) # limit to three to ensure we don't pass discord's limit of 5
-
-                for (label, tag) in list(tags.items()):
-                    view.add_option(
-                        label=label,
+                    style=disnake.ButtonStyle.secondary,
+                    label=label,
                         emoji=tag.emoji,
                     )
+
+            row.add_button(
+                style=disnake.ButtonStyle.grey,
+                label="Skip" if single else "Skip/Done",
+            )
 
             args = dict(embed=embed, components=view)
 
             if message is None:
                 content = (
-                    f"{thread.owner.mention} Increase your visibility by adding tags your post!"
+                    f"{thread.owner.mention} Increase your visibility by adding up to 5 tags to your post!"
                 )
                 if inter:
                     await inter.response.send_message(content=content, **args)
@@ -669,13 +660,9 @@ class AutoHotkey(AceMixin, commands.Cog):
                     message = await thread.send(content=content, **args)
             else:
                 await message.edit(content=None, **args)
-
-            # check if there was an interaction with this select
-            def check_select(inter: disnake.MessageInteraction):
-                return inter.author == thread.owner and inter.component in inter.message.components[0].children
             
             # check if a button was pressed for this
-            def check_button(inter: disnake.MessageInteraction):
+            def check(inter: disnake.MessageInteraction) -> bool:
                 if inter.author != thread.owner:
                     return False
 
@@ -685,26 +672,37 @@ class AutoHotkey(AceMixin, commands.Cog):
 
                 return False
 
-            try:
-                if button:
+            async def interact() -> disnake.MessageInteraction:
+                try:
                     interaction: disnake.MessageInteraction = await self.bot.wait_for(
-                        event="button_click",
-                        check=check_button,
-                        timeout=300.0,  # if they haven't done anything in 5 minutes then timeout
-                    )
+                            event="button_click",
+                            check=check,
+                            timeout=300.0,  # if they haven't done anything in 5 minutes then timeout
+                        )
+                    await interaction.response.defer()
+                    return interaction
+                except asyncio.TimeoutError:
+                    return None
+            
+            if single:
+                interaction = await interact()
+                return [tags.get(interaction.component.label, "Skip")] if interaction else None
+            out = []
+            while True:
+                interaction = await interact()
+                if interaction is None or interaction.component.label == "Skip/Done":
+                    break
+                tag = tags.get(interaction.component.label)
+                index = list(tags.keys()).index(interaction.component.label)
+                if tag in out:
+                    view[int(index/4)][index%4].style = disnake.ButtonStyle.secondary
+                    out.remove(tag)
                 else:
-                    interaction: disnake.MessageInteraction = await self.bot.wait_for(
-                        event="dropdown",
-                        check=check_select,
-                        timeout=300.0,  # if they haven't done anything in 5 minutes then timeout
-                    )
-                await interaction.response.defer()
-            except asyncio.TimeoutError:
-                return None
+                    view[int(index/4)][index%4].style = disnake.ButtonStyle.primary
+                    out.append(tag)
+                await message.edit(content=None, embed=embed, components=view)
 
-            if button:
-                return [tags.get(interaction.component.label, "Skip")]
-            return [tags.get(val, "Skip") for val in interaction.data.values]
+            return out
 
         tags = {tag.name: tag for tag in thread.parent.available_tags}
         added_tags: list[disnake.ForumTag] = []
@@ -715,7 +713,7 @@ class AutoHotkey(AceMixin, commands.Cog):
                 {"v1.1": tags["v1"], "v2.0": tags["v2"]},
             ),
             (
-                "Which of these topics fit your question best? Skip if none apply.",
+                "Which of these topics fit your question? Skip if none apply.",
                 {
                     "Sending keys/mouse": tags["Send/Click"],
                     "Hotkeys": tags["Hotkeys"],
@@ -736,6 +734,15 @@ class AutoHotkey(AceMixin, commands.Cog):
             ),
         )
 
+        # add any tags that haven't been assigned (and aren't the solved tag) in a new question
+        left = tags.copy()
+        left.pop("Solved!")
+        for question in questions:
+            for num, (label, tag) in enumerate(question[1].items()):
+                left.pop(tag.name)
+        if len(left) > 0:
+            questions = (*questions, ("Do you want to add any of these tags? Skip if not.", left, len(left) == 1,)) 
+
         for question in questions:
             picked = await ask(*question)
 
@@ -751,15 +758,16 @@ class AutoHotkey(AceMixin, commands.Cog):
                     added_tags.append(pick)
 
 
-        await thread.edit(applied_tags=added_tags)
+        await thread.edit(applied_tags=added_tags[:5])
 
         if added_tags:
             content = "Thanks for tagging your post!\nYou can change the tags at any time by using `/retag`\n\n"
-            for tag in added_tags:
-                if tag.emoji:
-                    content += f"- {tag.emoji} {tag.name}\n"
-                else:
-                    content += f"- {tag.name}\n"
+            for tag in added_tags[:5]:
+                content += tag_string(tag)
+            if len(added_tags) > 5:
+                content += "\nThe following tags weren't added due to the 5 tags limit:\n\n"
+                for tag in added_tags[5:]:
+                    content += tag_string(tag)
         else:
             content = "You did not select any tags for your post.\nYou can add tags at any time by using `/retag`\n"
 
