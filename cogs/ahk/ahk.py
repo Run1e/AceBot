@@ -619,7 +619,7 @@ class AutoHotkey(AceMixin, commands.Cog):
     async def tagask(self, thread: disnake.Thread, inter: disnake.AppCmdInter = None):
         message = None
 
-        async def ask(question, tags: dict):
+        async def ask(question, tags: dict, button: bool = True):
             nonlocal message
             embed = disnake.Embed()
             embed.set_author(
@@ -630,13 +630,31 @@ class AutoHotkey(AceMixin, commands.Cog):
 
             embed.description = question
 
-            view = disnake.ui.StringSelect(max_values=len(list(tags.keys()))+1, options=[disnake.SelectOption(label="Skip")])
+            if button:
+                view = []
+                for num, (label, tag) in enumerate(tags.items()):
+                    if num % 4 == 0:
+                        row = disnake.ui.ActionRow()
+                        view.append(row)
 
-            for (label, tag) in list(tags.items()):
-                view.add_option(
-                    label=label,
-                    emoji=tag.emoji,
+                    row.add_button(
+                        style=disnake.ButtonStyle.secondary,
+                        label=label,
+                            emoji=tag.emoji,
+                        )
+  
+                row.add_button(
+                    style=disnake.ButtonStyle.grey,
+                    label="Skip",
                 )
+            else:
+                view = disnake.ui.StringSelect(max_values=3, options=[disnake.SelectOption(label="Skip")]) # limit to three to ensure we don't pass discord's limit of 5
+
+                for (label, tag) in list(tags.items()):
+                    view.add_option(
+                        label=label,
+                        emoji=tag.emoji,
+                    )
 
             args = dict(embed=embed, components=view)
 
@@ -652,20 +670,41 @@ class AutoHotkey(AceMixin, commands.Cog):
             else:
                 await message.edit(content=None, **args)
 
-            def check(inter: disnake.MessageInteraction):
+            # check if there was an interaction with this select
+            def check_select(inter: disnake.MessageInteraction):
                 return inter.author == thread.owner and inter.component in inter.message.components[0].children
+            
+            # check if a button was pressed for this
+            def check_button(inter: disnake.MessageInteraction):
+                if inter.author != thread.owner:
+                    return False
+
+                for components in inter.message.components:
+                    if inter.component in components.children:
+                        return True
+
+                return False
 
             try:
-                select_inter: disnake.MessageInteraction = await self.bot.wait_for(
-                    event="dropdown",
-                    check=check,
-                    timeout=300.0,  # if they haven't done anything in 5 minutes then timeout
-                )
-                await select_inter.response.defer()
+                if button:
+                    interaction: disnake.MessageInteraction = await self.bot.wait_for(
+                        event="button_click",
+                        check=check_button,
+                        timeout=300.0,  # if they haven't done anything in 5 minutes then timeout
+                    )
+                else:
+                    interaction: disnake.MessageInteraction = await self.bot.wait_for(
+                        event="dropdown",
+                        check=check_select,
+                        timeout=300.0,  # if they haven't done anything in 5 minutes then timeout
+                    )
+                await interaction.response.defer()
             except asyncio.TimeoutError:
                 return None
 
-            return [tags.get(val, "Skip") for val in select_inter.data.values]
+            if button:
+                return [tags.get(interaction.component.label, "Skip")]
+            return [tags.get(val, "Skip") for val in interaction.data.values]
 
         tags = {tag.name: tag for tag in thread.parent.available_tags}
         added_tags: list[disnake.ForumTag] = []
@@ -686,6 +725,7 @@ class AutoHotkey(AceMixin, commands.Cog):
                     "COM Objects": tags["COM Objects"],
                     "Object-Oriented": tags["Object-Oriented"],
                 },
+                False, # specify this as a multi select menu
             ),
             (
                 "Do any of the following apply to your post? Skip if none apply.",
