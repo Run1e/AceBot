@@ -969,9 +969,9 @@ class AutoHotkey(AceMixin, commands.Cog):
             encoding = "utf-8-sig"
 
             if isinstance(attachment.content_type, str):
-                charset = attachment.content_type.rpartition("charset=")[2].strip()
-                if charset:
-                    encoding = charset
+                charset = re.search(r"charset=([\w-]+)", attachment.content_type)
+                if charset is not None:
+                    encoding = charset.group(1)
 
             try:
                 decoded = data.decode(encoding)
