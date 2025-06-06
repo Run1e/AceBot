@@ -48,6 +48,8 @@ DISCORD_UPLOAD_LIMIT = 8000000  # 8 MB
 
 AHKBIN_UPLOAD_LIMIT = 1000000  # 1 MB
 
+ATTACHMENT_LIMIT = 7
+
 BULLET = "•"
 
 
@@ -1126,8 +1128,9 @@ class AutoHotkey(AceMixin, commands.Cog):
 
         if action == "upload":
             valid_attachments = await self._parse_attachments(source_message.attachments)
-            links = await self._upload_to_ahkbin(valid_attachments)
-            if not links:
+            if valid_attachments:
+                links = await self._upload_to_ahkbin(valid_attachments[:ATTACHMENT_LIMIT])
+            if not valid_attachments or not links:
                 embed, row = self._ahkbin_UI(
                     title="Failed to upload files.",
                     description=(
@@ -1140,10 +1143,14 @@ class AutoHotkey(AceMixin, commands.Cog):
                 await inter.response.edit_message(embed=embed, components=row)
                 return
 
+            description = "\n".join(
+                f"{AHKBIN_URL}/?p={link} ({filename})" for filename, link in links
+            )
+            if len(valid_attachments) > ATTACHMENT_LIMIT:
+                description += f"\n\nCould not upload all attachments (limit: {ATTACHMENT_LIMIT})"
+
             embed, row = self._ahkbin_UI(
-                description="\n".join(
-                    f"{AHKBIN_URL}/?p={link} ({filename})" for filename, link in links
-                ),
+                description=description,
                 author_id=inter.author.id,
                 upload_disabled=True,
                 upload_ids=[link for _, link in links],
