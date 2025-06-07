@@ -687,7 +687,7 @@ class AutoHotkey(AceMixin, commands.Cog):
             
             if single:
                 interaction = await interact()
-                return [tags.get(interaction.component.label, "Skip")] if interaction else None
+                return interaction is None, ([tags.get(interaction.component.label, "Skip")] if interaction else [])
             out = []
             while True:
                 interaction = await interact()
@@ -703,7 +703,7 @@ class AutoHotkey(AceMixin, commands.Cog):
                     out.append(tag)
                 await message.edit(content=None, embed=embed, components=rows)
 
-            return out
+            return interaction is None, out
 
         tags = {tag.name: tag for tag in thread.parent.available_tags}
         added_tags: list[disnake.ForumTag] = []
@@ -745,19 +745,16 @@ class AutoHotkey(AceMixin, commands.Cog):
             questions = (*questions, ("Do you want to add any of these tags? Skip if not.", left, len(left) == 1,)) 
 
         for question in questions:
-            picked = await ask(*question)
+            timeout, picked = await ask(*question)
 
-            # None signifies a timeout
-            # add whatever was picked, if anything
-            if picked is None:
-                break
-
-            # add tag to list if we picked one
+            # add tag(s) to list if we picked any
             # anything else, probably means a skip
             for pick in picked:
                 if isinstance(pick, disnake.ForumTag):
                     added_tags.append(pick)
 
+            if timeout:
+                break
 
         await thread.edit(applied_tags=added_tags[:5])
 
