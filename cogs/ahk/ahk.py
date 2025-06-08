@@ -46,6 +46,8 @@ DISCORD_UPLOAD_LIMIT = 8000000  # 8 MB
 
 BULLET = "•"
 
+SKIP = disnake.PartialEmoji(name="⏩")
+DONE = disnake.PartialEmoji(name="☑️")
 
 def tag_string(tag):
     return "- " + (tag.emoji.name + " " if tag.emoji else "") + tag.name + "\n"
@@ -644,8 +646,9 @@ class AutoHotkey(AceMixin, commands.Cog):
                 )
 
             row.add_button(
-                style=disnake.ButtonStyle.grey,
-                label="Skip" if single else "Skip/Done",
+                style=disnake.ButtonStyle.danger,
+                label="Skip",
+                emoji=SKIP
             )
 
             args = dict(embed=embed, components=rows)
@@ -691,15 +694,24 @@ class AutoHotkey(AceMixin, commands.Cog):
             out = []
             while True:
                 interaction = await interact()
-                if interaction is None or interaction.component.label == "Skip/Done":
+                if interaction is None or interaction.component.label == "Skip" or interaction.component.label == "Done":
                     break
                 tag = tags.get(interaction.component.label)
                 index = list(tags.keys()).index(interaction.component.label)
+                loc = (len(tags)-1)%4+1
                 if tag in out:
                     rows[int(index/4)][index%4].style = disnake.ButtonStyle.secondary
                     out.remove(tag)
+                    if not out:
+                        row[loc].style = disnake.ButtonStyle.danger
+                        row[loc].label = "Skip"
+                        row[loc].emoji = SKIP
                 else:
                     rows[int(index/4)][index%4].style = disnake.ButtonStyle.primary
+                    if not out:
+                        row[loc].style = disnake.ButtonStyle.success
+                        row[loc].label = "Done"
+                        row[loc].emoji = DONE
                     out.append(tag)
                 await message.edit(content=None, embed=embed, components=rows)
 
