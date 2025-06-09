@@ -48,8 +48,6 @@ DISCORD_UPLOAD_LIMIT = 8000000  # 8 MB
 
 AHKBIN_UPLOAD_LIMIT = 1000000  # 1 MB
 
-ATTACHMENT_LIMIT = 7
-
 BULLET = "•"
 
 
@@ -117,6 +115,8 @@ class AutoHotkey(AceMixin, commands.Cog):
         self.close_help_threads.start()
 
         self._docs_msg_map = {}
+
+        self.ahkbin_uploads = {}
 
     def cog_unload(self):
         self.rss.cancel()
@@ -982,17 +982,11 @@ class AutoHotkey(AceMixin, commands.Cog):
         return valid_attachments
 
     async def _upload_attachment(
-        self, session: aiohttp.ClientSession, headers: dict[str, str], filename: str, content: str
+        self, session: aiohttp.ClientSession, filename: str, content: str
     ) -> tuple[str, str] | None:
-
-        payload = {
-            "code": content,
-            "name": filename,
-        }
+        payload = {"code": content}
         try:
-            async with session.post(
-                AHKBIN_URL, data=payload, headers=headers, allow_redirects=False
-            ) as r:
+            async with session.post(AHKBIN_URL, data=payload, allow_redirects=False) as r:
                 if r.status == 302 and (loc := r.headers.get("Location")):
                     return filename, loc.removeprefix("./?p=")
         except (aiohttp.ClientError, asyncio.TimeoutError):
@@ -1000,37 +994,39 @@ class AutoHotkey(AceMixin, commands.Cog):
         return None
 
     async def _upload_to_ahkbin(self, attachments: list[tuple[str, str]]) -> list[tuple[str, str]]:
-        headers = {"Authorization": AHKBIN_PASS}
         tasks = []
         async with aiohttp.ClientSession() as session:
             for filename, attachment in attachments:
-                task = self._upload_attachment(session, headers, filename, attachment)
+                task = self._upload_attachment(session, filename, attachment)
                 tasks.append(task)
             results = await asyncio.gather(*tasks)
         return list(filter(None, results))
 
-    async def _delete_from_ahkbin(self, links: list[str]):
-        headers = {"Authorization": AHKBIN_PASS}
-        payload = {"delete": links}
+    async def _delete_from_ahkbin(self, ids: list[str]):
+        auth64 = b64encode(f"ace:{AHKBIN_PASS}".encode()).decode()
+        headers = {"Authorization": f"Basic {auth64}"}
+        params = {"p": ",".join(ids)}
         async with aiohttp.ClientSession() as session:
             try:
-                await session.post(AHKBIN_URL, json=payload, headers=headers)
-            except (aiohttp.ClientError, asyncio.TimeoutError):
-                pass
+                response = await session.delete(AHKBIN_URL, headers=headers, params=params)
+                response_json: dict = await response.json()
+                return response_json.get("succeeded") == len(ids)
+            except (aiohttp.ClientError, aiohttp.ContentTypeError, asyncio.TimeoutError):
+                return False
 
     def _ahkbin_UI(
         self,
         *,
-        title: str = "",
+        title: str | None = None,
         description: str,
         author_id: int,
         upload_disabled: bool = False,
-        upload_ids: None | list[str] = None,
         color: disnake.Color,
     ) -> tuple[disnake.Embed, disnake.ui.ActionRow]:
 
         embed = disnake.Embed()
-        embed.title = title
+        if title is not None:
+            embed.title = title
         embed.description = description
         embed.color = color
 
@@ -1043,13 +1039,10 @@ class AutoHotkey(AceMixin, commands.Cog):
             disabled=upload_disabled,
             emoji="☁️",
         )
-        custom_delete_id = f"ahkbin_delete_{author_id}"
-        if upload_ids is not None:
-            custom_delete_id += "_" + "_".join(upload_ids)
 
         row.add_button(
             style=disnake.ButtonStyle.secondary,
-            custom_id=custom_delete_id,
+            custom_id=f"ahkbin_delete_{author_id}",
             label="Delete",
             emoji="🗑️",
         )
@@ -1105,7 +1098,7 @@ class AutoHotkey(AceMixin, commands.Cog):
         if not inter.component.custom_id.startswith("ahkbin"):
             return
 
-        _, action, author_id_str, *ids = inter.component.custom_id.split("_")
+        _, action, author_id_str = inter.component.custom_id.split("_")
         author_id = int(author_id_str)
 
         if author_id != inter.author.id:
@@ -1114,6 +1107,8 @@ class AutoHotkey(AceMixin, commands.Cog):
             )
             return
 
+        await inter.response.defer()
+
         try:
             source_message = await inter.channel.fetch_message(inter.message.reference.message_id)
         except disnake.HTTPException:
@@ -1121,15 +1116,15 @@ class AutoHotkey(AceMixin, commands.Cog):
                 description="Failed to get the original message.\nIt might have been deleted.",
                 color=disnake.Color.yellow(),
             )
-            await inter.message.edit(embed=embed, components=None)
+            await inter.edit_original_response(embed=embed, components=None)
             await asyncio.sleep(10)
-            await inter.message.delete()
+            await inter.delete_original_response()
             return
 
         if action == "upload":
             valid_attachments = await self._parse_attachments(source_message.attachments)
             if valid_attachments:
-                links = await self._upload_to_ahkbin(valid_attachments[:ATTACHMENT_LIMIT])
+                links = await self._upload_to_ahkbin(valid_attachments)
             if not valid_attachments or not links:
                 embed, row = self._ahkbin_UI(
                     title="Failed to upload files.",
@@ -1140,29 +1135,39 @@ class AutoHotkey(AceMixin, commands.Cog):
                     author_id=inter.author.id,
                     color=disnake.Color.yellow(),
                 )
-                await inter.response.edit_message(embed=embed, components=row)
+                await inter.edit_original_response(embed=embed, components=row)
                 return
 
             description = "\n".join(
                 f"{AHKBIN_URL}/?p={link} ({filename})" for filename, link in links
             )
-            if len(valid_attachments) > ATTACHMENT_LIMIT:
-                description += f"\n\nCould not upload all attachments (limit: {ATTACHMENT_LIMIT})"
 
             embed, row = self._ahkbin_UI(
                 description=description,
                 author_id=inter.author.id,
                 upload_disabled=True,
-                upload_ids=[link for _, link in links],
                 color=disnake.Color.blue(),
             )
 
-            await inter.response.edit_message(embed=embed, components=row)
+            self.ahkbin_uploads[inter.message.id] = [link for _, link in links]
+
+            await inter.edit_original_response(embed=embed, components=row)
 
         if action == "delete":
-            if ids:
-                await self._delete_from_ahkbin(ids)
-            await inter.message.delete()
+            ids_to_delete = self.ahkbin_uploads.pop(inter.message.id, None)
+            if ids_to_delete:
+                delete_ok = await self._delete_from_ahkbin(ids_to_delete)
+                if not delete_ok:
+                    await inter.followup.send(
+                        "An error prevented the pastes from being deleted.", ephemeral=True
+                    )
+                    self.bot.dispatch(
+                        "log",
+                        inter.guild,
+                        inter.author,
+                        action=f"AHKBIN DELETION FAILED. IDS: {','.join(ids_to_delete)}",
+                    )
+            await inter.delete_original_response()
 
 
 def setup(bot):
