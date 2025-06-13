@@ -20,7 +20,7 @@ async def main():
 
         # populate facts if empty
         if await db.fetchval("SELECT COUNT(id) FROM facts") == 0:
-            for fact in facts.split("\n"):
+            for fact in facts.strip().split("\n"):
                 await db.execute("INSERT INTO facts (content) VALUES ($1)", fact)
 
 
