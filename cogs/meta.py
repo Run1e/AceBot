@@ -7,7 +7,6 @@ from pathlib import Path
 import disnake
 import psutil
 from disnake.ext import commands
-from pygit2 import GIT_SORT_TOPOLOGICAL, GIT_STATUS_IGNORED, Repository, GitError
 
 from cogs.mixins import AceMixin
 from utils.context import AceContext
@@ -33,11 +32,6 @@ class Meta(AceMixin, commands.Cog):
 
     def __init__(self, bot):
         super().__init__(bot)
-
-        try:
-            self.repo = Repository(".")
-        except GitError:
-            self.repo = None
 
         self.process = psutil.Process()
 
@@ -183,15 +177,6 @@ class Meta(AceMixin, commands.Cog):
         )
         return f"[`{short_sha2}`]({GITHUB_LINK}/commit/{commit.hex}) {short} ({offset})"
 
-    def get_last_commits(self, count=3):
-        if self.repo is None:
-            return "-"
-
-        return "\n".join(
-            self.format_commit(c)
-            for c in islice(self.repo.walk(self.repo.head.target, GIT_SORT_TOPOLOGICAL), count)
-        )
-
     @commands.command()
     @commands.bot_has_permissions(embed_links=True)
     async def about(self, ctx, *, command: str = None):
@@ -208,7 +193,7 @@ class Meta(AceMixin, commands.Cog):
     async def _about_bot(self, ctx):
         e = disnake.Embed(
             title="Click here to add the bot to your own server!",
-            description=f"{self.get_last_commits()}\n\n[Support server here!]({self.bot.support_link})",
+            description=f"[Support server here!]({self.bot.support_link})",
             url=self.bot.invite_link,
         )
 
@@ -313,19 +298,16 @@ class Meta(AceMixin, commands.Cog):
         await ctx.send(self.bot.support_link)
 
     @commands.command(aliases=["source"])
-    async def code(self, ctx: AceContext, *, command: str = None):
-        """Get a github link to the source code of a command (include a / at the start to limit to / commands)."""
+    async def code(self, ctx: AceContext, *, command: str | None = None):
+        """Get a github link to the source code of a command"""
 
         if command is None:
             await ctx.send(GITHUB_LINK)
             return
 
-        cmd = None
-        # check if it's a / command
-        if not command.startswith("/"):
-            cmd = self.bot.get_command(command)
+        cmd = self.bot.get_slash_command(command)
         if cmd is None:
-            cmd = self.bot.get_slash_command(command.removeprefix("/"))
+            cmd = self.bot.get_command(command)
 
         # not a command
         if cmd is None:
@@ -334,23 +316,9 @@ class Meta(AceMixin, commands.Cog):
         callback = cmd.callback
         source_file = Path(inspect.getsourcefile(callback)).relative_to(getcwd())
 
-        if self.repo is not None:
-            # pygit2 expects forward slashes which breaks on windows with pathlib
-            source_file_str = str(source_file).replace("\\", "/")
-
-            # not in repo
-            try:
-                file_status = self.repo.status_file(source_file_str)
-            except KeyError:
-                raise COULD_NOT_FIND
-
-            # ignored
-            if file_status & GIT_STATUS_IGNORED:
-                raise COULD_NOT_FIND
-
         lines, first_line_no = inspect.getsourcelines(callback)
         await ctx.send(
-            f"<{GITHUB_LINK}/blob/{GITHUB_BRANCH}/{source_file}#L{first_line_no}-L{first_line_no + len(lines) - 1}>"
+            f"<https://github.com/Run1e/Acebot/blob/master/{source_file}#L{first_line_no}-L{first_line_no + len(lines) - 1}>"
         )
 
 
