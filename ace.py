@@ -64,36 +64,41 @@ class AceBot(commands.Bot):
             self, table="config", primary="guild_id", record_class=GuildConfigRecord
         )
 
-        self.startup_time = datetime.utcnow()
-
         self.log = logging.getLogger("acebot")
 
-        aiohttp_log = logging.getLogger("http")
-
-        async def on_request_end(session, ctx, end):
-            resp = end.response
-            aiohttp_log.info(
-                "[%s %s] %s %s (%s)",
-                str(resp.status),
-                resp.reason,
-                end.method.upper(),
-                end.url,
-                resp.content_type,
-            )
-
-        trace_config = aiohttp.TraceConfig()
-        trace_config.on_request_end.append(on_request_end)
-
-        self.aiohttp = aiohttp.ClientSession(
-            loop=self.loop,
-            timeout=aiohttp.ClientTimeout(total=5),
-            trace_configs=[trace_config],
-        )
+        self.startup_time = datetime.utcnow()
 
         self.modified_times = dict()
 
+        self._aiohttp_setup = False
+
     async def on_connect(self):
         self.log.info("Connected to gateway!")
+
+        if not self._aiohttp_setup:
+            self._aiohttp_setup = True
+
+            aiohttp_log = logging.getLogger("http")
+
+            async def on_request_end(session, ctx, end):
+                resp = end.response
+                aiohttp_log.info(
+                    "[%s %s] %s %s (%s)",
+                    str(resp.status),
+                    resp.reason,
+                    end.method.upper(),
+                    end.url,
+                    resp.content_type,
+                )
+
+            trace_config = aiohttp.TraceConfig()
+            trace_config.on_request_end.append(on_request_end)
+
+            self.aiohttp = aiohttp.ClientSession(
+                loop=self.loop,
+                timeout=aiohttp.ClientTimeout(total=5),
+                trace_configs=[trace_config],
+            )
 
     async def on_resumed(self):
         self.log.info("Reconnected to gateway!")
