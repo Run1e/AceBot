@@ -4,4 +4,4 @@ aiohttp==3.9.5
 asyncpg==0.28.0
 rapidfuzz==3.4.0
 sanic==23.12.1
-tqdm==4.64.1
+tqdm==4.66.3
