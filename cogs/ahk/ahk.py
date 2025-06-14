@@ -15,14 +15,15 @@ from bs4 import BeautifulSoup
 from disnake.ext import commands, tasks
 
 from cogs.mixins import AceMixin
+from cogs.mod import Severity
 from config import (
+    AHKBIN_PASS,
+    AHKBIN_URL,
     CLOUDAHK_PASS,
     CLOUDAHK_URL,
     CLOUDAHK_USER,
     DOCS_API_URL,
     GAME_PRED_URL,
-    AHKBIN_URL,
-    AHKBIN_PASS,
 )
 from ids import *
 from utils.html2markdown import HTML2Markdown
@@ -47,6 +48,7 @@ INACTIVITY_LIMIT = timedelta(weeks=4)
 DISCORD_UPLOAD_LIMIT = 8000000  # 8 MB
 
 AHKBIN_UPLOAD_LIMIT = 1000000  # 1 MB
+AHKBIN_VALID_EXT = ("ahk", "txt", "ahk2", "py")
 
 BULLET = "•"
 
@@ -116,8 +118,6 @@ class AutoHotkey(AceMixin, commands.Cog):
 
         self._docs_msg_map = {}
 
-        self.ahkbin_uploads = {}
-
     def cog_unload(self):
         self.rss.cancel()
 
@@ -154,6 +154,10 @@ class AutoHotkey(AceMixin, commands.Cog):
 
     @commands.Cog.listener()
     async def on_thread_create(self, thread: disnake.Thread):
+        owner = thread.owner
+        if owner is None or owner.bot:
+            return
+
         if thread.parent_id != HELP_FORUM_CHAN_ID:
             return
 
@@ -171,8 +175,13 @@ class AutoHotkey(AceMixin, commands.Cog):
             if not thread.applied_tags:
                 await self.tagask(thread)
 
-        await asyncio.sleep(2)
-        await self.handle_attachments(thread)
+            try:
+                message = await thread.fetch_message(thread.id)
+            except disnake.HTTPException:
+                return
+
+            await asyncio.sleep(2)
+            await self.handle_attachments(message)
 
     @tasks.loop(minutes=1)
     async def close_help_threads(self):
@@ -953,14 +962,26 @@ class AutoHotkey(AceMixin, commands.Cog):
                 embed=disnake.Embed(description="The thread owner is no longer in this server.")
             )
 
+    def _valid_metadata_attachments(
+        self, attachments: list[disnake.Attachment]
+    ) -> list[disnake.Attachment]:
+        def validate(attach: disnake.Attachment) -> bool:
+            if attach.size > AHKBIN_UPLOAD_LIMIT:
+                return False
+
+            if not any(attach.filename.endswith(f".{ext}") for ext in AHKBIN_VALID_EXT):
+                return False
+
+            return True
+
+        return [a for a in attachments if validate(a)]
+
     async def _parse_attachments(
         self, attachments: list[disnake.Attachment]
     ) -> list[tuple[str, str]]:
         valid_attachments = []
-        for attachment in attachments:
-            if attachment.size > AHKBIN_UPLOAD_LIMIT:
-                continue
 
+        for attachment in self._valid_metadata_attachments(attachments):
             try:
                 data = await attachment.read()
             except disnake.HTTPException:
@@ -979,122 +1000,115 @@ class AutoHotkey(AceMixin, commands.Cog):
                 continue
 
             valid_attachments.append((attachment.filename, decoded))
+
         return valid_attachments
 
-    async def _upload_attachment(
-        self, session: aiohttp.ClientSession, filename: str, content: str
-    ) -> tuple[str, str] | None:
-        payload = {"code": content}
+    async def _upload_attachment(self, filename: str, content: str) -> tuple[str, str] | None:
+        payload = dict(code=content)
+
         try:
-            async with session.post(AHKBIN_URL, data=payload, allow_redirects=False) as r:
+            async with self.bot.aiohttp.post(AHKBIN_URL, data=payload, allow_redirects=False) as r:
                 if r.status == 302 and (loc := r.headers.get("Location")):
                     return filename, loc.removeprefix("./?p=")
         except (aiohttp.ClientError, asyncio.TimeoutError):
             pass
-        return None
 
     async def _upload_to_ahkbin(self, attachments: list[tuple[str, str]]) -> list[tuple[str, str]]:
         tasks = []
-        async with aiohttp.ClientSession() as session:
-            for filename, attachment in attachments:
-                task = self._upload_attachment(session, filename, attachment)
-                tasks.append(task)
-            results = await asyncio.gather(*tasks)
-        return list(filter(None, results))
 
-    async def _delete_from_ahkbin(self, ids: list[str]):
+        for filename, attachment in attachments:
+            tasks.append(self._upload_attachment(filename, attachment))
+
+        results = await asyncio.gather(*tasks)
+        return [result for result in results if result]
+
+    async def _delete_from_ahkbin(self, ids: list[str]) -> bool:
         auth64 = b64encode(f"ace:{AHKBIN_PASS}".encode()).decode()
         headers = {"Authorization": f"Basic {auth64}"}
-        params = {"p": ",".join(ids)}
-        async with aiohttp.ClientSession() as session:
-            try:
-                response = await session.delete(AHKBIN_URL, headers=headers, params=params)
-                response_json: dict = await response.json()
-                return response_json.get("succeeded") == len(ids)
-            except (aiohttp.ClientError, aiohttp.ContentTypeError, asyncio.TimeoutError):
-                return False
+        params = dict(p=",".join(ids))
 
-    def _ahkbin_UI(
+        # should return the ids that failed instead of just a number
+        try:
+            response = await self.bot.aiohttp.delete(AHKBIN_URL, headers=headers, params=params)
+            response_json = await response.json()
+            return response_json.get("succeeded") == len(ids)
+        except (aiohttp.ClientError, asyncio.TimeoutError):
+            return False
+
+    def _build_ahkbin_ui(
         self,
         *,
         title: str | None = None,
-        description: str,
+        description: str | None = None,
         author_id: int,
-        upload_disabled: bool = False,
         color: disnake.Color,
+        upload_disabled: bool = False,
     ) -> tuple[disnake.Embed, disnake.ui.ActionRow]:
-
         embed = disnake.Embed()
+
         if title is not None:
             embed.title = title
+
         embed.description = description
         embed.color = color
 
         row = disnake.ui.ActionRow()
 
-        row.add_button(
-            style=disnake.ButtonStyle.primary,
-            custom_id=f"ahkbin_upload_{author_id}",
-            label="Upload",
-            disabled=upload_disabled,
-            emoji="☁️",
-        )
-
-        row.add_button(
-            style=disnake.ButtonStyle.secondary,
-            custom_id=f"ahkbin_delete_{author_id}",
-            label="Delete",
-            emoji="🗑️",
-        )
+        if not upload_disabled:
+            row.add_button(
+                style=disnake.ButtonStyle.primary,
+                custom_id=f"ahkbin_upload_{author_id}",
+                label="Upload",
+                emoji="☁️",
+            )
+        else:
+            row.add_button(
+                style=disnake.ButtonStyle.secondary,
+                custom_id=f"ahkbin_delete_{author_id}",
+                label="Delete",
+                emoji="🗑️",
+            )
 
         return embed, row
 
-    async def handle_attachments(self, message_or_thread: disnake.Message | disnake.Thread):
-        if isinstance(message_or_thread, disnake.Thread):
-            message = self.bot.get_message(message_or_thread.id)
-            if not message:
-                try:
-                    message = await message_or_thread.fetch_message(message_or_thread.id)
-                except disnake.HTTPException:
-                    return
-        else:
-            message: disnake.Message = message_or_thread
-            if not (
-                message.channel.id in HELP_CHANNEL_IDS
-                or isinstance(message.channel, disnake.Thread)
-            ):
-                return
-
-        if message.author.bot:
-            return
-
+    async def handle_attachments(self, message: disnake.Message):
         if not message.attachments:
             return
 
-        valid_attachments = await self._parse_attachments(message.attachments)
+        valid_attachments = self._valid_metadata_attachments(message.attachments)
         if not valid_attachments:
             return
 
-        embed, row = self._ahkbin_UI(
-            title="Share your file(s) using our paste service (p.autohotkey.com)?",
-            description=(
-                "Click Upload to upload them automatically.\n"
-                "This allows people to read your code without downloading files."
-            ),
+        embed, row = self._build_ahkbin_ui(
+            title="Share your file(s) using our paste service?",
+            description="This makes it easier for others to read your code.",
             author_id=message.author.id,
-            color=disnake.Color.blue(),
+            color=disnake.Color.orange(),
         )
 
         await message.reply(embed=embed, components=row)
 
     @commands.Cog.listener()
     async def on_message(self, message: disnake.Message):
-        if isinstance(message.channel, disnake.Thread) and message.id == message.channel.id:
+        if message.guild is None or message.author.bot:
             return
+
+        # if we're in a thread
+        if isinstance(message.channel, disnake.Thread):
+            # ignore the original thread message
+            if message.id == message.channel.id:
+                return
+        elif message.channel.id not in HELP_CHANNEL_IDS:
+            # otherwise ignore if we're not in the help channels
+            return
+
         await self.handle_attachments(message)
 
     @commands.Cog.listener(name="on_button_click")
     async def ahkbin_button_handler(self, inter: disnake.MessageInteraction):
+        if inter.component.custom_id is None:
+            return
+
         if not inter.component.custom_id.startswith("ahkbin"):
             return
 
@@ -1103,18 +1117,23 @@ class AutoHotkey(AceMixin, commands.Cog):
 
         if author_id != inter.author.id:
             await inter.response.send_message(
-                "You are not authorized to use this button.", ephemeral=True, delete_after=5
+                "This button is not for you!",
+                ephemeral=True,
+                delete_after=10,
             )
             return
 
         await inter.response.defer()
 
+        if inter.message.reference is None:
+            return
+
         try:
-            source_message = await inter.channel.fetch_message(inter.message.reference.message_id)
+            message = await inter.channel.fetch_message(inter.message.reference.message_id)
         except disnake.HTTPException:
             embed = disnake.Embed(
                 description="Failed to get the original message.\nIt might have been deleted.",
-                color=disnake.Color.yellow(),
+                color=disnake.Color.red(),
             )
             await inter.edit_original_response(embed=embed, components=None)
             await asyncio.sleep(10)
@@ -1122,52 +1141,87 @@ class AutoHotkey(AceMixin, commands.Cog):
             return
 
         if action == "upload":
-            valid_attachments = await self._parse_attachments(source_message.attachments)
-            if valid_attachments:
-                links = await self._upload_to_ahkbin(valid_attachments)
+            valid_attachments = await self._parse_attachments(message.attachments)
+            links = await self._upload_to_ahkbin(valid_attachments) if valid_attachments else []
+
             if not valid_attachments or not links:
-                embed, row = self._ahkbin_UI(
+                embed, row = self._build_ahkbin_ui(
                     title="Failed to upload files.",
                     description=(
                         "There are no valid text files or something else went wrong.\n"
                         f"Try again later or upload directly to {AHKBIN_URL}"
                     ),
                     author_id=inter.author.id,
-                    color=disnake.Color.yellow(),
+                    color=disnake.Color.red(),
                 )
                 await inter.edit_original_response(embed=embed, components=row)
                 return
 
-            description = "\n".join(
-                f"{AHKBIN_URL}/?p={link} ({filename})" for filename, link in links
-            )
-
-            embed, row = self._ahkbin_UI(
-                description=description,
+            embed, row = self._build_ahkbin_ui(
                 author_id=inter.author.id,
+                color=disnake.Color.green(),
                 upload_disabled=True,
-                color=disnake.Color.blue(),
             )
 
-            self.ahkbin_uploads[inter.message.id] = [link for _, link in links]
+            for filename, link in links:
+                embed.add_field(name=filename, value=f"{AHKBIN_URL}/?p={link}", inline=False)
 
             await inter.edit_original_response(embed=embed, components=row)
 
-        if action == "delete":
-            ids_to_delete = self.ahkbin_uploads.pop(inter.message.id, None)
-            if ids_to_delete:
-                delete_ok = await self._delete_from_ahkbin(ids_to_delete)
-                if not delete_ok:
-                    await inter.followup.send(
-                        "An error prevented the pastes from being deleted.", ephemeral=True
-                    )
-                    self.bot.dispatch(
-                        "log",
-                        inter.guild,
-                        inter.author,
-                        action=f"AHKBIN DELETION FAILED. IDS: {','.join(ids_to_delete)}",
-                    )
+        elif action == "delete":
+            ids = []
+
+            async def delete_failed(err: str | None = None):
+                self.bot.dispatch(
+                    "log",
+                    inter.guild,
+                    inter.author,
+                    severity=Severity.LOW,
+                    message=inter.message,
+                    reason=f"ahkbin deletion failed. ids: `{','.join(ids) or 'none'}`",
+                )
+
+                await inter.followup.send(
+                    err or "An error prevented the pastes from being deleted.",
+                    ephemeral=True,
+                )
+
+            if not inter.message.embeds:
+                await delete_failed("No embeds in message")
+                return
+
+            fields = inter.message.embeds[0].fields
+
+            if not fields:
+                await delete_failed("No fields in embed")
+                return
+
+            ids = []
+            for field in fields:
+                if field.value is None:
+                    continue
+
+                match = re.search(r"\/\?p=(?P<id>.*)$", field.value)
+                if match:
+                    ids.append(match.group("id"))
+
+            if not ids:
+                await delete_failed("Could not find any paste ids")
+                return
+
+            delete_ok = await self._delete_from_ahkbin(ids)
+            if not delete_ok:
+                await delete_failed("One or more pastes failed deleting")
+                return
+
             await inter.delete_original_response()
+            await inter.followup.send(
+                embed=disnake.Embed(
+                    description="Your pastes have been deleted.",
+                    color=disnake.Color.green(),
+                ),
+                ephemeral=True,
+            )
 
 
 def setup(bot):
