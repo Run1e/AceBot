@@ -519,6 +519,7 @@ class Fun(AceMixin, commands.Cog):
         """Requests the bill videos from the website.
         Caching is done in order to speed up searching"""
 
+        await self.bot.wait_until_ready()
         self.bill_cache.clear()
 
         for key in ("videos", "songs", "instrumentals"):

@@ -67,10 +67,10 @@ API_URL = API_BASE + "api.php"
 QUESTION_TIMEOUT = 20.0
 
 MULTIPLE_MAP = (
-    "\N{Digit One}\N{Combining Enclosing Keycap}",
-    "\N{Digit Two}\N{Combining Enclosing Keycap}",
-    "\N{Digit Three}\N{Combining Enclosing Keycap}",
-    "\N{Digit Four}\N{Combining Enclosing Keycap}",
+    "\N{DIGIT ONE}\N{COMBINING ENCLOSING KEYCAP}",
+    "\N{DIGIT TWO}\N{COMBINING ENCLOSING KEYCAP}",
+    "\N{DIGIT THREE}\N{COMBINING ENCLOSING KEYCAP}",
+    "\N{DIGIT FOUR}\N{COMBINING ENCLOSING KEYCAP}",
 )
 
 BOOLEAN_MAP = (
@@ -250,6 +250,8 @@ class Games(AceMixin, commands.Cog):
         self.bot.loop.create_task(self.get_trivia_categories())
 
     async def get_trivia_categories(self):
+        await self.bot.wait_until_ready()
+
         try:
             async with self.bot.aiohttp.get(API_CATEGORY_LIST_URL) as resp:
                 if resp.status != 200:

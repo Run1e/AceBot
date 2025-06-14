@@ -59,7 +59,6 @@ def setup_logger():
 
 
 def setup():
-
     # misc. monkey-patching
     class Embed(disnake.Embed):
         def __init__(self, color=disnake.Color.blue(), **attrs):
