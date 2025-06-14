@@ -1,3 +1,4 @@
+from abc import abstractmethod
 import asyncio
 import html
 import io
@@ -14,6 +15,7 @@ from aiohttp.client_exceptions import ClientConnectorError
 from bs4 import BeautifulSoup
 from disnake.ext import commands, tasks
 
+from ace import AceBot
 from cogs.mixins import AceMixin
 from config import (
     CLOUDAHK_PASS,
@@ -84,6 +86,112 @@ def solved_perms(inter):
 
 DEFAULT_PIVOT_VALUE = 0.0
 
+class TagAskState:
+    def __init__(self, question: str, bot: AceBot, thread: disnake.Thread, tags: dict):
+        self.thread = thread
+        self.bot = bot
+        self.tags = tags
+
+        embed = disnake.Embed()
+        embed.set_author(
+            name=bot.user.display_name,
+            icon_url=bot.user.display_avatar.url,
+        )
+        embed.color = disnake.Color.green()
+
+        embed.description = question
+
+        rows = []
+        for num, (label, tag) in enumerate(tags.items()):
+            if num % 4 == 0:
+                row = disnake.ui.ActionRow()
+                rows.append(row)
+
+            row.add_button(
+                style=disnake.ButtonStyle.secondary,
+                label=label,
+                emoji=tag.emoji,
+            )
+
+        row.add_button(
+            style=disnake.ButtonStyle.danger,
+            label="Skip",
+            emoji=SKIP
+        )
+
+        self.args = dict(embed=embed, components=rows)
+
+    def get_args(self):
+        return self.args
+
+    @abstractmethod
+    async def interact(self, message):
+        pass
+
+    def check(self, inter: disnake.MessageInteraction) -> bool:
+        if inter.author != self.thread.owner:
+            return False
+
+        for components in inter.message.components:
+            if inter.component in components.children:
+                return True
+
+        return False
+    
+    def get_result(self):
+        return self.result
+
+    def get_tags(self):
+        return [x[1] for x in enumerate(self.tags.values())]
+    
+    async def wait(self) -> str:
+        try:
+            interaction: disnake.MessageInteraction = await self.bot.wait_for(
+                event="button_click",
+                check=self.check,
+                timeout=300.0,  # if they haven't done anything in 5 minutes then timeout
+            )
+            await interaction.response.defer()
+            return interaction.component.label
+        except asyncio.TimeoutError:
+            return None
+
+class SingleSelect(TagAskState):
+    async def interact(self, message):
+        response = await self.wait()
+        if response is None:
+            self.result = [None]
+        else:
+            self.result = [self.tags.get(response, "Skip")]
+
+class MultiSelect(TagAskState):
+    async def interact(self, message):
+        self.result = []
+        while True:
+            interaction = await self.wait()
+            if interaction in [None, "Skip", "Done"]:
+                self.result.append(interaction)
+                break
+            tag = self.tags.get(interaction)
+            index = list(self.tags.keys()).index(interaction)
+            length = len(self.tags)-1
+            col = length%4+1
+            row = int(length/4)
+            if tag in self.result:
+                self.args["components"][int(index/4)][index%4].style = disnake.ButtonStyle.secondary
+                self.result.remove(tag)
+                if not self.result:
+                    self.args["components"][row][col].style = disnake.ButtonStyle.danger
+                    self.args["components"][row][col].label = "Skip"
+                    self.args["components"][row][col].emoji = SKIP
+            else:
+                self.args["components"][int(index/4)][index%4].style = disnake.ButtonStyle.primary
+                if not self.result:
+                    self.args["components"][row][col].style = disnake.ButtonStyle.success
+                    self.args["components"][row][col].label = "Done"
+                    self.args["components"][row][col].emoji = DONE
+                self.result.append(tag)
+            await message.edit(content=None, **self.args)
 
 class AutoHotkey(AceMixin, commands.Cog):
     """Commands for the AutoHotkey guild."""
@@ -620,113 +728,27 @@ class AutoHotkey(AceMixin, commands.Cog):
 
     async def tagask(self, thread: disnake.Thread, inter: disnake.AppCmdInter = None):
         message = None
-
-        async def ask(question, tags: dict, single: bool = True):
+        async def ask(state: TagAskState):
             nonlocal message
-            embed = disnake.Embed()
-            embed.set_author(
-                name=self.bot.user.display_name,
-                icon_url=self.bot.user.display_avatar.url,
-            )
-            embed.color = disnake.Color.green()
-
-            embed.description = question
-
-            rows = []
-
-            for num, (label, tag) in enumerate(tags.items()):
-                if num % 4 == 0:
-                    row = disnake.ui.ActionRow()
-                    rows.append(row)
-
-                row.add_button(
-                    style=disnake.ButtonStyle.secondary,
-                    label=label,
-                    emoji=tag.emoji,
-                )
-
-            row.add_button(
-                style=disnake.ButtonStyle.danger,
-                label="Skip",
-                emoji=SKIP
-            )
-
-            args = dict(embed=embed, components=rows)
 
             if message is None:
                 content = (
                     f"{thread.owner.mention} Increase your visibility by adding up to 5 tags to your post!"
                 )
                 if inter:
-                    await inter.response.send_message(content=content, **args)
+                    await inter.response.send_message(content=content, **state.get_args())
                     message = await inter.original_message()
                 else:
-                    message = await thread.send(content=content, **args)
+                    message = await thread.send(content=content, **state.get_args())
             else:
-                await message.edit(content=None, **args)
-            
-            # check if a button was pressed for this
-            def check(inter: disnake.MessageInteraction) -> bool:
-                if inter.author != thread.owner:
-                    return False
-
-                for components in inter.message.components:
-                    if inter.component in components.children:
-                        return True
-
-                return False
-
-            async def interact() -> disnake.MessageInteraction:
-                try:
-                    interaction: disnake.MessageInteraction = await self.bot.wait_for(
-                            event="button_click",
-                            check=check,
-                            timeout=300.0,  # if they haven't done anything in 5 minutes then timeout
-                        )
-                    await interaction.response.defer()
-                    return interaction
-                except asyncio.TimeoutError:
-                    return None
-            
-            if single:
-                interaction = await interact()
-                return interaction is None, ([tags.get(interaction.component.label, "Skip")] if interaction else [])
-            out = []
-            while True:
-                interaction = await interact()
-                if interaction is None or interaction.component.label == "Skip" or interaction.component.label == "Done":
-                    break
-                tag = tags.get(interaction.component.label)
-                index = list(tags.keys()).index(interaction.component.label)
-                loc = (len(tags)-1)%4+1
-                if tag in out:
-                    rows[int(index/4)][index%4].style = disnake.ButtonStyle.secondary
-                    out.remove(tag)
-                    if not out:
-                        row[loc].style = disnake.ButtonStyle.danger
-                        row[loc].label = "Skip"
-                        row[loc].emoji = SKIP
-                else:
-                    rows[int(index/4)][index%4].style = disnake.ButtonStyle.primary
-                    if not out:
-                        row[loc].style = disnake.ButtonStyle.success
-                        row[loc].label = "Done"
-                        row[loc].emoji = DONE
-                    out.append(tag)
-                await message.edit(content=None, embed=embed, components=rows)
-
-            return interaction is None, out
+                await message.edit(content=None, **state.get_args())
 
         tags = {tag.name: tag for tag in thread.parent.available_tags}
         added_tags: list[disnake.ForumTag] = []
 
-        questions = (
-            (
-                "Which version of AHK are you using?",
-                {"v1.1": tags["v1"], "v2.0": tags["v2"]},
-            ),
-            (
-                "Which of these topics fit your question? Skip if none apply.",
+        questions = [
+            SingleSelect("Which version of AHK are you using?", self.bot, thread, {"v1.1": tags["v1"], "v2.0": tags["v2"]}),
+            MultiSelect("Which of these topics fit your question? Skip if none apply.", self.bot, thread,
                 {
                     "Sending keys/mouse": tags["Send/Click"],
                     "Hotkeys": tags["Hotkeys"],
@@ -735,38 +757,37 @@ class AutoHotkey(AceMixin, commands.Cog):
                     "WinAPI": tags["WinAPI"],
                     "COM Objects": tags["COM Objects"],
                     "Object-Oriented": tags["Object-Oriented"],
-                },
-                False, # specify this as a multi select menu
-            ),
-            (
-                "Do any of the following apply to your post? Skip if none apply.",
+                }),
+            SingleSelect("Do any of the following apply to your post? Skip if none apply.", self.bot, thread,
                 {
                     "Used Artifical Intelligence": tags["ChatGPT / AI"],
                     "Some else wrote it": tags["Someone Else"],
-                },
-            ),
-        )
+                }),
+        ]
 
         # add any tags that haven't been assigned (and aren't the solved tag) in a new question
         left = tags.copy()
         left.pop("Solved!")
         for question in questions:
-            for num, (label, tag) in enumerate(question[1].items()):
+            for tag in question.get_tags():
                 left.pop(tag.name)
         if len(left) > 0:
-            questions = (*questions, ("Do you want to add any of these tags? Skip if not.", left, len(left) == 1,)) 
+            questions.append((SingleSelect if len(left) == 1 else MultiSelect)("Do you want to add any of these tags? Skip if not.", self.bot, thread, left))
 
         for question in questions:
-            timeout, picked = await ask(*question)
+            await ask(question)
+            await question.interact(message)
 
             # add tag(s) to list if we picked any
-            # anything else, probably means a skip
-            for pick in picked:
+            for pick in question.get_result():
+                if pick == None: # None means timeout
+                    break
+                # anything else, probably means a skip
                 if isinstance(pick, disnake.ForumTag):
                     added_tags.append(pick)
-
-            if timeout:
-                break
+            else:
+                continue
+            break
 
         await thread.edit(applied_tags=added_tags[:5])
 
