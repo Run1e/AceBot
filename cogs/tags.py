@@ -290,7 +290,7 @@ class Tags(AceMixin, commands.Cog):
         similars = await inter.bot.db.fetch(
             "SELECT * FROM tag WHERE guild_id=$1 AND (name LIKE $2 OR alias LIKE $2) ORDER BY uses DESC, viewed_at DESC LIMIT 5",
             inter.guild.id,
-            f"%{query.lower()}%",
+            f"%{query.lower().strip()}%",
         )
 
         return [build_tag_name(record, zws=True) for record in similars]
