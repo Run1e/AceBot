@@ -46,9 +46,11 @@ DISCORD_UPLOAD_LIMIT = 8000000  # 8 MB
 
 BULLET = "•"
 
+SKIP = disnake.PartialEmoji(name="⏩")
+DONE = disnake.PartialEmoji(name="☑️")
 
 def tag_string(tag):
-    return (tag.emoji.name + " " if tag.emoji else "") + tag.name
+    return "- " + (tag.emoji.name + " " if tag.emoji else "") + tag.name + "\n"
 
 
 class RunnableCodeConverter(commands.Converter):
@@ -619,7 +621,7 @@ class AutoHotkey(AceMixin, commands.Cog):
     async def tagask(self, thread: disnake.Thread, inter: disnake.AppCmdInter = None):
         message = None
 
-        async def ask(question, tags: dict):
+        async def ask(question, tags: dict, single: bool = True):
             nonlocal message
             embed = disnake.Embed()
             embed.set_author(
@@ -644,15 +646,16 @@ class AutoHotkey(AceMixin, commands.Cog):
                 )
 
             row.add_button(
-                style=disnake.ButtonStyle.grey,
+                style=disnake.ButtonStyle.danger,
                 label="Skip",
+                emoji=SKIP
             )
 
             args = dict(embed=embed, components=rows)
 
             if message is None:
                 content = (
-                    f"{thread.owner.mention} Increase your visibility by adding tags your post!"
+                    f"{thread.owner.mention} Increase your visibility by adding up to 5 tags to your post!"
                 )
                 if inter:
                     await inter.response.send_message(content=content, **args)
@@ -661,8 +664,9 @@ class AutoHotkey(AceMixin, commands.Cog):
                     message = await thread.send(content=content, **args)
             else:
                 await message.edit(content=None, **args)
-
-            def check(inter: disnake.MessageInteraction):
+            
+            # check if a button was pressed for this
+            def check(inter: disnake.MessageInteraction) -> bool:
                 if inter.author != thread.owner:
                     return False
 
@@ -672,17 +676,46 @@ class AutoHotkey(AceMixin, commands.Cog):
 
                 return False
 
-            try:
-                button_inter: disnake.MessageInteraction = await self.bot.wait_for(
-                    event="button_click",
-                    check=check,
-                    timeout=300.0,  # if they haven't done anything in 5 minutes then timeout
-                )
-                await button_inter.response.defer()
-            except asyncio.TimeoutError:
-                return None
+            async def interact() -> disnake.MessageInteraction:
+                try:
+                    interaction: disnake.MessageInteraction = await self.bot.wait_for(
+                            event="button_click",
+                            check=check,
+                            timeout=300.0,  # if they haven't done anything in 5 minutes then timeout
+                        )
+                    await interaction.response.defer()
+                    return interaction
+                except asyncio.TimeoutError:
+                    return None
+            
+            if single:
+                interaction = await interact()
+                return interaction is None, ([tags.get(interaction.component.label, "Skip")] if interaction else [])
+            out = []
+            while True:
+                interaction = await interact()
+                if interaction is None or interaction.component.label == "Skip" or interaction.component.label == "Done":
+                    break
+                tag = tags.get(interaction.component.label)
+                index = list(tags.keys()).index(interaction.component.label)
+                loc = (len(tags)-1)%4+1
+                if tag in out:
+                    rows[int(index/4)][index%4].style = disnake.ButtonStyle.secondary
+                    out.remove(tag)
+                    if not out:
+                        row[loc].style = disnake.ButtonStyle.danger
+                        row[loc].label = "Skip"
+                        row[loc].emoji = SKIP
+                else:
+                    rows[int(index/4)][index%4].style = disnake.ButtonStyle.primary
+                    if not out:
+                        row[loc].style = disnake.ButtonStyle.success
+                        row[loc].label = "Done"
+                        row[loc].emoji = DONE
+                    out.append(tag)
+                await message.edit(content=None, embed=embed, components=rows)
 
-            return tags.get(button_inter.component.label, "Skip")
+            return interaction is None, out
 
         tags = {tag.name: tag for tag in thread.parent.available_tags}
         added_tags: list[disnake.ForumTag] = []
@@ -693,7 +726,7 @@ class AutoHotkey(AceMixin, commands.Cog):
                 {"v1.1": tags["v1"], "v2.0": tags["v2"]},
             ),
             (
-                "Which of these topics fit your question best? Skip if none apply.",
+                "Which of these topics fit your question? Skip if none apply.",
                 {
                     "Sending keys/mouse": tags["Send/Click"],
                     "Hotkeys": tags["Hotkeys"],
@@ -703,40 +736,50 @@ class AutoHotkey(AceMixin, commands.Cog):
                     "COM Objects": tags["COM Objects"],
                     "Object-Oriented": tags["Object-Oriented"],
                 },
+                False, # specify this as a multi select menu
+            ),
+            (
+                "Do any of the following apply to your post? Skip if none apply.",
+                {
+                    "Used Artifical Intelligence": tags["ChatGPT / AI"],
+                    "Some else wrote it": tags["Someone Else"],
+                },
             ),
         )
 
+        # add any tags that haven't been assigned (and aren't the solved tag) in a new question
+        left = tags.copy()
+        left.pop("Solved!")
         for question in questions:
-            picked = await ask(*question)
+            for num, (label, tag) in enumerate(question[1].items()):
+                left.pop(tag.name)
+        if len(left) > 0:
+            questions = (*questions, ("Do you want to add any of these tags? Skip if not.", left, len(left) == 1,)) 
 
-            # None signifies a timeout
-            # add whatever was picked, if anything
-            if picked is None:
+        for question in questions:
+            timeout, picked = await ask(*question)
+
+            # add tag(s) to list if we picked any
+            # anything else, probably means a skip
+            for pick in picked:
+                if isinstance(pick, disnake.ForumTag):
+                    added_tags.append(pick)
+
+            if timeout:
                 break
 
-            # add tag to list if we picked one
-            # anything else, probably means a skip
-            if isinstance(picked, disnake.ForumTag):
-                added_tags.append(picked)
-
-        # just delete and stop if we timed out
-        if not added_tags:
-            await message.delete()
-            return
-
-        await thread.edit(applied_tags=added_tags)
-
-        content = (
-            "Thanks for tagging your post!\nYou can change the tags at any time by using `/retag`\n"
-        )
+        await thread.edit(applied_tags=added_tags[:5])
 
         if added_tags:
-            content += "\n"
-            for tag in added_tags:
-                if tag.emoji:
-                    content += f"- {tag.emoji} {tag.name}\n"
-                else:
-                    content += f"- {tag.name}\n"
+            content = "Thanks for tagging your post!\nYou can change the tags at any time by using `/retag`\n\n"
+            for tag in added_tags[:5]:
+                content += tag_string(tag)
+            if len(added_tags) > 5:
+                content += "\nThe following tags weren't added due to the 5 tags limit:\n\n"
+                for tag in added_tags[5:]:
+                    content += tag_string(tag)
+        else:
+            content = "You did not select any tags for your post.\nYou can add tags at any time by using `/retag`\n"
 
         content += (
             "\n**If your issue gets solved, you can mark your post as solved by sending `/solved`**"
