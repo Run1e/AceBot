@@ -16,6 +16,7 @@ from disnake.ext import commands, tasks
 
 from cogs.mixins import AceMixin
 from cogs.mod import Severity
+from cogs.tags import TagViewConverter
 from config import (
     AHKBIN_PASS,
     AHKBIN_URL,
@@ -610,11 +611,9 @@ class AutoHotkey(AceMixin, commands.Cog):
 
     @commands.command(hidden=True)
     async def ask(self, ctx):
-        await ctx.send(
-            f"To ask a scripting question, create a new post in <#{HELP_FORUM_CHAN_ID}> "
-            + f"or ask in any of the other help channels if their topic fit your problem: "
-            + " ".join(f"<#{_id}>" for _id in HELP_CHANNEL_IDS)
-        )
+        """Shows the content of the ask tag, directing users to where they can get help."""
+        tag_name = await TagViewConverter().convert(ctx=ctx, tag_name="ask")
+        await self.bot.get_command("tag").__call__(ctx, tag_name=tag_name)
 
     @commands.slash_command(
         name="retag", description="Tag your help channel anew.", guild_ids=[AHK_GUILD_ID]

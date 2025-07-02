@@ -68,7 +68,7 @@ class PromptView(disnake.ui.View):
 
     @disnake.ui.button(
         label="Continue",
-        emoji="\N{White Heavy Check Mark}",
+        emoji="\N{WHITE HEAVY CHECK MARK}",
         style=disnake.ButtonStyle.primary,
     )
     async def yes(self, button: disnake.ui.Button, inter: disnake.MessageInteraction):

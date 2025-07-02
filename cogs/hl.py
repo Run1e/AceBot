@@ -11,7 +11,7 @@ from utils.converters import LengthConverter
 
 log = logging.getLogger(__name__)
 
-DELETE_EMOJI = "\N{Put Litter in Its Place Symbol}"
+DELETE_EMOJI = "\N{PUT LITTER IN ITS PLACE SYMBOL}"
 DEFAULT_LANG = "py"
 
 
