@@ -4,14 +4,13 @@ import pickle
 
 import torch
 from dataset import Sequencer, TextDataset
+from model import TextCNN
 from text_processor import TextProcessor
 from torch import nn
 from torch.utils.data import DataLoader
 from torch_config import CORPUS_DIR, EMBEDDINGS_DIR
 from torchtext.data.utils import get_tokenizer
 from tqdm import tqdm
-
-from model import TextCNN
 
 DATA_SPLIT = 0.75
 SEQUENCE_LEN = 380

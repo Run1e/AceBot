@@ -1,6 +1,6 @@
 import asyncio
-import re
 import logging
+import re
 from datetime import datetime
 
 import asyncpg
@@ -260,11 +260,13 @@ class Tags(AceMixin, commands.Cog):
             author_id: str = int(inter.component.custom_id.split("_")[1])
         except ValueError:
             return
-        
+
         if author_id != inter.author.id:
-            await inter.response.send_message("Sorry, this button is not for you!", ephemeral=True, delete_after=12)
+            await inter.response.send_message(
+                "Sorry, this button is not for you!", ephemeral=True, delete_after=12
+            )
             return
-        
+
         await inter.message.delete()
 
     @commands.slash_command(name="tag")
@@ -274,9 +276,16 @@ class Tags(AceMixin, commands.Cog):
         _, record = await TagViewConverter().convert(inter, query.split(ZWS)[0])
 
         ar = disnake.ui.ActionRow()
-        ar.add_button(0, style=disnake.ButtonStyle.secondary, label="🗑️", custom_id=f"tagsdeletebutton_{inter.author.id}")
+        ar.add_button(
+            0,
+            style=disnake.ButtonStyle.secondary,
+            label="🗑️",
+            custom_id=f"tagsdeletebutton_{inter.author.id}",
+        )
 
-        await inter.send(record.get("content"), allowed_mentions=disnake.AllowedMentions.none(), components=[ar])
+        await inter.send(
+            record.get("content"), allowed_mentions=disnake.AllowedMentions.none(), components=[ar]
+        )
 
         await self.db.execute(
             "UPDATE tag SET uses=$2, viewed_at=$3 WHERE id=$1",
@@ -305,8 +314,15 @@ class Tags(AceMixin, commands.Cog):
 
         tag_name, record = tag_name
         ar = disnake.ui.ActionRow()
-        ar.add_button(0, style=disnake.ButtonStyle.secondary, label="🗑️", custom_id=f"tagsdeletebutton_{ctx.author.id}")
-        await ctx.send(record.get("content"), allowed_mentions=disnake.AllowedMentions.none(), components=[ar])
+        ar.add_button(
+            0,
+            style=disnake.ButtonStyle.secondary,
+            label="🗑️",
+            custom_id=f"tagsdeletebutton_{ctx.author.id}",
+        )
+        await ctx.send(
+            record.get("content"), allowed_mentions=disnake.AllowedMentions.none(), components=[ar]
+        )
 
         await self.db.execute(
             "UPDATE tag SET uses=$2, viewed_at=$3 WHERE id=$1",
