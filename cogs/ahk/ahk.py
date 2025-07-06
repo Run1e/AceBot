@@ -613,7 +613,11 @@ class AutoHotkey(AceMixin, commands.Cog):
     async def ask(self, ctx):
         """Shows the content of the ask tag, directing users to where they can get help."""
         tag_name = await TagViewConverter().convert(ctx=ctx, tag_name="ask")
-        await self.bot.get_command("tag").__call__(ctx, tag_name=tag_name)
+
+        command = self.bot.get_command("tag")
+        assert command is not None
+
+        await command(ctx, tag_name=tag_name)
 
     @commands.slash_command(
         name="retag", description="Tag your help channel anew.", guild_ids=[AHK_GUILD_ID]
