@@ -234,7 +234,13 @@ class Moderation(AceMixin, commands.Cog):
 
     @commands.Cog.listener()
     async def on_log(
-        self, guild, subject, action=None, severity=Severity.LOW, message=None, **fields
+        self,
+        guild,
+        subject,
+        action=None,
+        severity=Severity.LOW,
+        message=None,
+        **fields,
     ):
         conf = await self.config.get_entry(guild.id)
 
