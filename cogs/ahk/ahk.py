@@ -213,11 +213,15 @@ class MultiSelect(TagAskState):
         result: set[disnake.ForumTag] = set()
 
         while True:
-            button = await self.wait()
-            assert button.label is not None
+            component = await self.wait()
+            assert component.label is not None
 
-            if button.label in ["Skip", "Done"]:
+            if component.label in ["Skip", "Done"]:
                 return result
+
+            button = self.label_to_component.get(component.label, None)
+            assert button is not None
+            assert button.label is not None
 
             tag = self.get_tag(button.label)
 
@@ -233,10 +237,9 @@ class MultiSelect(TagAskState):
                 result.add(tag)
                 button.style = disnake.ButtonStyle.primary
 
-                if not result:
-                    self.next_button.style = disnake.ButtonStyle.success
-                    self.next_button.label = "Done"
-                    self.next_button.emoji = DONE
+                self.next_button.style = disnake.ButtonStyle.success
+                self.next_button.label = "Done"
+                self.next_button.emoji = DONE
 
             await message.edit(content=None, **self.get_message_args())
 
@@ -838,15 +841,20 @@ class AutoHotkey(AceMixin, commands.Cog):
 
             added_tags.update(result)
 
-        await thread.edit(applied_tags=added_tags[:5])
+        from random import sample
+
+        added_tags_list = list(added_tags)
+        chosen_tags = added_tags_list[:5]
+        ignored_tags = added_tags_list[5:]
+        await thread.edit(applied_tags=chosen_tags)
 
         if added_tags:
             content = "Thanks for tagging your post!\nYou can change the tags at any time by using `/retag`\n\n"
-            for tag in added_tags[:5]:
+            for tag in chosen_tags:
                 content += tag_string(tag)
             if len(added_tags) > 5:
                 content += "\nThe following tags weren't added due to the 5 tags limit:\n\n"
-                for tag in added_tags[5:]:
+                for tag in ignored_tags:
                     content += tag_string(tag)
         else:
             content = "You did not select any tags for your post.\nYou can add tags at any time by using `/retag`\n"
