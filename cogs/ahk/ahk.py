@@ -7,6 +7,7 @@ from abc import ABCMeta, abstractmethod
 from asyncio import TimeoutError
 from base64 import b64encode
 from datetime import datetime, timedelta, timezone
+from itertools import chain, zip_longest
 from typing import Any
 
 import aiohttp
@@ -147,7 +148,7 @@ class TagAskState(metaclass=ABCMeta):
         row.append_item(self.next_button)  # type: ignore
 
     @abstractmethod
-    async def interact(self, message) -> set[disnake.ForumTag]:
+    async def interact(self, message) -> list[disnake.ForumTag]:
         pass
 
     def get_message_args(self) -> dict:
@@ -203,15 +204,17 @@ class TagAskState(metaclass=ABCMeta):
 
 
 class SingleSelect(TagAskState):
-    async def interact(self, message) -> set[disnake.ForumTag]:
+    async def interact(self, message) -> list[disnake.ForumTag]:
         button = await self.wait()
         assert button.label is not None
-        return {self.get_tag(button.label)}
+        if button.label == "Skip":
+            return []
+        return [self.get_tag(button.label)]
 
 
 class MultiSelect(TagAskState):
-    async def interact(self, message) -> set[disnake.ForumTag]:
-        result: set[disnake.ForumTag] = set()
+    async def interact(self, message) -> list[disnake.ForumTag]:
+        result: list[disnake.ForumTag] = list()
 
         while True:
             component = await self.wait()
@@ -235,7 +238,7 @@ class MultiSelect(TagAskState):
                     self.next_button.label = "Skip"
                     self.next_button.emoji = SKIP
             else:
-                result.add(tag)
+                result.append(tag)
                 button.style = disnake.ButtonStyle.primary
 
                 self.next_button.style = disnake.ButtonStyle.success
@@ -796,7 +799,8 @@ class AutoHotkey(AceMixin, commands.Cog):
         message = None
 
         tags = {tag.name: tag for tag in thread.parent.available_tags}
-        added_tags: set[disnake.ForumTag] = set()
+        added_tags: list[disnake.ForumTag] = list()
+        multi_tags: list[list[disnake.ForumTag]] = list()
 
         questions: list[TagAskState] = [
             SingleSelect(
@@ -838,11 +842,15 @@ class AutoHotkey(AceMixin, commands.Cog):
             except asyncio.TimeoutError:
                 break
 
-            added_tags.update(result)
+            if len(result) > 1:
+                multi_tags.append(result)
+            else:
+                added_tags += result
 
-        added_tags_list = list(added_tags)
-        chosen_tags = added_tags_list[:5]
-        ignored_tags = added_tags_list[5:]
+        added_tags += chain.from_iterable(zip_longest(*multi_tags))
+
+        chosen_tags = added_tags[:5]
+        ignored_tags = added_tags[5:]
         await thread.edit(applied_tags=chosen_tags)
 
         if added_tags:
