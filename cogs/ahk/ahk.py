@@ -150,7 +150,7 @@ class TagAskState(metaclass=ABCMeta):
     async def interact(self, message) -> set[disnake.ForumTag]:
         pass
 
-    def get_message_args(self):
+    def get_message_args(self) -> dict:
         return dict(embed=self.embed, components=self.rows)
 
     def button_click_check(self, inter: disnake.MessageInteraction) -> bool:
@@ -188,6 +188,7 @@ class TagAskState(metaclass=ABCMeta):
 
     async def ask(self, message: disnake.Message | None, inter: disnake.AppCmdInter | None):
         if message is None:
+            assert self.thread.owner is not None
             content = f"{self.thread.owner.mention} Increase your visibility by adding up to 5 tags to your post!"
 
             if inter:
@@ -835,13 +836,9 @@ class AutoHotkey(AceMixin, commands.Cog):
             try:
                 result = await question.interact(message)
             except asyncio.TimeoutError:
-                if message is not None:
-                    await message.delete()
-                return
+                break
 
             added_tags.update(result)
-
-        from random import sample
 
         added_tags_list = list(added_tags)
         chosen_tags = added_tags_list[:5]
