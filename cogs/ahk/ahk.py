@@ -61,10 +61,6 @@ SKIP = disnake.PartialEmoji(name="⏩")
 DONE = disnake.PartialEmoji(name="☑️")
 
 
-def tag_string(tag):
-    return "- " + (tag.emoji.name + " " if tag.emoji else "") + tag.name + "\n"
-
-
 class RunnableCodeConverter(commands.Converter):
     async def convert(self, ctx, code):
         if code.startswith("https://p.ahkscript.org/"):
@@ -842,7 +838,7 @@ class AutoHotkey(AceMixin, commands.Cog):
             except asyncio.TimeoutError:
                 break
 
-            if len(result) > 1:
+            if isinstance(question, MultiSelect):
                 multi_tags.append(result)
             else:
                 added_tags += result
@@ -852,6 +848,9 @@ class AutoHotkey(AceMixin, commands.Cog):
         chosen_tags = added_tags[:5]
         ignored_tags = added_tags[5:]
         await thread.edit(applied_tags=chosen_tags)
+
+        def tag_string(tag):
+            return "- " + (tag.emoji.name + " " if tag.emoji else "") + tag.name + "\n"
 
         if added_tags:
             content = "Thanks for tagging your post!\nYou can change the tags at any time by using `/retag`\n\n"
