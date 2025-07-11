@@ -803,7 +803,10 @@ class AutoHotkey(AceMixin, commands.Cog):
                 "Which version of AHK are you using?",
                 self.bot,
                 thread,
-                {"v1.1": tags["v1"], "v2.0": tags["v2"]},
+                {
+                    "v1.1": tags["v1"],
+                    "v2.0": tags["v2"],
+                },
             ),
             MultiSelect(
                 "Which of these topics fit your question? Skip if none apply.",
@@ -815,17 +818,18 @@ class AutoHotkey(AceMixin, commands.Cog):
                     "GUI": tags["GUI"],
                     "RegEx": tags["RegEx"],
                     "WinAPI": tags["WinAPI"],
-                    "COM Objects": tags["COM Objects"],
                     "Object-Oriented": tags["Object-Oriented"],
+                    "Written by AI": tags["AI"],
                 },
             ),
             SingleSelect(
-                "Do any of the following apply to your post? Skip if none apply.",
+                "What is your AutoHotkey skill level?",
                 self.bot,
                 thread,
                 {
-                    "Written by AI": tags["ChatGPT / AI"],
-                    "Someone else wrote it": tags["Someone Else"],
+                    "Beginner": tags["Beginner"],
+                    "Intermediate": tags["Intermediate"],
+                    "Expert": tags["Expert"],
                 },
             ),
         ]
@@ -846,25 +850,17 @@ class AutoHotkey(AceMixin, commands.Cog):
         added_tags += chain.from_iterable(zip_longest(*multi_tags))
 
         chosen_tags = added_tags[:5]
-        ignored_tags = added_tags[5:]
         await thread.edit(applied_tags=chosen_tags)
 
-        def tag_string(tag):
-            return "- " + (tag.emoji.name + " " if tag.emoji else "") + tag.name + "\n"
-
         if added_tags:
-            content = "Thanks for tagging your post!\nYou can change the tags at any time by using `/retag`\n\n"
-            for tag in chosen_tags:
-                content += tag_string(tag)
-            if len(added_tags) > 5:
-                content += "\nThe following tags weren't added due to the 5 tags limit:\n\n"
-                for tag in ignored_tags:
-                    content += tag_string(tag)
+            content = "Thanks for tagging your post! You can change the tags at any time by using `/retag`\n\nAdded: {added}\n\n".format(
+                added=", ".join(f"`{tag.name}`" for tag in added_tags)
+            )
         else:
-            content = "You did not select any tags for your post.\nYou can add tags at any time by using `/retag`\n"
+            content = "You did not select any tags for your post. You can add tags at any time by using `/retag`\n\n"
 
         content += (
-            "\n**If your issue gets solved, you can mark your post as solved by sending `/solved`**"
+            "**If your issue gets solved, you can mark your post as solved by sending `/solved`**"
         )
 
         await message.edit(content=content, embed=None, components=None)
