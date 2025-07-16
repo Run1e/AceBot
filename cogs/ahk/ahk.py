@@ -16,6 +16,7 @@ from aiohttp import ClientTimeout
 from aiohttp.client_exceptions import ClientConnectorError
 from bs4 import BeautifulSoup
 from disnake.ext import commands, tasks
+from disnake.utils import escape_markdown
 
 from ace import AceBot
 from cogs.mixins import AceMixin
@@ -1267,7 +1268,7 @@ class AutoHotkey(AceMixin, commands.Cog):
             )
 
             for filename, link in links:
-                embed.add_field(name=filename, value=f"{AHKBIN_URL}/?p={link}", inline=False)
+                embed.add_field(name=escape_markdown(filename), value=f"{AHKBIN_URL}/?p={link}", inline=False)
 
             await inter.edit_original_response(embed=embed, components=row)
 
