@@ -64,7 +64,7 @@ DONE = disnake.PartialEmoji(name="☑️")
 
 class RunnableCodeConverter(commands.Converter):
     async def convert(self, ctx, code):
-        if code.startswith("https://p.autohotkey.com/"):
+        if code.startswith("https://p.autohotkey.wiki/"):
             url = code.replace("?p=", "?r=")
             async with ctx.http.get(url) as resp:
                 if resp.status == 200 and str(resp.url) == url:
