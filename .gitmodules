@@ -1,0 +1,3 @@
+[submodule "acebot-devops"]
+	path = acebot-devops
+	url = git@github.com:Run1e/acebot-devops.git
